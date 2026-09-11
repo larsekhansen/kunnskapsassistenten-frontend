@@ -15,12 +15,15 @@ import { expectEveryStepReachable, walkWithTab } from './helpers';
  * rather than a test id.
  */
 
+/**
+ * The level 1 heading names the application on every route, and the thread
+ * title is the level 2 under it. A page named after the thread would rename
+ * itself mid-session, the first time a title is generated from a question.
+ */
 const ROUTES = {
   newConversation: { path: '/', heading: 'Kunnskapsassistenten', name: 'ny-samtale' },
   thread: {
     path: '/threads/nkom-maaloppnaaelse',
-    // The route carries the page title; the thread title is the level 2
-    // under it, which is what ChatView renders.
     heading: 'Kunnskapsassistenten',
     subheading: 'NKOM måloppnåelse',
     name: 'traad',
@@ -37,6 +40,11 @@ test.describe('skallet', () => {
       // still have landmarks.
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(route.heading);
       await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+      if ('subheading' in route) {
+        await expect(page.getByRole('heading', { level: 2, name: route.subheading })).toBeVisible();
+      }
+
+      // The thread title is a section of the page, not the page itself.
       if ('subheading' in route) {
         await expect(page.getByRole('heading', { level: 2, name: route.subheading })).toBeVisible();
       }

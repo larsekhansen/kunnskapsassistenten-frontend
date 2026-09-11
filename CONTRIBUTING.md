@@ -97,6 +97,13 @@ uten tilgjengelighet er utelukket.
   regel fravikes, skriv `// oxlint-disable-next-line <regel>` med én linje om
   hvorfor fraviket er det tilgjengelige valget. Det finnes ett i dag.
 - Ikonknapper må ha `aria-label`.
+- **En kontroll som forsvinner av handlingen sin må si hvor fokus skal.**
+  «Prøv igjen», «Lukk», «Slett», «Vis mer» som avmonterer seg selv: fokus
+  faller til `<body>`, og neste Tab starter på nytt på hopp-lenka, en hel side
+  unna det brukeren holdt på med. WCAG 2.4.3. Flytt fokus til det handlingen
+  lagde, ikke til toppen av sida. `ErrorState` tar det som `focusAfterRetry`,
+  en ref til lista eller svaret som kom; uten den lander fokus på
+  varselregionen, som holder tab-rekkefølgen men ikke sier noe.
 - Landemerker og overskriftsnivåer skal henge sammen.
 - Kjør appen headless og ta et accessibility-snapshot av det du bygde før du
   melder ferdig. Skjermbilde til

@@ -76,7 +76,14 @@ export async function openSources(page: Page, number: number): Promise<void> {
  * scrolls the focused element to the same place repeats the position, and two
  * buttons can share a name.
  */
-export type FocusStep = { tag: string; name: string; outline: string; boxShadow: string };
+export type FocusStep = {
+  tag: string;
+  name: string;
+  outline: string;
+  boxShadow: string;
+  /** An ancestor draws the ring instead, through `:focus-within`. */
+  ringOnAncestor: boolean;
+};
 
 export async function walkWithTab(page: Page, limit = 80): Promise<FocusStep[]> {
   const steps: FocusStep[] = [];
@@ -118,6 +125,21 @@ export async function walkWithTab(page: Page, limit = 80): Promise<FocusStep[]> 
           clean(element.getAttribute('title')),
         outline: styles.outlineStyle === 'none' ? 'none' : styles.outline,
         boxShadow: styles.boxShadow === 'none' ? 'none' : styles.boxShadow,
+        // The compose field and its buttons read as one control, so the frame
+        // around them carries the ring with `:focus-within` and the textarea
+        // gives up its own. What the rule asks is that the user can see where
+        // focus is, not which element the browser painted it on.
+        ringOnAncestor: (() => {
+          let parent = element.parentElement;
+          while (parent && parent !== document.body) {
+            if (parent.matches(':focus-within')) {
+              const style = getComputedStyle(parent);
+              if (style.outlineStyle !== 'none' || style.boxShadow !== 'none') return true;
+            }
+            parent = parent.parentElement;
+          }
+          return false;
+        })(),
       };
     });
 
@@ -135,14 +157,15 @@ export async function walkWithTab(page: Page, limit = 80): Promise<FocusStep[]> 
 }
 
 /**
- * Every step has a Norwegian name and a visible ring.
+ * Every step has a Norwegian name and a ring the user can see.
  *
- * Designsystemet's `SkipLink` sets `outline: 0` on purpose and carries focus
- * with a surface instead, and the compose field gives up its own ring to the
- * frame around it. Both are deliberate and both are named here rather than
- * excluded silently.
+ * One named exception: Designsystemet's `SkipLink` sets `outline: 0` on
+ * purpose and carries focus with a surface and an underline instead. The
+ * other case — a control whose frame draws the ring — is answered by
+ * `ringOnAncestor` rather than by a name, so it keeps working for controls
+ * nobody has built yet.
  */
-const RINGLESS_BY_DESIGN = ['Hopp til hovedinnhold', 'Spørsmål til Kunnskapsassistenten'];
+const RINGLESS_BY_DESIGN = ['Hopp til hovedinnhold'];
 
 export function expectEveryStepReachable(steps: FocusStep[], what: string): void {
   expect(
@@ -155,7 +178,8 @@ export function expectEveryStepReachable(steps: FocusStep[], what: string): void
       (step) =>
         !RINGLESS_BY_DESIGN.includes(step.name) &&
         step.outline === 'none' &&
-        step.boxShadow === 'none',
+        step.boxShadow === 'none' &&
+        !step.ringOnAncestor,
     ),
     `steg uten synlig fokusring i ${what}`,
   ).toEqual([]);
