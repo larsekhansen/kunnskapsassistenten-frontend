@@ -1,7 +1,6 @@
 import { Card, Details, Heading, Link, Paragraph, Tag } from '@digdir/designsystemet-react';
-import { type Excerpt, relevanceLabels } from '../../model';
+import { excerptDomId, relevanceLabels, type Excerpt } from '../../model';
 import { HighlightedText } from './HighlightedText';
-import { excerptDomId } from './ids';
 import { relevanceTagColor } from './relevance';
 import type { SearchHit } from './search';
 
@@ -28,6 +27,8 @@ function previewOf(text: string): string {
 
 type SourceExcerptProps = {
   excerpt: Excerpt;
+  /** The document this excerpt came from, for the toggle's accessible name. */
+  documentTitle: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Search hits inside this excerpt, in position order. */
@@ -45,6 +46,12 @@ type SourceExcerptProps = {
  * target, and it sits in a heading so a screen reader user can reach it by
  * navigating headings rather than by reading the panel top to bottom.
  *
+ * An excerpt can arrive WITHOUT a number: the search finds more than the
+ * answer cites, and the model marks `citationNumber` optional for exactly
+ * that. Such an excerpt is still worth showing, it just has nothing pointing
+ * at it, so it gets no scroll target and says plainly that the answer did not
+ * use it.
+ *
  * Open and close is `Details`, decided in answer 38: Figma builds the same
  * toggle by hand in three places (`chunk`, `blackbox`, `expandable`), and
  * `Details` is the one that ships `aria-expanded` and keyboard support for
@@ -61,6 +68,7 @@ type SourceExcerptProps = {
  */
 export function SourceExcerpt({
   excerpt,
+  documentTitle,
   open,
   onOpenChange,
   hits,
@@ -68,9 +76,15 @@ export function SourceExcerpt({
   active,
 }: SourceExcerptProps) {
   const { citationNumber, relevance, heading, text, page, kudosUrl } = excerpt;
+  const cited = citationNumber !== undefined;
+
+  // Unique per excerpt, so a screen reader reading the list of controls does
+  // not meet five buttons called «Åpne». An uncited excerpt has no number to
+  // name it by, so it is named by the document it came from.
+  const excerptName = cited ? `utdrag ${citationNumber}` : `utdrag fra ${documentTitle}`;
 
   // The first line of the quote in Figma: the section heading from the source
-  // document, in bold, with the page after it. It goes in whichever of the two
+  // document, in bold, with the page after it. Rendered in whichever of the two
   // branches below is on screen — never in both at once.
   const quoteHeading =
     heading === undefined && page === undefined ? null : (
@@ -84,21 +98,29 @@ export function SourceExcerpt({
   return (
     <Card.Block
       className="source-excerpt ds-focus"
-      id={excerptDomId(citationNumber)}
+      // Only a cited excerpt is a scroll target: the id is the one the `[n]`
+      // marker links to, and an excerpt with no number has no marker.
+      id={cited ? excerptDomId(citationNumber) : undefined}
       data-active={active ? 'true' : undefined}
       // -1 so the panel can move focus here when the answer points at it.
       // Focus, not only scroll: focus is what tells a screen reader user that
       // something happened, and it puts the keyboard where the eye is.
-      tabIndex={-1}
+      tabIndex={cited ? -1 : undefined}
     >
       <div className="source-excerpt__head">
         <Heading level={4} data-size="2xs" className="source-excerpt__number">
-          Utdrag {citationNumber}
+          {cited ? `Utdrag ${citationNumber}` : 'Utdrag'}
         </Heading>
         <Tag data-color={relevanceTagColor[relevance]} data-size="sm">
           {relevanceLabels[relevance]}
         </Tag>
       </div>
+
+      {!cited && (
+        <Paragraph data-size="xs" className="source-excerpt__uncited">
+          Ikke vist til i svaret
+        </Paragraph>
+      )}
 
       <Details
         className="source-excerpt__details"
@@ -107,10 +129,9 @@ export function SourceExcerpt({
       >
         <Details.Summary>
           {open ? 'Lukk' : 'Åpne'}
-          {/* The visible label is the one word Figma uses. The accessible name
-              adds which excerpt it belongs to, so a screen reader user reading
-              the list of controls does not meet five buttons called «Åpne». */}
-          <span className="ds-sr-only"> utdrag {citationNumber}</span>
+          {/* The visible label is the one word Figma uses; the accessible name
+              says which excerpt it belongs to. */}
+          <span className="ds-sr-only"> {excerptName}</span>
         </Details.Summary>
         <Details.Content>
           {quoteHeading}

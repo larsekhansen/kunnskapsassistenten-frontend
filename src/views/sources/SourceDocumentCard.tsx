@@ -5,7 +5,8 @@ import { documentDomId } from './ids';
 import { type SearchHit, hitsFor } from './search';
 
 type SourceDocumentCardProps = {
-  document: SourceDocument;
+  /** Named `source`, not `document`: the DOM global is used in this view. */
+  source: SourceDocument;
   /** Ids of the excerpts that are currently open. */
   openExcerptIds: ReadonlySet<string>;
   onExcerptOpenChange: (excerptId: string, open: boolean) => void;
@@ -29,22 +30,22 @@ type SourceDocumentCardProps = {
  * is the documented way to switch the delegation off.
  */
 export function SourceDocumentCard({
-  document,
+  source,
   openExcerptIds,
   onExcerptOpenChange,
   hits,
   currentHit,
   activeCitationNumber,
 }: SourceDocumentCardProps) {
-  const subtitle = [document.documentType, document.organisation, document.year]
+  const subtitle = [source.documentType, source.organisation, source.year]
     .filter((part) => part !== undefined)
     .join(' · ');
 
   return (
-    <Card className="source-document ds-focus" id={documentDomId(document.id)} tabIndex={-1}>
+    <Card className="source-document ds-focus" id={documentDomId(source.id)} tabIndex={-1}>
       <Card.Block className="source-document__head">
         <Heading level={3} data-size="xs">
-          {document.title}
+          {source.title}
         </Heading>
         {subtitle !== '' && (
           <Paragraph data-size="xs" className="source-document__subtitle">
@@ -52,29 +53,32 @@ export function SourceDocumentCard({
           </Paragraph>
         )}
         <Paragraph data-size="xs" className="source-document__count">
-          {document.excerpts.length} utdrag
+          {source.excerpts.length} utdrag
         </Paragraph>
       </Card.Block>
 
-      {document.excerpts.map((excerpt) => (
+      {source.excerpts.map((excerpt) => (
         <SourceExcerpt
           key={excerpt.id}
           excerpt={excerpt}
+          documentTitle={source.title}
           open={openExcerptIds.has(excerpt.id)}
           onOpenChange={(open) => onExcerptOpenChange(excerpt.id, open)}
           hits={hitsFor(hits, excerpt.id)}
           currentHit={currentHit?.itemId === excerpt.id ? currentHit : undefined}
-          active={excerpt.citationNumber === activeCitationNumber}
+          active={
+            excerpt.citationNumber !== undefined && excerpt.citationNumber === activeCitationNumber
+          }
         />
       ))}
 
       <Card.Block className="source-document__foot">
-        {document.url === undefined ? (
+        {source.url === undefined ? (
           // Normal, not an error: folder-based corpora have no public URL.
           // Saying so beats a dead link or an unexplained missing one.
           <Paragraph data-size="xs">Dokumentet har ingen offentlig lenke.</Paragraph>
         ) : (
-          <Link href={document.url} target="_blank" rel="noreferrer" data-size="sm">
+          <Link href={source.url} target="_blank" rel="noreferrer" data-size="sm">
             Les dokumentet på Kudos
             {/* Designsystemet says not to mark an external link with an icon
                 alone, so the fact that it leaves the app is said in words. */}

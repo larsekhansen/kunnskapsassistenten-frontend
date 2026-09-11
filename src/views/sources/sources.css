@@ -19,15 +19,16 @@
   flex-direction: column;
   /* 48 px between the blocks of the panel, as in the `kilder` frame. */
   gap: var(--ds-size-12);
-  block-size: 100%;
+  inline-size: 100%;
 }
 
-/* Both the collapsed panel and the toggle inside the open one sit at the
-   inline end of the slot, the way the design puts them. */
-.sources-view--collapsed,
-.sources-view__toggle {
-  display: flex;
-  justify-content: flex-end;
+/*
+ * Author CSS sits outside every layer, so `display: flex` above beats the
+ * browser's own `[hidden] { display: none }` and the panel would stay on
+ * screen while the button said it was hidden. See CONTRIBUTING.
+ */
+.sources-view[hidden] {
+  display: none;
 }
 
 /* Search */
@@ -125,7 +126,8 @@
   color: var(--ds-color-neutral-text-default);
 }
 
-.source-excerpt__page {
+.source-excerpt__page,
+.source-excerpt__uncited {
   color: var(--ds-color-neutral-text-subtle);
 }
 

@@ -27,16 +27,31 @@
 }
 
 /*
- * The open width of the slot is question 26, still open, and it belongs to
- * the layout. Figma has min 410–420 and max 680 for the `kilder` frame, so the
- * harness previews the panel inside those bounds.
+ * The open width is the layout's, settled at 432 px by the foundation. The
+ * harness stands in for the slot, so it mirrors what the shell does with
+ * --ka-secondary-sidebar-width rather than inventing a width of its own.
  */
 .preview__aside {
   flex: 0 0 auto;
-  inline-size: 30rem;
-  max-inline-size: 42.5rem;
+  box-sizing: content-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+  align-items: start;
+  inline-size: 27rem;
   padding-block: var(--ds-size-8);
-  padding-inline-end: var(--ds-size-9);
+  padding-inline: var(--ds-size-9);
   overflow-y: auto;
   background: var(--ds-color-neutral-background-default);
+}
+
+/* Same pair as .sidebar-content in the shell: author CSS outside layers beats
+   the browser's own [hidden] rule, so the rule has to be written out. */
+.preview__aside-content {
+  display: flex;
+  inline-size: 100%;
+}
+
+.preview__aside-content[hidden] {
+  display: none;
 }

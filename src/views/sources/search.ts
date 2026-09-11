@@ -39,8 +39,9 @@ export const MIN_QUERY_LENGTH = 2;
  * document text arrives here as `kind: 'document'`.
  */
 export function buildSearchIndex(documents: SourceDocument[]): SearchableItem[] {
-  return documents.flatMap((document) =>
-    document.excerpts.map((excerpt) => ({
+  // `source`, not `document`: this view uses the DOM global in the same files.
+  return documents.flatMap((source) =>
+    source.excerpts.map((excerpt) => ({
       id: excerpt.id,
       kind: 'excerpt' as const,
       text: excerpt.text,

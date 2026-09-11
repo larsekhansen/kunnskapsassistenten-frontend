@@ -1,21 +1,14 @@
 /**
- * DOM ids used as scroll targets inside the panel.
+ * Scroll targets inside the panel that are not already defined by the model.
  *
- * They are part of the seam with the main column: a `[n]` marker in the answer
- * scrolls to `#kilde-utdrag-n` (answer 19). Keeping them in one file means the
- * main column can import the helper instead of guessing the string.
+ * `excerptDomId` is NOT here: it moved to `src/model/source.ts` when the
+ * citation convention was settled, so the answer and the panel build the id
+ * from the same function. Import it from the model, or from this view's
+ * `index.ts`, which re-exports it for the main column.
  *
  * The id strings are Norwegian because they end up in the address bar as
  * fragments, which the user can see and share.
  */
-
-/** The panel itself, so the collapse button can point `aria-controls` at it. */
-export const SOURCES_PANEL_ID = 'kildepanel';
-
-/** Scroll target for the excerpt a `[n]` marker points at. */
-export function excerptDomId(citationNumber: number): string {
-  return `kilde-utdrag-${citationNumber}`;
-}
 
 /** Scroll target for a document card, used by the shortcut list. */
 export function documentDomId(documentId: string): string {
