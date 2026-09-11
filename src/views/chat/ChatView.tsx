@@ -1,7 +1,8 @@
 import { Heading } from '@digdir/designsystemet-react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createChatClient, type ChatClient } from '../../api';
 import { ErrorState } from '../../components';
+import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useCitation } from '../../layout/useCitation';
 import { useMainScroll } from '../../layout/useMainScroll';
 import type { ThreadDetail } from '../../model';
@@ -47,6 +48,21 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   // Activating a `[n]` marker is the shell's business: it opens the sources
   // panel and tells it which excerpt to show. Neither view knows the other.
   const { showCitation } = useCitation();
+
+  // The sources go the same way, and for the same reason: the sources view
+  // draws them, this view produces them, and the two may not import each
+  // other. The last answer that carries sources is the one on screen; they
+  // arrive at the end of a stream, so earlier messages keep theirs.
+  const { setDocuments } = useAnswerSources();
+  const answerSources = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index];
+      if (message?.role === 'assistant' && message.sources) return message.sources;
+    }
+    return undefined;
+  }, [messages]);
+
+  useEffect(() => setDocuments(answerSources), [answerSources, setDocuments]);
 
   const hasAnswer = messages.some(
     (message) => message.role === 'assistant' && message.status === 'complete',

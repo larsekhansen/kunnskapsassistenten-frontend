@@ -1,20 +1,21 @@
 import { Button, Skeleton } from '@digdir/designsystemet-react';
-import { ArrowLeftIcon } from '@navikt/aksel-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createChatClient } from '../../api';
+import { BackIcon } from '../../components/icons';
 import { EmptyState, ErrorState, PanelHeader } from '../../components';
 import { useFilterSelection } from '../../layout/useFilterSelection';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { FilterFacet } from '../../model';
 import { DocumentsList } from './DocumentsList';
 import { FacetField } from './FacetField';
-import { requestViewFocus, takeViewFocus } from './viewSwitch';
 import './filters.css';
 
-export type FiltersViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> & {
-  /** Overrides the fetch. Only for tests. */
-  facets?: FilterFacet[];
-};
+export type FiltersViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> &
+  /* Optional: a view mounted outside the shell has not been switched to. */
+  Partial<Pick<SlotViewProps, 'switchedByUser'>> & {
+    /** Overrides the fetch. Only for tests. */
+    facets?: FilterFacet[];
+  };
 
 /**
  * The document filter: what the answer is allowed to build on.
@@ -26,7 +27,12 @@ export type FiltersViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'
  * against the same narrowing, and two views may not import each other, so the
  * shell holds it — see src/layout/filterContext.ts.
  */
-export function FiltersView({ siblingViews, onShowView, facets: given }: FiltersViewProps) {
+export function FiltersView({
+  siblingViews,
+  onShowView,
+  switchedByUser = false,
+  facets: given,
+}: FiltersViewProps) {
   const client = useMemo(() => createChatClient(), []);
   const { selection, setSelection } = useFilterSelection();
   const [facets, setFacets] = useState<FilterFacet[] | undefined>(given);
@@ -38,12 +44,16 @@ export function FiltersView({ siblingViews, onShowView, facets: given }: Filters
   /*
    * Focus after a switch from the thread list. The button the user pressed
    * was unmounted with the view it stood in, so focus fell to the body; this
-   * takes it back to the same place in the panel. `takeViewFocus` is false on
-   * a page load, so nothing is stolen from the skip link then.
+   * takes it back to the same place in the panel. The shell says whether a
+   * user asked for this view or the page merely opened on it, so nothing is
+   * stolen from the skip link on a page load. See SlotViewProps.
    */
+  // The flag is settled before this view mounts and does not flip while it is
+  // mounted: the button that switches away from a view is the only one that
+  // sets it, and it is in the OTHER view. So this runs on mount and no later.
   useEffect(() => {
-    if (takeViewFocus('filters')) backRef.current?.focus();
-  }, []);
+    if (switchedByUser) backRef.current?.focus();
+  }, [switchedByUser]);
 
   useEffect(() => {
     if (given) return;
@@ -80,12 +90,9 @@ export function FiltersView({ siblingViews, onShowView, facets: given }: Filters
           ref={backRef}
           variant="tertiary"
           data-color="neutral"
-          onClick={() => {
-            requestViewFocus('threads');
-            onShowView('threads');
-          }}
+          onClick={() => onShowView('threads')}
         >
-          <ArrowLeftIcon aria-hidden="true" />
+          <BackIcon aria-hidden="true" />
           Tråder
         </Button>
       )}

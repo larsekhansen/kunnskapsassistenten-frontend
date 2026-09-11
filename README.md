@@ -202,10 +202,33 @@ Praktisk betyr det:
 
 - **Brytepunkter** finnes ikke. Se «Bredder».
 - **Bredden på åpen `secondary-sidebar`** er fortsatt ikke bestemt (spørsmål
-  26). Verdien i `defaultLayout` er **483 px**, ikke Figmas 514: framen som
-  viser 514 stikker 31 px utenfor sin egen 1440, og 483 er spesifikasjonens
-  egen anbefaling for at raden skal gå opp. Ett tall å endre, i
+  26). Verdien i `defaultLayout` er **432 px**. Malen måler den ikke: den
+  tegner kildepanelet bare kollapset, så de eneste tallene som finnes er
+  organism-framene, 410–560 px for `kilder` og 434–466 px for
+  `right-sidebar`. 432 ligger inni begge, og gir
+  400 + 32 + 640 + 32 + 432 = 1536 px som smaleste vindu der alle tre
+  plassene er åpne med svarkolonnen på gulvet sitt på 640. Det er akkurat den
+  vanlige laptop-bredden. Figmas 514 er ikke brukt: den kommer fra en frame
+  under `brukes-ikke/`, den er uenig med organismen den er en instans av, og
+  den summerer til 1471 i sin egen 1440-frame. Ett tall å endre, i
   `src/layout/viewModel.ts`.
+- **På 1440 får ikke alle tre plass med kildepanelet åpent.** Det mangler
+  96 px, og sida ruller vannrett. Malen tegner aldri den tilstanden, den
+  tegner kildepanelet kollapset, så dette er utegnet og ikke feil. Målt
+  2026-09-11 med panelene montert. Hører til spørsmål 26.
+
+### Bredder er det plassen opptar
+
+Tallene i `viewModel.ts` er **yttermål**, padding medregnet, fordi sidepanelene
+er `border-box`. Det var de ikke før: med `content-box` ble de 36 px paddingen
+på hver side lagt utenpå, og hvert tall i modellen var 72 px kortere enn det
+tegnet. Et kildepanel oppgitt til 198 px kollapset målte 270, og tre åpne
+plasser trengte 1609 px i stedet for de 1536 modellen lovet. Målt, ikke
+resonnert fram.
+
+Navigasjonspanelets 400 er de 328 Lars satte (svar 59b) pluss paddingen, og
+400 er også det malen tegner panelet som.
+
 - **Topplinje** er ikke bestemt, så det finnes ingen.
 - ~~React Router-versjonen.~~ **Avgjort 2026-09-11:** 8.3.1, pinnet uten
   caret, samme versjon som ki.norge.no og Designsystemets egen nettside. Se
@@ -270,12 +293,30 @@ hvilken som helst plass uten at skallet vet hva det er:
 | `onCollapsedChange`    | be plassen kollapse eller åpne                                |
 | `activeCitationNumber` | hvilken `[n]` brukeren sist ba om å få se                     |
 | `activeCitationNonce`  | teller opp ved hver forespørsel, også når tallet er det samme |
+| `siblingViews`         | de andre viewene i samme plass, å veksle til                  |
+| `onShowView`           | be plassen vise et annet view den holder                      |
+| `switchedByUser`       | om brukeren vekslet hit, eller om sida bare åpnet her         |
 
 **Plassen eier kollapset/åpen, ikke viewet.** Et view som skjulte seg selv
 ville etterlate knappen som lyver om sin egen tilstand.
 
 Nonce-en finnes fordi to klikk på samme `[n]` ikke endrer tallet. Uten den
 kunne kildepanelet ikke se at det ble spurt en gang til.
+
+**`switchedByUser` finnes fordi et view ikke kan se forskjell på «brukeren
+vekslet hit» og «sida ble lastet».** Begge er en første montering, og
+standardlayouten åpner på filter (spørsmål 1). To view i samme plass er
+moduser av ett panel: veksler du, avmonteres knappen du trykte på, og fokus
+faller til `document.body`. Viewet som kommer opp må ta det tilbake, men bare
+når noen faktisk ba om det. Å ta fokus ved sidelasting ville hoppet forbi
+hopp-lenka.
+
+Bare layouten vet forskjellen, for det er bare layouten som blir bedt om å
+veksle. `LayoutProvider` husker hvilket view brukeren sist vekslet hver plass
+til, og `isSwitchedByUser()` sammenligner det med viewet som faktisk står der,
+så en forespørsel som ikke endret noe heller ikke gir fokus. Det ligger
+bevisst **utenfor** `Layout`: det sier hvordan layouten kom hit, ikke hva den
+er, og skal ikke lagres den dagen en layout blir husket.
 
 Koblingen mellom svaret og kildene går gjennom `useCitation()`: chat-viewet
 kaller `showCitation(n)`, kildepanelet leser `activeCitation`. De to viewene

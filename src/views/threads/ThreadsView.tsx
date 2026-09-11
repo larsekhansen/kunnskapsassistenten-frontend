@@ -1,19 +1,20 @@
 import { Button, Link, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
-import { FunnelIcon, PencilWritingIcon } from '@navikt/aksel-icons';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink, NavLink } from 'react-router';
 import { createChatClient } from '../../api';
+import { FilterIcon, NewThreadIcon } from '../../components/icons';
 import { EmptyState, ErrorState, PanelHeader } from '../../components';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { Thread } from '../../model';
-import { requestViewFocus, takeViewFocus } from '../filters/viewSwitch';
 import { groupThreads } from './grouping';
 import './threads.css';
 
-export type ThreadsViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> & {
-  /** Overrides the fetch. Only for tests. */
-  threads?: Thread[];
-};
+export type ThreadsViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> &
+  /* Optional: a view mounted outside the shell has not been switched to. */
+  Partial<Pick<SlotViewProps, 'switchedByUser'>> & {
+    /** Overrides the fetch. Only for tests. */
+    threads?: Thread[];
+  };
 
 /**
  * The thread list: a new thread, a search field, and earlier threads grouped
@@ -23,7 +24,12 @@ export type ThreadsViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'
  * Data comes from the ChatClient, which is the mock until the live client
  * exists.
  */
-export function ThreadsView({ siblingViews, onShowView, threads: given }: ThreadsViewProps) {
+export function ThreadsView({
+  siblingViews,
+  onShowView,
+  switchedByUser = false,
+  threads: given,
+}: ThreadsViewProps) {
   const client = useMemo(() => createChatClient(), []);
   const [threads, setThreads] = useState<Thread[] | undefined>(given);
   const [failed, setFailed] = useState(false);
@@ -56,12 +62,16 @@ export function ThreadsView({ siblingViews, onShowView, threads: given }: Thread
 
   /*
    * Focus after a switch from the filter view, which unmounted the button the
-   * user pressed and dropped focus on the body. `takeViewFocus` is false on a
-   * page load, so this never fires ahead of the skip link.
+   * user pressed and dropped focus on the body. The shell says whether a user
+   * asked for this view or the page merely opened on it, so this never fires
+   * ahead of the skip link. See SlotViewProps.
    */
+  // The flag is settled before this view mounts and does not flip while it is
+  // mounted: the button that switches away from a view is the only one that
+  // sets it, and it is in the OTHER view. So this runs on mount and no later.
   useEffect(() => {
-    if (takeViewFocus('threads')) filterRef.current?.focus();
-  }, []);
+    if (switchedByUser) filterRef.current?.focus();
+  }, [switchedByUser]);
 
   const loading = !failed && !threads;
   const trimmed = query.trim().toLocaleLowerCase('nb-NO');
@@ -86,12 +96,9 @@ export function ThreadsView({ siblingViews, onShowView, threads: given }: Thread
           ref={filterRef}
           variant="tertiary"
           data-color="neutral"
-          onClick={() => {
-            requestViewFocus('filters');
-            onShowView('filters');
-          }}
+          onClick={() => onShowView('filters')}
         >
-          <FunnelIcon aria-hidden="true" />
+          <FilterIcon aria-hidden="true" />
           Filtrer dokumenter
         </Button>
       )}
@@ -106,7 +113,7 @@ export function ThreadsView({ siblingViews, onShowView, threads: given }: Thread
       <Button asChild>
         <RouterLink to="/">
           Ny tråd
-          <PencilWritingIcon aria-hidden="true" />
+          <NewThreadIcon aria-hidden="true" />
         </RouterLink>
       </Button>
 

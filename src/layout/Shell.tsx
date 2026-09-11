@@ -42,7 +42,14 @@ export function Shell() {
         <Sidebar slot="primary-sidebar" element="nav" />
 
         <main id="main-content" className="main" ref={mainScroll}>
+          {/*
+            The route contributes the page's level 1 heading and nothing else;
+            the view in the slot is what draws the content, looked up in
+            viewComponents like every other slot. Chat used to BE the outlet,
+            and that made it the one view no reader could ever move.
+          */}
           <Outlet />
+          <MainSlot />
         </main>
 
         <Sidebar slot="secondary-sidebar" element="aside" />
@@ -65,6 +72,30 @@ const slotIcons = {
   'secondary-sidebar': SecondarySidebarIcon,
 } as const;
 
+/**
+ * The view in the main slot. No collapse button: main is what the sidebars
+ * sit beside, and a page with its content collapsed is a blank page.
+ */
+function MainSlot() {
+  const { layout, setCollapsed, setActiveView, isSwitchedByUser } = useLayout();
+  const { activeCitation } = useCitation();
+  const state = layout.slots.main;
+  const ActiveView = viewComponents[state.activeView];
+
+  return (
+    <ActiveView
+      view={state.activeView}
+      collapsed={state.collapsed}
+      onCollapsedChange={(collapsed) => setCollapsed('main', collapsed)}
+      activeCitationNumber={activeCitation?.number}
+      activeCitationNonce={activeCitation?.nonce}
+      siblingViews={state.views.filter((id) => id !== state.activeView)}
+      onShowView={(view) => setActiveView('main', view)}
+      switchedByUser={isSwitchedByUser('main')}
+    />
+  );
+}
+
 function Sidebar({
   slot,
   element: Element,
@@ -72,7 +103,7 @@ function Sidebar({
   slot: 'primary-sidebar' | 'secondary-sidebar';
   element: 'nav' | 'aside';
 }) {
-  const { layout, toggleCollapsed, setCollapsed, setActiveView } = useLayout();
+  const { layout, toggleCollapsed, setCollapsed, setActiveView, isSwitchedByUser } = useLayout();
   const { activeCitation } = useCitation();
   const state = layout.slots[slot];
   const contentId = useId();
@@ -108,6 +139,7 @@ function Sidebar({
           activeCitationNonce={activeCitation?.nonce}
           siblingViews={state.views.filter((id) => id !== state.activeView)}
           onShowView={(view) => setActiveView(slot, view)}
+          switchedByUser={isSwitchedByUser(slot)}
         />
       </div>
     </Element>

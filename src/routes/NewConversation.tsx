@@ -1,22 +1,17 @@
-import { Heading, Paragraph } from '@digdir/designsystemet-react';
+import { Heading } from '@digdir/designsystemet-react';
 
 /**
- * The empty state, route `/`. Kickstarters and the compose field arrive here;
- * see step 3 of the build order in design/skal-dette-implementeres.md.
+ * The empty state, route `/`.
+ *
+ * Like the thread route, this contributes the page's level 1 heading and
+ * nothing else. The greeting, the kickstarters and the compose field belong
+ * to the chat view, which the shell mounts in the main slot; a second welcome
+ * written here would be a copy that drifts.
  */
 export function NewConversation() {
   return (
-    <div className="stack">
-      <Heading level={1} data-size="lg">
-        Kunnskapsassistenten
-      </Heading>
-      <Paragraph variant="long">
-        Still et spørsmål om dokumentene i korpuset. Filtrer først i sidepanelet hvis du vil
-        begrense søket til bestemte dokumenttyper, virksomheter eller år.
-      </Paragraph>
-      <Paragraph data-size="sm">
-        Kunnskapsassistenten kan gjøre feil. Husk å sjekke viktig informasjon.
-      </Paragraph>
-    </div>
+    <Heading level={1} className="ds-sr-only">
+      Kunnskapsassistenten
+    </Heading>
   );
 }

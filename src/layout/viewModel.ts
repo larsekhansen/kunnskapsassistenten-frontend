@@ -93,6 +93,21 @@ export type SlotViewProps = {
   siblingViews: ViewId[];
   /** Switch the slot to another view it holds. */
   onShowView: (view: ViewId) => void;
+  /**
+   * True when the user switched to this view, false when the page simply
+   * opened on it.
+   *
+   * Two views in one slot are modes of one panel: switching unmounts the view
+   * the button stood in, and focus falls to `document.body`. The view that
+   * mounts has to claim it back. But a view cannot tell «the user switched to
+   * me» from «the page just loaded» on its own, since both are a first mount
+   * and `defaultLayout` opens on filters (answer 1). Claiming focus on a page
+   * load would jump the user past the skip link.
+   *
+   * Only the layout knows the difference, because only the layout is told to
+   * switch. Read it on mount and move focus when it is true.
+   */
+  switchedByUser: boolean;
 };
 
 export type SlotState = {
@@ -135,11 +150,15 @@ export const defaultLayout: Layout = {
       // A first-time user lands on filters, not on the thread list (answer 1).
       activeView: 'filters',
       collapsed: false,
-      // 328 is the inner width Lars settled on 2026-09-11 (answer 59b).
+      // Every width here is what the slot OCCUPIES, padding included, because
+      // the CSS is border-box. 400 = the 328 inner width Lars settled on
+      // 2026-09-11 (answer 59b) plus the 36 px padding on each side, and 400
+      // is also what the page template draws the navigation panel at.
+      //
       // The collapsed width is not drawn anywhere; 198 matches the collapsed
       // secondary sidebar in the page template, so both collapse to the same
       // width and the shell stays symmetric. Revisit when it is drawn.
-      sizing: { mode: 'fixed', width: 328, collapsedWidth: 198 },
+      sizing: { mode: 'fixed', width: 400, collapsedWidth: 198 },
     },
     main: {
       slot: 'main',
@@ -158,11 +177,25 @@ export const defaultLayout: Layout = {
       activeView: 'sources',
       collapsed: true,
       // 198 collapsed comes from the page template. The open width is still
-      // Lars's to settle (question 26). 432 for now: it is inside the
-      // 410–680 band the sources design needs, and it is the number that
-      // makes 400 + 32 + 640 + 32 + 432 = 1536, the narrowest common laptop
-      // width where all three slots can be open with the answer column at
-      // its 640 px floor. Wider than that and the answer column grows first.
+      // Lars's to settle (question 26), and the template does not measure it:
+      // it draws the sources column collapsed only. The organism frames are
+      // the only numbers that exist, 410–560 px for `kilder` and 434–466 px
+      // for `right-sidebar`, and 432 sits inside both.
+      //
+      // What that buys: 400 + 32 + 640 + 32 + 432 = 1536 px is the narrowest
+      // window where all three slots are open with the answer column still at
+      // its 640 px floor, and that is the common laptop width exactly.
+      //
+      // At the 1440 the design frames are drawn at, the three do NOT fit with
+      // the sources panel open: 96 px short. The template never draws that
+      // state — it draws the sources panel collapsed — so it is undesigned
+      // rather than wrong, and question 26 is where it gets settled. Measured
+      // 2026-09-11 with the panels mounted.
+      //
+      // Figma's 514 is not used. It comes from a frame under
+      // design/omraader/september-2026/brukes-ikke/, it disagrees with the
+      // `right-sidebar` organism it instantiates, and it sums to 1471 inside
+      // its own 1440 px frame.
       sizing: { mode: 'fixed', width: 432, collapsedWidth: 198 },
     },
   },
