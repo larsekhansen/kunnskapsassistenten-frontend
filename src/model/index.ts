@@ -12,7 +12,7 @@ export type { FacetValue, FilterDimension, FilterFacet, FilterSelection } from '
 export { emptyFilterSelection, isEmptySelection } from './filter';
 export type { Message, MessageRole, MessageStatus } from './message';
 export type { RetrievalDetails, ThinkingStep, ThinkingStepKind } from './retrieval';
-export type { Excerpt, RelevanceLevel, SourceDocument } from './source';
-export { relevanceLabels } from './source';
+export type { CitationTarget, Excerpt, RelevanceLevel, SourceDocument } from './source';
+export { citationAccessibleName, citationTargets, excerptDomId, relevanceLabels } from './source';
 export type { ChatError, ChatErrorCode, StreamEvent } from './stream';
 export type { Thread, ThreadDetail } from './thread';
