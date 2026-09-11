@@ -1,6 +1,7 @@
-import { Button, Heading, List, Paragraph, Table } from '@digdir/designsystemet-react';
+import { Heading, Link, List, Paragraph, Table } from '@digdir/designsystemet-react';
 import type { Citation, SourceDocument } from '../../model';
 import { parseAnswerBlocks, parseAnswerSegments, type AnswerSegment } from './answer';
+import { excerptAnchor } from './sourceAnchor';
 
 type AnswerBodyProps = {
   /** The answer as markdown, possibly half written. */
@@ -37,16 +38,15 @@ function Segments({
         segment.kind === 'text' ? (
           <span key={index}>{segment.text}</span>
         ) : (
-          <Button
+          <Link
             aria-label={segment.label}
             className="ka-citation"
-            data-size="sm"
+            href={`#${excerptAnchor(segment.number)}`}
             key={index}
             onClick={() => onSelectSource?.(segment.number)}
-            variant="tertiary"
           >
             [{segment.number}]
-          </Button>
+          </Link>
         ),
       )}
     </>
@@ -59,9 +59,10 @@ function Segments({
  *
  * Two things are deliberate here:
  *
- *   1. The `[n]` markers are controls, not text. Figma leaves them as plain
+ *   1. The `[n]` markers are links, not text. Figma leaves them as plain
  *      parentheses, but answer 19 says a citation must reach the excerpt it
- *      came from, and only a control can do that.
+ *      came from. A link to the excerpt's anchor is what does that, and it is
+ *      also what makes the marker work with a keyboard and in a new tab.
  *   2. Heading levels are ours, not the model's. The answer sits under the
  *      thread title, so `##` is a level 3 and `###` a level 4 regardless of
  *      what the model wrote. Size is a look, level is a structure, and they
