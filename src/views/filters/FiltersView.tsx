@@ -2,7 +2,7 @@ import { Button, Skeleton } from '@digdir/designsystemet-react';
 import { ArrowLeftIcon } from '@navikt/aksel-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createChatClient } from '../../api';
-import { ErrorState, PanelHeader } from '../../components';
+import { EmptyState, ErrorState, PanelHeader } from '../../components';
 import { useFilterSelection } from '../../layout/useFilterSelection';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { FilterFacet } from '../../model';
@@ -81,6 +81,18 @@ export function FiltersView({ siblingViews, onShowView, facets: given }: Filters
             <Skeleton key={key} height="var(--ds-size-14)" />
           ))}
         </div>
+      )}
+
+      {/*
+        No facets is a normal state, not an error: nothing is narrowing the
+        answer, and the user can still ask. Separate from the loading branch
+        above, which tests !facets — an empty array is truthy.
+      */}
+      {facets?.length === 0 && (
+        <EmptyState
+          title="Filtrering er ikke tilgjengelig ennå"
+          description="Du kan stille spørsmål uten å avgrense dokumentene."
+        />
       )}
 
       {facets?.map((facet) => (
