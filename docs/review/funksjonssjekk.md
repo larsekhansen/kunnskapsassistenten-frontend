@@ -1,89 +1,110 @@
 # Funksjonssjekk
 
-Hva ende-til-ende-testene i `tests/e2e/` faktisk dekker, hva som er merget
-men udekket, og hva som er ventet men ikke bygget. Anmelderens fil, oppdatert
-i takt med det dirigenten merger.
+Hva ende-til-ende-testene i `tests/e2e/` dekker, hva som er merget men
+udekket, og hva som er ventet men ikke bygget. Anmelderens fil, oppdatert i
+takt med det dirigenten merger.
 
 Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 `vite preview` på port 4173 i mock-modus, headless Chromium, 1440 × 900,
 `lang="nb"`. Hver testet tilstand kontrolleres med axe mot `wcag2a` og
 `wcag2aa`; et brudd feiler testen.
 
-Sist oppdatert mot `main` `2707109`.
+**36 tester, alle grønne på under 30 sekunder.** Sist kjørt mot `main`
+`8088328`. `npm run test:e2e` finnes nå.
+
+De 22 testene for de tre viewene ble skrevet mot en lokal montering i
+arbeidstreet mens monterings-PR-en ble laget, og **de passerte uendret mot den
+ekte monteringen**. Det er i seg selv et resultat: skallet monterer viewene
+slik de ble anmeldt.
 
 ## Dekket nå
 
-| Det brukeren gjør                   | Spec            | Merknad                                                                         |
-| ----------------------------------- | --------------- | ------------------------------------------------------------------------------- |
-| Åpner `/` og får ny samtale         | `shell.spec.ts` | h1, tre landemerker, `lang="nb"`, axe grønn                                     |
-| Åpner `/threads/:id` og får tråden  | `shell.spec.ts` | samme, med det innsjekkede mock-svaret                                          |
-| Tabber til hopp-lenka og hopper     | `shell.spec.ts` | to tester, se «Det som måtte måles»                                             |
-| Skjuler og viser navigasjonspanelet | `shell.spec.ts` | `aria-expanded`, `data-collapsed`, og at knappen beholder fokus                 |
-| Bytter til mørk modus fra konsollen | `shell.spec.ts` | `window.ka.colorScheme.set('dark')`, uten reload, og valget overlever en reload |
-| Tabber gjennom hele skallet         | `shell.spec.ts` | hvert steg har et navn, og alle unntatt hopp-lenka har synlig fokusring         |
-| Ser på rutene i lys og mørk         | `shell.spec.ts` | skjermbilder til `design/skjermbilder-frontend/e2e/`                            |
+| Det brukeren gjør                                         | Spec                       |
+| --------------------------------------------------------- | -------------------------- |
+| Åpner `/` og `/threads/:id` med landemerker og én `h1`    | `shell.spec.ts`            |
+| Tabber til hopp-lenka og hopper                           | `shell.spec.ts`, to tester |
+| Skjuler og viser navigasjonspanelet                       | `shell.spec.ts`            |
+| Bytter fargemodus fra konsollen, uten reload              | `shell.spec.ts`            |
+| Møter filtreringen som førstegangsbruker                  | `primary-sidebar.spec.ts`  |
+| Velger en verdi og får en chip pluss «1 av 6 valgt»       | `primary-sidebar.spec.ts`  |
+| «Velg alle» og «Tøm» uten å miste tastaturet              | `primary-sidebar.spec.ts`  |
+| Veksler mellom filter og tråder                           | `primary-sidebar.spec.ts`  |
+| Ser trådene gruppert på tidsrom                           | `primary-sidebar.spec.ts`  |
+| Søker i tråder og får en treffteller                      | `primary-sidebar.spec.ts`  |
+| Åpner en tråd og ser den merket med `aria-current`        | `primary-sidebar.spec.ts`  |
+| Møter hilsenen og de tre kickstarterne                    | `chat.spec.ts`             |
+| Fyller feltet fra en kickstarter uten å sende             | `chat.spec.ts`             |
+| Stiller et spørsmål og får et strømmet svar med `[n]`     | `chat.spec.ts`             |
+| Avbryter, og beholder teksten som kom                     | `chat.spec.ts`             |
+| Kopierer svaret og får kvittering                         | `chat.spec.ts`             |
+| Trykker en oppfølgingschip                                | `chat.spec.ts`             |
+| Åpner kildepanelet med en markør                          | `sources.spec.ts`          |
+| Klikker `[n]` og havner i riktig utdrag, to ganger på rad | `sources.spec.ts`          |
+| Ser utdragene gruppert per dokument                       | `sources.spec.ts`          |
+| Hopper til et dokument fra snarveislista                  | `sources.spec.ts`          |
+| Søker i utdragene og stepper mellom treff                 | `sources.spec.ts`          |
+| Tabber gjennom hvert view i lys og mørk                   | alle fire spec-ene         |
 
 ## Merget, men ikke dekket
 
-| Sak                                         | Hvorfor ikke                                                                                                                                                                                                    |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Kildepanelet (PR #2)                        | Merget, men **ikke montert**. `src/layout/viewComponents.ts` peker på `ViewPlaceholder` for alle fire viewene, så `SourcesView` er ikke på skjermen i appen. Kan ikke testes ende til ende før monterings-PR-en |
-| Utdragssøket, snarveislista, `[n]` → utdrag | Samme grunn                                                                                                                                                                                                     |
-| Den ekte klienten (PR #8)                   | Testene kjører i mock-modus med vilje. Live krever nøkkel og en kjørende backend, og hver spørring koster en agentkjøring. Proxyen er i stedet målt for hånd, se `main-2026-09-11-pr8.md`                       |
+| Sak                                           | Hvorfor ikke                                                                                                                                                                                                                                   |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Feiltilstanden i chatten                      | **Kan ikke nås fra det bygde appen.** `MockChatClient` har ingen måte å feile på, og forhåndsvisningsflata som har en, er dev-only og ligger ikke i `dist`. Trenger en utløser fra #5, for eksempel et spørsmål som alltid feiler i mock-modus |
+| Den ekte klienten                             | Testene kjører i mock-modus med vilje. Live krever nøkkel, en kjørende backend, og koster en agentkjøring per spørsmål. Proxyen er målt for hånd i `main-2026-09-11-pr8.md`                                                                    |
+| Lastetilstanden i kildepanelet                | Vises bare mens `documents` er `undefined`, og monteringen gir dem med én gang. Trenger enten en treg mock eller en egen rute                                                                                                                  |
+| Opplasting, «Vis flere dokumenter», topplinje | Ikke bygget. Se `skal-dette-implementeres.md`                                                                                                                                                                                                  |
 
-## Ventet, men ikke bygget
+## Skjermbilder
 
-Fra rolle-1b-e2e.md, i den rekkefølgen dirigenten merger:
-
-| Sak                                              | Venter på                 |
-| ------------------------------------------------ | ------------------------- |
-| Filtre kan velges og gir chips                   | PR #3                     |
-| Tråder er gruppert, søk i tråder                 | PR #3                     |
-| Kickstarter fyller feltet                        | PR #5                     |
-| Spørsmål gir strømmet svar med `[n]`-markører    | PR #5                     |
-| Klikk på `[n]` ruller og fokuserer riktig utdrag | PR #5 + PR #2 + montering |
-| Avbryt stopper genereringen                      | PR #5                     |
-| Feil vises som `Alert`                           | PR #5                     |
-| Søk i utdrag gir treffteller                     | PR #2 + montering         |
+`screenshots.spec.ts` lagrer hvert view i lys og mørk under faste navn i
+`design/skjermbilder-frontend/e2e/`. Ingen av dem er en assert. Gjennomgangen
+mot Figma står i [`visuell-2026-09-11.md`](visuell-2026-09-11.md).
 
 ## Det som måtte måles før det kunne påstås
 
 **Hopp-lenka lander to forskjellige steder, og begge er riktige.**
 `#main-content` er en `<main>`, som ikke er fokuserbar i seg selv. På
 trådruta har hovedkolonnen fokuserbart innhold, og nettleseren setter fokus
-på `main` selv; neste Tab lander da inne i hovedinnholdet. På `/` har
-hovedkolonnen ingenting fokuserbart, så `document.activeElement` blir stående
-på `<body>` og vandringen fortsetter FORBI main — første Tab etterpå treffer
-«Vis kilder» i kildepanelet.
+på `main`; neste Tab lander inne i hovedinnholdet. På `/` har hovedkolonnen
+ingenting fokuserbart, så vandringen fortsetter forbi main. Derfor er det to
+tester: den sterke påstanden på trådruta, den svake på forsida.
 
-Det er nettleseren som gjør det riktige med en tom region, ikke en feil. Men
-det betyr at «hopp-lenka flytter fokus inn i hovedinnholdet» bare kan påstås
-på en rute som har noe der. Derfor er det to tester: den sterke påstanden på
-trådruta, og den svake — «vandringen starter ikke på nytt i sidepanelet» — på
-forsida.
+**Filterfeltet er ikke en combobox før noen har rørt det.** Målt på det bygde
+appen, 2,5 sekunder etter last, med alle tilpassede elementer oppgradert:
+`u-datalist` er en `listbox` med sju valg, veksleknappen har
+`aria-expanded="false"` — og selve inputen har verken `role`, `aria-controls`
+eller `aria-expanded`. De kommer først ved første klikk. En rollebasert
+låsning finner derfor ingenting på en side ingen har tatt på, og testene
+låser på `<label for>` i stedet. Det er en feil i Designsystemet 1.21.0, ikke
+i filterpanelet, og den står i `funn-tverrgaaende.md`.
 
-Første utgave av testen påsto det sterke på forsida og feilet. Testen var
-feil, ikke appen.
+**Et bygg som ikke er ferdig, lyver.** Første måling av lastetilstanden viste
+at kildepanelet sto og hentet i det uendelige på en tom forside. Det var en
+gammel `dist` som ble servert av en preview-server jeg hadde startet for hånd,
+og som Playwright gjenbrukte. Mot et ferskt bygg er tilstanden riktig: tom
+forside gir «Ingen kilder ennå», og «Henter kilder …» kommer først når et svar
+faktisk er underveis. Verdt å vite for neste måling: drep preview-serveren før
+du konkluderer.
+
+**Et helt mock-svar tar rundt 7,5 sekunder.** Fire tenkesteg à 500 ms, så
+svaret token for token à 18 ms. Ventingene i testene poller, så en test
+koster det svaret koster. Hele suiten går på under 20 sekunder fordi testene
+kjører i parallell.
 
 ## Det som ikke er en test
 
 **Skjermbildene sammenlignes ikke automatisk.** De lagres under faste navn og
-ses på av et menneske mot Figma-bildene i
-`design/omraader/september-2026/*/skjermbilder/`. En pikselsammenligning ville
-feilet på hver forskjell i fontrendering mellom to maskiner, og avvikene som
-betyr noe er ikke piksler.
+ses på av et menneske mot Figma-bildene. En pikselsammenligning ville feilet
+på hver forskjell i fontrendering mellom to maskiner, og avvikene som betyr
+noe er ikke piksler.
 
 **Bare Chromium.** Suiten tester produktet, ikke nettleserkompatibilitet.
-`field-sizing: content` i skrivefeltet er det ene stedet der Firefox oppfører
-seg annerledes i dag, og det står dokumentert der det brukes.
 
 ## Åpent
 
-- **`npm run test:e2e` finnes ikke.** Skriptet hører i `package.json`, som er
-  grunnmurens fil, og denne PR-en rører den ikke. `npx playwright test`
-  virker i mellomtiden. Én linje fra #5:
-  `"test:e2e": "playwright test"`.
 - **`tests/` typesjekkes ikke av `npm run build`.** `tsconfig.node.json`
   inkluderer bare `vite.config.ts`. Playwright typesjekker selv når testene
-  kjører, så feil oppdages, men senere enn de kunne. `"include": ["vite.config.ts",
-"playwright.config.ts", "tests"]` ville lukket det. Også grunnmurens fil.
+  kjører, så feil oppdages, men senere enn de kunne.
+- **Første overskrift i DOM er fortsatt en `h2`**, fordi skallet tegner
+  panelene før `<main>`. Ingen axe-regel fanger det, og ingen test heller:
+  det er en avgjørelse om rekkefølge, ikke en feil i et view.

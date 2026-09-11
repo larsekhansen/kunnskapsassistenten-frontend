@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
+import { expectEveryStepReachable, walkWithTab } from './helpers';
 
 /**
  * The shell: the three slots, the routes, the skip link and dark mode.
@@ -39,6 +40,9 @@ test.describe('skallet', () => {
       // still have landmarks.
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(route.heading);
       await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+      if ('subheading' in route) {
+        await expect(page.getByRole('heading', { level: 2, name: route.subheading })).toBeVisible();
+      }
 
       // The thread title is a section of the page, not the page itself.
       if ('subheading' in route) {
@@ -184,25 +188,7 @@ test.describe('skallet', () => {
     const steps = await walkWithTab(page);
 
     expect(steps.length, 'Tab skal nå noe i det hele tatt').toBeGreaterThan(3);
-
-    const nameless = steps.filter((step) => step.name === '');
-    expect(nameless, 'hvert fokuserbart element skal ha et navn').toEqual([]);
-
-    // Designsystemet's SkipLink sets outline: 0 on purpose and carries its
-    // focus state with a surface and an underline instead, so it is the one
-    // step measured differently. Everything else draws a ring.
-    //
-    // `ringOnAncestor` is the other honest exception. The compose field and
-    // its buttons read as one control, so the frame around them carries the
-    // ring with `:focus-within` and the textarea inside gives up its own.
-    // What the rule asks is that the user can see where focus is, not which
-    // element the browser painted it on.
-    const ringless = steps
-      .slice(1)
-      .filter(
-        (step) => step.outline === 'none' && step.boxShadow === 'none' && !step.ringOnAncestor,
-      );
-    expect(ringless, 'hvert steg etter hopp-lenka skal ha en synlig fokusring').toEqual([]);
+    expectEveryStepReachable(steps, 'skallet');
 
     // Reading order: the slots come in the order the shell renders them, and
     // the first stop after the skip link is the primary sidebar's own button.
@@ -223,72 +209,3 @@ test.describe('skallet', () => {
     }
   });
 });
-
-type FocusStep = {
-  tag: string;
-  name: string;
-  outline: string;
-  boxShadow: string;
-  /** An ancestor draws the ring instead, through `:focus-within`. */
-  ringOnAncestor: boolean;
-};
-
-/**
- * Presses Tab until the walk comes back to an element it has already seen.
- *
- * Identity, not tag plus name plus position: a panel that scrolls the focused
- * element to the same place repeats the position, and two buttons can share a
- * name. Both stopped an earlier version of this walk far too early.
- */
-async function walkWithTab(page: import('@playwright/test').Page): Promise<FocusStep[]> {
-  const steps: FocusStep[] = [];
-
-  for (let index = 0; index < 80; index += 1) {
-    await page.keyboard.press('Tab');
-
-    const step = await page.evaluate(() => {
-      const element = document.activeElement;
-      if (!element || element === document.body) return null;
-      if (element.hasAttribute('data-e2e-seen')) return 'wrapped' as const;
-      element.setAttribute('data-e2e-seen', '');
-
-      const styles = getComputedStyle(element);
-      const clean = (value: string | null) =>
-        String(value ?? '')
-          .replace(/\s+/g, ' ')
-          .trim();
-
-      return {
-        tag: element.tagName.toLowerCase(),
-        name:
-          clean(element.getAttribute('aria-label')) ||
-          clean(element.textContent).slice(0, 60) ||
-          clean(element.getAttribute('title')),
-        outline: styles.outlineStyle === 'none' ? 'none' : styles.outline,
-        boxShadow: styles.boxShadow === 'none' ? 'none' : styles.boxShadow,
-        ringOnAncestor: (() => {
-          let parent = element.parentElement;
-          while (parent && parent !== document.body) {
-            if (parent.matches(':focus-within')) {
-              const style = getComputedStyle(parent);
-              if (style.outlineStyle !== 'none' || style.boxShadow !== 'none') return true;
-            }
-            parent = parent.parentElement;
-          }
-          return false;
-        })(),
-      };
-    });
-
-    if (step === null || step === 'wrapped') break;
-    steps.push(step);
-  }
-
-  await page.evaluate(() =>
-    document
-      .querySelectorAll('[data-e2e-seen]')
-      .forEach((el) => el.removeAttribute('data-e2e-seen')),
-  );
-
-  return steps;
-}
