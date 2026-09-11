@@ -171,19 +171,27 @@ body {
 }
 
 /*
- * The alert region outlives the error, so when there is no error it has to
- * take no space AND stay focusable: it is where focus lands when the retry
- * button unmounts itself. `display: none` would do the first and break the
- * second, so the region is clipped instead, the same way a skip link is
- * hidden until it is focused. Taking it out of flow is what keeps a parent's
- * `gap` from reserving a row for an empty region.
+ * An empty alert region must take no space and still be there.
+ *
+ * `display: none` is the one thing this rule may never say. It removes the
+ * region from the accessibility tree, and a `role="alert"` only announces
+ * content that appears inside a region that was ALREADY in the tree — so the
+ * error would arrive in silence, which is the whole failure the permanent
+ * region exists to prevent. Measured in Chrome's tree: `display: none` leaves
+ * zero alert nodes, every rule below leaves two, neither ignored.
+ *
+ * Size, not display, and out of flow. A zero-height region left in flow is
+ * still a flex item, so a panel with `gap: 32px` reserves a gap on each side
+ * of nothing; measured at 64 px between the neighbours instead of 32.
+ * `position: absolute` costs nothing and keeps the region focusable, which it
+ * has to be: it is where focus lands when the retry button unmounts itself.
  */
 .error-state:empty {
   position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
+  block-size: 0;
+  inline-size: 0;
+  margin: 0;
   overflow: hidden;
-  clip-path: inset(50%);
 }
 
 /*

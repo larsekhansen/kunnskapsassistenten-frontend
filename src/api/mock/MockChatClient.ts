@@ -32,6 +32,20 @@ export const defaultMockDelays: MockDelays = {
   requestMs: 250,
 };
 
+/**
+ * Ask this and the mock fails instead of answering.
+ *
+ * The error path has no other way in from a built app: the mock never fails
+ * on its own, so «Prøv igjen» and the alert region could not be reached by an
+ * end-to-end test or shown to a designer without swapping in a live backend
+ * that is down. An environment flag would have meant a second build, since
+ * Vite substitutes those at build time and the suite builds once.
+ *
+ * An exact match on the whole question, not a word inside it: «hva er feil i
+ * rapporten» is a real question and has to get a real answer.
+ */
+export const MOCK_FAILURE_QUERY = 'simuler feil';
+
 /** Resolves after `ms`, or rejects with the abort reason if the signal fires. */
 function wait(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -80,6 +94,20 @@ export class MockChatClient implements ChatClient {
   async *ask(params: AskParams): AsyncIterable<StreamEvent> {
     const { signal } = params;
     try {
+      if (params.query.trim().toLocaleLowerCase('nb-NO') === MOCK_FAILURE_QUERY) {
+        // After a thinking step, not instantly: a failure that arrives before
+        // anything has happened does not exercise the state the views go
+        // through, which is «an answer was under way and then it was not».
+        await wait(this.#delays.thinkingStepMs, signal);
+        yield { type: 'thinking-step', step: nkomThinkingSteps[0]! };
+        await wait(this.#delays.firstTokenMs, signal);
+        yield {
+          type: 'error',
+          error: { code: 'unknown', message: 'Noe gikk galt. Prøv igjen.' },
+        };
+        return;
+      }
+
       for (const step of nkomThinkingSteps) {
         await wait(this.#delays.thinkingStepMs, signal);
         yield { type: 'thinking-step', step };

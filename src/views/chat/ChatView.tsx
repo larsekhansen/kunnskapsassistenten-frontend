@@ -53,14 +53,20 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   // draws them, this view produces them, and the two may not import each
   // other. The last answer that carries sources is the one on screen; they
   // arrive at the end of a stream, so earlier messages keep theirs.
+  //
+  // `undefined` and `[]` are different answers over there: undefined draws
+  // «loading», an empty array draws «no sources yet». So undefined is only
+  // honest while an answer is actually on its way. An untouched front page
+  // has nothing to load, and a turn that ended without sources has finished
+  // not loading; both are empty, not pending.
   const { setDocuments } = useAnswerSources();
   const answerSources = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
       const message = messages[index];
       if (message?.role === 'assistant' && message.sources) return message.sources;
     }
-    return undefined;
-  }, [messages]);
+    return status === 'pending' || status === 'streaming' ? undefined : [];
+  }, [messages, status]);
 
   useEffect(() => setDocuments(answerSources), [answerSources, setDocuments]);
 
