@@ -236,6 +236,29 @@ async page => {
     };
   });
 
+  const focusableInDom = await page.evaluate(() => {
+    const selector = [
+      'a[href]',
+      'button:not([disabled])',
+      'input:not([disabled]):not([type=hidden])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      'summary',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(', ');
+    // checkVisibility(), ikke getClientRects(): et element i en lukket
+    // <details> ligger bak content-visibility: hidden, og da returnerer
+    // getClientRects() den siste kjente størrelsen i stedet for ingen. Målt
+    // på kildepanelet: 25 mot 21, der 21 er tallet Tab faktisk gir.
+    return [...document.querySelectorAll(selector)].filter((el) =>
+      el.checkVisibility({
+        contentVisibilityAuto: true,
+        opacityProperty: true,
+        visibilityProperty: true,
+      }),
+    ).length;
+  });
+
   const structure = await page.evaluate(() => {
     const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
     const ariaName = (el) => {
@@ -319,7 +342,7 @@ async page => {
   });
   const focusOrder = [];
   let wrapped = false;
-  for (let i = 0; i < 60; i += 1) {
+  for (let i = 0; i < 80; i += 1) {
     await page.keyboard.press('Tab');
     const step = await page.evaluate(() => {
       const el = document.activeElement;
@@ -327,12 +350,34 @@ async page => {
       const cs = getComputedStyle(el);
       const r = el.getBoundingClientRect();
       const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+      const seenBefore = el.hasAttribute('data-ka-focus-seen');
+      el.setAttribute('data-ka-focus-seen', '');
+      const labelFor = () => {
+        if (el.id === '') return '';
+        const label = document.querySelector('label[for="' + el.id + '"]');
+        return label === null ? '' : clean(label.textContent);
+      };
+      const labelledBy = () => {
+        const by = el.getAttribute('aria-labelledby');
+        if (by === null) return '';
+        return clean(
+          by
+            .split(/\s+/)
+            .map((id) => {
+              const ref = document.getElementById(id);
+              return ref === null ? '' : ref.textContent;
+            })
+            .join(' '),
+        );
+      };
       return {
         tag: el.tagName.toLowerCase(),
         type: el.getAttribute('type'),
         role: el.getAttribute('role'),
         name:
           clean(el.getAttribute('aria-label')) ||
+          labelledBy() ||
+          labelFor() ||
           clean(el.textContent).slice(0, 60) ||
           clean(el.getAttribute('title')) ||
           '',
@@ -344,18 +389,22 @@ async page => {
         boxShadow: cs.boxShadow === 'none' ? 'none' : cs.boxShadow.slice(0, 90),
         rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)],
         visible: r.width > 0 && r.height > 0 && cs.visibility !== 'hidden',
+        seenBefore,
       };
     });
     if (!step) break;
-    const key = step.tag + '|' + step.name + '|' + step.rect.join(',');
-    if (focusOrder.length > 0 && focusOrder.some((p) => p.key === key)) {
+    if (step.seenBefore) {
       wrapped = true;
       break;
     }
-    step.key = key;
     focusOrder.push(step);
   }
-  focusOrder.forEach((s) => delete s.key);
+
+  await page.evaluate(() => {
+    document.querySelectorAll('[data-ka-focus-seen]').forEach((el) => {
+      el.removeAttribute('data-ka-focus-seen');
+    });
+  });
 
   return JSON.stringify({
     mode: MODE,
@@ -366,7 +415,7 @@ async page => {
     painted,
     axe: axeResult,
     structure,
-    focus: { steps: focusOrder, wrappedBackToStart: wrapped },
+    focus: { steps: focusOrder, wrappedBackToStart: wrapped, focusableInDom },
   });
 }
 JS
@@ -401,7 +450,12 @@ summarise() {
       line("  SKJULT MED CSS (skal være hidden): " + d.structure.hiddenByCss.map((e) => e.className).join(", "));
     }
     line("  fokusrekkefølge (" + d.focus.steps.length + " steg, " +
-      (d.focus.wrappedBackToStart ? "gikk rundt" : "stoppet") + "):");
+      (d.focus.wrappedBackToStart ? "gikk rundt" : "stoppet") + ", " +
+      d.focus.focusableInDom + " synlig fokuserbare i DOM):");
+    if (d.focus.focusableInDom > d.focus.steps.length) {
+      line("  " + (d.focus.focusableInDom - d.focus.steps.length) +
+        " synlig fokuserbare element(er) ble IKKE nådd med Tab");
+    }
     d.focus.steps.forEach((s, i) => {
       const fv = s.focusVisible ? "" : "  IKKE :focus-visible";
       const ring = s.outline === "none" && s.boxShadow === "none" ? "  INGEN SYNLIG FOKUSRING" : "";

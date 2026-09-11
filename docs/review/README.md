@@ -10,10 +10,11 @@ eier bare denne mappa.
 
 ## Rapporter
 
-| Fil                                                              | Hva                                                                  |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------- |
-| [`main-2026-09-11.md`](main-2026-09-11.md)                       | Grunnlinje for skallet etter Trinn 1, og første måling av mørk modus |
-| [`feat-foundation-2026-09-11.md`](feat-foundation-2026-09-11.md) | PR #1, domenetyper og mock-klient                                    |
+| Fil                                                                            | Hva                                                                  |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| [`main-2026-09-11.md`](main-2026-09-11.md)                                     | Grunnlinje for skallet etter Trinn 1, og første måling av mørk modus |
+| [`feat-foundation-2026-09-11.md`](feat-foundation-2026-09-11.md)               | PR #1, domenetyper og mock-klient                                    |
+| [`feat-secondary-sidebar-2026-09-11.md`](feat-secondary-sidebar-2026-09-11.md) | PR #2, kildepanelet                                                  |
 
 ## Sånn går en review
 
@@ -33,13 +34,19 @@ eier bare denne mappa.
 5. **Verifiser hver verdi mot fasiten.** Ikke tro på PR-beskrivelsen. Slå opp
    tallene, tekstene og komponentvalgene i `design/omraader/september-2026/`.
    Både i PR #1 og på `main` var det nettopp her funnene lå.
-6. **Skriv rapporten:** funn nummerert, alvor, fil og linje, og hva
+6. **Prøv interaksjonen i nettleser, ikke bare les koden.** Skriv i feltene
+   tegn for tegn og se hvor fokus havner, trykk knappene som bytter tilstand
+   og se om fokus overlever, og kjør de tilstandene som er standard i
+   `defaultLayout`, ikke bare de forhåndsvisningen starter i. De tre
+   blokkerende funnene i PR #2 var alle usynlige i koden og tydelige i
+   nettleseren.
+7. **Skriv rapporten:** funn nummerert, alvor, fil og linje, og hva
    Designsystemet tilbyr i stedet. Del i **blokkerer / bør / kan**, og la en
    egen seksjon si hva som er riktig, med hvor du sjekket det. Avslutt med
    «Til dirigenten» for det som er en avgjørelse og ikke en kodeendring.
-7. **Legg funnene som én samlet kommentar i PR-en.** Ikke som GitHub-review
+8. **Legg funnene som én samlet kommentar i PR-en.** Ikke som GitHub-review
    med approve eller request changes; det gjør Lars.
-8. **Rapporter til dirigenten** med antall funn per alvor og om PR-en er klar
+9. **Rapporter til dirigenten** med antall funn per alvor og om PR-en er klar
    for Lars.
 
 ### Alvorsgradene
@@ -130,6 +137,14 @@ avslutningskoden.
       element som byttes ut i sin helhet.
 - [ ] Kontrast målt der det er tvil. AA er 4,5:1 for tekst, 3:1 for stor
       tekst og grafiske elementer.
+- [ ] Alle synlig fokuserbare elementer nås med Tab. Verktøyet teller dem i
+      DOM-en og sier fra hvis vandringen fant færre.
+- [ ] **Mål synlighet med `checkVisibility()`, aldri med
+      `getBoundingClientRect()`.** Innhold bak `content-visibility: hidden` —
+      som er det en lukket `Details` bruker — rapporterer siste kjente
+      størrelse fra `getClientRects()`. Målt på kildepanelet: 25 mot 21
+      fokuserbare, der 21 er tallet Tab gir. Det ga ett falskt blokkerende
+      funn før det ble rettet.
 - [ ] Skjermbilde av det som er bygget, i begge moduser, til
       `design/skjermbilder-frontend/`.
 
