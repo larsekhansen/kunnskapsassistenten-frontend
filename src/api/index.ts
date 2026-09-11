@@ -1,4 +1,5 @@
 import type { ChatClient } from './chatClient';
+import { LiveChatClient } from './live';
 import { MockChatClient } from './mock';
 
 export type { AskParams, ChatClient } from './chatClient';
@@ -12,8 +13,5 @@ export type { AskParams, ChatClient } from './chatClient';
  */
 export function createChatClient(): ChatClient {
   const mode = import.meta.env.VITE_API_MODE ?? 'mock';
-  if (mode === 'live') {
-    throw new Error('VITE_API_MODE=live er ikke støttet ennå. Bruk mock inntil videre.');
-  }
-  return new MockChatClient();
+  return mode === 'live' ? new LiveChatClient() : new MockChatClient();
 }
