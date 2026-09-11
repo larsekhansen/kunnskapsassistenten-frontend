@@ -20,6 +20,11 @@ type WelcomeProps = {
  * plain «Hei 👋». The waving hand is decorative — a screen reader announcing
  * «vinkende hånd» in the middle of a greeting adds nothing — so it is hidden
  * and the greeting is a real heading either way.
+ *
+ * Both lines are ONE heading with a break between them, which is how Figma
+ * draws it: a single text node holding two lines. Making the second line a
+ * heading of its own put an entry in the outline with nothing under it, next
+ * to the «Forslag» heading that does name something.
  */
 export function Welcome({ userName, onPickKickstarter }: WelcomeProps) {
   return (
@@ -28,8 +33,7 @@ export function Welcome({ userName, onPickKickstarter }: WelcomeProps) {
         <Heading data-size="lg" level={2}>
           {userName ? `Hei, ${userName} ` : 'Hei '}
           <span aria-hidden="true">👋</span>
-        </Heading>
-        <Heading data-size="lg" level={3}>
+          <br />
           Hva lurer du på?
         </Heading>
       </div>

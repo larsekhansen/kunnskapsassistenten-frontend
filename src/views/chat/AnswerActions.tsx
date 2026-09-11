@@ -19,6 +19,11 @@ type AnswerActionsProps = {
  * visible and a polite live region, so a sighted reader and a screen reader
  * user are told the same thing at the same time — and the clipboard can
  * refuse, in which case saying so is the only honest outcome.
+ *
+ * It is rendered empty rather than hidden while there is nothing to say. A
+ * live region that is `display: none` is not in the accessibility tree, so
+ * the region and its text would appear in the same frame and announce
+ * nothing — the same rule `src/components/ErrorState.tsx` is built around.
  */
 export function AnswerActions({
   content,
@@ -49,7 +54,7 @@ export function AnswerActions({
         onClick={() => void copy(answerAsPlainText(content), 'Svaret er kopiert.')}
         variant="tertiary"
       >
-        <ClipboardIcon aria-hidden fontSize="1.25rem" />
+        <ClipboardIcon aria-hidden />
         Kopier svaret
       </Button>
 
@@ -59,13 +64,13 @@ export function AnswerActions({
         onClick={() => void copy(window.location.href, 'Lenken til tråden er kopiert.')}
         variant="tertiary"
       >
-        <ClipboardLinkIcon aria-hidden fontSize="1.25rem" />
+        <ClipboardLinkIcon aria-hidden />
         Kopier lenke til tråden
       </Button>
 
       {canScrollToBottom ? (
         <Button data-color="neutral" data-size="sm" onClick={onScrollToBottom} variant="tertiary">
-          <ArrowDownIcon aria-hidden fontSize="1.25rem" />
+          <ArrowDownIcon aria-hidden />
           Bla til nederst
         </Button>
       ) : null}

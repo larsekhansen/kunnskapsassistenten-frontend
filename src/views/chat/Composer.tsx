@@ -35,6 +35,10 @@ type ComposerProps = {
  * around them carries the border and the focus ring, and the textarea inside
  * gives up its own. The ring is Designsystemet's, not a hand-drawn one.
  *
+ * The icons carry no size of their own. `Button` already sizes what it holds
+ * (`--ds-icon-size`), and a size written here would be a raw length that does
+ * not follow the size mode.
+ *
  * Attachments are in scope (answer 53) but there is no upload endpoint
  * (API-bestilling A3), so the paperclip is inert. It keeps its focus and says
  * «Vedlegg kommer» rather than disappearing, because a control that is coming
@@ -84,12 +88,12 @@ export function Composer({
             onClick={(event) => event.preventDefault()}
             variant="tertiary"
           >
-            <PaperclipIcon aria-hidden fontSize="1.25rem" />
+            <PaperclipIcon aria-hidden />
           </Button>
 
           {busy ? (
             <Button aria-label="Avbryt genereringen" icon onClick={onCancel} variant="secondary">
-              <StopIcon aria-hidden fontSize="1.25rem" />
+              <StopIcon aria-hidden />
             </Button>
           ) : (
             <Button
@@ -98,7 +102,7 @@ export function Composer({
               icon
               onClick={onSubmit}
             >
-              <PaperplaneIcon aria-hidden fontSize="1.25rem" />
+              <PaperplaneIcon aria-hidden />
             </Button>
           )}
         </div>

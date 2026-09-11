@@ -29,6 +29,15 @@ function hitSummary({ hitCount, documentCount }: RetrievalDetails): string {
  *      control that names the section; a heading inside it would put a
  *      heading inside a button, which helps no one.
  *
+ * The space before the Tag is written out, because JSX drops whitespace that
+ * contains a newline. Without it the summary's accessible name runs together
+ * as «Fremgangsmåte10 treff i 3 dokumenter»; the flex gap only separates the
+ * two on screen.
+ *
+ * The magnifier takes its size from `--ds-icon-size` in chat.css, the same
+ * token Details uses for its own chevron. Nothing here sits inside a Button,
+ * so nothing else would size it.
+ *
  * Frontend placeholder in v1 (answer 11), open by default, because what makes
  * an answer checkable should not be behind a click. The keywords are plain
  * Tags: they are not clickable (answer 13).
@@ -39,8 +48,8 @@ export function RetrievalPanel({ retrieval }: RetrievalPanelProps) {
     <Details data-color="neutral" defaultOpen>
       <Details.Summary>
         <span className="ka-retrieval__summary">
-          <MagnifyingGlassIcon aria-hidden fontSize="1.25rem" />
-          Fremgangsmåte
+          <MagnifyingGlassIcon aria-hidden className="ka-retrieval__icon" />
+          Fremgangsmåte{' '}
           <Tag data-color="neutral" data-size="sm">
             {hitSummary(retrieval)}
           </Tag>

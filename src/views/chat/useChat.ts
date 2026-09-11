@@ -49,6 +49,10 @@ export type UseChat = {
  * code `aborted`, and here that means: keep the partial answer, mark it
  * complete, go back to idle. That is what a reader expects from a stop
  * button, and it is why the code checks the code rather than the event type.
+ *
+ * Only one turn counts at a time. A question asked mid-stream aborts the one
+ * before it, and the old turn is then forbidden from touching status,
+ * announcement or error — see `turnRef` in `run`.
  */
 export function useChat(client: ChatClient, initialMessages: Message[] = []): UseChat {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -57,6 +61,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
   const [announcement, setAnnouncement] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
+  const turnRef = useRef(0);
   const conversationRef = useRef<string | undefined>(undefined);
   const lastQuestionRef = useRef<string | null>(null);
 
@@ -70,8 +75,38 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
     );
   }, []);
 
+  /**
+   * End a turn: mark the answer, or drop it if nothing ever arrived.
+   *
+   * The list holds no answer without content unless it is still streaming.
+   * An answer stopped, failed or finished before its first token draws no
+   * card anyway, so leaving it in only leaves an `<li>` whose whole content
+   * is the hidden «Kunnskapsassistenten svarte:» — a screen reader hears an
+   * assistant that answered nothing.
+   */
+  const settleAnswer = useCallback((id: string, status: 'complete' | 'error') => {
+    setMessages((current) => {
+      const answer = current.find((message) => message.id === id);
+      if (answer && answer.content.length === 0) {
+        return current.filter((message) => message.id !== id);
+      }
+      return current.map((message) => (message.id === id ? { ...message, status } : message));
+    });
+  }, []);
+
   const run = useCallback(
     async (question: string, answerId: string) => {
+      // Every turn gets a number, and only the newest one may write status,
+      // announcement or error. Asking a second question while the first is
+      // still streaming aborts the first, but that abort is handled one tick
+      // later — after the new turn has already said «Henter svar.». Without
+      // this guard the old turn overwrites it with «Genereringen ble
+      // avbrutt.», which is a status message that lies, and puts the status
+      // back to idle, which takes the stop button away from a generation
+      // that is still running.
+      const turn = (turnRef.current += 1);
+      const isCurrentTurn = () => turnRef.current === turn;
+
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -122,47 +157,59 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
 
             case 'done':
               conversationRef.current = event.conversationId;
-              patchAnswer(answerId, (message) => ({ ...message, status: 'complete' }));
-              setAnnouncement('Svaret er ferdig.');
-              setStatus('idle');
+              settleAnswer(answerId, 'complete');
+              if (isCurrentTurn()) {
+                setAnnouncement('Svaret er ferdig.');
+                setStatus('idle');
+              }
               return;
 
             case 'error':
               if (event.error.code === 'aborted') {
-                patchAnswer(answerId, (message) => ({ ...message, status: 'complete' }));
-                setAnnouncement('Genereringen ble avbrutt.');
-                setStatus('idle');
+                settleAnswer(answerId, 'complete');
+                if (isCurrentTurn()) {
+                  setAnnouncement('Genereringen ble avbrutt.');
+                  setStatus('idle');
+                }
                 return;
               }
-              patchAnswer(answerId, (message) => ({ ...message, status: 'error' }));
-              setError(event.error.message);
-              // The Alert has role="alert" and announces itself.
-              setAnnouncement('');
-              setStatus('error');
+              settleAnswer(answerId, 'error');
+              if (isCurrentTurn()) {
+                setError(event.error.message);
+                // The Alert has role="alert" and announces itself.
+                setAnnouncement('');
+                setStatus('error');
+              }
               return;
           }
         }
         // The stream ended without a `done` frame. Nothing is in flight any
         // more, so the answer is as finished as it is going to get.
-        patchAnswer(answerId, (message) => ({ ...message, status: 'complete' }));
-        setAnnouncement('Svaret er ferdig.');
-        setStatus('idle');
+        settleAnswer(answerId, 'complete');
+        if (isCurrentTurn()) {
+          setAnnouncement('Svaret er ferdig.');
+          setStatus('idle');
+        }
       } catch {
         if (controller.signal.aborted) {
-          patchAnswer(answerId, (message) => ({ ...message, status: 'complete' }));
-          setAnnouncement('Genereringen ble avbrutt.');
-          setStatus('idle');
+          settleAnswer(answerId, 'complete');
+          if (isCurrentTurn()) {
+            setAnnouncement('Genereringen ble avbrutt.');
+            setStatus('idle');
+          }
           return;
         }
-        patchAnswer(answerId, (message) => ({ ...message, status: 'error' }));
-        setError('Noe gikk galt da svaret skulle hentes. Prøv igjen.');
-        setAnnouncement('');
-        setStatus('error');
+        settleAnswer(answerId, 'error');
+        if (isCurrentTurn()) {
+          setError('Noe gikk galt da svaret skulle hentes. Prøv igjen.');
+          setAnnouncement('');
+          setStatus('error');
+        }
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
       }
     },
-    [client, patchAnswer],
+    [client, patchAnswer, settleAnswer],
   );
 
   const send = useCallback(

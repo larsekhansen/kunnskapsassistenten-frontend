@@ -4,24 +4,37 @@ import { citationTargets, type Message } from '../../model';
 import { AnswerActions } from './AnswerActions';
 import { RetrievalPanel } from './RetrievalPanel';
 import { CLOSING_QUESTION } from './text';
-import type { ChatStatus } from './useChat';
 
 type MessageListProps = {
   messages: Message[];
-  status: ChatStatus;
   onSelectSource: (citationNumber: number) => void;
   onScrollToBottom: () => void;
   canScrollToBottom: boolean;
 };
 
-/** Shown between «sendt» and the first token (answer 32). */
+/**
+ * Four ragged lines standing in for the paragraph on its way (answer 32).
+ *
+ * `width` on `variant="text"` is a NUMBER OF CHARACTERS, not a length:
+ * Skeleton writes `data-text={'-'.repeat(Number(width) || 1)}` and never
+ * passes width to `style`. A percentage makes `Number()` return NaN, every
+ * line falls back to a single dash, and the CSS width takes over — four
+ * identical full-width bars instead of a block of text.
+ *
+ * Each line sits in its own block, because Skeleton's text variant is
+ * `display: inline` and the dashes only decide the width while it stays that
+ * way. Made a flex item it is blockified, and its own `width: 100%` wins.
+ */
+const SKELETON_LINE_CHARACTERS = [78, 86, 82, 48];
+
 function AnswerSkeleton() {
   return (
     <div aria-hidden="true" className="ka-answer-skeleton">
-      <Skeleton variant="text" width="80%" />
-      <Skeleton variant="text" width="100%" />
-      <Skeleton variant="text" width="94%" />
-      <Skeleton variant="text" width="60%" />
+      {SKELETON_LINE_CHARACTERS.map((characters) => (
+        <p className="ka-answer-skeleton__line" key={characters}>
+          <Skeleton variant="text" width={characters} />
+        </p>
+      ))}
     </div>
   );
 }
@@ -43,7 +56,6 @@ function AnswerSkeleton() {
  */
 export function MessageList({
   messages,
-  status,
   onSelectSource,
   onScrollToBottom,
   canScrollToBottom,
@@ -130,16 +142,6 @@ export function MessageList({
           </li>
         );
       })}
-
-      {status === 'pending' && messages.at(-1)?.role !== 'assistant' ? (
-        <li className="ka-message">
-          <Card className="ka-answer-card" data-color="neutral">
-            <Card.Block>
-              <AnswerSkeleton />
-            </Card.Block>
-          </Card>
-        </li>
-      ) : null}
     </ol>
   );
 }

@@ -57,6 +57,19 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
     setDraft('');
   }
 
+  /**
+   * Where focus goes when a control disappears because of the click that hit
+   * it. Both the stop button and «Prøv igjen» are gone by the time their own
+   * handler has run, and a control that vanishes without saying where focus
+   * should land drops a keyboard user on `<body>`, at the top of the
+   * document, mid-action (WCAG 2.4.3). The compose field is where the reader
+   * is going anyway: to rewrite the question after stopping, or to keep
+   * typing while the retry runs.
+   */
+  function focusField() {
+    fieldRef.current?.focus();
+  }
+
   return (
     <div className="ka-chat" ref={rootRef}>
       {thread ? (
@@ -71,7 +84,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
             // Fills the field, does not send (answer 40). The caret goes with
             // it, so the reader can edit before asking.
             setDraft(question);
-            fieldRef.current?.focus();
+            focusField();
           }}
           userName={userName}
         />
@@ -81,7 +94,6 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
           messages={messages}
           onScrollToBottom={() => scrollToBottom()}
           onSelectSource={showCitation}
-          status={status}
         />
       )}
 
@@ -90,11 +102,21 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         announces content that appears inside a region already in the page.
         See src/components/ErrorState.tsx.
       */}
-      <ErrorState message={error ?? undefined} onRetry={retry} title="Svaret kom ikke fram" />
+      <ErrorState
+        message={error ?? undefined}
+        onRetry={() => {
+          retry();
+          focusField();
+        }}
+        title="Svaret kom ikke fram"
+      />
 
       <Composer
         fieldRef={fieldRef}
-        onCancel={cancel}
+        onCancel={() => {
+          cancel();
+          focusField();
+        }}
         onChange={setDraft}
         onFollowUp={submit}
         onSubmit={() => submit(draft)}

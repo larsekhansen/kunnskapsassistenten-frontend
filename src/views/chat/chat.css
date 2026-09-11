@@ -7,9 +7,9 @@
  * belongs to the foundation and this view owns src/views/chat/.
  *
  * No hex colours and no raw font sizes: var(--ds-*) follows the theme, the
- * size mode and dark mode. The three px values below are measurements from
- * the design that have no token, and each one says where it comes from —
- * same pattern as the --ka-* widths in global.css.
+ * size mode and dark mode. The two px values below are measurements from the
+ * design that have no token, and each one says where it comes from — same
+ * pattern as the --ka-* widths in global.css.
  *
  * Every rule here that sets `display` has a matching `[hidden]` rule at the
  * bottom of the file. Unlayered author CSS beats the browser's own
@@ -123,6 +123,17 @@
   gap: var(--ds-size-2);
 }
 
+/*
+ * One block per skeleton line. Designsystemet's text skeleton is
+ * `display: inline` and gets its width from the dashes it writes into
+ * `data-text`; as a direct flex child it would be blockified and its own
+ * `width: 100%` would take over, turning four ragged lines into four
+ * identical bars.
+ */
+.ka-answer-skeleton__line {
+  margin: 0;
+}
+
 .ka-streaming-status {
   display: flex;
   align-items: center;
@@ -138,6 +149,12 @@
   display: flex;
   align-items: center;
   gap: var(--ds-size-2);
+}
+
+/* Aksel icons are 1em square, so the size is the font size. The same token
+   Details uses for its own chevron, so the two line up. */
+.ka-retrieval__icon {
+  font-size: var(--ds-icon-size);
 }
 
 .ka-retrieval__keywords {
@@ -160,15 +177,17 @@
   gap: var(--ds-size-2);
 }
 
+/*
+ * Always rendered, never hidden while empty. It is an aria-live region, and a
+ * region that is `display: none` is not in the accessibility tree — the
+ * region and its text would then appear in the same frame, which announces
+ * nothing. Empty it has no line box and costs only the flex gap.
+ */
 .ka-answer-actions__receipt {
   flex-basis: 100%;
   margin: 0;
   color: var(--ds-color-neutral-text-subtle);
   font-size: var(--ds-font-size-minus-1);
-}
-
-.ka-answer-actions__receipt:empty {
-  display: none;
 }
 
 /* --------------------------------------------------------------- composer */
@@ -234,6 +253,12 @@
   box-shadow: none;
 }
 
+/*
+ * Firefox has no `field-sizing` yet, so the field stays one row there however
+ * long the question is. It still scrolls and still sends, so the degradation
+ * is acceptable; a ResizeObserver to cover it would be a frame behind on
+ * every keystroke in every other browser.
+ */
 .ka-composer__field textarea {
   field-sizing: content; /* grows with the content, answer 54 */
   max-block-size: var(--ka-composer-max-height);
@@ -288,7 +313,6 @@
 .ka-retrieval__summary[hidden],
 .ka-retrieval__keywords[hidden],
 .ka-answer-actions[hidden],
-.ka-answer-actions__receipt[hidden],
 .ka-composer-area[hidden],
 .ka-composer[hidden],
 .ka-composer__buttons[hidden],

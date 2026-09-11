@@ -17,11 +17,15 @@ type KickstartersProps = {
  * Picking one fills the field and leaves the caret there, so the reader can
  * edit before sending. That is the whole point of a kickstarter: it starts
  * the question, it does not ask it.
+ *
+ * A plain div, not a labelled section: a labelled section is a landmark, and
+ * three buttons are not worth one. The heading carries the structure on its
+ * own, and without the landmark there is no id to hand around either.
  */
 export function Kickstarters({ onPick }: KickstartersProps) {
   return (
-    <section aria-labelledby="ka-kickstarters-heading" className="ka-kickstarters">
-      <Heading data-size="2xs" id="ka-kickstarters-heading" level={3}>
+    <div className="ka-kickstarters">
+      <Heading data-size="2xs" level={3}>
         Forslag
       </Heading>
       <ul className="ka-kickstarters__list">
@@ -33,12 +37,12 @@ export function Kickstarters({ onPick }: KickstartersProps) {
               onClick={() => onPick(question)}
               variant="tertiary"
             >
-              <FileTextIcon aria-hidden className="ka-kickstarter__icon" fontSize="1.25rem" />
+              <FileTextIcon aria-hidden className="ka-kickstarter__icon" />
               {question}
             </Button>
           </li>
         ))}
       </ul>
-    </section>
+    </div>
   );
 }
