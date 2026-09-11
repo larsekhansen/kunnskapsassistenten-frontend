@@ -90,28 +90,32 @@ export function ExcerptSearch({
             {status}
           </Paragraph>
 
-          <div className="sources-search__steps">
-            <Button
-              type="button"
-              variant="tertiary"
-              data-size="sm"
-              aria-label="Forrige treff"
-              disabled={hitCount === 0}
-              onClick={() => onStep(-1)}
-            >
-              Forrige
-            </Button>
-            <Button
-              type="button"
-              variant="tertiary"
-              data-size="sm"
-              aria-label="Neste treff"
-              disabled={hitCount === 0}
-              onClick={() => onStep(1)}
-            >
-              Neste
-            </Button>
-          </div>
+          {/* Figma only has previous/next in the `results` variant, so they do
+              not exist before there is something to step through. Rendered
+              rather than disabled: a disabled control the user has never been
+              able to use only adds a tab stop and a question. */}
+          {hitCount > 0 && (
+            <div className="sources-search__steps">
+              <Button
+                type="button"
+                variant="tertiary"
+                data-size="sm"
+                aria-label="Forrige treff"
+                onClick={() => onStep(-1)}
+              >
+                Forrige
+              </Button>
+              <Button
+                type="button"
+                variant="tertiary"
+                data-size="sm"
+                aria-label="Neste treff"
+                onClick={() => onStep(1)}
+              >
+                Neste
+              </Button>
+            </div>
+          )}
         </div>
       </form>
     </search>

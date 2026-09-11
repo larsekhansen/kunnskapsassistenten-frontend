@@ -119,8 +119,20 @@
   gap: var(--ds-size-2);
 }
 
-.source-excerpt__meta,
+/* The quote's own section heading and page, the first line of the body in
+   Figma. Shown in both the closed preview and the open quote. */
+.source-excerpt__quote-heading {
+  color: var(--ds-color-neutral-text-default);
+}
+
+.source-excerpt__page {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
 .source-excerpt__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-1);
   color: var(--ds-color-neutral-text-subtle);
 }
 

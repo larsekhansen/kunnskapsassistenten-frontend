@@ -89,11 +89,17 @@ export function SourcesView({
   // prop — so the excerpt is opened while rendering the change, which is
   // React's documented way to adjust state when a prop changes. The scroll
   // itself is a separate effect, because it has to happen after the layout.
-  // `activeCitationNonce` is what makes a second click on the same marker
-  // count as a new event (answer 19).
-  const [handledNonce, setHandledNonce] = useState(activeCitationNonce);
-  if (handledNonce !== activeCitationNonce) {
-    setHandledNonce(activeCitationNonce);
+  //
+  // Both halves are compared, not just the nonce: the number alone covers a
+  // caller that sends no nonce, and it covers mounting with a marker already
+  // set, which a nonce-only comparison would miss because both sides start
+  // undefined. The nonce is what makes a second click on the SAME marker count
+  // as a new event (answer 19).
+  const [handled, setHandled] = useState<{ number?: number; nonce?: number } | undefined>(
+    undefined,
+  );
+  if (handled?.number !== activeCitationNumber || handled?.nonce !== activeCitationNonce) {
+    setHandled({ number: activeCitationNumber, nonce: activeCitationNonce });
 
     const target = documentList
       .flatMap((document) => document.excerpts)

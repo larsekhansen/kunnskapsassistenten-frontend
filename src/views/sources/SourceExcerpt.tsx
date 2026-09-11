@@ -50,6 +50,14 @@ type SourceExcerptProps = {
  * `Details` is the one that ships `aria-expanded` and keyboard support for
  * free. It is controlled here because search has to be able to open an excerpt
  * the user never clicked, and the type then requires `onToggle`.
+ *
+ * The order follows `chunk.md`: relevance tag on the top line, the toggle above
+ * the text, and the document's own section heading in bold as the first line of
+ * the quote. One deviation, and it is forced: Figma puts the tag and «Åpne» on
+ * the SAME line, but `Details.Summary` is a full-width row in Designsystemet,
+ * and answer 38 says this has to be `Details`. Squeezing the summary onto the
+ * tag line means drawing the toggle ourselves, which is the thing answer 38
+ * rules out.
  */
 export function SourceExcerpt({
   excerpt,
@@ -60,6 +68,18 @@ export function SourceExcerpt({
   active,
 }: SourceExcerptProps) {
   const { citationNumber, relevance, heading, text, page, kudosUrl } = excerpt;
+
+  // The first line of the quote in Figma: the section heading from the source
+  // document, in bold, with the page after it. It goes in whichever of the two
+  // branches below is on screen — never in both at once.
+  const quoteHeading =
+    heading === undefined && page === undefined ? null : (
+      <Paragraph data-size="xs" className="source-excerpt__quote-heading">
+        {heading !== undefined && <strong>{heading}</strong>}
+        {heading !== undefined && page !== undefined && ' · '}
+        {page !== undefined && <span className="source-excerpt__page">side {page}</span>}
+      </Paragraph>
+    );
 
   return (
     <Card.Block
@@ -80,20 +100,6 @@ export function SourceExcerpt({
         </Tag>
       </div>
 
-      {(heading !== undefined || page !== undefined) && (
-        <Paragraph data-size="xs" className="source-excerpt__meta">
-          {[heading, page === undefined ? undefined : `side ${page}`]
-            .filter((part) => part !== undefined)
-            .join(' · ')}
-        </Paragraph>
-      )}
-
-      {!open && (
-        <Paragraph data-size="sm" className="source-excerpt__preview">
-          {previewOf(text)}
-        </Paragraph>
-      )}
-
       <Details
         className="source-excerpt__details"
         open={open}
@@ -107,6 +113,7 @@ export function SourceExcerpt({
           <span className="ds-sr-only"> utdrag {citationNumber}</span>
         </Details.Summary>
         <Details.Content>
+          {quoteHeading}
           <Paragraph data-size="sm" variant="long">
             <HighlightedText text={text} hits={hits} currentHit={currentHit} />
           </Paragraph>
@@ -121,6 +128,13 @@ export function SourceExcerpt({
           )}
         </Details.Content>
       </Details>
+
+      {!open && (
+        <div className="source-excerpt__preview">
+          {quoteHeading}
+          <Paragraph data-size="sm">{previewOf(text)}</Paragraph>
+        </div>
+      )}
     </Card.Block>
   );
 }
