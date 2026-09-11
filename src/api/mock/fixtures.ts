@@ -42,20 +42,20 @@ const NKOM_QUESTION =
  * table inside the flow (answer 14). The `[n]` markers are 1-indexed into
  * `nkomCitations`, the same convention the backend uses.
  */
-const NKOM_ANSWER = `## Måloppnåelse i Nasjonal kommunikasjonsmyndighet
+const NKOM_ANSWER = `# Måloppnåelse i Nasjonal kommunikasjonsmyndighet
 
 Nkom rapporterer måloppnåelse gjennom risikostyring, ressursbruk og
 strategiske prioriteringer. Årsrapportene for 2022 og 2023 beskriver det
 samme systemet, men vektlegger ulike deler av det.
 
-### Internkontroll og risikovurdering
+## Internkontroll og risikovurdering
 
 Internkontrollen bygger på årlige risikovurderinger som følges opp gjennom
 året, og avvik rapporteres til ledelsen kvartalsvis [1]. I 2023 er
 risikovurderingen knyttet tettere til virksomhetsstrategien, slik at hvert
 hovedmål har egne risikoer med navngitt eier [3].
 
-### Ressursbruk og måloppnåelse
+## Ressursbruk og måloppnåelse
 
 Ressursbruken fordeles på fire hovedmål, og rapporteringen viser både
 timeforbruk og oppnådde resultater per mål [2][4]:
@@ -65,7 +65,7 @@ timeforbruk og oppnådde resultater per mål [2][4]:
 - Trygg digital hverdag for innbyggerne
 - Effektiv forvaltning av frekvenser og nummer
 
-### Sammenligning
+## Sammenligning
 
 | Tema | 2022 | 2023 |
 | --- | --- | --- |
@@ -73,13 +73,13 @@ timeforbruk og oppnådde resultater per mål [2][4]:
 | Rapportering av avvik | Kvartalsvis | Kvartalsvis |
 | Egen omtale av 5G | Delvis | Eget kapittel |
 
-### Fokus på digital transformasjon
+## Fokus på digital transformasjon
 
 Begge årene omtaler digital transformasjon som en forutsetning for
 måloppnåelse, men 2023-rapporten knytter den til konkrete tiltak i
 saksbehandlingen [3].
 
-### 5G-utvikling
+## 5G-utvikling
 
 Utbyggingen av 5G får et eget kapittel i 2023, med dekningstall per
 fylke [4]. I 2021 er 5G omtalt som en framtidig oppgave [5].
@@ -166,13 +166,23 @@ export const nkomSources: SourceDocument[] = [
 ];
 
 export const nkomCitations: Citation[] = nkomSources.flatMap((document) =>
-  document.excerpts.map((excerpt) => ({
-    number: excerpt.citationNumber,
-    excerptId: excerpt.id,
-    documentId: document.id,
-  })),
+  document.excerpts
+    .filter((excerpt) => excerpt.citationNumber !== undefined)
+    .map((excerpt) => ({
+      number: excerpt.citationNumber as number,
+      excerptId: excerpt.id,
+      documentId: document.id,
+    })),
 );
 
+/**
+ * «10 treff i 3 dokumenter», as the design writes it.
+ *
+ * `hitCount` counts what the SEARCH found — 10 relevant chunks — not what the
+ * answer cited. The answer used 5 of them, which is why the sources below
+ * hold five excerpts and not ten. That gap is normal and worth showing: it is
+ * the difference between what was read and what was used.
+ */
 export const nkomRetrieval: RetrievalDetails = {
   hitCount: 10,
   documentCount: 3,

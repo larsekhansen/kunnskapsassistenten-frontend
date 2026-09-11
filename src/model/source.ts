@@ -46,8 +46,12 @@ export interface Excerpt {
   /**
    * 1-indexed position in the answer's flat excerpt list, which is what a
    * `[n]` marker in the answer text points at. See {@link Citation}.
+   *
+   * Undefined when the excerpt was retrieved but the answer never cited it.
+   * The search finds more than the answer uses, so the sources panel can show
+   * an excerpt that carries no number.
    */
-  citationNumber: number;
+  citationNumber?: number;
 }
 
 /**
@@ -66,3 +70,60 @@ export interface SourceDocument {
   year?: number;
   excerpts: Excerpt[];
 }
+
+/**
+ * The DOM id of an excerpt in the sources panel.
+ *
+ * The answer's `[n]` marker links to `#excerpt-n`, and the sources panel puts
+ * that id on excerpt n. Both sides call this function rather than building
+ * the string, so the convention has one definition.
+ * Decided 2026-09-11.
+ */
+export function excerptDomId(citationNumber: number): string {
+  return `excerpt-${citationNumber}`;
+}
+
+/**
+ * The accessible name of a `[n]` marker: «Kilde 3: Årsrapport Nasjonal
+ * kommunikasjonsmyndighet 2022, side 41».
+ *
+ * A bare «[3]» tells a screen reader user nothing about where they are being
+ * sent, so the marker carries the document and, when there is one, the page.
+ */
+export function citationAccessibleName(
+  citationNumber: number,
+  documentTitle: string,
+  page?: number,
+): string {
+  const where = page === undefined ? '' : `, side ${page}`;
+  return `Kilde ${citationNumber}: ${documentTitle}${where}`;
+}
+
+/**
+ * Every cited excerpt in a set of documents, as link targets for the answer.
+ * Excerpts the answer did not cite carry no number and are skipped.
+ */
+export function citationTargets(documents: SourceDocument[]): CitationTarget[] {
+  return documents
+    .flatMap((document) => document.excerpts.map((excerpt) => ({ document, excerpt })))
+    .filter(({ excerpt }) => excerpt.citationNumber !== undefined)
+    .map(({ document, excerpt }) => {
+      const number = excerpt.citationNumber as number;
+      return {
+        number,
+        targetId: excerptDomId(number),
+        label: citationAccessibleName(number, document.title, excerpt.page),
+      };
+    })
+    .sort((a, b) => a.number - b.number);
+}
+
+/** A `[n]` marker's link target, ready for the markdown renderer. */
+export type CitationTarget = {
+  /** 1-indexed, as written in the answer. */
+  number: number;
+  /** DOM id of the excerpt this marker points at. */
+  targetId: string;
+  /** Norwegian accessible name for the marker. */
+  label: string;
+};

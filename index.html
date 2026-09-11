@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nb" data-color-scheme="light">
+<html lang="nb" data-color-scheme="auto">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,6 +13,22 @@
       crossorigin="anonymous"
     />
     <title>Kunnskapsassistenten</title>
+    <!--
+      Dark mode follows the operating system by default. A stored override is
+      applied here, before the first paint, so the page never flashes the
+      wrong scheme. The API is window.ka.colorScheme in
+      src/layout/colorScheme.ts, which owns the same two strings.
+    -->
+    <script>
+      try {
+        var kaScheme = localStorage.getItem('ka.color-scheme');
+        if (kaScheme === 'light' || kaScheme === 'dark' || kaScheme === 'auto') {
+          document.documentElement.setAttribute('data-color-scheme', kaScheme);
+        }
+      } catch (error) {
+        /* Storage can throw when site data is blocked. Keep the default. */
+      }
+    </script>
   </head>
   <!--
     data-size and data-color sit on <body>, not on <html>, on purpose.

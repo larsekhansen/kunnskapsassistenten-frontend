@@ -5,10 +5,12 @@ import type { SourceDocument } from './source';
 export type MessageRole = 'user' | 'assistant';
 
 /**
- * `streaming` is an assistant message still being produced. `error` means the
- * turn failed; `content` then holds whatever arrived before it did.
+ * `streaming` is an assistant message still being produced. `aborted` is the
+ * user pressing stop (answer 34), which is not a failure: the text that did
+ * arrive stays on screen and stays readable. `error` means the turn failed;
+ * `content` then holds whatever arrived before it did.
  */
-export type MessageStatus = 'streaming' | 'complete' | 'error';
+export type MessageStatus = 'streaming' | 'complete' | 'aborted' | 'error';
 
 /**
  * One turn in a thread.

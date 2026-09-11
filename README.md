@@ -25,6 +25,7 @@ Node 24 eller nyere.
 | `npm run build`         | `tsc -b` og produksjonsbygg til `dist/`                                                          |
 | `npm run preview`       | Server produksjonsbygget lokalt                                                                  |
 | `npm run lint`          | oxlint, inkludert `jsx-a11y`-reglene                                                             |
+| `npm run test`          | vitest én gang. `npm run test:watch` for løpende kjøring                                         |
 | `npm run format`        | Prettier, skriver                                                                                |
 | `npm run format:check`  | Prettier, sjekker bare                                                                           |
 | `npm run tokens:build`  | Bygger temaet på nytt fra `designsystemet.config.json`                                           |
@@ -45,13 +46,31 @@ src/
   main.tsx                    inngangspunkt, BrowserRouter
   App.tsx                     rutene
   globals.d.ts                window.dsWarnings
+  env.d.ts                    VITE_API_MODE
   styles/global.css           importrekkefølge og all egen CSS
+  model/                      delte domenetyper: Thread, Message, Citation,
+                              SourceDocument, FilterFacet, StreamEvent …
+  api/
+    chatClient.ts             grensesnittet mock og ekte klient deler
+    index.ts                  createChatClient(), leser VITE_API_MODE
+    mock/                     fixtures og MockChatClient
   layout/
     Shell.tsx                 de tre plassene
-    viewModel.ts              Slot, ViewId, View, Layout. Bare abstraksjonen
+    viewModel.ts              Slot, ViewId, View, Layout, bredder, operasjoner
+    layoutContext.ts          React-konteksten
+    LayoutProvider.tsx        tilstanden: aktivt view, kollapset, bredder
+    useLayout.ts              useLayout() og useSlot()
+    viewComponents.ts         hvilken komponent som tegner hvilket view
+    ViewPlaceholder.tsx       står i til viewene er bygget
+    colorScheme.ts            mørk modus, window.ka.colorScheme
+    citationContext.ts        hvilken [n] brukeren vil se
+    useCitation.ts            useCitation()
+  components/                 PanelHeader, Markdown, EmptyState, ErrorState
+    icons.ts                  aksel-ikoner under KA-navn
   routes/
     NewConversation.tsx       ruten /
     Thread.tsx                ruten /threads/:threadId
+  test/setup.ts               jsdom-oppsett for vitest
 ```
 
 Rutene er `/` for ny samtale og `/threads/:threadId` for én samtale.
@@ -115,6 +134,12 @@ grensesnitt for å bytte layout ennå, ingen dra-håndtak og ingen lagring.
 Grunnen til at abstraksjonen kommer først står i fila: plassinnhold,
 plassbredde og modusvekslingen i begge sidepaneler er samme problem.
 
+## Sideflaten
+
+Sida er lys grå, ikke hvit: `--ds-color-neutral-background-tinted` på
+`.shell`. Designet setter hvite kort på grå flate, og på hvit flate forsvinner
+kortene. Navigasjonspanelet har sin egen hvite flate over den grå.
+
 ## Temaet
 
 Digdir-temaet er ikke publisert på npm, så det genereres her med
@@ -141,12 +166,12 @@ mørk modus.
 Rot-attributtene står i `index.html`, og **de står på to forskjellige
 elementer med vilje**:
 
-| Attributt                   | Element      | Hvorfor                                                                                                                                                                       |
-| --------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lang="nb"`                 | `<html>`     | Flere Designsystemet-komponenter har norske standardtekster som bare slår inn når nærmeste `lang` starter på `nb`, `nn` eller `no`. `Suggestion` er det tydeligste eksempelet |
-| `data-color-scheme="light"` | `<html>`     | Samme sted som Designsystemets egen nettside setter den                                                                                                                       |
-| `data-size="md"`            | **`<body>`** | Se under                                                                                                                                                                      |
-| `data-color="accent"`       | `<body>`     | Følger `data-size`                                                                                                                                                            |
+| Attributt                  | Element      | Hvorfor                                                                                                                                                                       |
+| -------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lang="nb"`                | `<html>`     | Flere Designsystemet-komponenter har norske standardtekster som bare slår inn når nærmeste `lang` starter på `nb`, `nn` eller `no`. `Suggestion` er det tydeligste eksempelet |
+| `data-color-scheme="auto"` | `<html>`     | Følger operativsystemet. Overstyres av `window.ka.colorScheme`, se «Mørk modus»                                                                                               |
+| `data-size="md"`           | **`<body>`** | Se under                                                                                                                                                                      |
+| `data-color="accent"`      | `<body>`     | Følger `data-size`                                                                                                                                                            |
 
 **`data-size` må ikke stå på `<html>`.** Designsystemets `[data-size]`-regel
 setter `font-size` på elementet den treffer. Står den på `<html>`, blir `1rem`
@@ -169,21 +194,124 @@ Praktisk betyr det:
   tegnes ikke selv.
 - Alt er norsk, også tilgjengelige navn.
 - Ikonknapper må ha `aria-label`.
-- Hopp-lenka til `#main-content` skal alltid være første fokuserbare element.
+- Hopp-lenka er Designsystemets `SkipLink` og er alltid første fokuserbare
+  element.
 
-## Åpne punkter i Trinn 1
+## Åpne punkter
 
-- **Mørk modus er ikke avgjort.** `data-color-scheme="light"` er satt fordi
-  temaet har mørke verdier, men ingen Figma-skjerm er tegnet i mørk modus og
-  fargene er ikke verifisert der. Skal mørk modus støttes, er verdien `auto`,
-  og da må kontrasten sjekkes.
 - **Brytepunkter** finnes ikke. Se «Bredder».
-- **Bredden på åpen `secondary-sidebar`** er ikke bestemt. Plassen er kollapset på
-  198 px nå.
+- **Bredden på åpen `secondary-sidebar`** er fortsatt ikke bestemt (spørsmål
+  26). Verdien i `defaultLayout` er **483 px**, ikke Figmas 514: framen som
+  viser 514 stikker 31 px utenfor sin egen 1440, og 483 er spesifikasjonens
+  egen anbefaling for at raden skal gå opp. Ett tall å endre, i
+  `src/layout/viewModel.ts`.
 - **Topplinje** er ikke bestemt, så det finnes ingen.
 - ~~React Router-versjonen.~~ **Avgjort 2026-09-11:** 8.3.1, pinnet uten
   caret, samme versjon som ki.norge.no og Designsystemets egen nettside. Se
   «React Router» under.
+
+## Views og plasser i kode
+
+Et **view** er en komponent som tar `SlotViewProps` (`src/layout/viewModel.ts`)
+og ikke noe annet. Alle fire tar de samme propene, så et view kan monteres i
+hvilken som helst plass uten at skallet vet hva det er:
+
+| Prop                   | Hva                                                           |
+| ---------------------- | ------------------------------------------------------------- |
+| `view`                 | hvilket view skallet tegner. Kan ignoreres                    |
+| `collapsed`            | om plassen viewet står i er kollapset                         |
+| `onCollapsedChange`    | be plassen kollapse eller åpne                                |
+| `activeCitationNumber` | hvilken `[n]` brukeren sist ba om å få se                     |
+| `activeCitationNonce`  | teller opp ved hver forespørsel, også når tallet er det samme |
+
+**Plassen eier kollapset/åpen, ikke viewet.** Et view som skjulte seg selv
+ville etterlate knappen som lyver om sin egen tilstand.
+
+Nonce-en finnes fordi to klikk på samme `[n]` ikke endrer tallet. Uten den
+kunne kildepanelet ikke se at det ble spurt en gang til.
+
+Koblingen mellom svaret og kildene går gjennom `useCitation()`: chat-viewet
+kaller `showCitation(n)`, kildepanelet leser `activeCitation`. De to viewene
+importerer aldri hverandre, og det er nettopp det som gjør at hvert av dem kan
+flyttes til en annen plass.
+
+`src/layout/viewComponents.ts` sier hvilken komponent som tegner hvilket view.
+Når et view er bygget, er det den ene linja som endres.
+
+### Scroll
+
+**Hovedkolonnen eier scrollen**, ikke viewet som står i den. Et view som skal
+følge et svar som vokser, eller tilby «bla til nederst», bruker
+`useMainScroll()` og får `ref` til elementet pluss `scrollToBottom()`. Ikke gå
+opp i DOM-treet etter `.main`: det virker helt til viewet monteres et annet
+sted, og da finner det feil element eller ingenting.
+
+`ref.current` leses i en effekt eller en hendelseshåndterer, aldri under
+render.
+
+### Overskriftsnivåer
+
+`Markdown` starter på nivå 2, så `#` blir nivå 2, `##` nivå 3 og `###` nivå 4
+under sidetittelen. Starter et svar på `##`, hopper dokumentet fra nivå 1 til
+3 med mindre noe annet tegner en nivå 2 imellom. Hev `startLevel` bare når
+svaret ligger under en egen overskrift.
+
+## Kildehenvisninger
+
+Avgjort 2026-09-11. **Et `[n]` i svaret peker på et UTDRAG, ikke på et
+dokument.** Det stemmer med backenden, der `[n]` er 1-indeksert inn i
+`structuredContent.chunks`.
+
+- Markøren tegnes som hevet skrift og er en lenke til `#excerpt-n`.
+- Id-en bygges av `excerptDomId(n)` i `src/model/source.ts`, av begge sider.
+  Ingen bygger strengen selv.
+- Markørens tilgjengelige navn er `Kilde 3: Årsrapport Nkom 2022, side 41`,
+  fra `citationAccessibleName()`. «[3]» alene sier en skjermleserbruker
+  ingenting om hvor lenken går.
+- `citationTargets(documents)` gir hele lista ferdig til `<Markdown citations=…>`.
+- En markør uten utdrag blir stående som ren tekst. Det er riktig oppførsel
+  når modellen siterer noe som ikke finnes.
+
+Merk at et utdrag kan mangle `citationNumber`: søket finner mer enn svaret
+bruker, og «10 treff» ved siden av fem kilder er derfor riktig, ikke en feil.
+
+## Ikoner
+
+`@navikt/aksel-icons` følger med Designsystemet, men er pinnet eksplisitt her
+så en import ikke er avhengig av hvordan npm hoister. Pakken er ES-moduler med
+`sideEffects: false`, så bare ikonene som brukes havner i bundlen: **målt
++1,99 kB for to ikoner**, mot flere megabyte om pakken ikke var ristet.
+
+Importer alltid fra `src/components/icons.ts`, aldri fra pakken direkte. Den
+fila er det ene stedet leverandørens posisjonsnavn får stå, og den døper dem om
+til våre. Se kommentaren i fila.
+
+## Mørk modus
+
+**Avgjort av Lars 2026-09-11: KA leverer mørk modus**, rett fra Digdir-temaets
+tokens. Temaet har allerede 147 variabler i lys og mørk utgave, så kostnaden er
+å verifisere skjermene, ikke å bygge noe.
+
+`<html data-color-scheme="auto">` følger operativsystemet, og det er
+standarden. Det finnes **ingen synlig bryter**, fordi ingen knapp er tegnet.
+Bryteren er en konsollkommando:
+
+```js
+window.ka.colorScheme.get(); // 'auto' | 'light' | 'dark'
+window.ka.colorScheme.set('dark');
+window.ka.colorScheme.set('auto'); // tilbake til operativsystemet
+```
+
+Valget lagres per nettleser i `localStorage` under `ka.color-scheme`, og leses
+av et lite innebygd skript i `index.html` **før første maling**, så sida aldri
+blinker i feil modus. Det skriptet og `src/layout/colorScheme.ts` deler to
+strenger, nøkkelen og attributtnavnet, og ingenting annet.
+
+Når designeren tegner en knapp, kaller den `set()`. Resten er uendret.
+
+Dette er også grunnen til at ingen farge skrives som heks noe sted: en
+hardkodet farge følger ikke `data-color-scheme`, og mørk modus ryker på første
+regel som gjør det.
 
 ## React Router
 
