@@ -1,20 +1,16 @@
-import { Button, Heading, Link, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
+import { Button, Link, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
 import { FunnelIcon, PencilWritingIcon } from '@navikt/aksel-icons';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { NavLink } from 'react-router';
 import { createChatClient } from '../../api';
+import { EmptyState, ErrorState, PanelHeader } from '../../components';
+import type { SlotViewProps } from '../../layout/viewModel';
 import type { Thread } from '../../model';
 import { groupThreads } from './grouping';
 import './threads.css';
 
-export type ThreadsViewProps = {
-  /**
-   * Switches the slot to the filters view. The switch lives in the layout, so
-   * the view only reports the intent. Without a handler the button is not
-   * rendered at all: a control that does nothing is worse than no control.
-   */
-  onShowFilters?: () => void;
-  /** Overrides the fetch. Only for previews and tests. */
+export type ThreadsViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> & {
+  /** Overrides the fetch. Only for tests. */
   threads?: Thread[];
 };
 
@@ -22,13 +18,15 @@ export type ThreadsViewProps = {
  * The thread list: a new thread, a search field, and earlier threads grouped
  * by period.
  *
- * The view fetches what it renders, so mounting it takes no wiring. Data
- * comes from the ChatClient, which is the mock until the live client exists.
+ * The view fetches what it renders, so the shell mounts it without wiring.
+ * Data comes from the ChatClient, which is the mock until the live client
+ * exists.
  */
-export function ThreadsView({ onShowFilters, threads: given }: ThreadsViewProps) {
+export function ThreadsView({ siblingViews, onShowView, threads: given }: ThreadsViewProps) {
   const client = useMemo(() => createChatClient(), []);
   const [threads, setThreads] = useState<Thread[] | undefined>(given);
   const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState('');
   const searchStatusId = useId();
 
@@ -44,7 +42,15 @@ export function ThreadsView({ onShowFilters, threads: given }: ThreadsViewProps)
       });
 
     return () => abort.abort();
-  }, [client, given]);
+  }, [client, given, attempt]);
+
+  // Clearing the error here rather than in the effect: the retry click is
+  // what changed, and setting state inside an effect starts another render.
+  const retry = useCallback(() => {
+    setThreads(undefined);
+    setFailed(false);
+    setAttempt((count) => count + 1);
+  }, []);
 
   const trimmed = query.trim().toLocaleLowerCase('nb-NO');
   const matches = useMemo(
@@ -56,8 +62,15 @@ export function ThreadsView({ onShowFilters, threads: given }: ThreadsViewProps)
 
   return (
     <div className="threads-view">
-      {onShowFilters && (
-        <Button variant="tertiary" data-color="neutral" onClick={onShowFilters}>
+      {/*
+        The way in to filtering. The slot tells the view which other views it
+        holds, so the button appears only when there is somewhere to go.
+        Conditional rendering, not Tabs: this is navigation between two modes,
+        not two views that exist side by side. See
+        design/designsystemet/behov-til-komponent.md.
+      */}
+      {siblingViews.includes('filters') && (
+        <Button variant="tertiary" data-color="neutral" onClick={() => onShowView('filters')}>
           <FunnelIcon aria-hidden="true" />
           Filtrer dokumenter
         </Button>
@@ -70,28 +83,26 @@ export function ThreadsView({ onShowFilters, threads: given }: ThreadsViewProps)
         </NavLink>
       </Button>
 
-      <Heading level={2} data-size="xs">
-        Tidligere tråder
-      </Heading>
-
-      {/*
-        <search> is the landmark; the <form> inside it is what makes
-        Search.Clear work, since that button is type="reset". Submitting does
-        nothing because the list filters as the user types.
-      */}
-      <search>
-        <form onSubmit={(event) => event.preventDefault()} onReset={() => setQuery('')}>
-          <Search>
-            <Search.Input
-              aria-label="Søk i tråder"
-              aria-describedby={trimmed ? searchStatusId : undefined}
-              placeholder="Søk i tråder"
-              onInput={(event) => setQuery(event.currentTarget.value)}
-            />
-            <Search.Clear />
-          </Search>
-        </form>
-      </search>
+      <PanelHeader title="Tidligere tråder">
+        {/*
+          <search> is the landmark; the <form> inside it is what makes
+          Search.Clear work, since that button is type="reset". Submitting
+          does nothing because the list filters as the user types.
+        */}
+        <search>
+          <form onSubmit={(event) => event.preventDefault()} onReset={() => setQuery('')}>
+            <Search>
+              <Search.Input
+                aria-label="Søk i tråder"
+                aria-describedby={trimmed ? searchStatusId : undefined}
+                placeholder="Søk i tråder"
+                onInput={(event) => setQuery(event.currentTarget.value)}
+              />
+              <Search.Clear />
+            </Search>
+          </form>
+        </search>
+      </PanelHeader>
 
       {trimmed && (
         <Paragraph asChild data-size="sm">
@@ -101,11 +112,7 @@ export function ThreadsView({ onShowFilters, threads: given }: ThreadsViewProps)
         </Paragraph>
       )}
 
-      {failed && (
-        <Paragraph data-size="sm">
-          Klarte ikke å hente trådene. Prøv å laste siden på nytt.
-        </Paragraph>
-      )}
+      <ErrorState message={failed ? 'Klarte ikke å hente trådene.' : undefined} onRetry={retry} />
 
       {!failed && !threads && (
         <div className="threads-view__loading">
@@ -117,21 +124,20 @@ export function ThreadsView({ onShowFilters, threads: given }: ThreadsViewProps)
         </div>
       )}
 
-      {threads && threads.length === 0 && (
-        <Paragraph data-size="sm">
-          Du har ingen tråder ennå. Still et spørsmål, så havner samtalen her.
-        </Paragraph>
+      {threads?.length === 0 && (
+        <EmptyState
+          title="Ingen tråder ennå"
+          description="Still et spørsmål, så havner samtalen her."
+        />
       )}
 
       {threads && threads.length > 0 && matches.length === 0 && (
-        <Paragraph data-size="sm">Ingen tråder passer til søket.</Paragraph>
+        <EmptyState title="Ingen treff" description="Ingen tråder passer til søket." />
       )}
 
       {groups.map((group) => (
         <section key={group.id} className="threads-view__group">
-          <Heading level={3} data-size="2xs">
-            {group.title}
-          </Heading>
+          <PanelHeader title={group.title} level={3} size="2xs" />
           <ul className="threads-view__list">
             {group.threads.map((thread) => (
               <li key={thread.id}>

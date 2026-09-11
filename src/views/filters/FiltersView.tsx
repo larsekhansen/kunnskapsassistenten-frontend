@@ -1,24 +1,17 @@
-import { Button, Heading, Paragraph, Skeleton } from '@digdir/designsystemet-react';
+import { Button, Skeleton } from '@digdir/designsystemet-react';
 import { ArrowLeftIcon } from '@navikt/aksel-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createChatClient } from '../../api';
-import type { FilterFacet, FilterSelection } from '../../model';
-import { emptyFilterSelection } from '../../model';
+import { ErrorState, PanelHeader } from '../../components';
+import { useFilterSelection } from '../../layout/useFilterSelection';
+import type { SlotViewProps } from '../../layout/viewModel';
+import type { FilterFacet } from '../../model';
 import { DocumentsList } from './DocumentsList';
 import { FacetField } from './FacetField';
 import './filters.css';
 
-export type FiltersViewProps = {
-  /**
-   * Switches the slot back to the thread list. The switch lives in the
-   * layout, so the view only reports the intent; without a handler the button
-   * is not rendered, because a control that does nothing is worse than none.
-   */
-  onShowThreads?: () => void;
-  /** Lifts the selection into the layout once it has somewhere to live. */
-  selection?: FilterSelection;
-  onSelectionChange?: (selection: FilterSelection) => void;
-  /** Overrides the fetch. Only for previews and tests. */
+export type FiltersViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> & {
+  /** Overrides the fetch. Only for tests. */
   facets?: FilterFacet[];
 };
 
@@ -28,24 +21,19 @@ export type FiltersViewProps = {
  * This is where a first-time user lands (answer 1), so it is the view that
  * has to be legible without any prior state.
  *
- * The selection is kept here until the layout owns it. Passing `selection`
- * and `onSelectionChange` takes it over without touching this file.
+ * The selection is not kept here. The chat view has to ask its question
+ * against the same narrowing, and two views may not import each other, so the
+ * shell holds it — see src/layout/filterContext.ts.
  */
-export function FiltersView({
-  onShowThreads,
-  selection: given,
-  onSelectionChange,
-  facets: givenFacets,
-}: FiltersViewProps) {
+export function FiltersView({ siblingViews, onShowView, facets: given }: FiltersViewProps) {
   const client = useMemo(() => createChatClient(), []);
-  const [facets, setFacets] = useState<FilterFacet[] | undefined>(givenFacets);
+  const { selection, setSelection } = useFilterSelection();
+  const [facets, setFacets] = useState<FilterFacet[] | undefined>(given);
   const [failed, setFailed] = useState(false);
-  const [own, setOwn] = useState<FilterSelection>(emptyFilterSelection);
-
-  const selection = given ?? own;
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (givenFacets) return;
+    if (given) return;
 
     const abort = new AbortController();
     client
@@ -56,31 +44,34 @@ export function FiltersView({
       });
 
     return () => abort.abort();
-  }, [client, givenFacets]);
+  }, [client, given, attempt]);
 
-  function update(next: FilterSelection) {
-    if (onSelectionChange) onSelectionChange(next);
-    else setOwn(next);
-  }
+  // Clearing the error here rather than in the effect: the retry click is
+  // what changed, and setting state inside an effect starts another render.
+  const retry = useCallback(() => {
+    setFacets(undefined);
+    setFailed(false);
+    setAttempt((count) => count + 1);
+  }, []);
 
   return (
     <div className="filters-view">
-      {onShowThreads && (
-        <Button variant="tertiary" data-color="neutral" onClick={onShowThreads}>
+      {/*
+        The way back to the thread list. The slot tells the view which other
+        views it holds, so the button appears only when there is somewhere to
+        go. A Button and not a Link: it changes what the panel shows, not the
+        address. See design/designsystemet/behov-til-komponent.md.
+      */}
+      {siblingViews.includes('threads') && (
+        <Button variant="tertiary" data-color="neutral" onClick={() => onShowView('threads')}>
           <ArrowLeftIcon aria-hidden="true" />
           Tråder
         </Button>
       )}
 
-      <Heading level={2} data-size="sm">
-        Filtrering
-      </Heading>
+      <PanelHeader title="Filtrering" size="sm" />
 
-      {failed && (
-        <Paragraph data-size="sm">
-          Klarte ikke å hente filtrene. Prøv å laste siden på nytt.
-        </Paragraph>
-      )}
+      <ErrorState message={failed ? 'Klarte ikke å hente filtrene.' : undefined} onRetry={retry} />
 
       {!failed && !facets && (
         <div className="filters-view__loading">
@@ -97,7 +88,7 @@ export function FiltersView({
           key={facet.dimension}
           facet={facet}
           selected={selection[facet.dimension]}
-          onChange={(values) => update({ ...selection, [facet.dimension]: values })}
+          onChange={(values) => setSelection({ ...selection, [facet.dimension]: values })}
         />
       ))}
 

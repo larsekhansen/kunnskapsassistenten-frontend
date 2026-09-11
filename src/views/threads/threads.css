@@ -6,6 +6,11 @@
  *
  * No px, no hex. Everything is --ds-* so the panel follows the theme, the
  * size mode and dark mode.
+ *
+ * Every rule here that sets `display` is paired with a `[hidden]` rule.
+ * Unlayered author CSS beats the browser's own `[hidden] { display: none }`,
+ * so without the pair an element stays on screen after being hidden. See
+ * CONTRIBUTING.
  */
 
 .threads-view {
@@ -13,26 +18,31 @@
   flex-direction: column;
   align-items: start;
   gap: var(--ds-size-6);
+  /* The slot lays its children out with align-items: start, so the view has
+     to claim the width itself. */
+  inline-size: 100%;
 }
 
-/* The search form and the button both need the full column width. */
-.threads-view > form,
-.threads-view > .ds-btn {
-  align-self: stretch;
+/* The button and the search field both need the full column width. */
+.threads-view > .ds-btn,
+.threads-view search,
+.threads-view form,
+.threads-view .ds-search {
+  inline-size: 100%;
 }
 
 .threads-view__loading {
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-2);
-  align-self: stretch;
+  inline-size: 100%;
 }
 
 .threads-view__group {
-  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-2);
+  inline-size: 100%;
 }
 
 /*
@@ -69,4 +79,12 @@
 .threads-view__thread[aria-current='page'] {
   background: var(--ds-color-accent-surface-active);
   font-weight: var(--ds-font-weight-medium);
+}
+
+.threads-view[hidden],
+.threads-view__loading[hidden],
+.threads-view__group[hidden],
+.threads-view__list[hidden],
+.threads-view__thread[hidden] {
+  display: none;
 }

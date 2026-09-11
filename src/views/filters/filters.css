@@ -6,6 +6,11 @@
  *
  * No px, no hex. Everything is --ds-* so the panel follows the theme, the
  * size mode and dark mode.
+ *
+ * Every rule here that sets `display` is paired with a `[hidden]` rule.
+ * Unlayered author CSS beats the browser's own `[hidden] { display: none }`,
+ * so without the pair an element stays on screen after being hidden. See
+ * CONTRIBUTING.
  */
 
 .filters-view {
@@ -13,18 +18,22 @@
   flex-direction: column;
   align-items: start;
   gap: var(--ds-size-6);
+  /* The slot lays its children out with align-items: start, so the view has
+     to claim the width itself. */
+  inline-size: 100%;
 }
 
+.filters-view > .ds-btn,
 .filters-view > ds-field,
-.filters-view > section,
-.filters-view__loading {
-  align-self: stretch;
+.filters-view > section {
+  inline-size: 100%;
 }
 
 .filters-view__loading {
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-4);
+  inline-size: 100%;
 }
 
 /* The label and its two actions share one line above the field. */
@@ -54,6 +63,9 @@
  * against the viewport, because the list sits in the top layer with no
  * positioned ancestor. Hence rem and min(): they still follow the root font
  * size, which is what the size mode changes.
+ *
+ * Only `width`, never `display`: u-combobox opens and closes this element
+ * with `hidden`, and a `display` here would keep it on screen.
  */
 .ds-suggestion > u-datalist {
   width: min(26rem, calc(100vw - var(--ds-size-8)));
@@ -86,4 +98,14 @@
   background: var(--ds-color-neutral-background-tinted);
   color: var(--ds-color-neutral-text-subtle);
   text-align: center;
+}
+
+.filters-view[hidden],
+.filters-view__loading[hidden],
+.facet-field__label-row[hidden],
+.facet-field__actions[hidden],
+.documents-list[hidden],
+.documents-list__heading-row[hidden],
+.documents-list__upload[hidden] {
+  display: none;
 }
