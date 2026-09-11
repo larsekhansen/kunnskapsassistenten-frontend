@@ -352,6 +352,7 @@ async page => {
       const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
       const seenBefore = el.hasAttribute('data-ka-focus-seen');
       el.setAttribute('data-ka-focus-seen', '');
+
       const labelFor = () => {
         if (el.id === '') return '';
         const label = document.querySelector('label[for="' + el.id + '"]');
@@ -403,6 +404,7 @@ async page => {
   await page.evaluate(() => {
     document.querySelectorAll('[data-ka-focus-seen]').forEach((el) => {
       el.removeAttribute('data-ka-focus-seen');
+      el.removeAttribute('data-ka-focus-step');
     });
   });
 
@@ -458,9 +460,15 @@ summarise() {
     }
     d.focus.steps.forEach((s, i) => {
       const fv = s.focusVisible ? "" : "  IKKE :focus-visible";
-      const ring = s.outline === "none" && s.boxShadow === "none" ? "  INGEN SYNLIG FOKUSRING" : "";
+      // Rådata, ikke en avledet dom. En ren outline-test melder
+      // Designsystemets SkipLink feilaktig som uten fokusring (den setter
+      // outline: 0 med vilje og bruker flate og understreking), og en
+      // før/etter-sammenligning er upålitelig fordi blur() slår ut
+      // :focus-visible. Skriv ut det som er målt og la anmelderen lese det.
+      const ring = s.outline === "none" && s.boxShadow === "none" ? "  ingen outline/box-shadow" : "";
       line("    " + String(i + 1).padStart(2) + ". " + s.tag + (s.role ? "[" + s.role + "]" : "") +
         " «" + s.name + "»" + (s.visible ? "" : "  USYNLIG") + fv + ring);
+      line("        fokus: outline " + s.outline + " · box-shadow " + s.boxShadow);
     });
     const heads = d.structure.headings.map((h) => h.level);
     for (let i = 1; i < heads.length; i += 1) {
