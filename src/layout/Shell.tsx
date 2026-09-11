@@ -72,7 +72,7 @@ function Sidebar({
   slot: 'primary-sidebar' | 'secondary-sidebar';
   element: 'nav' | 'aside';
 }) {
-  const { layout, toggleCollapsed, setCollapsed, setActiveView } = useLayout();
+  const { layout, toggleCollapsed, setCollapsed, setActiveView, isSwitchedByUser } = useLayout();
   const { activeCitation } = useCitation();
   const state = layout.slots[slot];
   const contentId = useId();
@@ -108,6 +108,7 @@ function Sidebar({
           activeCitationNonce={activeCitation?.nonce}
           siblingViews={state.views.filter((id) => id !== state.activeView)}
           onShowView={(view) => setActiveView(slot, view)}
+          switchedByUser={isSwitchedByUser(slot)}
         />
       </div>
     </Element>

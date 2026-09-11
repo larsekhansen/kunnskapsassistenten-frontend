@@ -93,6 +93,21 @@ export type SlotViewProps = {
   siblingViews: ViewId[];
   /** Switch the slot to another view it holds. */
   onShowView: (view: ViewId) => void;
+  /**
+   * True when the user switched to this view, false when the page simply
+   * opened on it.
+   *
+   * Two views in one slot are modes of one panel: switching unmounts the view
+   * the button stood in, and focus falls to `document.body`. The view that
+   * mounts has to claim it back. But a view cannot tell «the user switched to
+   * me» from «the page just loaded» on its own, since both are a first mount
+   * and `defaultLayout` opens on filters (answer 1). Claiming focus on a page
+   * load would jump the user past the skip link.
+   *
+   * Only the layout knows the difference, because only the layout is told to
+   * switch. Read it on mount and move focus when it is true.
+   */
+  switchedByUser: boolean;
 };
 
 export type SlotState = {

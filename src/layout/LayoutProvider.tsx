@@ -37,11 +37,15 @@ export function LayoutProvider({
   const [layout, setLayout] = useState(initialLayout);
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | undefined>(undefined);
   const [selection, setSelection] = useState<FilterSelection>(emptyFilterSelection);
+  // The view the user last switched each slot to. Empty on a page load, which
+  // is the whole point: a view that mounts because the default layout opened
+  // on it must not take focus off the skip link.
+  const [switchedTo, setSwitchedTo] = useState<Partial<Record<Slot, ViewId>>>({});
 
-  const setActiveView = useCallback(
-    (slot: Slot, view: ViewId) => setLayout((current) => withActiveView(current, slot, view)),
-    [],
-  );
+  const setActiveView = useCallback((slot: Slot, view: ViewId) => {
+    setLayout((current) => withActiveView(current, slot, view));
+    setSwitchedTo((current) => ({ ...current, [slot]: view }));
+  }, []);
   const setCollapsed = useCallback(
     (slot: Slot, collapsed: boolean) =>
       setLayout((current) => withCollapsed(current, slot, collapsed)),
@@ -68,9 +72,25 @@ export function LayoutProvider({
     setLayout((current) => withCollapsed(current, 'secondary-sidebar', false));
   }, []);
 
+  // Compared against the active view, not just read: `withActiveView` ignores
+  // a view that does not sit in the slot, and a request that changed nothing
+  // must not claim focus.
+  const isSwitchedByUser = useCallback(
+    (slot: Slot) => switchedTo[slot] === layout.slots[slot].activeView,
+    [switchedTo, layout],
+  );
+
   const value = useMemo(
-    () => ({ layout, setActiveView, setCollapsed, toggleCollapsed, setWidth, moveView }),
-    [layout, setActiveView, setCollapsed, toggleCollapsed, setWidth, moveView],
+    () => ({
+      layout,
+      setActiveView,
+      setCollapsed,
+      toggleCollapsed,
+      setWidth,
+      moveView,
+      isSwitchedByUser,
+    }),
+    [layout, setActiveView, setCollapsed, toggleCollapsed, setWidth, moveView, isSwitchedByUser],
   );
 
   const citation = useMemo(

@@ -275,12 +275,30 @@ hvilken som helst plass uten at skallet vet hva det er:
 | `onCollapsedChange`    | be plassen kollapse eller åpne                                |
 | `activeCitationNumber` | hvilken `[n]` brukeren sist ba om å få se                     |
 | `activeCitationNonce`  | teller opp ved hver forespørsel, også når tallet er det samme |
+| `siblingViews`         | de andre viewene i samme plass, å veksle til                  |
+| `onShowView`           | be plassen vise et annet view den holder                      |
+| `switchedByUser`       | om brukeren vekslet hit, eller om sida bare åpnet her         |
 
 **Plassen eier kollapset/åpen, ikke viewet.** Et view som skjulte seg selv
 ville etterlate knappen som lyver om sin egen tilstand.
 
 Nonce-en finnes fordi to klikk på samme `[n]` ikke endrer tallet. Uten den
 kunne kildepanelet ikke se at det ble spurt en gang til.
+
+**`switchedByUser` finnes fordi et view ikke kan se forskjell på «brukeren
+vekslet hit» og «sida ble lastet».** Begge er en første montering, og
+standardlayouten åpner på filter (spørsmål 1). To view i samme plass er
+moduser av ett panel: veksler du, avmonteres knappen du trykte på, og fokus
+faller til `document.body`. Viewet som kommer opp må ta det tilbake, men bare
+når noen faktisk ba om det. Å ta fokus ved sidelasting ville hoppet forbi
+hopp-lenka.
+
+Bare layouten vet forskjellen, for det er bare layouten som blir bedt om å
+veksle. `LayoutProvider` husker hvilket view brukeren sist vekslet hver plass
+til, og `isSwitchedByUser()` sammenligner det med viewet som faktisk står der,
+så en forespørsel som ikke endret noe heller ikke gir fokus. Det ligger
+bevisst **utenfor** `Layout`: det sier hvordan layouten kom hit, ikke hva den
+er, og skal ikke lagres den dagen en layout blir husket.
 
 Koblingen mellom svaret og kildene går gjennom `useCitation()`: chat-viewet
 kaller `showCitation(n)`, kildepanelet leser `activeCitation`. De to viewene
