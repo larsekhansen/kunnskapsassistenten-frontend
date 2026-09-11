@@ -25,8 +25,12 @@
 # tilgjengelig for brukeren.
 #
 # Alt skrives til:
-#   docs/review/runs/<navn>/…json   rådata, ikke i git (se .gitignore)
-#   design/skjermbilder-frontend/   skjermbilder, som byggereglene sier
+#   ~/.cache/ka-review/runs/<navn>/  rådata som JSON, utenfor repoet
+#   design/skjermbilder-frontend/    skjermbilder, som byggereglene sier
+#
+# Rådataene ligger utenfor repoet med vilje. Prettier leser .prettierignore,
+# ikke .gitignore, så artefakter inne i treet hadde brutt format:check, og
+# .prettierignore er grunnmurens fil. Funnene hører i rapportene uansett.
 #
 # Krever playwright-cli (globalt installert) og laster ned axe-core til
 # ~/.cache/ka-review/ ved første kjøring. Ingenting legges i package.json;
@@ -69,11 +73,11 @@ done
 if [[ -f "$UMBRELLA/design/INDEX.md" ]]; then
   SHOTS="$UMBRELLA/design/skjermbilder-frontend"
 else
-  SHOTS="$REPO/docs/review/runs/$NAME/skjermbilder"
+  SHOTS="$AXE_DIR/runs/$NAME/skjermbilder"
   echo "advarsel: fant ikke design/INDEX.md oppover, skjermbilder havner i $SHOTS" >&2
 fi
 
-RUNS="$REPO/docs/review/runs/$NAME"
+RUNS="${KA_RUNS:-$AXE_DIR/runs/$NAME}"
 mkdir -p "$RUNS" "$SHOTS" "$AXE_DIR"
 
 if [[ ! -s "$AXE" ]]; then
@@ -167,7 +171,14 @@ async page => {
       bodyDataColor: document.body.getAttribute('data-color'),
       rootFontSize: cs(document.documentElement).fontSize,
       bodyFontSize: cs(document.body).fontSize,
-      sizeToken8: cs(document.documentElement).getPropertyValue('--ds-size-8').trim(),
+      sizeToken8: (() => {
+        const probe = document.createElement('div');
+        probe.style.cssText = 'position:absolute;visibility:hidden;width:var(--ds-size-8)';
+        document.body.appendChild(probe);
+        const px = probe.getBoundingClientRect().width;
+        probe.remove();
+        return px + 'px';
+      })(),
       bodyBackground: cs(document.body).backgroundColor,
       bodyColor: cs(document.body).color,
       followsSystem: document.documentElement.getAttribute('data-color-scheme') === 'auto',
@@ -296,6 +307,10 @@ async page => {
     };
   });
 
+  // Skjermbildet tas før Tab-vandringen. Vandringen parkerer fokus, og en
+  // synlig hopp-lenke ligger over innholdet og dekker til det som skal ses.
+  await page.screenshot({ path: SHOT, fullPage: true });
+
   // Fokusrekkefølge: Tab gjennom hele viewet.
   await page.evaluate(() => {
     if (document.activeElement && document.activeElement !== document.body) {
@@ -341,8 +356,6 @@ async page => {
     focusOrder.push(step);
   }
   focusOrder.forEach((s) => delete s.key);
-
-  await page.screenshot({ path: SHOT, fullPage: true });
 
   return JSON.stringify({
     mode: MODE,
@@ -398,6 +411,9 @@ summarise() {
     const heads = d.structure.headings.map((h) => h.level);
     for (let i = 1; i < heads.length; i += 1) {
       if (heads[i] - heads[i - 1] > 1) line("  HOPP I OVERSKRIFTSNIVÅ: h" + heads[i - 1] + " → h" + heads[i]);
+    }
+    if (heads.length && heads[0] !== 1) {
+      line("  FØRSTE OVERSKRIFT ER h" + heads[0] + ", ikke h1 (i DOM-rekkefølge)");
     }
     if (heads.filter((l) => l === 1).length !== 1) {
       line("  " + heads.filter((l) => l === 1).length + " h1 på sida (skal være 1)");
