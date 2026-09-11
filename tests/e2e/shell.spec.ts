@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
+import { expectEveryStepReachable, walkWithTab } from './helpers';
 
 /**
  * The shell: the three slots, the routes, the skip link and dark mode.
@@ -18,7 +19,10 @@ const ROUTES = {
   newConversation: { path: '/', heading: 'Kunnskapsassistenten', name: 'ny-samtale' },
   thread: {
     path: '/threads/nkom-maaloppnaaelse',
-    heading: 'NKOM måloppnåelse',
+    // The route carries the page title; the thread title is the level 2
+    // under it, which is what ChatView renders.
+    heading: 'Kunnskapsassistenten',
+    subheading: 'NKOM måloppnåelse',
     name: 'traad',
   },
 } as const;
@@ -33,6 +37,9 @@ test.describe('skallet', () => {
       // still have landmarks.
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(route.heading);
       await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+      if ('subheading' in route) {
+        await expect(page.getByRole('heading', { level: 2, name: route.subheading })).toBeVisible();
+      }
 
       // The slots are named after the views in them, never after the side
       // they sit on. That is the rule the names have to prove.
@@ -173,17 +180,7 @@ test.describe('skallet', () => {
     const steps = await walkWithTab(page);
 
     expect(steps.length, 'Tab skal nå noe i det hele tatt').toBeGreaterThan(3);
-
-    const nameless = steps.filter((step) => step.name === '');
-    expect(nameless, 'hvert fokuserbart element skal ha et navn').toEqual([]);
-
-    // Designsystemet's SkipLink sets outline: 0 on purpose and carries its
-    // focus state with a surface and an underline instead, so it is the one
-    // step measured differently. Everything else draws a ring.
-    const ringless = steps
-      .slice(1)
-      .filter((step) => step.outline === 'none' && step.boxShadow === 'none');
-    expect(ringless, 'hvert steg etter hopp-lenka skal ha en synlig fokusring').toEqual([]);
+    expectEveryStepReachable(steps, 'skallet');
 
     // Reading order: the slots come in the order the shell renders them, and
     // the first stop after the skip link is the primary sidebar's own button.
@@ -204,54 +201,3 @@ test.describe('skallet', () => {
     }
   });
 });
-
-type FocusStep = { tag: string; name: string; outline: string; boxShadow: string };
-
-/**
- * Presses Tab until the walk comes back to an element it has already seen.
- *
- * Identity, not tag plus name plus position: a panel that scrolls the focused
- * element to the same place repeats the position, and two buttons can share a
- * name. Both stopped an earlier version of this walk far too early.
- */
-async function walkWithTab(page: import('@playwright/test').Page): Promise<FocusStep[]> {
-  const steps: FocusStep[] = [];
-
-  for (let index = 0; index < 80; index += 1) {
-    await page.keyboard.press('Tab');
-
-    const step = await page.evaluate(() => {
-      const element = document.activeElement;
-      if (!element || element === document.body) return null;
-      if (element.hasAttribute('data-e2e-seen')) return 'wrapped' as const;
-      element.setAttribute('data-e2e-seen', '');
-
-      const styles = getComputedStyle(element);
-      const clean = (value: string | null) =>
-        String(value ?? '')
-          .replace(/\s+/g, ' ')
-          .trim();
-
-      return {
-        tag: element.tagName.toLowerCase(),
-        name:
-          clean(element.getAttribute('aria-label')) ||
-          clean(element.textContent).slice(0, 60) ||
-          clean(element.getAttribute('title')),
-        outline: styles.outlineStyle === 'none' ? 'none' : styles.outline,
-        boxShadow: styles.boxShadow === 'none' ? 'none' : styles.boxShadow,
-      };
-    });
-
-    if (step === null || step === 'wrapped') break;
-    steps.push(step);
-  }
-
-  await page.evaluate(() =>
-    document
-      .querySelectorAll('[data-e2e-seen]')
-      .forEach((el) => el.removeAttribute('data-e2e-seen')),
-  );
-
-  return steps;
-}
