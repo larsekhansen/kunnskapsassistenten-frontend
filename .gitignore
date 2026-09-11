@@ -29,3 +29,6 @@ design-tokens-build/*
 !design-tokens-build/digdir.css
 !design-tokens-build/types.d.ts
 .tokens-verify
+
+# Playwright-CLI sitt arbeidsområde når appen kjøres headless
+.playwright-cli/
