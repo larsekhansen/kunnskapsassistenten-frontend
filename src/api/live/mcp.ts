@@ -1,0 +1,266 @@
+import type {
+  Citation,
+  Excerpt,
+  RelevanceLevel,
+  RetrievalDetails,
+  SourceDocument,
+  StreamEvent,
+  ThinkingStep,
+} from '../../model';
+
+/**
+ * The MCP wire format, translated into our own events.
+ *
+ * The protocol is documented in design/eksisterende/api-for-frontend.md,
+ * which was written against a running server. Where the documentation and
+ * the server disagreed, that file follows the server, and so does this.
+ */
+
+/** The only revision the server accepts. Not a range, not a minimum. */
+export const MCP_PROTOCOL_VERSION = '2026-07-28';
+
+/**
+ * The agent to ask. Thirteen tools are exposed, one per (agent × mode), and
+ * four of them are end-to-end test fixtures. The frontend picks one and hides
+ * the rest; this is the one the server marks as default.
+ *
+ * In production this belongs on the server that holds the API key, together
+ * with the tenant and the dataset: the browser sends a question, not a
+ * target. Here it is a constant because the Vite proxy cannot rewrite a body.
+ */
+export const DEFAULT_TOOL_NAME = 'builtin.agent-rag-agent__agent-rag-graph-bundled';
+
+type ProgressMeta = {
+  event?: string;
+  delta?: string;
+  reasoning?: string;
+  iteration?: number;
+  'tool-calls'?: ToolCall[];
+};
+
+type ToolCall = {
+  tool?: string;
+  'duration-ms'?: number;
+  args?: { queries?: string[]; query?: string; chunk_ids?: string[] };
+  'result-summary'?: string;
+};
+
+type McpChunk = {
+  chunk_id?: string;
+  doc_num?: string;
+  title?: string;
+  url?: string | null;
+  metadata?: string;
+};
+
+/**
+ * The heading path inside a document.
+ *
+ * The server sends this as a string containing Clojure map syntax —
+ * `{"Header 1" "Akershus slott og festning"}` — even though the schema
+ * declares an object. So it is parsed as text: every quoted string in order,
+ * odd ones are keys, even ones are values, and the values are the path.
+ */
+export function parseHeadingPath(metadata: string | undefined): string | undefined {
+  if (!metadata) return undefined;
+
+  const quoted = [...metadata.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((match) => match[1]);
+  const values = quoted.filter((_, index) => index % 2 === 1);
+  const path = values.filter(Boolean).join(' › ');
+  return path || undefined;
+}
+
+/**
+ * Relevance from rank, because the server sends no score.
+ *
+ * The chunks come back ordered by the reranker, so the position is the only
+ * signal there is. Top third «Mest relevant», next third «Relevant», rest
+ * «Minst relevant». Derived, not measured — worth replacing the day the
+ * backend reports a score.
+ */
+export function relevanceFromRank(index: number, total: number): RelevanceLevel {
+  if (total <= 3) return index === 0 ? 'high' : 'medium';
+  if (index < total / 3) return 'high';
+  if (index < (total * 2) / 3) return 'medium';
+  return 'low';
+}
+
+/**
+ * Groups the chunks into documents, keeping the 1-indexed citation numbers.
+ *
+ * `[n]` in the answer points at `chunks[n-1]`, and the documents are the
+ * coarser grouping of the same thing, so the number has to survive the
+ * grouping. Excerpts are grouped per document (answer 57).
+ */
+export function toSourceDocuments(chunks: McpChunk[]): SourceDocument[] {
+  const documents = new Map<string, SourceDocument>();
+
+  chunks.forEach((chunk, index) => {
+    const documentId = chunk.doc_num ?? chunk.chunk_id ?? `doc-${index}`;
+    const excerpt: Excerpt = {
+      id: chunk.chunk_id ?? `${documentId}-${index}`,
+      // backend: mangler, se API-bestilling A1 — structuredContent.chunks
+      // carries id, title and length, never the passage itself. Only /v1
+      // has the text, and /v1 has no progress events.
+      text: '',
+      heading: parseHeadingPath(chunk.metadata),
+      relevance: relevanceFromRank(index, chunks.length),
+      kudosUrl: chunk.url ?? undefined,
+      citationNumber: index + 1,
+    };
+
+    const existing = documents.get(documentId);
+    if (existing) {
+      existing.excerpts.push(excerpt);
+      return;
+    }
+
+    documents.set(documentId, {
+      id: documentId,
+      title: chunk.title ?? 'Uten tittel',
+      url: chunk.url ?? undefined,
+      excerpts: [excerpt],
+    });
+  });
+
+  return [...documents.values()];
+}
+
+export function toCitations(documents: SourceDocument[]): Citation[] {
+  return documents.flatMap((document) =>
+    document.excerpts
+      .filter((excerpt) => excerpt.citationNumber !== undefined)
+      .map((excerpt) => ({
+        number: excerpt.citationNumber as number,
+        excerptId: excerpt.id,
+        documentId: document.id,
+      })),
+  );
+}
+
+/** A Norwegian label for one tool call, for the thinking steps. */
+function toolCallStep(call: ToolCall, index: number): ThinkingStep {
+  const tool = call.tool ?? 'ukjent';
+  const queries = call.args?.queries ?? (call.args?.query ? [call.args.query] : undefined);
+  const isRead = tool.includes('read') || Boolean(call.args?.chunk_ids?.length);
+
+  return {
+    id: `tool-${index}-${tool}`,
+    kind: isRead ? 'read' : 'search',
+    label: isRead ? 'Jeg leser utdragene.' : 'Jeg søker i dokumentene.',
+    detail: call['result-summary'],
+    queries,
+    durationMs: call['duration-ms'],
+  };
+}
+
+/**
+ * Holds what has to be remembered between frames.
+ *
+ * The awkward part is `response/chunk`. Measured against the running server
+ * 2026-09-11: every delta this agent streams is its own plan in the first
+ * person — «Jeg vil slå opp kilder om birkebeinerne …» — and each run of
+ * deltas is followed by an `agent/thinking` frame carrying the same words.
+ * The answer itself never streams; it arrives whole in the final frame.
+ *
+ * So deltas are held back rather than emitted. An `agent/thinking` that
+ * follows them proves they were the plan, and they are dropped. Anything else
+ * that ends the run releases them as answer text. That way the client is
+ * right today, and right again the day an agent does stream its answer —
+ * without the views changing at all.
+ */
+export class McpStreamState {
+  /** Deltas seen but not yet known to be plan or answer. */
+  #pending: string[] = [];
+  #answer = '';
+  #keywords: string[] = [];
+  #steps = 0;
+
+  /** The answer text released so far. Empty while nothing is confirmed. */
+  get answerText(): string {
+    return this.#answer;
+  }
+
+  get keywords(): string[] {
+    return this.#keywords;
+  }
+
+  /** Releases held-back deltas as answer text. */
+  flushPending(): StreamEvent[] {
+    const pending = this.#pending;
+    this.#pending = [];
+    if (pending.length === 0) return [];
+
+    this.#answer += pending.join('');
+    return pending.map((text) => ({ type: 'token', text }));
+  }
+
+  /** Translates one progress frame. Returns nothing for frames we ignore. */
+  progress(meta: ProgressMeta): StreamEvent[] {
+    switch (meta.event) {
+      case 'response/chunk': {
+        if (!meta.delta) return [];
+        this.#pending.push(meta.delta);
+        return [];
+      }
+
+      case 'agent/thinking': {
+        if (!meta.reasoning) return [];
+        // The deltas just before this frame were this step's plan, not the
+        // answer. Drop them: the reasoning is shown as a thinking step.
+        this.#pending = [];
+        this.#steps += 1;
+        return [
+          {
+            type: 'thinking-step',
+            step: { id: `thinking-${this.#steps}`, kind: 'reasoning', label: meta.reasoning },
+          },
+        ];
+      }
+
+      case 'agent/turn-completed': {
+        const calls = meta['tool-calls'] ?? [];
+        return calls.map((call) => {
+          this.#steps += 1;
+          const step = toolCallStep(call, this.#steps);
+          // Every search the agent ran, in order, without repeats. Taking
+          // only the last one loses the three real queries and keeps the
+          // echo of the user's own question.
+          for (const query of step.queries ?? []) {
+            if (!this.#keywords.includes(query)) this.#keywords.push(query);
+          }
+          return { type: 'thinking-step', step };
+        });
+      }
+
+      case 'agent/finalized': {
+        this.#steps += 1;
+        return [
+          ...this.flushPending(),
+          {
+            type: 'thinking-step',
+            step: {
+              id: `finalizing-${this.#steps}`,
+              kind: 'finalizing',
+              label: 'Jeg skriver svaret med kildehenvisninger.',
+            },
+          },
+        ];
+      }
+
+      // agent/iteration-started says only that a loop went round again. It
+      // tells the reader nothing, so it is dropped rather than shown.
+      default:
+        return [];
+    }
+  }
+
+  /** Builds «Fremgangsmåte» from what the stream reported along the way. */
+  retrieval(documents: SourceDocument[], chunkCount: number): RetrievalDetails {
+    return {
+      hitCount: chunkCount,
+      documentCount: documents.length,
+      keywords: this.#keywords,
+    };
+  }
+}

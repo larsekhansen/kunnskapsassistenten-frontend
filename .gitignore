@@ -32,3 +32,8 @@ design-tokens-build/*
 
 # Playwright-CLI sitt arbeidsområde når appen kjøres headless
 .playwright-cli/
+
+# Lokale miljøvariabler. .env.example er malen og sjekkes inn.
+.env
+.env.local
+.env.*.local
