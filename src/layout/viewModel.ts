@@ -158,6 +158,13 @@ export const defaultLayout: Layout = {
       // The collapsed width is not drawn anywhere; 198 matches the collapsed
       // secondary sidebar in the page template, so both collapse to the same
       // width and the shell stays symmetric. Revisit when it is drawn.
+      //
+      // At 198 this slot's «Vis tråder og filter» takes two lines: the label
+      // needs 196 px and the collapsed padding leaves 162. The sources panel's
+      // shorter label fits on one, which is what the template draws. Two lines
+      // reads fine and no width for THIS slot exists to be wrong about, so it
+      // stays a guess rather than becoming an invented number. Measured
+      // 2026-09-11.
       sizing: { mode: 'fixed', width: 400, collapsedWidth: 198 },
     },
     main: {
