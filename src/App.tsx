@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router';
+import { LayoutProvider } from './layout/LayoutProvider';
 import { Shell } from './layout/Shell';
 import { NewConversation } from './routes/NewConversation';
 import { Thread } from './routes/Thread';
@@ -12,11 +13,13 @@ import { Thread } from './routes/Thread';
  */
 export function App() {
   return (
-    <Routes>
-      <Route element={<Shell />}>
-        <Route index element={<NewConversation />} />
-        <Route path="threads/:threadId" element={<Thread />} />
-      </Route>
-    </Routes>
+    <LayoutProvider>
+      <Routes>
+        <Route element={<Shell />}>
+          <Route index element={<NewConversation />} />
+          <Route path="threads/:threadId" element={<Thread />} />
+        </Route>
+      </Routes>
+    </LayoutProvider>
   );
 }
