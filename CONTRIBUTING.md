@@ -20,7 +20,10 @@ Dette er den regelen det er lettest å bryte og dyrest å rette.
 - **Ingen «venstre», «høyre», `left` eller `right` noe sted**, heller ikke i
   kommentarer. Kjør `grep -rin 'venstre\|høyre\|left\|right' src` før du
   pusher; det skal ikke gi treff utenom CSS-logiske egenskaper som
-  `padding-inline`.
+  `padding-inline` og **`src/components/icons.ts`**, som er den ene tillatte
+  grensa mot leverandørens egne ikonnavn og døper dem om til våre.
+- **Importer ikoner fra `src/components/icons.ts`**, aldri fra
+  `@navikt/aksel-icons` direkte.
 
 Se [README, Naming](README.md#naming) for begrunnelsen.
 
@@ -54,22 +57,55 @@ senere.
    semantikk og tastaturstøtte fra dag én.
 
 - **Ingen hardkodede farger, størrelser eller fonter.** `var(--ds-*)`.
-  Tallverdier fra `design/tokens/`, aldri fra Figma Dev Mode.
+  Tallverdier fra `design/tokens/`, aldri fra Figma Dev Mode. Én hardkodet
+  farge er nok til å ødelegge mørk modus, se README.
 - Egen CSS skrives **utenfor alle layers**, se README.
+- **Setter du `display` på noe som kan skjules med `hidden`, må du skrive
+  `[hidden] { display: none }` selv.** Egen CSS ligger utenfor layers og slår
+  nettleserens egen `[hidden]`-regel, så elementet blir stående synlig mens
+  knappen sier at det er skjult. Målt i skallet.
 - Hover, fokus og tastaturfokus **arves** fra Designsystemet og tegnes ikke
-  selv.
+  selv. Trenger et eget element fokusring, bruk klassen `ds-focus--visible`.
+
+### Color-mode: accent på rot, neutral på kromet
+
+`data-color="accent"` står på `<body>`. Det gjelder de **interaktive** rollene
+— knapper, rammer som skal trekke blikket, aktive chips, lenketekst — og de
+skrives med rolletokens uten familie: `var(--ds-color-base-default)`,
+`var(--ds-color-text-subtle)`.
+
+**Kromet skrives med eksplisitt neutral-familie.** Brødtekst, skjemarammer,
+flater og bakgrunner:
+
+```css
+color: var(--ds-color-neutral-text-default);
+border-color: var(--ds-color-neutral-border-subtle);
+background: var(--ds-color-neutral-surface-default);
+```
+
+Grunnen står i `design/tokens/figma-til-tokens.md` punkt 8.2: med accent på
+rot og bare rolletokens blir brødteksten mørk marine (#002c54) og
+skjemarammene blå (#2a7cc5). Det har ingen tegnet, og det er ikke det
+designet viser.
 
 ## WCAG 2.x AA er et krav
 
 Ikke et mål. Offentlig sektor og uu-kravene. Enhver snarvei som gir utseende
 uten tilgjengelighet er utelukket.
 
-- `npm run lint` kjører `jsx-a11y`-reglene som feil, ikke advarsler.
+- `npm run lint` kjører `jsx-a11y`-reglene som feil, ikke advarsler. Skal en
+  regel fravikes, skriv `// oxlint-disable-next-line <regel>` med én linje om
+  hvorfor fraviket er det tilgjengelige valget. Det finnes ett i dag.
 - Ikonknapper må ha `aria-label`.
 - Landemerker og overskriftsnivåer skal henge sammen.
 - Kjør appen headless og ta et accessibility-snapshot av det du bygde før du
   melder ferdig. Skjermbilde til
   `design/skjermbilder-frontend/<branch>-<slug>.png`.
+
+## TypeScript
+
+`strict: true` står i begge tsconfig-ene. Ikke slå den av, og ikke legg inn
+`any` for å komme rundt den.
 
 ## Git og PR
 
@@ -89,10 +125,11 @@ uten tilgjengelighet er utelukket.
 npm run build
 npm run lint
 npm run format:check
+npm run test
 npm run tokens:verify
 ```
 
-Alle fire, hver gang.
+Alle fem, hver gang.
 
 ## Delte ressurser
 
