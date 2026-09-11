@@ -17,6 +17,7 @@ eier bare denne mappa.
 | [`feat-secondary-sidebar-2026-09-11.md`](feat-secondary-sidebar-2026-09-11.md) | PR #2, kildepanelet                                                  |
 | [`main-2026-09-11-pr6.md`](main-2026-09-11-pr6.md)                             | Etterrevisjon av PR #6 på `main`                                     |
 | [`feat-primary-sidebar-2026-09-11.md`](feat-primary-sidebar-2026-09-11.md)     | PR #3, navigasjonspanelet                                            |
+| [`feat-chat-2026-09-11.md`](feat-chat-2026-09-11.md)                           | PR #5, chat-flyten i hovedkolonnen                                   |
 
 ## Sånn går en review
 
