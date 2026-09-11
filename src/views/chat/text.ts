@@ -1,12 +1,11 @@
-import type { SourceReference } from '../types';
-
 /**
- * Fixtures for the chat view.
+ * The Norwegian strings the chat view owns.
  *
- * Own fixtures in your own folder until the shared mock lands
- * (design/_briefs/bygg/regler.md). The Norwegian strings are taken verbatim
- * from the curated Figma section «Hva skjer når du åpner
- * Kunnskapsassistenten?», so the wording is the designer's, not ours.
+ * Taken verbatim from the curated Figma section «Hva skjer når du åpner
+ * Kunnskapsassistenten?» and from the `chatInput` and `kickstarters`
+ * molecules, so the wording is the designer's. Collected here rather than
+ * spread through the components: every user-visible string in one file is
+ * what makes a language review possible (open question 60).
  */
 
 /** Under the compose field, in all four chatInput variants. */
@@ -28,16 +27,14 @@ export const KICKSTARTERS = [
   'Hva rapporterer Digdir om prioriteringene i tildelingsbrevene fra 2022 og 2023 sammenlignet med årsrapportene?',
 ] as const;
 
-/** Fixed in the first version, model generated in the second (answer 29). */
+/**
+ * Fixed in the first version, model generated in the second (answer 29).
+ *
+ * The language is not consistent — one question and two imperatives — but it
+ * is the designer's wording, so it stays until someone decides otherwise.
+ */
 export const FOLLOW_UP_QUESTIONS = [
   'Kan du utdype?',
   'Identifiser utfordringer',
   'Lag relaterte spørsmål',
 ] as const;
-
-/** The documents the demo answer cites, numbered as the `[n]` markers are. */
-export const DEMO_SOURCES: SourceReference[] = [
-  { number: 1, title: 'Årsrapport Nkom 2021' },
-  { number: 2, title: 'Årsrapport Nkom 2022' },
-  { number: 3, title: 'Årsrapport Nkom 2023' },
-];

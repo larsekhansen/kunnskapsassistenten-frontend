@@ -1,6 +1,6 @@
 import { Button, Heading } from '@digdir/designsystemet-react';
 import { DocumentIcon } from './icons';
-import { KICKSTARTERS } from './fixtures/content';
+import { KICKSTARTERS } from './text';
 
 type KickstartersProps = {
   /** Fills the compose field. It deliberately does not send (answer 40). */

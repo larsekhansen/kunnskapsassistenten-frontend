@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ChatStatus, ChatTransport, Message } from './types';
+import type { ChatClient } from '../../api';
+import type { Message } from '../../model';
+import { announcedText } from './answer';
 
-/** Thrown into the stream when the reader cancels. Not an error to show. */
-const CANCELLED = Symbol('cancelled');
+/** Where the current turn is. Drives the skeleton, the stop button and the error. */
+export type ChatStatus = 'idle' | 'pending' | 'streaming' | 'error';
 
-let messageCounter = 0;
+let counter = 0;
 function nextId(prefix: string): string {
-  messageCounter += 1;
-  return `${prefix}-${messageCounter}`;
+  counter += 1;
+  return `${prefix}-${counter}`;
 }
 
 export type UseChat = {
@@ -15,8 +17,17 @@ export type UseChat = {
   status: ChatStatus;
   /** Norwegian error text, set only when status is 'error'. */
   error: string | null;
+  /**
+   * What the polite live region should say at this moment (answer 33).
+   *
+   * It lives here rather than in the view because only this loop knows when a
+   * paragraph finished and when the turn ended. A live region driven by
+   * rendering instead of by events either stutters once per token or has to
+   * read a ref during render to remember what it already said.
+   */
+  announcement: string;
   send: (question: string) => void;
-  /** Stop the generation and keep what has arrived so far (answer 34). */
+  /** Stop the generation and keep what has arrived (answer 34). */
   cancel: () => void;
   /** Ask the last question again after an error. */
   retry: () => void;
@@ -26,28 +37,38 @@ export type UseChat = {
  * The chat state machine: messages in, one streamed answer at a time.
  *
  * Streaming is built in rather than added later, because it changes how the
- * answer is rendered — that is exactly why the build order says to do step 3
- * and step 5 together (design/skal-dette-implementeres.md).
+ * answer is rendered — which is why the build order says to do step 3 and
+ * step 5 together (design/skal-dette-implementeres.md).
  *
  *   idle       nothing in flight
  *   pending    question sent, no token yet — this is what the skeleton shows
  *   streaming  tokens arriving
- *   error      the transport failed; `error` carries the Norwegian message
+ *   error      the turn failed; `error` carries the Norwegian message
  *
- * Cancelling is not an error: the partial answer stays on screen and the
- * status goes back to idle, which is what a reader expects from a stop button.
+ * Cancelling is not an error. The client reports it as an `error` event with
+ * code `aborted`, and here that means: keep the partial answer, mark it
+ * complete, go back to idle. That is what a reader expects from a stop
+ * button, and it is why the code checks the code rather than the event type.
  */
-export function useChat(transport: ChatTransport, initialMessages: Message[] = []): UseChat {
+export function useChat(client: ChatClient, initialMessages: Message[] = []): UseChat {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [status, setStatus] = useState<ChatStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
+  const conversationRef = useRef<string | undefined>(undefined);
   const lastQuestionRef = useRef<string | null>(null);
 
-  // Abort an answer still in flight when the view goes away, so the stream
-  // does not keep setting state on an unmounted component.
-  useEffect(() => () => abortRef.current?.abort(CANCELLED), []);
+  // Abort a turn still in flight when the view goes away, so the stream does
+  // not keep setting state on an unmounted component.
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  const patchAnswer = useCallback((id: string, patch: (message: Message) => Message) => {
+    setMessages((current) =>
+      current.map((message) => (message.id === id ? patch(message) : message)),
+    );
+  }, []);
 
   const run = useCallback(
     async (question: string, answerId: string) => {
@@ -56,78 +77,151 @@ export function useChat(transport: ChatTransport, initialMessages: Message[] = [
 
       setStatus('pending');
       setError(null);
+      setAnnouncement('Henter svar.');
+
+      // The running text, so a finished paragraph can be spotted without
+      // reading it back out of state.
+      let content = '';
 
       try {
-        for await (const event of transport(question, controller.signal)) {
-          if (controller.signal.aborted) break;
+        for await (const event of client.ask({
+          query: question,
+          conversationId: conversationRef.current,
+          signal: controller.signal,
+        })) {
+          switch (event.type) {
+            case 'token': {
+              setStatus('streaming');
+              content += event.text;
+              patchAnswer(answerId, (message) => ({ ...message, content }));
+              // Blocks are separated by a blank line, so only a token with a
+              // newline in it can have finished one. Everything else would be
+              // half a sentence.
+              if (event.text.includes('\n')) {
+                const finished = announcedText(content);
+                if (finished) setAnnouncement(finished);
+              }
+              break;
+            }
 
-          if (event.type === 'error') {
-            setError(event.message);
-            setStatus('error');
-            return;
+            case 'thinking-step':
+              patchAnswer(answerId, (message) => ({
+                ...message,
+                thinkingSteps: [...(message.thinkingSteps ?? []), event.step],
+              }));
+              break;
+
+            case 'sources':
+              patchAnswer(answerId, (message) => ({
+                ...message,
+                sources: event.documents,
+                citations: event.citations,
+                retrieval: event.retrieval,
+              }));
+              break;
+
+            case 'done':
+              conversationRef.current = event.conversationId;
+              patchAnswer(answerId, (message) => ({ ...message, status: 'complete' }));
+              setAnnouncement('Svaret er ferdig.');
+              setStatus('idle');
+              return;
+
+            case 'error':
+              if (event.error.code === 'aborted') {
+                patchAnswer(answerId, (message) => ({ ...message, status: 'complete' }));
+                setAnnouncement('Genereringen ble avbrutt.');
+                setStatus('idle');
+                return;
+              }
+              patchAnswer(answerId, (message) => ({ ...message, status: 'error' }));
+              setError(event.error.message);
+              // The Alert has role="alert" and announces itself.
+              setAnnouncement('');
+              setStatus('error');
+              return;
           }
-
-          setStatus('streaming');
-          setMessages((current) =>
-            current.map((message) => {
-              if (message.id !== answerId) return message;
-              if (event.type === 'token') return { ...message, text: message.text + event.text };
-              if (event.type === 'retrieval') return { ...message, retrieval: event.retrieval };
-              return { ...message, sources: event.sources };
-            }),
-          );
         }
+        // The stream ended without a `done` frame. Nothing is in flight any
+        // more, so the answer is as finished as it is going to get.
+        patchAnswer(answerId, (message) => ({ ...message, status: 'complete' }));
+        setAnnouncement('Svaret er ferdig.');
         setStatus('idle');
-      } catch (thrown) {
-        if (thrown === CANCELLED || controller.signal.aborted) {
+      } catch {
+        if (controller.signal.aborted) {
+          patchAnswer(answerId, (message) => ({ ...message, status: 'complete' }));
+          setAnnouncement('Genereringen ble avbrutt.');
           setStatus('idle');
           return;
         }
+        patchAnswer(answerId, (message) => ({ ...message, status: 'error' }));
         setError('Noe gikk galt da svaret skulle hentes. Prøv igjen.');
+        setAnnouncement('');
         setStatus('error');
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
       }
     },
-    [transport],
+    [client, patchAnswer],
   );
 
   const send = useCallback(
     (question: string) => {
-      const trimmed = question.trim();
-      if (trimmed.length === 0) return;
+      const query = question.trim();
+      if (query.length === 0) return;
 
-      abortRef.current?.abort(CANCELLED);
-      lastQuestionRef.current = trimmed;
+      abortRef.current?.abort();
+      lastQuestionRef.current = query;
 
+      const now = new Date().toISOString();
       const answerId = nextId('assistant');
       setMessages((current) => [
         ...current,
-        { id: nextId('user'), role: 'user', text: trimmed },
-        { id: answerId, role: 'assistant', text: '' },
+        {
+          id: nextId('user'),
+          role: 'user',
+          content: query,
+          createdAt: now,
+          citations: [],
+          status: 'complete',
+        },
+        {
+          id: answerId,
+          role: 'assistant',
+          content: '',
+          createdAt: now,
+          citations: [],
+          status: 'streaming',
+        },
       ]);
 
-      void run(trimmed, answerId);
+      void run(query, answerId);
     },
     [run],
   );
 
-  const cancel = useCallback(() => {
-    abortRef.current?.abort(CANCELLED);
-  }, []);
+  const cancel = useCallback(() => abortRef.current?.abort(), []);
 
   const retry = useCallback(() => {
     const question = lastQuestionRef.current;
     if (!question) return;
 
-    // Drop the empty answer the failed attempt left behind, then ask again.
+    // Replace the failed answer rather than stacking a second one under the
+    // same question.
     const answerId = nextId('assistant');
     setMessages((current) => [
-      ...current.filter((message) => !(message.role === 'assistant' && message.text === '')),
-      { id: answerId, role: 'assistant', text: '' },
+      ...current.filter((message) => !(message.role === 'assistant' && message.status === 'error')),
+      {
+        id: answerId,
+        role: 'assistant',
+        content: '',
+        createdAt: new Date().toISOString(),
+        citations: [],
+        status: 'streaming',
+      },
     ]);
     void run(question, answerId);
   }, [run]);
 
-  return { messages, status, error, send, cancel, retry };
+  return { messages, status, error, announcement, send, cancel, retry };
 }

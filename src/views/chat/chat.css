@@ -15,6 +15,8 @@
 .ka-chat {
   --ka-chat-content-max-width: 728px; /* content in Figma 1530:44994 */
   --ka-composer-max-height: 274px; /* chatInput LongText, answer 54 */
+  /* Matches the padding the shell puts on the main slot, see global.css. */
+  --ka-main-padding-block: var(--ds-size-8);
   --ka-composer-radius: var(--ds-border-radius-xl);
 
   display: flex;
@@ -22,6 +24,9 @@
   gap: var(--ds-size-8);
   inline-size: 100%;
   max-inline-size: var(--ka-chat-content-max-width);
+  /* Fills the slot, so a short conversation still keeps the field at the
+     bottom. Figma bottom-aligns the column the same way. */
+  min-block-size: 100%;
   margin-inline: auto;
 }
 
@@ -121,13 +126,20 @@
  * sits inside running text.
  */
 .ka-citation {
-  --dsc-button-padding-inline: var(--ds-size-1);
+  /*
+   * A Button is inline-flex and brings a minimum size with it, which pushes
+   * the marker onto a line of its own in the middle of a sentence. Inside
+   * running text it has to flow like a word, so it gives up the box and keeps
+   * the behaviour: focus ring, hover and keyboard are still Designsystemet's.
+   */
+  display: inline;
   min-block-size: 0;
   min-inline-size: 0;
-  padding-block: 0;
-  padding-inline: var(--ds-size-1);
+  padding: 0;
   font-size: var(--ds-font-size-minus-1);
+  line-height: inherit;
   vertical-align: super;
+  white-space: nowrap;
 }
 
 /* ------------------------------------------------------------- retrieval */
@@ -147,6 +159,17 @@
   list-style: none;
 }
 
+/* ---------------------------------------------------------- wide content */
+
+/*
+ * A markdown table cannot shrink, and the main column is at most 800 px
+ * (answer 59), so a wide table scrolls inside its own box rather than pushing
+ * the page sideways.
+ */
+.ka-answer__table {
+  overflow-x: auto;
+}
+
 /* --------------------------------------------------------------- actions */
 
 .ka-answer-actions {
@@ -158,7 +181,52 @@
   border-block-start: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
 }
 
+/* Alert lays its children out as one block; the answer error has three. */
+.ka-answer-error {
+  display: grid;
+  gap: var(--ds-size-2);
+  justify-items: start;
+}
+
 /* --------------------------------------------------------------- composer */
+
+.ka-answer-actions__receipt {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: var(--ds-font-size-minus-1);
+}
+
+.ka-answer-actions__receipt:empty {
+  display: none;
+}
+
+/*
+ * The compose field stays put while the conversation scrolls behind it. A
+ * chat where the field scrolls away makes the reader hunt for it after every
+ * long answer.
+ *
+ * The negative margin lets the sticky box cover the scroll container's own
+ * bottom padding, so the answer does not reappear underneath the disclaimer.
+ */
+.ka-composer-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-3);
+  margin-block-start: auto;
+  position: sticky;
+  /*
+   * Sticky offsets are measured from the scroll container's padding edge, so
+   * a plain 0 would park the field one padding above the bottom and let the
+   * answer show through underneath. The pull-down and the matching padding
+   * take the box all the way to the edge; the negative margin keeps it from
+   * adding that height to the scroll length twice.
+   */
+  inset-block-end: calc(var(--ka-main-padding-block) * -1);
+  margin-block-end: calc(var(--ka-main-padding-block) * -1);
+  padding-block: var(--ds-size-3) var(--ka-main-padding-block);
+  background: var(--ds-color-neutral-background-default);
+}
 
 .ka-composer {
   display: flex;
@@ -180,6 +248,19 @@
   box-shadow: var(--dsc-focus-boxShadow);
   outline: var(--dsc-focus-outline);
   outline-offset: var(--ds-border-width-focus);
+}
+
+/*
+ * Textfield puts the field inside a .ds-field-affixes box that carries the
+ * border and the background. The frame around the whole composer carries
+ * those instead, so this one steps aside.
+ */
+.ka-composer__field,
+.ka-composer__field .ds-field-affixes {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
 }
 
 .ka-composer__field textarea {
