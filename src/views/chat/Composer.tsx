@@ -1,6 +1,6 @@
 import { Button, Chip, Paragraph, Textfield } from '@digdir/designsystemet-react';
 import type { KeyboardEvent, RefObject } from 'react';
-import { PaperclipIcon, PaperplaneIcon, StopIcon } from './icons';
+import { PaperclipIcon, PaperplaneIcon, StopIcon } from '@navikt/aksel-icons';
 import { COMPOSE_PLACEHOLDER, DISCLAIMER, FOLLOW_UP_QUESTIONS } from './text';
 import type { ChatStatus } from './useChat';
 
@@ -84,12 +84,12 @@ export function Composer({
             onClick={(event) => event.preventDefault()}
             variant="tertiary"
           >
-            <PaperclipIcon />
+            <PaperclipIcon aria-hidden fontSize="1.25rem" />
           </Button>
 
           {busy ? (
             <Button aria-label="Avbryt genereringen" icon onClick={onCancel} variant="secondary">
-              <StopIcon />
+              <StopIcon aria-hidden fontSize="1.25rem" />
             </Button>
           ) : (
             <Button
@@ -98,7 +98,7 @@ export function Composer({
               icon
               onClick={onSubmit}
             >
-              <PaperplaneIcon />
+              <PaperplaneIcon aria-hidden fontSize="1.25rem" />
             </Button>
           )}
         </div>

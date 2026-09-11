@@ -1,8 +1,10 @@
 import { Button, Heading } from '@digdir/designsystemet-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ChatClient } from '../../../api';
 import { fixtures, MockChatClient } from '../../../api/mock';
 import type { FilterFacet, StreamEvent, Thread, ThreadDetail } from '../../../model';
+import { LayoutProvider } from '../../../layout/LayoutProvider';
+import { MainScrollContext } from '../../../layout/scrollContext';
 import { ChatView } from '../ChatView';
 
 /**
@@ -64,37 +66,37 @@ type ScenarioId = keyof typeof scenarios;
 export function Preview() {
   const [id, setId] = useState<ScenarioId>('tom');
   const scenario = scenarios[id];
+  // The shell normally provides this; here the harness plays the shell.
+  const mainScroll = useRef<HTMLElement | null>(null);
 
   return (
-    <div className="shell">
-      <nav aria-label="Forhåndsvisninger" className="primary-sidebar">
-        <div className="stack">
-          <Heading data-size="xs" level={2}>
-            Forhåndsvisning
-          </Heading>
-          {(Object.keys(scenarios) as ScenarioId[]).map((key) => (
-            <Button
-              aria-current={key === id ? 'true' : undefined}
-              data-color="neutral"
-              key={key}
-              onClick={() => setId(key)}
-              variant={key === id ? 'secondary' : 'tertiary'}
-            >
-              {scenarios[key].label}
-            </Button>
-          ))}
-        </div>
-      </nav>
+    <LayoutProvider>
+      <MainScrollContext value={mainScroll}>
+        <div className="shell">
+          <nav aria-label="Forhåndsvisninger" className="primary-sidebar">
+            <div className="stack">
+              <Heading data-size="xs" level={2}>
+                Forhåndsvisning
+              </Heading>
+              {(Object.keys(scenarios) as ScenarioId[]).map((key) => (
+                <Button
+                  aria-current={key === id ? 'true' : undefined}
+                  data-color="neutral"
+                  key={key}
+                  onClick={() => setId(key)}
+                  variant={key === id ? 'secondary' : 'tertiary'}
+                >
+                  {scenarios[key].label}
+                </Button>
+              ))}
+            </div>
+          </nav>
 
-      <main className="main" id="main-content">
-        <ChatView
-          client={scenario.client}
-          key={id}
-          onSelectSource={(number) => console.info('Vis kilde', number)}
-          thread={scenario.thread}
-          userName="Simen"
-        />
-      </main>
-    </div>
+          <main className="main" id="main-content" ref={mainScroll}>
+            <ChatView client={scenario.client} key={id} thread={scenario.thread} userName="Simen" />
+          </main>
+        </div>
+      </MainScrollContext>
+    </LayoutProvider>
   );
 }

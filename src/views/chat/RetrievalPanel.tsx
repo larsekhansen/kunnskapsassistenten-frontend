@@ -1,6 +1,6 @@
 import { Details, Paragraph, Tag } from '@digdir/designsystemet-react';
 import type { RetrievalDetails } from '../../model';
-import { MagnifyingGlassIcon } from './icons';
+import { MagnifyingGlassIcon } from '@navikt/aksel-icons';
 
 type RetrievalPanelProps = { retrieval: RetrievalDetails };
 
@@ -39,7 +39,7 @@ export function RetrievalPanel({ retrieval }: RetrievalPanelProps) {
     <Details data-color="neutral" defaultOpen>
       <Details.Summary>
         <span className="ka-retrieval__summary">
-          <MagnifyingGlassIcon />
+          <MagnifyingGlassIcon aria-hidden fontSize="1.25rem" />
           Fremgangsmåte
           <Tag data-color="neutral" data-size="sm">
             {hitSummary(retrieval)}

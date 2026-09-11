@@ -1,7 +1,7 @@
 import { Button } from '@digdir/designsystemet-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { answerAsPlainText } from './answer';
-import { ArrowDownIcon, CopyIcon, LinkIcon } from './icons';
+import { ArrowDownIcon, ClipboardIcon, ClipboardLinkIcon } from '@navikt/aksel-icons';
+import { answerAsPlainText } from './answerText';
 
 type AnswerActionsProps = {
   /** The answer as markdown. Copied as plain text, without the `[n]` markers. */
@@ -49,7 +49,7 @@ export function AnswerActions({
         onClick={() => void copy(answerAsPlainText(content), 'Svaret er kopiert.')}
         variant="tertiary"
       >
-        <CopyIcon />
+        <ClipboardIcon aria-hidden fontSize="1.25rem" />
         Kopier svaret
       </Button>
 
@@ -59,13 +59,13 @@ export function AnswerActions({
         onClick={() => void copy(window.location.href, 'Lenken til tråden er kopiert.')}
         variant="tertiary"
       >
-        <LinkIcon />
+        <ClipboardLinkIcon aria-hidden fontSize="1.25rem" />
         Kopier lenke til tråden
       </Button>
 
       {canScrollToBottom ? (
         <Button data-color="neutral" data-size="sm" onClick={onScrollToBottom} variant="tertiary">
-          <ArrowDownIcon />
+          <ArrowDownIcon aria-hidden fontSize="1.25rem" />
           Bla til nederst
         </Button>
       ) : null}

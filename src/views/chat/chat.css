@@ -10,6 +10,11 @@
  * size mode and dark mode. The three px values below are measurements from
  * the design that have no token, and each one says where it comes from —
  * same pattern as the --ka-* widths in global.css.
+ *
+ * Every rule here that sets `display` has a matching `[hidden]` rule at the
+ * bottom of the file. Unlayered author CSS beats the browser's own
+ * `[hidden] { display: none }`, so without the pair an element stays on
+ * screen after something hides it. See CONTRIBUTING.
  */
 
 .ka-chat {
@@ -17,7 +22,6 @@
   --ka-composer-max-height: 274px; /* chatInput LongText, answer 54 */
   /* Matches the padding the shell puts on the main slot, see global.css. */
   --ka-main-padding-block: var(--ds-size-8);
-  --ka-composer-radius: var(--ds-border-radius-xl);
 
   display: flex;
   flex-direction: column;
@@ -80,7 +84,7 @@
   color: var(--ds-color-neutral-text-subtle);
 }
 
-/* --------------------------------------------------------------- messages */
+/* ---------------------------------------------------------------- messages */
 
 .ka-messages {
   display: flex;
@@ -111,37 +115,24 @@
   cursor: auto;
 }
 
-.ka-answer {
+/* ----------------------------------------------------------------- status */
+
+.ka-answer-skeleton {
   display: flex;
   flex-direction: column;
-  gap: var(--ds-size-4);
+  gap: var(--ds-size-2);
 }
 
-/* Headings from the model sit closer to the text they introduce. */
-.ka-answer__heading {
-  margin-block-start: var(--ds-size-2);
-}
-
-.ka-answer__heading:first-child {
-  margin-block-start: 0;
-}
-
-/* ------------------------------------------------------------- citations */
-
-/*
- * A citation marker: the `[n]` in the answer, as a link to the excerpt it
- * came from. Raised and set a step smaller, because it sits inside running
- * text and must not break the line it is part of. Underline, hover and focus
- * ring are Designsystemet's own.
- */
-.ka-citation {
+.ka-streaming-status {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-2);
+  margin: 0;
+  color: var(--ds-color-neutral-text-subtle);
   font-size: var(--ds-font-size-minus-1);
-  line-height: inherit;
-  vertical-align: super;
-  white-space: nowrap;
 }
 
-/* ------------------------------------------------------------- retrieval */
+/* -------------------------------------------------------------- retrieval */
 
 .ka-retrieval__summary {
   display: flex;
@@ -158,18 +149,7 @@
   list-style: none;
 }
 
-/* ---------------------------------------------------------- wide content */
-
-/*
- * A markdown table cannot shrink, and the main column is at most 800 px
- * (answer 59), so a wide table scrolls inside its own box rather than pushing
- * the page sideways.
- */
-.ka-answer__table {
-  overflow-x: auto;
-}
-
-/* --------------------------------------------------------------- actions */
+/* ---------------------------------------------------------------- actions */
 
 /* The rule above this row is the seam between two Card.Blocks, not a border
    drawn here. */
@@ -179,15 +159,6 @@
   align-items: center;
   gap: var(--ds-size-2);
 }
-
-/* Alert lays its children out as one block; the answer error has three. */
-.ka-answer-error {
-  display: grid;
-  gap: var(--ds-size-2);
-  justify-items: start;
-}
-
-/* --------------------------------------------------------------- composer */
 
 .ka-answer-actions__receipt {
   flex-basis: 100%;
@@ -200,13 +171,12 @@
   display: none;
 }
 
+/* --------------------------------------------------------------- composer */
+
 /*
  * The compose field stays put while the conversation scrolls behind it. A
  * chat where the field scrolls away makes the reader hunt for it after every
  * long answer.
- *
- * The negative margin lets the sticky box cover the scroll container's own
- * bottom padding, so the answer does not reappear underneath the disclaimer.
  */
 .ka-composer-area {
   display: flex;
@@ -224,7 +194,8 @@
   inset-block-end: calc(var(--ka-main-padding-block) * -1);
   margin-block-end: calc(var(--ka-main-padding-block) * -1);
   padding-block: var(--ds-size-3) var(--ka-main-padding-block);
-  background: var(--ds-color-neutral-background-default);
+  /* Same ground as the shell, so the field looks fixed rather than boxed. */
+  background: var(--ds-color-neutral-background-tinted);
 }
 
 .ka-composer {
@@ -232,9 +203,10 @@
   flex-direction: column;
   gap: var(--ds-size-2);
   padding: var(--ds-size-3);
-  background: var(--ds-color-neutral-background-default);
+  /* White box on the tinted ground, like the answer card. */
+  background: var(--ds-color-neutral-surface-default);
   border: var(--ds-border-width-default) solid var(--ds-color-neutral-border-default);
-  border-radius: var(--ka-composer-radius);
+  border-radius: var(--ds-border-radius-xl);
 }
 
 /*
@@ -298,43 +270,28 @@
   list-style: none;
 }
 
-/* ----------------------------------------------------------- status area */
-
-.ka-answer-skeleton {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ds-size-2);
-}
-
-.ka-streaming-status {
-  display: flex;
-  align-items: center;
-  gap: var(--ds-size-2);
-  color: var(--ds-color-neutral-text-subtle);
-}
+/* ----------------------------------------------------------------- hidden */
 
 /*
- * The cursor that shows an answer is still being written. Decorative: the
- * live region says the same thing in words.
+ * The pair every `display` rule above needs. Without it, hiding one of these
+ * elements with the `hidden` attribute would do nothing, because the rules
+ * above are unlayered and beat the browser's own `[hidden]` rule.
  */
-.ka-streaming-caret {
-  display: inline-block;
-  inline-size: 0.5em;
-  block-size: 1em;
-  margin-inline-start: 0.1em;
-  background: var(--ds-color-neutral-text-subtle);
-  vertical-align: text-bottom;
-  animation: ka-blink 1s step-end infinite;
-}
-
-@keyframes ka-blink {
-  50% {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ka-streaming-caret {
-    animation: none;
-  }
+.ka-chat[hidden],
+.ka-chat-greeting[hidden],
+.ka-kickstarters[hidden],
+.ka-kickstarters__list[hidden],
+.ka-messages[hidden],
+.ka-message[hidden],
+.ka-answer-skeleton[hidden],
+.ka-streaming-status[hidden],
+.ka-retrieval__summary[hidden],
+.ka-retrieval__keywords[hidden],
+.ka-answer-actions[hidden],
+.ka-answer-actions__receipt[hidden],
+.ka-composer-area[hidden],
+.ka-composer[hidden],
+.ka-composer__buttons[hidden],
+.ka-follow-ups[hidden] {
+  display: none;
 }

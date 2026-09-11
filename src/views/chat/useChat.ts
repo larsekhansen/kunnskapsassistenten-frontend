@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatClient } from '../../api';
 import type { Message } from '../../model';
-import { announcedText } from './answer';
+import { announcedText } from './answerText';
 
 /** Where the current turn is. Drives the skeleton, the stop button and the error. */
 export type ChatStatus = 'idle' | 'pending' | 'streaming' | 'error';

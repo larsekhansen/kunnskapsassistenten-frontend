@@ -1,27 +1,24 @@
 import { Heading } from '@digdir/designsystemet-react';
 import { useMemo, useRef, useState } from 'react';
 import { createChatClient, type ChatClient } from '../../api';
+import { ErrorState } from '../../components';
+import { useCitation } from '../../layout/useCitation';
+import { useMainScroll } from '../../layout/useMainScroll';
 import type { ThreadDetail } from '../../model';
 import { Composer } from './Composer';
-import { EmptyState } from './EmptyState';
 import { MessageList } from './MessageList';
+import { useAtBottom } from './useAtBottom';
 import { useChat } from './useChat';
-import { useScrollToBottom } from './useScrollToBottom';
+import { Welcome } from './Welcome';
 import './chat.css';
 
 export type ChatViewProps = {
-  /** The signed-in user's first name, for the greeting on the empty state. */
+  /** The signed-in user's first name, for the greeting before the first question. */
   userName?: string;
   /** The thread to show. Absent means a new conversation. */
   thread?: ThreadDetail;
   /** Which backend to talk to. Defaults to whatever `createChatClient` picks. */
   client?: ChatClient;
-  /**
-   * Opens source `n` in the sources panel when a `[n]` marker is activated
-   * (answer 19). Without it the markers still render and are announced, they
-   * just do not move the sources panel.
-   */
-  onSelectSource?: (citationNumber: number) => void;
 };
 
 let fallbackClient: ChatClient | undefined;
@@ -30,7 +27,7 @@ function defaultClient(): ChatClient {
   return fallbackClient;
 }
 
-function ChatSession({ userName, thread, client, onSelectSource }: ChatViewProps) {
+function ChatSession({ userName, thread, client }: ChatViewProps) {
   const chatClient = useMemo(() => client ?? defaultClient(), [client]);
   const { messages, status, error, announcement, send, cancel, retry } = useChat(
     chatClient,
@@ -40,7 +37,16 @@ function ChatSession({ userName, thread, client, onSelectSource }: ChatViewProps
   const [draft, setDraft] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
-  const { atBottom, scrollToBottom } = useScrollToBottom(rootRef);
+
+  // The main slot owns the scroll, and the shell hands it over. A view must
+  // not go looking for it: the day chat is moved to another slot, a search up
+  // the DOM finds the wrong element or nothing.
+  const { ref: scrollRef, scrollToBottom } = useMainScroll();
+  const atBottom = useAtBottom(scrollRef, rootRef);
+
+  // Activating a `[n]` marker is the shell's business: it opens the sources
+  // panel and tells it which excerpt to show. Neither view knows the other.
+  const { showCitation } = useCitation();
 
   const hasAnswer = messages.some(
     (message) => message.role === 'assistant' && message.status === 'complete',
@@ -60,7 +66,7 @@ function ChatSession({ userName, thread, client, onSelectSource }: ChatViewProps
       ) : null}
 
       {messages.length === 0 ? (
-        <EmptyState
+        <Welcome
           onPickKickstarter={(question) => {
             // Fills the field, does not send (answer 40). The caret goes with
             // it, so the reader can edit before asking.
@@ -72,14 +78,19 @@ function ChatSession({ userName, thread, client, onSelectSource }: ChatViewProps
       ) : (
         <MessageList
           canScrollToBottom={!atBottom}
-          error={error}
           messages={messages}
-          onRetry={retry}
-          onScrollToBottom={scrollToBottom}
-          onSelectSource={onSelectSource}
+          onScrollToBottom={() => scrollToBottom()}
+          onSelectSource={showCitation}
           status={status}
         />
       )}
+
+      {/*
+        Mounted whether or not there is an error: an alert region only
+        announces content that appears inside a region already in the page.
+        See src/components/ErrorState.tsx.
+      */}
+      <ErrorState message={error ?? undefined} onRetry={retry} title="Svaret kom ikke fram" />
 
       <Composer
         fieldRef={fieldRef}
@@ -106,15 +117,16 @@ function ChatSession({ userName, thread, client, onSelectSource }: ChatViewProps
 }
 
 /**
- * The chat: the empty state, the conversation and the compose field.
+ * The chat: the greeting, the conversation and the compose field.
  *
  * Mounted in the `main` slot by the shell. It is a view, so it is named after
  * its content and could sit in another slot the day the layout lets a reader
- * move it.
+ * move it. It expects the route around it to carry the page's level 1
+ * heading, as Figma draws it: «Kunnskapsassistenten» on top, the thread title
+ * under it.
  *
  * The session is keyed on the thread, so moving between threads starts from
- * that thread's messages instead of carrying the previous conversation's
- * state across.
+ * that thread's messages instead of carrying the previous conversation across.
  */
 export function ChatView(props: ChatViewProps) {
   return <ChatSession key={props.thread?.id ?? 'new'} {...props} />;

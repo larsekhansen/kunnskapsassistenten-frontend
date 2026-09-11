@@ -1,5 +1,5 @@
 import { Button, Heading } from '@digdir/designsystemet-react';
-import { DocumentIcon } from './icons';
+import { FileTextIcon } from '@navikt/aksel-icons';
 import { KICKSTARTERS } from './text';
 
 type KickstartersProps = {
@@ -33,7 +33,7 @@ export function Kickstarters({ onPick }: KickstartersProps) {
               onClick={() => onPick(question)}
               variant="tertiary"
             >
-              <DocumentIcon className="ka-kickstarter__icon" />
+              <FileTextIcon aria-hidden className="ka-kickstarter__icon" fontSize="1.25rem" />
               {question}
             </Button>
           </li>

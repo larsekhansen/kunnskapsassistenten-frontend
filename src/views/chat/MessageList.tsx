@@ -1,7 +1,7 @@
-import { Alert, Button, Card, Heading, Paragraph, Skeleton } from '@digdir/designsystemet-react';
-import type { Message } from '../../model';
+import { Card, Paragraph, Skeleton, Spinner } from '@digdir/designsystemet-react';
+import { Markdown } from '../../components';
+import { citationTargets, type Message } from '../../model';
 import { AnswerActions } from './AnswerActions';
-import { AnswerBody } from './AnswerBody';
 import { RetrievalPanel } from './RetrievalPanel';
 import { CLOSING_QUESTION } from './text';
 import type { ChatStatus } from './useChat';
@@ -9,15 +9,12 @@ import type { ChatStatus } from './useChat';
 type MessageListProps = {
   messages: Message[];
   status: ChatStatus;
-  /** Norwegian error text, when the turn failed. */
-  error: string | null;
-  onRetry: () => void;
-  onSelectSource?: (citationNumber: number) => void;
-  onScrollToBottom?: () => void;
-  canScrollToBottom?: boolean;
+  onSelectSource: (citationNumber: number) => void;
+  onScrollToBottom: () => void;
+  canScrollToBottom: boolean;
 };
 
-/** Shown between «sent» and the first token (answer 32). */
+/** Shown between «sendt» and the first token (answer 32). */
 function AnswerSkeleton() {
   return (
     <div aria-hidden="true" className="ka-answer-skeleton">
@@ -36,15 +33,17 @@ function AnswerSkeleton() {
  * message three. Who said what is carried by text, not by colour or by which
  * side a bubble sits on — a screen reader user gets neither.
  *
- * The sender line is a plain visually hidden span rather than a heading. The
- * answer brings its own headings from the model, and a heading per message on
- * top of those would give the page two competing outlines.
+ * The sender line is a visually hidden span rather than a heading. The answer
+ * brings its own headings from the model, and a heading per message on top of
+ * those would give the page two competing outlines.
+ *
+ * The answer is rendered by the shared `Markdown` component at `startLevel`
+ * 3, because it sits under the thread title, which is a level 2 under the
+ * route's level 1.
  */
 export function MessageList({
   messages,
   status,
-  error,
-  onRetry,
   onSelectSource,
   onScrollToBottom,
   canScrollToBottom,
@@ -90,14 +89,23 @@ export function MessageList({
                   {empty && streaming ? <AnswerSkeleton /> : null}
 
                   {empty ? null : (
-                    <AnswerBody
-                      citations={message.citations}
-                      content={message.content}
-                      onSelectSource={onSelectSource}
-                      sources={message.sources}
-                      streaming={streaming}
-                    />
+                    <Markdown
+                      citations={citationTargets(message.sources ?? [])}
+                      onCitationActivate={onSelectSource}
+                      startLevel={3}
+                    >
+                      {message.content}
+                    </Markdown>
                   )}
+
+                  {/* The live region says the same thing in words, so this
+                      line is decoration. */}
+                  {streaming && !empty ? (
+                    <p aria-hidden="true" className="ka-streaming-status">
+                      <Spinner aria-hidden="true" data-size="xs" />
+                      Skriver svar …
+                    </p>
+                  ) : null}
 
                   {message.retrieval && !streaming ? (
                     <RetrievalPanel retrieval={message.retrieval} />
@@ -119,25 +127,17 @@ export function MessageList({
                 ) : null}
               </Card>
             ) : null}
-
-            {message.status === 'error' && error ? (
-              <Alert className="ka-answer-error" data-color="danger" role="alert">
-                <Heading data-size="2xs" level={3}>
-                  Svaret kom ikke fram
-                </Heading>
-                <Paragraph>{error}</Paragraph>
-                <Button data-size="sm" onClick={onRetry} variant="secondary">
-                  Prøv igjen
-                </Button>
-              </Alert>
-            ) : null}
           </li>
         );
       })}
 
       {status === 'pending' && messages.at(-1)?.role !== 'assistant' ? (
         <li className="ka-message">
-          <AnswerSkeleton />
+          <Card className="ka-answer-card" data-color="neutral">
+            <Card.Block>
+              <AnswerSkeleton />
+            </Card.Block>
+          </Card>
         </li>
       ) : null}
     </ol>
