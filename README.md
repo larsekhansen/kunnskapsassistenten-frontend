@@ -49,7 +49,7 @@ src/
   layout/
     Shell.tsx                 de tre plassene
     viewModel.ts              Slot, ViewId, View, Layout. Bare abstraksjonen
-  views/
+  routes/
     NewConversation.tsx       ruten /
     Thread.tsx                ruten /threads/:threadId
 ```
@@ -57,10 +57,9 @@ src/
 Rutene er `/` for ny samtale og `/threads/:threadId` for én samtale.
 
 Mappene `src/api/`, `src/model/` og `src/components/` kommer med grunnmuren.
-Undermappene i `src/views/` (`threads/`, `filters/`, `chat/`, `sources/`) eies
-av hver sin arbeider, se `CONTRIBUTING.md`. De to filene som ligger rett i
-`src/views/` i dag er rutesider, ikke views i plass-forstand; de flyttes
-antakelig til en egen mappe når de faktiske viewene kommer.
+`src/routes/` er rutesider som monterer views i plassene; `src/views/`
+(`threads/`, `filters/`, `chat/`, `sources/`) er selve viewene, og hver
+undermappe eies av én arbeider, se `CONTRIBUTING.md`.
 
 ## Naming
 

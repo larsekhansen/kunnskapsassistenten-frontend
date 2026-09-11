@@ -32,6 +32,7 @@ dirigenten, som gir det til eieren.
 | Mappe                                                                                        | Eier              |
 | -------------------------------------------------------------------------------------------- | ----------------- |
 | `src/api/`, `src/model/`, `src/layout/`, `src/components/`, `vite.config.ts`, `package.json` | grunnmur          |
+| `src/routes/`, `src/App.tsx`, `src/main.tsx`                                                 | grunnmur (#5)     |
 | `src/views/threads/`, `src/views/filters/`                                                   | primary sidebar   |
 | `src/views/chat/`                                                                            | main              |
 | `src/views/sources/`                                                                         | secondary sidebar |

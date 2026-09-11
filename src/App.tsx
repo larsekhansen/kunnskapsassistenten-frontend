@@ -1,7 +1,7 @@
 import { Route, Routes } from 'react-router';
 import { Shell } from './layout/Shell';
-import { NewConversation } from './views/NewConversation';
-import { Thread } from './views/Thread';
+import { NewConversation } from './routes/NewConversation';
+import { Thread } from './routes/Thread';
 
 /**
  * Routes are English, like the rest of the code. The text they render is
