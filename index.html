@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="nb" data-color-scheme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Inter er fonten Designsystemet er designet og utviklet med, vektene
+         400, 500 og 600. Se design/designsystemet/oppsett.md. -->
+    <link
+      rel="stylesheet"
+      href="https://altinncdn.no/fonts/inter/v4.1/inter.css"
+      integrity="sha384-OcHzc/By/OPw9uJREawUCjP2inbOGKtKb4A/I2iXxmknUfog2H8Adx71tWVZRscD"
+      crossorigin="anonymous"
+    />
+    <title>Kunnskapsassistenten</title>
+  </head>
+  <!--
+    data-size og data-color står på <body>, ikke på <html>, med vilje.
+    Designsystemets [data-size]-regel setter font-size på elementet den
+    treffer. Står den på <html>, blir 1rem 18px i stedet for 16px, og da
+    skalerer ALLE --ds-size-*-tokens 12,5 % opp, fordi de er regnet ut av
+    calc(1rem * 4 / 18 * 1.125). Designsystemet sier det selv i base.css:
+    «Setting default font on <body> not :root/<html> to ensure 1rem is still
+    16px». Målt: 36 px blir 40 px hvis attributtet står på <html>.
+  -->
+  <body data-size="md" data-color="accent">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

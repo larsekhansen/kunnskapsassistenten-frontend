@@ -1,0 +1,110 @@
+/*
+ * Rekkefølgen her er viktig, og den er beskrevet i
+ * design/designsystemet/oppsett.md:
+ *
+ *   1. Designsystemets komponent-CSS, som også erklærer layer-rekkefølgen
+ *      @layer ds.theme, ds.base, ds.components
+ *   2. temaet, som legger seg i ds.theme.*
+ *   3. vår egen CSS, utenfor alle layers, slik at den vinner uten !important
+ */
+@import '@digdir/designsystemet-css';
+@import '../../design-tokens-build/digdir.css';
+
+/*
+ * Alt under her står UTENFOR alle layers med vilje. Ulagret forfatter-CSS
+ * slår all lagret forfatter-CSS, så vi trenger aldri !important for å
+ * overstyre Designsystemet.
+ *
+ * Bruk aldri px og aldri heksfarger. --ds-size-N og --ds-color-* følger
+ * tema, størrelsesmodus og mørk modus; faste verdier gjør ikke det.
+ */
+
+:root {
+  /*
+   * Breddene er avgjort av Lars 2026-09-11, se
+   * design/skal-dette-implementeres.md spørsmål 46, 59 og 26.
+   */
+  --ka-navigasjonspanel-innhold: 328px;
+  --ka-hovedkolonne-min: 640px;
+  --ka-hovedkolonne-maks: 800px;
+  --ka-kildepanel-kollapset: 198px;
+  --ka-kolonne-gap: var(--ds-size-8); /* 32 px */
+  --ka-panel-padding-inline: var(--ds-size-9); /* 36 px */
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--ds-font-family), sans-serif;
+  font-feature-settings: 'cv05' 1; /* hale på liten l */
+}
+
+/* Hopp-lenke til hovedinnholdet. Synlig først ved tastaturfokus. */
+.ka-hopp-lenke {
+  position: absolute;
+  inset-block-start: var(--ds-size-2);
+  inset-inline-start: var(--ds-size-2);
+  z-index: 100;
+  padding: var(--ds-size-2) var(--ds-size-4);
+  background: var(--ds-color-neutral-surface-default);
+  border-radius: var(--ds-border-radius-md);
+}
+.ka-hopp-lenke:not(:focus-visible) {
+  /* Samme teknikk som Designsystemets ds-sr-only */
+  clip-path: inset(50%);
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Skallet: tre regioner på én rad, med rollenavn og ikke sidenavn. */
+.ka-skall {
+  display: flex;
+  gap: var(--ka-kolonne-gap);
+  align-items: stretch;
+  height: 100%;
+  background: var(--ds-color-neutral-background-default);
+}
+
+.ka-navigasjonspanel {
+  flex: 0 0 auto;
+  box-sizing: content-box;
+  inline-size: var(--ka-navigasjonspanel-innhold);
+  padding-block: var(--ds-size-8);
+  padding-inline: var(--ka-panel-padding-inline);
+  background: var(--ds-color-neutral-surface-default);
+  border-inline-end: 1px solid var(--ds-color-neutral-border-subtle);
+  overflow-y: auto;
+}
+
+.ka-hovedkolonne {
+  flex: 1 0 0;
+  min-inline-size: var(--ka-hovedkolonne-min);
+  max-inline-size: var(--ka-hovedkolonne-maks);
+  margin-inline: auto;
+  padding-block: var(--ds-size-8);
+  overflow-y: auto;
+}
+
+.ka-kildepanel {
+  flex: 0 0 auto;
+  inline-size: var(--ka-kildepanel-kollapset);
+  padding-block: var(--ds-size-8);
+  padding-inline-end: var(--ka-panel-padding-inline);
+  overflow-y: auto;
+}
+
+/* Enkle stabler. Designsystemet har ingen layout-primitiver, se
+   design/designsystemet/behov-til-komponent.md. */
+.ka-stabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+  align-items: start;
+}
