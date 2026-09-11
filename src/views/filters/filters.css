@@ -66,8 +66,14 @@
  *
  * Only `width`, never `display`: u-combobox opens and closes this element
  * with `hidden`, and a `display` here would keep it on screen.
+ *
+ * Scoped to this view. The list is drawn in the top layer, but it stays in
+ * the DOM under the Suggestion that opened it, so the descendant selector
+ * still matches — and an unscoped rule in a file imported by a component
+ * would set the width of every Suggestion in the app, including the ones
+ * other owners build.
  */
-.ds-suggestion > u-datalist {
+.filters-view .ds-suggestion > u-datalist {
   width: min(26rem, calc(100vw - var(--ds-size-8)));
 }
 

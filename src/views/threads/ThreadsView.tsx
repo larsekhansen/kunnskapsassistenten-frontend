@@ -1,11 +1,12 @@
 import { Button, Link, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
 import { FunnelIcon, PencilWritingIcon } from '@navikt/aksel-icons';
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
-import { NavLink } from 'react-router';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Link as RouterLink, NavLink } from 'react-router';
 import { createChatClient } from '../../api';
 import { EmptyState, ErrorState, PanelHeader } from '../../components';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { Thread } from '../../model';
+import { requestViewFocus, takeViewFocus } from '../filters/viewSwitch';
 import { groupThreads } from './grouping';
 import './threads.css';
 
@@ -29,6 +30,7 @@ export function ThreadsView({ siblingViews, onShowView, threads: given }: Thread
   const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState('');
   const searchStatusId = useId();
+  const filterRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (given) return;
@@ -52,6 +54,16 @@ export function ThreadsView({ siblingViews, onShowView, threads: given }: Thread
     setAttempt((count) => count + 1);
   }, []);
 
+  /*
+   * Focus after a switch from the filter view, which unmounted the button the
+   * user pressed and dropped focus on the body. `takeViewFocus` is false on a
+   * page load, so this never fires ahead of the skip link.
+   */
+  useEffect(() => {
+    if (takeViewFocus('threads')) filterRef.current?.focus();
+  }, []);
+
+  const loading = !failed && !threads;
   const trimmed = query.trim().toLocaleLowerCase('nb-NO');
   const matches = useMemo(
     () =>
@@ -61,7 +73,7 @@ export function ThreadsView({ siblingViews, onShowView, threads: given }: Thread
   const groups = useMemo(() => groupThreads(matches), [matches]);
 
   return (
-    <div className="threads-view">
+    <div className="threads-view" aria-busy={loading || undefined}>
       {/*
         The way in to filtering. The slot tells the view which other views it
         holds, so the button appears only when there is somewhere to go.
@@ -70,17 +82,32 @@ export function ThreadsView({ siblingViews, onShowView, threads: given }: Thread
         design/designsystemet/behov-til-komponent.md.
       */}
       {siblingViews.includes('filters') && (
-        <Button variant="tertiary" data-color="neutral" onClick={() => onShowView('filters')}>
+        <Button
+          ref={filterRef}
+          variant="tertiary"
+          data-color="neutral"
+          onClick={() => {
+            requestViewFocus('filters');
+            onShowView('filters');
+          }}
+        >
           <FunnelIcon aria-hidden="true" />
           Filtrer dokumenter
         </Button>
       )}
 
+      {/*
+        Link and not NavLink: NavLink marks itself as the current page when the
+        route matches, and on «/» that told a screen reader user that the
+        button they are about to press is the page they are already on. «Ny
+        tråd» is an action. The thread rows below are places, and they keep
+        NavLink and aria-current (answer 7).
+      */}
       <Button asChild>
-        <NavLink to="/">
+        <RouterLink to="/">
           Ny tråd
           <PencilWritingIcon aria-hidden="true" />
-        </NavLink>
+        </RouterLink>
       </Button>
 
       <PanelHeader title="Tidligere tråder">
@@ -94,7 +121,7 @@ export function ThreadsView({ siblingViews, onShowView, threads: given }: Thread
             <Search>
               <Search.Input
                 aria-label="Søk i tråder"
-                aria-describedby={trimmed ? searchStatusId : undefined}
+                aria-describedby={searchStatusId}
                 placeholder="Søk i tråder"
                 onInput={(event) => setQuery(event.currentTarget.value)}
               />
@@ -104,20 +131,27 @@ export function ThreadsView({ siblingViews, onShowView, threads: given }: Thread
         </search>
       </PanelHeader>
 
-      {trimmed && (
-        <Paragraph asChild data-size="sm">
-          <output id={searchStatusId}>
-            {matches.length === 1 ? '1 tråd' : `${matches.length} tråder`}
-          </output>
-        </Paragraph>
-      )}
+      {/*
+        The hit count, and the loading message under it, are both rendered
+        permanently with their text coming and going. A live region only
+        announces content that appears inside a region that already existed,
+        so mounting the region together with its text — which is what a
+        `{trimmed && …}` around it did — said nothing on the first search.
+        ErrorState keeps its alert container for the same reason.
+      */}
+      <Paragraph asChild data-size="sm">
+        <output id={searchStatusId} className="threads-view__search-status">
+          {trimmed ? (matches.length === 1 ? '1 tråd' : `${matches.length} tråder`) : ''}
+        </output>
+      </Paragraph>
 
       <ErrorState message={failed ? 'Klarte ikke å hente trådene.' : undefined} onRetry={retry} />
 
-      {!failed && !threads && (
+      {/* Skeleton is aria-hidden, so this carries the message. */}
+      <output className="ds-sr-only">{loading ? 'Henter tråder' : ''}</output>
+
+      {loading && (
         <div className="threads-view__loading">
-          {/* Skeleton is aria-hidden, so an <output> carries the message. */}
-          <output className="ds-sr-only">Henter tråder</output>
           {[28, 22, 30, 18].map((characters) => (
             <Skeleton key={characters} variant="text" width={characters} />
           ))}

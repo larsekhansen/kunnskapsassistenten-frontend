@@ -1,6 +1,6 @@
 import { Button, Skeleton } from '@digdir/designsystemet-react';
 import { ArrowLeftIcon } from '@navikt/aksel-icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createChatClient } from '../../api';
 import { EmptyState, ErrorState, PanelHeader } from '../../components';
 import { useFilterSelection } from '../../layout/useFilterSelection';
@@ -8,6 +8,7 @@ import type { SlotViewProps } from '../../layout/viewModel';
 import type { FilterFacet } from '../../model';
 import { DocumentsList } from './DocumentsList';
 import { FacetField } from './FacetField';
+import { requestViewFocus, takeViewFocus } from './viewSwitch';
 import './filters.css';
 
 export type FiltersViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> & {
@@ -31,6 +32,18 @@ export function FiltersView({ siblingViews, onShowView, facets: given }: Filters
   const [facets, setFacets] = useState<FilterFacet[] | undefined>(given);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const backRef = useRef<HTMLButtonElement>(null);
+  const loading = !failed && !facets;
+
+  /*
+   * Focus after a switch from the thread list. The button the user pressed
+   * was unmounted with the view it stood in, so focus fell to the body; this
+   * takes it back to the same place in the panel. `takeViewFocus` is false on
+   * a page load, so nothing is stolen from the skip link then.
+   */
+  useEffect(() => {
+    if (takeViewFocus('filters')) backRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (given) return;
@@ -55,7 +68,7 @@ export function FiltersView({ siblingViews, onShowView, facets: given }: Filters
   }, []);
 
   return (
-    <div className="filters-view">
+    <div className="filters-view" aria-busy={loading || undefined}>
       {/*
         The way back to the thread list. The slot tells the view which other
         views it holds, so the button appears only when there is somewhere to
@@ -63,7 +76,15 @@ export function FiltersView({ siblingViews, onShowView, facets: given }: Filters
         address. See design/designsystemet/behov-til-komponent.md.
       */}
       {siblingViews.includes('threads') && (
-        <Button variant="tertiary" data-color="neutral" onClick={() => onShowView('threads')}>
+        <Button
+          ref={backRef}
+          variant="tertiary"
+          data-color="neutral"
+          onClick={() => {
+            requestViewFocus('threads');
+            onShowView('threads');
+          }}
+        >
           <ArrowLeftIcon aria-hidden="true" />
           Tråder
         </Button>
@@ -73,10 +94,17 @@ export function FiltersView({ siblingViews, onShowView, facets: given }: Filters
 
       <ErrorState message={failed ? 'Klarte ikke å hente filtrene.' : undefined} onRetry={retry} />
 
-      {!failed && !facets && (
+      {/*
+        Skeleton is aria-hidden, so this carries the message. Rendered
+        permanently with the text coming and going: a live region only
+        announces what appears inside a region that already existed, so
+        mounting the region and its text together says nothing — the same
+        reason ErrorState keeps its alert container. A retry has to announce.
+      */}
+      <output className="ds-sr-only">{loading ? 'Henter filtre' : ''}</output>
+
+      {loading && (
         <div className="filters-view__loading">
-          {/* Skeleton is aria-hidden, so an <output> carries the message. */}
-          <output className="ds-sr-only">Henter filtre</output>
           {['a', 'b', 'c'].map((key) => (
             <Skeleton key={key} height="var(--ds-size-14)" />
           ))}

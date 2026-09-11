@@ -113,6 +113,23 @@ export function FacetField({ facet, selected, onChange }: FacetFieldProps) {
     onChange(values);
   }
 
+  /*
+   * «Velg alle» and «Tøm» are rendered on the very state they change, so
+   * React takes the button out of the DOM in the same render and focus falls
+   * to `document.body`. A keyboard user would be thrown back above the skip
+   * link on every choice (WCAG 2.4.3). The field below the button is where
+   * they are going next, so focus moves there first, while the button still
+   * exists.
+   *
+   * Only from these two buttons. `onSelectedChange` must not focus the
+   * input: the user may be inside the chips, where ArrowLeft and Enter walk
+   * and remove, and pulling focus out would break that.
+   */
+  function changeFromButton(values: string[]) {
+    inputRef.current?.focus();
+    change(values);
+  }
+
   return (
     <Field>
       <div className="facet-field__label-row">
@@ -125,7 +142,7 @@ export function FacetField({ facet, selected, onChange }: FacetFieldProps) {
               data-color="neutral"
               data-size="sm"
               aria-label={`Velg alle ${facet.label.toLocaleLowerCase('nb-NO')}`}
-              onClick={() => change(facet.values.map((value) => value.value))}
+              onClick={() => changeFromButton(facet.values.map((value) => value.value))}
             >
               Velg alle
             </Button>
@@ -136,7 +153,7 @@ export function FacetField({ facet, selected, onChange }: FacetFieldProps) {
               data-color="neutral"
               data-size="sm"
               aria-label={`Tøm ${facet.label.toLocaleLowerCase('nb-NO')}`}
-              onClick={() => change([])}
+              onClick={() => changeFromButton([])}
             >
               Tøm
             </Button>

@@ -73,12 +73,28 @@
 
 /*
  * The selected thread. aria-current is the semantics; this is only the paint,
- * and it is bound to the same attribute so the two cannot disagree. Weight
- * carries the state as well as colour, because colour alone is not enough.
+ * and it is bound to the same attribute so the two cannot disagree.
+ *
+ * The spec marks the active thread with weight alone. The surface is an
+ * addition, and a deliberate one — but it only reaches 1.6:1 against the
+ * panel, so it cannot be the signal on its own. Semibold rather than medium
+ * is what actually carries the state at 14 px; text contrast is 8.6:1 light
+ * and 8.4:1 dark either way.
  */
 .threads-view__thread[aria-current='page'] {
   background: var(--ds-color-accent-surface-active);
-  font-weight: var(--ds-font-weight-medium);
+  font-weight: var(--ds-font-weight-semibold);
+}
+
+/*
+ * The hit count is rendered even when there is nothing to say, so that the
+ * live region exists before its text does. Collapse the empty box; never
+ * `display: none`, which would take the region out of the accessibility tree
+ * and bring the announcement problem back.
+ */
+.threads-view__search-status:empty {
+  margin: 0;
+  block-size: 0;
 }
 
 .threads-view[hidden],

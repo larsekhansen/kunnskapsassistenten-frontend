@@ -27,12 +27,22 @@ export function DocumentsList() {
         <Heading level={4} data-size="2xs">
           Fra Kudos
         </Heading>
+        {/*
+          The spec reads «Dokumentene som er relevant for ditt søk vises her».
+          Deliberate deviation: «relevant» has to agree with «dokumentene».
+        */}
         <Paragraph data-size="sm">Dokumentene som er relevante for søket ditt vises her.</Paragraph>
       </section>
 
       <section className="documents-list">
         <div className="documents-list__heading-row">
-          <Heading level={3} data-size="xs">
+          {/*
+            Level 4, a sibling of «Fra Kudos». The spec draws DocumentsList as
+            one column with «Dokumenter» over both sources; level 3 here made
+            this a sibling of «Dokumenter» instead, and the outline stopped
+            matching the picture.
+          */}
+          <Heading level={4} data-size="xs">
             Dine dokumenter
           </Heading>
           <Tag data-color="info" data-size="sm">
@@ -41,6 +51,12 @@ export function DocumentsList() {
         </div>
         <div className="documents-list__upload">
           <Paragraph data-size="sm">Last opp egne dokumenter</Paragraph>
+          {/*
+            The spec reads «Kun PDF og .docx for øyeblikket». Deliberate
+            deviation: that sentence describes a limit on something the user
+            can do, and there is nothing to do here yet, so it would promise a
+            control that does not exist. The formats are kept.
+          */}
           <Paragraph data-size="xs">
             Opplasting er ikke klar ennå. Når den kommer, tar den PDF og .docx.
           </Paragraph>
