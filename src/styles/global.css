@@ -1,5 +1,5 @@
 /*
- * Rekkefølgen her er viktig, og den er beskrevet i
+ * Import order matters, and it is documented in
  * design/designsystemet/oppsett.md:
  *
  *   1. Designsystemets komponent-CSS, som også erklærer layer-rekkefølgen
@@ -11,25 +11,28 @@
 @import '../../design-tokens-build/digdir.css';
 
 /*
- * Alt under her står UTENFOR alle layers med vilje. Ulagret forfatter-CSS
- * slår all lagret forfatter-CSS, så vi trenger aldri !important for å
- * overstyre Designsystemet.
+ * Everything below sits OUTSIDE every layer on purpose. Unlayered author CSS
+ * beats all layered author CSS, so we never need !important to override
+ * Designsystemet.
  *
- * Bruk aldri px og aldri heksfarger. --ds-size-N og --ds-color-* følger
- * tema, størrelsesmodus og mørk modus; faste verdier gjør ikke det.
+ * Never write px and never write hex colours. --ds-size-N and --ds-color-*
+ * follow the theme, the size mode and dark mode; fixed values do not.
+ *
+ * Slots are named after position, views after content. Never after the side a
+ * panel happens to sit on, not even in comments. See src/layout/viewModel.ts.
  */
 
 :root {
   /*
-   * Breddene er avgjort av Lars 2026-09-11, se
-   * design/skal-dette-implementeres.md spørsmål 46, 59 og 26.
+   * Widths decided by Lars 2026-09-11; see
+   * design/skal-dette-implementeres.md answers 46, 59 and 26.
    */
-  --ka-navigasjonspanel-innhold: 328px;
-  --ka-hovedkolonne-min: 640px;
-  --ka-hovedkolonne-maks: 800px;
-  --ka-kildepanel-kollapset: 198px;
-  --ka-kolonne-gap: var(--ds-size-8); /* 32 px */
-  --ka-panel-padding-inline: var(--ds-size-9); /* 36 px */
+  --ka-primary-sidebar-content-width: 328px;
+  --ka-secondary-sidebar-collapsed-width: 198px;
+  --ka-main-min-width: 640px;
+  --ka-main-max-width: 800px;
+  --ka-slot-gap: var(--ds-size-8); /* 32 px */
+  --ka-sidebar-padding-inline: var(--ds-size-9); /* 36 px */
 }
 
 html,
@@ -44,8 +47,8 @@ body {
   font-feature-settings: 'cv05' 1; /* hale på liten l */
 }
 
-/* Hopp-lenke til hovedinnholdet. Synlig først ved tastaturfokus. */
-.ka-hopp-lenke {
+/* Skip link to the main content. Visible on keyboard focus only. */
+.skip-link {
   position: absolute;
   inset-block-start: var(--ds-size-2);
   inset-inline-start: var(--ds-size-2);
@@ -54,8 +57,8 @@ body {
   background: var(--ds-color-neutral-surface-default);
   border-radius: var(--ds-border-radius-md);
 }
-.ka-hopp-lenke:not(:focus-visible) {
-  /* Samme teknikk som Designsystemets ds-sr-only */
+.skip-link:not(:focus-visible) {
+  /* Same technique as Designsystemet's ds-sr-only */
   clip-path: inset(50%);
   height: 1px;
   width: 1px;
@@ -63,46 +66,46 @@ body {
   white-space: nowrap;
 }
 
-/* Skallet: tre regioner på én rad, med rollenavn og ikke sidenavn. */
-.ka-skall {
+/* The shell: three slots on one row, named after position. */
+.shell {
   display: flex;
-  gap: var(--ka-kolonne-gap);
+  gap: var(--ka-slot-gap);
   align-items: stretch;
   height: 100%;
   background: var(--ds-color-neutral-background-default);
 }
 
-.ka-navigasjonspanel {
+.primary-sidebar {
   flex: 0 0 auto;
   box-sizing: content-box;
-  inline-size: var(--ka-navigasjonspanel-innhold);
+  inline-size: var(--ka-primary-sidebar-content-width);
   padding-block: var(--ds-size-8);
-  padding-inline: var(--ka-panel-padding-inline);
+  padding-inline: var(--ka-sidebar-padding-inline);
   background: var(--ds-color-neutral-surface-default);
   border-inline-end: 1px solid var(--ds-color-neutral-border-subtle);
   overflow-y: auto;
 }
 
-.ka-hovedkolonne {
+.main {
   flex: 1 0 0;
-  min-inline-size: var(--ka-hovedkolonne-min);
-  max-inline-size: var(--ka-hovedkolonne-maks);
+  min-inline-size: var(--ka-main-min-width);
+  max-inline-size: var(--ka-main-max-width);
   margin-inline: auto;
   padding-block: var(--ds-size-8);
   overflow-y: auto;
 }
 
-.ka-kildepanel {
+.secondary-sidebar {
   flex: 0 0 auto;
-  inline-size: var(--ka-kildepanel-kollapset);
+  inline-size: var(--ka-secondary-sidebar-collapsed-width);
   padding-block: var(--ds-size-8);
-  padding-inline-end: var(--ka-panel-padding-inline);
+  padding-inline-end: var(--ka-sidebar-padding-inline);
   overflow-y: auto;
 }
 
-/* Enkle stabler. Designsystemet har ingen layout-primitiver, se
+/* A plain vertical stack. Designsystemet ships no layout primitives, see
    design/designsystemet/behov-til-komponent.md. */
-.ka-stabel {
+.stack {
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-4);

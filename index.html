@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Inter er fonten Designsystemet er designet og utviklet med, vektene
-         400, 500 og 600. Se design/designsystemet/oppsett.md. -->
+    <!-- Inter is the font Designsystemet is designed and built with, weights
+         400, 500 and 600. See design/designsystemet/oppsett.md. -->
     <link
       rel="stylesheet"
       href="https://altinncdn.no/fonts/inter/v4.1/inter.css"
@@ -15,13 +15,16 @@
     <title>Kunnskapsassistenten</title>
   </head>
   <!--
-    data-size og data-color står på <body>, ikke på <html>, med vilje.
-    Designsystemets [data-size]-regel setter font-size på elementet den
-    treffer. Står den på <html>, blir 1rem 18px i stedet for 16px, og da
-    skalerer ALLE --ds-size-*-tokens 12,5 % opp, fordi de er regnet ut av
-    calc(1rem * 4 / 18 * 1.125). Designsystemet sier det selv i base.css:
-    «Setting default font on <body> not :root/<html> to ensure 1rem is still
-    16px». Målt: 36 px blir 40 px hvis attributtet står på <html>.
+    data-size and data-color sit on <body>, not on <html>, on purpose.
+    Designsystemet's [data-size] rule sets font-size on the element it
+    matches. On <html> that makes 1rem 18px instead of 16px, and then EVERY
+    --ds-size-* token scales up 12.5%, because they are computed from
+    calc(1rem * 4 / 18 * 1.125). Designsystemet says so itself in base.css:
+    "Setting default font on <body> not :root/<html> to ensure 1rem is still
+    16px". Measured: 36px becomes 40px with the attribute on <html>.
+
+    lang="nb" stays on <html>: several Designsystemet components only use
+    their Norwegian default strings when the nearest lang starts with nb.
   -->
   <body data-size="md" data-color="accent">
     <div id="root"></div>

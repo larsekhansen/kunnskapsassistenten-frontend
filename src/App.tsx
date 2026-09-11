@@ -1,20 +1,21 @@
 import { Route, Routes } from 'react-router';
-import { Skall } from './layout/Skall';
-import { NySamtale } from './sider/NySamtale';
-import { Traad } from './sider/Traad';
+import { Shell } from './layout/Shell';
+import { NewConversation } from './views/NewConversation';
+import { Thread } from './views/Thread';
 
 /**
- * Rutene er norske, som resten av grensesnittet.
+ * Routes are English, like the rest of the code. The text they render is
+ * Norwegian.
  *
- *   /                  ny samtale, tom tilstand
- *   /traader/:traadId  én samtale
+ *   /                   new conversation, empty state
+ *   /threads/:threadId  one conversation
  */
 export function App() {
   return (
     <Routes>
-      <Route element={<Skall />}>
-        <Route index element={<NySamtale />} />
-        <Route path="traader/:traadId" element={<Traad />} />
+      <Route element={<Shell />}>
+        <Route index element={<NewConversation />} />
+        <Route path="threads/:threadId" element={<Thread />} />
       </Route>
     </Routes>
   );

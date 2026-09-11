@@ -4,8 +4,11 @@ Ny frontend for Kunnskapsassistenten (KA) i Digdir. Vite, React, TypeScript,
 React Router i klientmodus, og Designsystemet 1.21.0.
 
 Dette er **Trinn 1**: skallet, temaet og rutene. Det er ingen chat, ingen
-kilder og ingen filtrering ennå — bare de tre regionene med riktige
-landemerker, temaet på plass og to ruter som virker.
+kilder og ingen filtrering ennå — bare de tre plassene med riktige landemerker,
+temaet på plass og to ruter som virker.
+
+Navnereglene står under [Naming](#naming), og kortversjonen av arbeidsreglene i
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Kom i gang
 
@@ -44,61 +47,74 @@ src/
   globals.d.ts                window.dsWarnings
   styles/global.css           importrekkefølge og all egen CSS
   layout/
-    Skall.tsx                 de tre regionene
-    views.ts                  view-begrepet, bare abstraksjonen
-  sider/
-    NySamtale.tsx             ruten /
-    Traad.tsx                 ruten /traader/:traadId
+    Shell.tsx                 de tre plassene
+    viewModel.ts              Slot, ViewId, View, Layout. Bare abstraksjonen
+  views/
+    NewConversation.tsx       ruten /
+    Thread.tsx                ruten /threads/:threadId
 ```
 
-Rutene er norske: `/` er ny samtale, `/traader/:traadId` er én samtale.
+Rutene er `/` for ny samtale og `/threads/:threadId` for én samtale.
 
-## De tre regionene, og hvorfor de heter det de gjør
+Mappene `src/api/`, `src/model/` og `src/components/` kommer med grunnmuren.
+Undermappene i `src/views/` (`threads/`, `filters/`, `chat/`, `sources/`) eies
+av hver sin arbeider, se `CONTRIBUTING.md`. De to filene som ligger rett i
+`src/views/` i dag er rutesider, ikke views i plass-forstand; de flyttes
+antakelig til en egen mappe når de faktiske viewene kommer.
 
-| Region               | Element                               | Innhold                            |
-| -------------------- | ------------------------------------- | ---------------------------------- |
-| **navigasjonspanel** | `<nav aria-label="Tråder og filter">` | Trådliste og dokumentfilter        |
-| **hovedkolonne**     | `<main id="hovedinnhold">`            | Spørsmålet, svaret og skrivefeltet |
-| **kildepanel**       | `<aside aria-label="Kilder">`         | Kildelista, senere også verktøy    |
+## Naming
 
-**Navnene er rollenavn, ikke sidenavn.** Det er et bevisst valg med to grunner:
+Regelen er Lars sin, satt 2026-09-11:
 
-1. **Skjermlesere.** Panelene skal kunne flyttes. En `aria-label` som sier
-   «venstre panel» lyver for en skjermleserbruker den dagen panelet står til
-   høyre, og en skjermleserbruker har ingen «venstre» å forholde seg til
-   uansett.
+- **Kode, filnavn, mapper, CSS-klasser, CSS-variabler, typer og ruter:
+  engelsk.**
+- **Alt brukeren ser eller hører: norsk bokmål med ekte æøå.** UI-tekst,
+  `aria-label`, `title`, feilmeldinger, `lang="nb"`.
+- **Plasser heter etter posisjon, innhold heter etter innhold**, som i VS Code.
+
+Denne fila og `CONTRIBUTING.md` er på norsk. Kommentarer i koden er på engelsk,
+siden de er kode.
+
+### Plasser og views
+
+En **plass** (slot) er et sted i layouten. Det er tre av dem, og de har faste
+navn etter posisjon:
+
+| Plass               | Element                    | CSS-klasse           |
+| ------------------- | -------------------------- | -------------------- |
+| `primary-sidebar`   | `<nav>`                    | `.primary-sidebar`   |
+| `main`              | `<main id="main-content">` | `.main`              |
+| `secondary-sidebar` | `<aside>`                  | `.secondary-sidebar` |
+
+Et **view** er innhold som kan flyttes mellom plasser, og heter etter
+innholdet: `threads`, `filters`, `chat`, `sources`. Standardoppsettet har
+threads og filters i `primary-sidebar`, chat i `main` og sources i
+`secondary-sidebar`.
+
+**En plass har aldri en fast `aria-label`.** Navnet kommer fra viewet som står
+der, via `slotLabel()` i `src/layout/viewModel.ts`: «Tråder og filter» for
+primary, «Kilder» for secondary. `<main>` får ingen etikett, siden det er unikt
+på sida.
+
+To grunner til at plassene ikke er navngitt etter hvilken side de står på:
+
+1. **Skjermlesere.** Flytter man et view, skal navnet følge med. En fast
+   etikett som nevner en side lyver den dagen panelet flyttes, og en
+   skjermleserbruker har ingen sider å navigere etter uansett.
 2. **Flyttbare paneler.** Brukeren skal på sikt kunne velge hva som ligger
-   hvor, og bytte mellom ulike _views_. Da må navnet følge rollen, ikke
-   posisjonen.
+   hvor. Et navn bundet til posisjon overlever ikke det.
 
-Ingen klasse, variabel, ARIA-etikett eller filnavn i dette repoet bruker
-«venstre» eller «høyre». Bruk ikke `left`/`right` i ny kode heller.
+Derfor finnes ikke ordene «venstre», «høyre», `left` eller `right` noe sted i
+dette repoet, heller ikke i kommentarer. Det er grep-bart, og det skal
+fortsette å være det.
 
-`src/layout/views.ts` er abstraksjonen bak punkt 2. Den beskriver hvilke
-regioner som finnes, hva de kan vise, og hvilken rekkefølge de har. Det finnes
-**ikke** noe grensesnitt for å endre view ennå, og ingen lagring. Grunnen til
-at abstraksjonen kommer først står i fila.
+### Layout-abstraksjonen
 
-### Bredder
-
-Målt i nettleseren, ikke regnet ut:
-
-```
-navigasjonspanel   401 px  = 328 innhold + 2 × 36 padding + 1 ramme, fast
-gap                 32 px  = var(--ds-size-8)
-hovedkolonne       min 640, maks 800 px, fleksibel, egen skrolling
-gap                 32 px
-kildepanel         234 px  = 198 kollapset + 36 padding
-```
-
-**Vinduet må være minst 1339 px bredt** før hovedkolonnen får sine 640 px.
-Under det skroller sida vannrett, og hovedkolonnen holder 640 px i stedet for å
-krympe. Terskelen er målt: ved 1339 px er det ingen vannrett skrolling, ved
-1338 px er det.
-
-Det er ikke ferdig. Brytepunkter for skrivebord og nettbrett er neste
-layoutoppgave; mobil kommer senere. Til da er 1339 px den reelle
-minstebredden.
+`src/layout/viewModel.ts` har typene `Slot`, `ViewId`, `View`, `SlotState` og
+`Layout`, pluss `defaultLayout` som skallet leser fra. Det finnes **ikke** noe
+grensesnitt for å bytte layout ennå, ingen dra-håndtak og ingen lagring.
+Grunnen til at abstraksjonen kommer først står i fila: plassinnhold,
+plassbredde og modusvekslingen i begge sidepaneler er samme problem.
 
 ## Temaet
 
@@ -154,7 +170,7 @@ Praktisk betyr det:
   tegnes ikke selv.
 - Alt er norsk, også tilgjengelige navn.
 - Ikonknapper må ha `aria-label`.
-- Hopp-lenka til `#hovedinnhold` skal alltid være første fokuserbare element.
+- Hopp-lenka til `#main-content` skal alltid være første fokuserbare element.
 
 ## Åpne punkter i Trinn 1
 
@@ -163,7 +179,7 @@ Praktisk betyr det:
   fargene er ikke verifisert der. Skal mørk modus støttes, er verdien `auto`,
   og da må kontrasten sjekkes.
 - **Brytepunkter** finnes ikke. Se «Bredder».
-- **Bredden på åpent kildepanel** er ikke bestemt. Panelet er kollapset på
+- **Bredden på åpen `secondary-sidebar`** er ikke bestemt. Plassen er kollapset på
   198 px nå.
 - **Topplinje** er ikke bestemt, så det finnes ingen.
 - ~~React Router-versjonen.~~ **Avgjort 2026-09-11:** 8.3.1, pinnet uten
