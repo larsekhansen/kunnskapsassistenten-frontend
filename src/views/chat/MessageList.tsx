@@ -1,4 +1,4 @@
-import { Alert, Button, Heading, Paragraph, Skeleton } from '@digdir/designsystemet-react';
+import { Alert, Button, Card, Heading, Paragraph, Skeleton } from '@digdir/designsystemet-react';
 import type { Message } from '../../model';
 import { AnswerActions } from './AnswerActions';
 import { AnswerBody } from './AnswerBody';
@@ -56,43 +56,68 @@ export function MessageList({
           return (
             <li className="ka-message ka-message--user" key={message.id}>
               <span className="ds-sr-only">Du skrev:</span>
-              <Paragraph variant="long">{message.content}</Paragraph>
+              {/* Set larger than the answer and above the card, as in Figma:
+                  the question is what the card is an answer to. */}
+              <Paragraph data-size="lg" variant="long">
+                {message.content}
+              </Paragraph>
             </li>
           );
         }
 
         const streaming = message.status === 'streaming';
         const empty = message.content.length === 0;
+        // A failed turn with nothing in it gets no card: an empty bordered
+        // box above the error says nothing.
+        const showCard = !empty || streaming;
 
         return (
           <li className="ka-message ka-message--assistant" key={message.id}>
             <span className="ds-sr-only">Kunnskapsassistenten svarte:</span>
 
-            {empty && streaming ? <AnswerSkeleton /> : null}
+            {/*
+              The answer sits in a card, as the design draws it. `data-color`
+              is neutral and not inherited: with accent on the root, the card
+              and its border would go blue, which nobody has drawn. Chrome
+              gets an explicit family, see visjon-og-beslutninger.md.
 
-            {empty ? null : (
-              <AnswerBody
-                citations={message.citations}
-                content={message.content}
-                onSelectSource={onSelectSource}
-                sources={message.sources}
-                streaming={streaming}
-              />
-            )}
+              Two blocks rather than one, because Card.Block draws the rule
+              between them — which is exactly the divider above the action row.
+            */}
+            {showCard ? (
+              <Card className="ka-answer-card" data-color="neutral">
+                <Card.Block>
+                  {empty && streaming ? <AnswerSkeleton /> : null}
 
-            {message.retrieval && !streaming ? (
-              <RetrievalPanel retrieval={message.retrieval} />
-            ) : null}
+                  {empty ? null : (
+                    <AnswerBody
+                      citations={message.citations}
+                      content={message.content}
+                      onSelectSource={onSelectSource}
+                      sources={message.sources}
+                      streaming={streaming}
+                    />
+                  )}
 
-            {message.status === 'complete' && !empty ? (
-              <>
-                <Paragraph variant="long">{CLOSING_QUESTION}</Paragraph>
-                <AnswerActions
-                  canScrollToBottom={canScrollToBottom}
-                  content={message.content}
-                  onScrollToBottom={onScrollToBottom}
-                />
-              </>
+                  {message.retrieval && !streaming ? (
+                    <RetrievalPanel retrieval={message.retrieval} />
+                  ) : null}
+
+                  {message.status === 'complete' && !empty ? (
+                    <Paragraph variant="long">{CLOSING_QUESTION}</Paragraph>
+                  ) : null}
+                </Card.Block>
+
+                {message.status === 'complete' && !empty ? (
+                  <Card.Block>
+                    <AnswerActions
+                      canScrollToBottom={canScrollToBottom}
+                      content={message.content}
+                      onScrollToBottom={onScrollToBottom}
+                    />
+                  </Card.Block>
+                ) : null}
+              </Card>
             ) : null}
 
             {message.status === 'error' && error ? (

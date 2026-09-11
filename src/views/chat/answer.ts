@@ -81,10 +81,15 @@ export type AnswerSegment =
 /**
  * The Norwegian accessible name for a `[n]` marker.
  *
+ * «Kilde 3: Årsrapport Nkom 2022, side 41». The convention is shared with the
+ * sources panel: a marker cites an excerpt, and the name says which document
+ * it comes from and where in it, so a reader knows what a marker leads to
+ * before following it.
+ *
  * A marker whose citation or document cannot be resolved still gets a name,
  * because the sources arrive at the end of the stream: while the answer is
- * still being written, every marker in it is unresolved, and a nameless
- * control in the meantime is worse than a slightly vague one.
+ * being written every marker in it is unresolved, and a nameless control in
+ * the meantime is worse than a vague one.
  */
 export function citationLabel(
   reference: number,
@@ -93,7 +98,11 @@ export function citationLabel(
 ): string {
   const citation = citations.find((candidate) => candidate.number === reference);
   const document = sources.find((candidate) => candidate.id === citation?.documentId);
-  return document ? `Vis kilde ${reference}: ${document.title}` : `Vis kilde ${reference}`;
+  if (!document) return `Kilde ${reference}`;
+
+  const excerpt = document.excerpts.find((candidate) => candidate.id === citation?.excerptId);
+  const page = excerpt?.page === undefined ? '' : `, side ${excerpt.page}`;
+  return `Kilde ${reference}: ${document.title}${page}`;
 }
 
 /**

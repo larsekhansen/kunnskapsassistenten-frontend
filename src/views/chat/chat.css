@@ -97,10 +97,18 @@
   gap: var(--ds-size-2);
 }
 
-/* The reader's own question, set apart as a quoted block, not as a bubble. */
+/*
+ * The reader's own question: plain text above the answer card, larger than
+ * the answer, with no rule and no bubble. Figma sets it slightly in from the
+ * card edge.
+ */
 .ka-message--user {
-  padding-inline-start: var(--ds-size-4);
-  border-inline-start: var(--ds-size-1) solid var(--ds-color-accent-border-subtle);
+  padding-inline: var(--ds-size-2);
+}
+
+.ka-answer-card {
+  /* Chat is not a link target: nothing in the card should feel clickable. */
+  cursor: auto;
 }
 
 .ka-answer {
@@ -163,13 +171,13 @@
 
 /* --------------------------------------------------------------- actions */
 
+/* The rule above this row is the seam between two Card.Blocks, not a border
+   drawn here. */
 .ka-answer-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--ds-size-2);
-  padding-block-start: var(--ds-size-2);
-  border-block-start: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
 }
 
 /* Alert lays its children out as one block; the answer error has three. */

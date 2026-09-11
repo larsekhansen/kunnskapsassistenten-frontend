@@ -41,6 +41,9 @@ function Segments({
           <Link
             aria-label={segment.label}
             className="ka-citation"
+            // Same text as the accessible name, so Designsystemet's tooltip
+            // shows it on hover and focus and leaves the name alone.
+            data-tooltip={segment.label}
             href={`#${excerptAnchor(segment.number)}`}
             key={index}
             onClick={() => onSelectSource?.(segment.number)}

@@ -35,7 +35,8 @@ function hitSummary({ hitCount, documentCount }: RetrievalDetails): string {
  */
 export function RetrievalPanel({ retrieval }: RetrievalPanelProps) {
   return (
-    <Details defaultOpen>
+    // data-color is neutral so the bar is grey as drawn, not accent blue.
+    <Details data-color="neutral" defaultOpen>
       <Details.Summary>
         <span className="ka-retrieval__summary">
           <MagnifyingGlassIcon />
