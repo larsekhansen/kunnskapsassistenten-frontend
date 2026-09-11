@@ -54,6 +54,7 @@ src/
     chatClient.ts             grensesnittet mock og ekte klient deler
     index.ts                  createChatClient(), leser VITE_API_MODE
     mock/                     fixtures og MockChatClient
+    live/                     LiveChatClient, MCP-oversettelse, SSE-leser
   layout/
     Shell.tsx                 de tre plassene
     viewModel.ts              Slot, ViewId, View, Layout, bredder, operasjoner
@@ -209,6 +210,52 @@ Praktisk betyr det:
 - ~~React Router-versjonen.~~ **Avgjort 2026-09-11:** 8.3.1, pinnet uten
   caret, samme versjon som ki.norge.no og Designsystemets egen nettside. Se
   «React Router» under.
+
+## Ekte backend
+
+`VITE_API_MODE=live` bytter `createChatClient()` fra mock til `LiveChatClient`.
+Kopier `.env.example` til `.env.local` og fyll inn nøkkelen:
+
+```sh
+VITE_API_MODE=live
+KA_API_URL=http://localhost:8080
+KA_API_KEY=rag_…
+```
+
+`KA_API_URL` og `KA_API_KEY` har **ikke** `VITE_`-prefiks, og det er poenget:
+Vite eksponerer bare `VITE_`-variabler for klientkoden, så nøkkelen kan ikke
+havne i bundlen ved et uhell. Dev-serveren er proxyen som setter
+`X-API-Key`, og klienten snakker bare med `/api` på samme opphav.
+
+**Det er ikke en preferanse.** Backenden svarer `401` på en CORS-preflight og
+sender ingen `Access-Control-*`-headere i det hele tatt, så en nettleser ville
+nektet å gi koden svaret uansett. I produksjon må en ekte tjener gjøre den
+samme jobben, med logging, rate limiting og verktøynavnet låst der.
+
+### Målt mot kjørende stack 2026-09-11
+
+Tre ekte spørringer mot `localhost:8080`, agenten
+`builtin.agent-rag-agent__agent-rag-graph-bundled`:
+
+- **Svaret strømmer ikke.** Alle `response/chunk`-deltaene denne agenten
+  sender er dens egen plan i jeg-form, og hver serie følges av en
+  `agent/thinking` med de samme ordene. Selve svaret kommer helt i
+  sluttrammen. Derfor holdes deltaene tilbake til noe sier hva de var: en
+  `agent/thinking` etterpå beviser at de var planen, og de forkastes; ellers
+  slippes de ut som svartekst. Klienten er dermed riktig i dag og riktig igjen
+  den dagen en agent faktisk strømmer svaret, uten at viewene endres.
+- **`[n]` treffer utdrag `n-1`.** Verifisert: svaret bar `[1][4][2][1][3]` mot
+  seks utdrag i to dokumenter.
+- **Utdragsteksten er tom.** `structuredContent.chunks` bærer id, tittel og
+  lengde, aldri passasjen. Feltet er merket i `Excerpt`.
+  API-bestilling A1.
+- **Relevans er utledet av rekkefølgen**, ikke målt. Serveren sender ingen
+  poengsum, men rangerer utdragene, så posisjonen er det eneste signalet.
+- **Overskriftsstien parses ut av en Clojure-streng**, ikke et objekt, selv om
+  skjemaet sier `object`. «Birkebeinerne › Kong Sverre».
+- **Trådhistorikk og fasetter finnes ikke** i live-modus. `listThreads()` og
+  `listFacets()` svarer tomt med vilje: en samtale fra `tools/call` er ikke
+  synlig i samtale-API-et, og backenden filtrerer på hele datasett.
 
 ## Views og plasser i kode
 
