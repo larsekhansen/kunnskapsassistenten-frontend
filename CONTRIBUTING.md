@@ -60,6 +60,10 @@ senere.
   Tallverdier fra `design/tokens/`, aldri fra Figma Dev Mode. Én hardkodet
   farge er nok til å ødelegge mørk modus, se README.
 - Egen CSS skrives **utenfor alle layers**, se README.
+- **Setter du `display` på noe som kan skjules med `hidden`, må du skrive
+  `[hidden] { display: none }` selv.** Egen CSS ligger utenfor layers og slår
+  nettleserens egen `[hidden]`-regel, så elementet blir stående synlig mens
+  knappen sier at det er skjult. Målt i skallet.
 - Hover, fokus og tastaturfokus **arves** fra Designsystemet og tegnes ikke
   selv. Trenger et eget element fokusring, bruk klassen `ds-focus--visible`.
 

@@ -134,6 +134,12 @@ grensesnitt for å bytte layout ennå, ingen dra-håndtak og ingen lagring.
 Grunnen til at abstraksjonen kommer først står i fila: plassinnhold,
 plassbredde og modusvekslingen i begge sidepaneler er samme problem.
 
+## Sideflaten
+
+Sida er lys grå, ikke hvit: `--ds-color-neutral-background-tinted` på
+`.shell`. Designet setter hvite kort på grå flate, og på hvit flate forsvinner
+kortene. Navigasjonspanelet har sin egen hvite flate over den grå.
+
 ## Temaet
 
 Digdir-temaet er ikke publisert på npm, så det genereres her med
@@ -231,6 +237,24 @@ flyttes til en annen plass.
 
 `src/layout/viewComponents.ts` sier hvilken komponent som tegner hvilket view.
 Når et view er bygget, er det den ene linja som endres.
+
+### Scroll
+
+**Hovedkolonnen eier scrollen**, ikke viewet som står i den. Et view som skal
+følge et svar som vokser, eller tilby «bla til nederst», bruker
+`useMainScroll()` og får `ref` til elementet pluss `scrollToBottom()`. Ikke gå
+opp i DOM-treet etter `.main`: det virker helt til viewet monteres et annet
+sted, og da finner det feil element eller ingenting.
+
+`ref.current` leses i en effekt eller en hendelseshåndterer, aldri under
+render.
+
+### Overskriftsnivåer
+
+`Markdown` starter på nivå 2, så `#` blir nivå 2, `##` nivå 3 og `###` nivå 4
+under sidetittelen. Starter et svar på `##`, hopper dokumentet fra nivå 1 til
+3 med mindre noe annet tegner en nivå 2 imellom. Hev `startLevel` bare når
+svaret ligger under en egen overskrift.
 
 ## Kildehenvisninger
 

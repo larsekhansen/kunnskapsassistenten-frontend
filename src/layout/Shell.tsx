@@ -1,7 +1,8 @@
 import { Button, SkipLink } from '@digdir/designsystemet-react';
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
+import { MainScrollContext } from './scrollContext';
 import { useCitation } from './useCitation';
 import { useLayout } from './useLayout';
 import { viewComponents } from './viewComponents';
@@ -29,21 +30,24 @@ import { layoutStyle, slotLabel, views } from './viewModel';
  */
 export function Shell() {
   const { layout } = useLayout();
+  // The main slot owns the scroll, so the element is handed to the views
+  // rather than looked up from inside them. See scrollContext.ts.
+  const mainScroll = useRef<HTMLElement | null>(null);
 
   return (
-    <>
+    <MainScrollContext value={mainScroll}>
       <SkipLink href="#main-content">Hopp til hovedinnhold</SkipLink>
 
       <div className="shell" style={layoutStyle(layout)}>
         <Sidebar slot="primary-sidebar" element="nav" />
 
-        <main id="main-content" className="main">
+        <main id="main-content" className="main" ref={mainScroll}>
           <Outlet />
         </main>
 
         <Sidebar slot="secondary-sidebar" element="aside" />
       </div>
-    </>
+    </MainScrollContext>
   );
 }
 

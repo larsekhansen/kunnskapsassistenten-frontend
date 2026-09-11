@@ -54,13 +54,19 @@ body {
  * and its own Norwegian-safe markup. See src/layout/Shell.tsx.
  */
 
-/* The shell: three slots on one row, named after position. */
+/*
+ * The shell: three slots on one row, named after position.
+ *
+ * The page surface is the tinted neutral, not white: the design puts white
+ * cards on a light grey page, and a white page would make the cards vanish.
+ * The primary sidebar keeps its own white surface below.
+ */
 .shell {
   display: flex;
   gap: var(--ka-slot-gap);
   align-items: stretch;
   height: 100%;
-  background: var(--ds-color-neutral-background-default);
+  background: var(--ds-color-neutral-background-tinted);
 }
 
 .primary-sidebar,
@@ -86,13 +92,25 @@ body {
   inline-size: var(--ka-secondary-sidebar-width);
 }
 
-/* The view inside a sidebar. `hidden` wins when the slot is collapsed. */
+/*
+ * The view inside a sidebar.
+ *
+ * The [hidden] rule is not belt and braces. `display: flex` below is author
+ * CSS and beats the browser's own `[hidden] { display: none }`, so without
+ * this the content of a collapsed slot stays on screen while the button says
+ * «Vis kilder». Any rule that sets `display` on an element that can be
+ * hidden needs the same pair.
+ */
 .sidebar-content {
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-4);
   align-items: start;
   inline-size: 100%;
+}
+
+.sidebar-content[hidden] {
+  display: none;
 }
 
 .main {
