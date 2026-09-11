@@ -12,6 +12,12 @@ import { citationTargets } from '../model';
  * ChatView; see steps 3, 5 and 6 of the build order. Until then this renders
  * the mock answer through the markdown renderer, which is what makes the
  * renderer verifiable: headings, a list and a table in one answer.
+ *
+ * The h1 is the application, not the thread. A thread is one section of the
+ * page and its title is an h2, the level ChatView renders it at, so the two
+ * agree before and after ChatView is mounted here. Naming the page after the
+ * thread would also rename it mid-session the moment a title is generated
+ * from the first question.
  */
 export function Thread() {
   const { threadId } = useParams();
@@ -20,7 +26,10 @@ export function Thread() {
 
   return (
     <article className="stack">
-      <Heading level={1} data-size="lg">
+      <Heading level={1} className="ds-sr-only">
+        Kunnskapsassistenten
+      </Heading>
+      <Heading level={2} data-size="lg">
         {thread?.title ?? 'Tråd'}
       </Heading>
       {thread?.messages.length ? (
@@ -32,6 +41,9 @@ export function Thread() {
           ) : (
             <Markdown
               key={message.id}
+              // The answer sits under the thread title, so its own headings
+              // start one level further down and the document skips nothing.
+              startLevel={3}
               citations={citationTargets(message.sources ?? [])}
               onCitationActivate={showCitation}
             >

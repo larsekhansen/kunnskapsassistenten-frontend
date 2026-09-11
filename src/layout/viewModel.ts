@@ -158,11 +158,20 @@ export const defaultLayout: Layout = {
       activeView: 'sources',
       collapsed: true,
       // 198 collapsed comes from the page template. The open width is still
-      // Lars's to settle (question 26). 432 for now: it is inside the
-      // 410–680 band the sources design needs, and it is the number that
-      // makes 400 + 32 + 640 + 32 + 432 = 1536, the narrowest common laptop
-      // width where all three slots can be open with the answer column at
-      // its 640 px floor. Wider than that and the answer column grows first.
+      // Lars's to settle (question 26), and the template does not measure it:
+      // it draws the sources column collapsed only. The organism frames are
+      // the only numbers that exist, 410–560 px for `kilder` and 434–466 px
+      // for `right-sidebar`, and 432 sits inside both.
+      //
+      // What that buys: 328 + 32 + 640 + 32 + 432 = 1464 px is the narrowest
+      // window where all three slots are open with the answer column still at
+      // its 640 px floor. A 1536 px laptop has 72 px left over, and the answer
+      // column takes it, because it is the only flexible slot.
+      //
+      // Figma's 514 is not used. It comes from a frame under
+      // design/omraader/september-2026/brukes-ikke/, it disagrees with the
+      // `right-sidebar` organism it instantiates, and it sums to 1471 inside
+      // its own 1440 px frame.
       sizing: { mode: 'fixed', width: 432, collapsedWidth: 198 },
     },
   },

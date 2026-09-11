@@ -162,8 +162,20 @@ body {
   color: var(--ds-color-neutral-text-subtle);
 }
 
+/*
+ * The alert region outlives the error, so when there is no error it has to
+ * take no space AND stay focusable: it is where focus lands when the retry
+ * button unmounts itself. `display: none` would do the first and break the
+ * second, so the region is clipped instead, the same way a skip link is
+ * hidden until it is focused. Taking it out of flow is what keeps a parent's
+ * `gap` from reserving a row for an empty region.
+ */
 .error-state:empty {
-  display: none;
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 
 /*

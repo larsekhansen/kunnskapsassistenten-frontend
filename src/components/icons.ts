@@ -16,4 +16,8 @@ export {
   SidebarLeftIcon as PrimarySidebarIcon,
   SidebarRightIcon as SecondarySidebarIcon,
   SidebarBothIcon as BothSidebarsIcon,
+  // «Back» is the role; which way the arrow points is the vendor's business
+  // and today's layout's. A panel that moves keeps the role and may want a
+  // different glyph, and then this line is the only one that changes.
+  ArrowLeftIcon as BackIcon,
 } from '@navikt/aksel-icons';
