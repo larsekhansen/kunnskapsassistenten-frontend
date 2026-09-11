@@ -10,10 +10,18 @@ eier bare denne mappa.
 
 ## Rapporter
 
-| Fil                                                              | Hva                                                                  |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------- |
-| [`main-2026-09-11.md`](main-2026-09-11.md)                       | Grunnlinje for skallet etter Trinn 1, og første måling av mørk modus |
-| [`feat-foundation-2026-09-11.md`](feat-foundation-2026-09-11.md) | PR #1, domenetyper og mock-klient                                    |
+| Fil                                                                                            | Hva                                                                  |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [`main-2026-09-11.md`](main-2026-09-11.md)                                                     | Grunnlinje for skallet etter Trinn 1, og første måling av mørk modus |
+| [`feat-foundation-2026-09-11.md`](feat-foundation-2026-09-11.md)                               | PR #1, domenetyper og mock-klient                                    |
+| [`feat-secondary-sidebar-2026-09-11.md`](feat-secondary-sidebar-2026-09-11.md)                 | PR #2, kildepanelet                                                  |
+| [`main-2026-09-11-pr6.md`](main-2026-09-11-pr6.md)                                             | Etterrevisjon av PR #6 på `main`                                     |
+| [`feat-primary-sidebar-2026-09-11.md`](feat-primary-sidebar-2026-09-11.md)                     | PR #3, navigasjonspanelet                                            |
+| [`feat-chat-2026-09-11.md`](feat-chat-2026-09-11.md)                                           | PR #5, chat-flyten i hovedkolonnen                                   |
+| [`feat-secondary-sidebar-2026-09-11-runde-2.md`](feat-secondary-sidebar-2026-09-11-runde-2.md) | PR #2, etterrevisjon: de tre blokkerende er rettet                   |
+| [`main-2026-09-11-pr8.md`](main-2026-09-11-pr8.md)                                             | Etterrevisjon av PR #8 på `main`, den ekte klienten                  |
+| [`runde-2-pr3-pr5-2026-09-11.md`](runde-2-pr3-pr5-2026-09-11.md)                               | Etterrevisjon av PR #3 og PR #5: alle blokkerende rettet             |
+| [`funksjonssjekk.md`](funksjonssjekk.md)                                                       | Hva e2e-testene dekker, hva som er merget men udekket                |
 
 ## Sånn går en review
 
@@ -33,13 +41,19 @@ eier bare denne mappa.
 5. **Verifiser hver verdi mot fasiten.** Ikke tro på PR-beskrivelsen. Slå opp
    tallene, tekstene og komponentvalgene i `design/omraader/september-2026/`.
    Både i PR #1 og på `main` var det nettopp her funnene lå.
-6. **Skriv rapporten:** funn nummerert, alvor, fil og linje, og hva
+6. **Prøv interaksjonen i nettleser, ikke bare les koden.** Skriv i feltene
+   tegn for tegn og se hvor fokus havner, trykk knappene som bytter tilstand
+   og se om fokus overlever, og kjør de tilstandene som er standard i
+   `defaultLayout`, ikke bare de forhåndsvisningen starter i. De tre
+   blokkerende funnene i PR #2 var alle usynlige i koden og tydelige i
+   nettleseren.
+7. **Skriv rapporten:** funn nummerert, alvor, fil og linje, og hva
    Designsystemet tilbyr i stedet. Del i **blokkerer / bør / kan**, og la en
    egen seksjon si hva som er riktig, med hvor du sjekket det. Avslutt med
    «Til dirigenten» for det som er en avgjørelse og ikke en kodeendring.
-7. **Legg funnene som én samlet kommentar i PR-en.** Ikke som GitHub-review
+8. **Legg funnene som én samlet kommentar i PR-en.** Ikke som GitHub-review
    med approve eller request changes; det gjør Lars.
-8. **Rapporter til dirigenten** med antall funn per alvor og om PR-en er klar
+9. **Rapporter til dirigenten** med antall funn per alvor og om PR-en er klar
    for Lars.
 
 ### Alvorsgradene
@@ -130,6 +144,27 @@ avslutningskoden.
       element som byttes ut i sin helhet.
 - [ ] Kontrast målt der det er tvil. AA er 4,5:1 for tekst, 3:1 for stor
       tekst og grafiske elementer.
+- [ ] Alle synlig fokuserbare elementer nås med Tab. Verktøyet teller dem i
+      DOM-en og sier fra hvis vandringen fant færre. Tre av dem er alltid
+      Designsystemets egne: `Suggestion.Toggle` og `Suggestion.Clear` har
+      `tabindex="-1"` med vilje, og funksjonen ligger på inputfeltet
+      (ArrowDown åpner lista). Sjekk hva som mangler før du melder funn.
+- [ ] **En knapp som avmonterer seg selv, mister fokus til `<body>`.** Hver
+      kontroll som bare rendres på en tilstand den selv endrer — «Velg alle»,
+      «Tøm», en modusveksler — kaster tastaturbrukeren til toppen av
+      dokumentet. Klikk hver slik knapp og les av `document.activeElement`.
+      Fire tilfeller i PR #3.
+- [ ] **Et live-område monteres før innholdet, aldri sammen med det.** Et
+      `<output>` eller `role="status"` som dukker opp samtidig med teksten
+      sin, kunngjøres ikke. `src/components/ErrorState.tsx` viser formen som
+      virker. Gjelder også lastemeldinger; `Skeleton` er `aria-hidden`, så
+      noe annet må si fra.
+- [ ] **Mål synlighet med `checkVisibility()`, aldri med
+      `getBoundingClientRect()`.** Innhold bak `content-visibility: hidden` —
+      som er det en lukket `Details` bruker — rapporterer siste kjente
+      størrelse fra `getClientRects()`. Målt på kildepanelet: 25 mot 21
+      fokuserbare, der 21 er tallet Tab gir. Det ga ett falskt blokkerende
+      funn før det ble rettet.
 - [ ] Skjermbilde av det som er bygget, i begge moduser, til
       `design/skjermbilder-frontend/`.
 

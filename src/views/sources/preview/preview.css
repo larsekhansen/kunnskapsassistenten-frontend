@@ -1,0 +1,57 @@
+/*
+ * Dev-only styling for the preview harness. It stands in for the shell so the
+ * panel is reviewed at a realistic width. Not part of the production bundle.
+ */
+
+.preview {
+  display: flex;
+  gap: var(--ds-size-8);
+  align-items: stretch;
+  block-size: 100%;
+}
+
+.preview__main {
+  flex: 1 0 0;
+  min-inline-size: var(--ds-size-30);
+  padding: var(--ds-size-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+  align-items: start;
+}
+
+.preview__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-2);
+}
+
+/*
+ * The open width is the layout's, settled at 432 px by the foundation. The
+ * harness stands in for the slot, so it mirrors what the shell does with
+ * --ka-secondary-sidebar-width rather than inventing a width of its own.
+ */
+.preview__aside {
+  flex: 0 0 auto;
+  box-sizing: content-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+  align-items: start;
+  inline-size: 27rem;
+  padding-block: var(--ds-size-8);
+  padding-inline: var(--ds-size-9);
+  overflow-y: auto;
+  background: var(--ds-color-neutral-background-default);
+}
+
+/* Same pair as .sidebar-content in the shell: author CSS outside layers beats
+   the browser's own [hidden] rule, so the rule has to be written out. */
+.preview__aside-content {
+  display: flex;
+  inline-size: 100%;
+}
+
+.preview__aside-content[hidden] {
+  display: none;
+}

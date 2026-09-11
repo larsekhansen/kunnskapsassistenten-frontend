@@ -1,0 +1,56 @@
+import { defineConfig, devices } from '@playwright/test';
+import { ARTIFACTS, PORT } from './tests/e2e/paths';
+
+/**
+ * End-to-end tests for kunnskapsassistenten-frontend.
+ *
+ * They run against `vite preview`, not the dev server: the built app is what
+ * a user gets, and a bug that only exists after minification or after the
+ * production `import.meta.env` substitution would otherwise never be caught.
+ * `npm run build` is part of the server command for the same reason.
+ *
+ * `VITE_API_MODE=mock` is set on the whole command rather than only on the
+ * preview, because Vite substitutes that variable at BUILD time. Setting it
+ * on the preview alone would build a default bundle and change nothing.
+ *
+ * Artifacts — traces, the HTML report, failure screenshots — are written
+ * outside the repository, to ~/.cache/ka-review/e2e/. Prettier reads
+ * .prettierignore and not .gitignore, and .prettierignore belongs to the
+ * foundation, so anything this suite writes inside the tree would break
+ * `npm run format:check` for everyone. The deliberate screenshots are a
+ * different matter and go to design/skjermbilder-frontend/e2e/, which the
+ * build rules ask for and which is not a git repository.
+ *
+ * Chromium only, and that is a choice worth knowing about: this suite tests
+ * the product, not browser compatibility. `field-sizing: content` in the
+ * compose field is one known place where Firefox behaves differently, and it
+ * is documented where it is used rather than tested here.
+ */
+export default defineConfig({
+  testDir: './tests/e2e',
+  outputDir: `${ARTIFACTS}/test-results`,
+  fullyParallel: true,
+  forbidOnly: Boolean(process.env.CI),
+  retries: 0,
+  reporter: [['list'], ['html', { outputFolder: `${ARTIFACTS}/report`, open: 'never' }]],
+
+  use: {
+    baseURL: `http://localhost:${PORT}`,
+    // The page template is drawn at 1440, and 900 is the height the design
+    // frames use. Every measurement in design/omraader/ assumes it.
+    viewport: { width: 1440, height: 900 },
+    locale: 'nb-NO',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+  },
+
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+
+  webServer: {
+    command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,
+    url: `http://localhost:${PORT}`,
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
+    env: { VITE_API_MODE: 'mock' },
+  },
+});

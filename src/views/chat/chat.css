@@ -1,0 +1,321 @@
+/*
+ * CSS for the chat view.
+ *
+ * Unlayered on purpose, like the rest of our CSS: unlayered author CSS beats
+ * all layered author CSS, so Designsystemet is overridden without !important.
+ * It lives here rather than in src/styles/global.css because that file
+ * belongs to the foundation and this view owns src/views/chat/.
+ *
+ * No hex colours and no raw font sizes: var(--ds-*) follows the theme, the
+ * size mode and dark mode. The two px values below are measurements from the
+ * design that have no token, and each one says where it comes from — same
+ * pattern as the --ka-* widths in global.css.
+ *
+ * Every rule here that sets `display` has a matching `[hidden]` rule at the
+ * bottom of the file. Unlayered author CSS beats the browser's own
+ * `[hidden] { display: none }`, so without the pair an element stays on
+ * screen after something hides it. See CONTRIBUTING.
+ */
+
+.ka-chat {
+  --ka-chat-content-max-width: 728px; /* content in Figma 1530:44994 */
+  --ka-composer-max-height: 274px; /* chatInput LongText, answer 54 */
+  /* Matches the padding the shell puts on the main slot, see global.css. */
+  --ka-main-padding-block: var(--ds-size-8);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-8);
+  inline-size: 100%;
+  max-inline-size: var(--ka-chat-content-max-width);
+  /* Fills the slot, so a short conversation still keeps the field at the
+     bottom. Figma bottom-aligns the column the same way. */
+  min-block-size: 100%;
+  margin-inline: auto;
+}
+
+/* ---------------------------------------------------------------- greeting */
+
+.ka-chat-greeting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-1);
+  margin-block-start: var(--ds-size-10);
+}
+
+/* ------------------------------------------------------------ kickstarters */
+
+.ka-kickstarters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-1);
+}
+
+.ka-kickstarters__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ka-kickstarters__list > li + li {
+  border-block-start: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+}
+
+/*
+ * A kickstarter is a tertiary Button (answer 40), but it holds a full
+ * question, so it has to wrap and read as a row rather than as a label.
+ */
+.ka-kickstarter {
+  inline-size: 100%;
+  justify-content: start;
+  align-items: start;
+  gap: var(--ds-size-3);
+  padding-block: var(--ds-size-3);
+  text-align: start;
+  white-space: normal;
+}
+
+.ka-kickstarter__icon {
+  flex-shrink: 0;
+  margin-block-start: var(--ds-size-1);
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+/* ---------------------------------------------------------------- messages */
+
+.ka-messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ka-message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+}
+
+/*
+ * The reader's own question: plain text above the answer card, larger than
+ * the answer, with no rule and no bubble. Figma sets it slightly in from the
+ * card edge.
+ */
+.ka-message--user {
+  padding-inline: var(--ds-size-2);
+}
+
+.ka-answer-card {
+  /* Chat is not a link target: nothing in the card should feel clickable. */
+  cursor: auto;
+}
+
+/* ----------------------------------------------------------------- status */
+
+.ka-answer-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+}
+
+/*
+ * One block per skeleton line. Designsystemet's text skeleton is
+ * `display: inline` and gets its width from the dashes it writes into
+ * `data-text`; as a direct flex child it would be blockified and its own
+ * `width: 100%` would take over, turning four ragged lines into four
+ * identical bars.
+ */
+.ka-answer-skeleton__line {
+  margin: 0;
+}
+
+.ka-streaming-status {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-2);
+  margin: 0;
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: var(--ds-font-size-minus-1);
+}
+
+/* -------------------------------------------------------------- retrieval */
+
+.ka-retrieval__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-2);
+}
+
+/* Aksel icons are 1em square, so the size is the font size. The same token
+   Details uses for its own chevron, so the two line up. */
+.ka-retrieval__icon {
+  font-size: var(--ds-icon-size);
+}
+
+.ka-retrieval__keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-3);
+  margin-block-start: var(--ds-size-2);
+  padding: 0;
+  list-style: none;
+}
+
+/* ---------------------------------------------------------------- actions */
+
+/* The rule above this row is the seam between two Card.Blocks, not a border
+   drawn here. */
+.ka-answer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-size-2);
+}
+
+/*
+ * Always rendered, never hidden while empty. It is an aria-live region, and a
+ * region that is `display: none` is not in the accessibility tree — the
+ * region and its text would then appear in the same frame, which announces
+ * nothing. Empty it has no line box and costs only the flex gap.
+ */
+.ka-answer-actions__receipt {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: var(--ds-font-size-minus-1);
+}
+
+/* --------------------------------------------------------------- composer */
+
+/*
+ * The compose field stays put while the conversation scrolls behind it. A
+ * chat where the field scrolls away makes the reader hunt for it after every
+ * long answer.
+ */
+.ka-composer-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-3);
+  margin-block-start: auto;
+  position: sticky;
+  /*
+   * Sticky offsets are measured from the scroll container's padding edge, so
+   * a plain 0 would park the field one padding above the bottom and let the
+   * answer show through underneath. The pull-down and the matching padding
+   * take the box all the way to the edge; the negative margin keeps it from
+   * adding that height to the scroll length twice.
+   */
+  inset-block-end: calc(var(--ka-main-padding-block) * -1);
+  margin-block-end: calc(var(--ka-main-padding-block) * -1);
+  padding-block: var(--ds-size-3) var(--ka-main-padding-block);
+  /* Same ground as the shell, so the field looks fixed rather than boxed. */
+  background: var(--ds-color-neutral-background-tinted);
+}
+
+.ka-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+  padding: var(--ds-size-3);
+  /* White box on the tinted ground, like the answer card. */
+  background: var(--ds-color-neutral-surface-default);
+  border: var(--ds-border-width-default) solid var(--ds-color-neutral-border-default);
+  border-radius: var(--ds-border-radius-xl);
+}
+
+/*
+ * The focus ring is Designsystemet's own, taken from its --dsc-focus-*
+ * custom properties rather than drawn here. The field and the buttons are one
+ * control to a reader, so the ring belongs on the frame around them; the
+ * textarea inside therefore gives up its own border and ring.
+ */
+.ka-composer:focus-within {
+  box-shadow: var(--dsc-focus-boxShadow);
+  outline: var(--dsc-focus-outline);
+  outline-offset: var(--ds-border-width-focus);
+}
+
+/*
+ * Textfield puts the field inside a .ds-field-affixes box that carries the
+ * border and the background. The frame around the whole composer carries
+ * those instead, so this one steps aside.
+ */
+.ka-composer__field,
+.ka-composer__field .ds-field-affixes {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+/*
+ * Firefox has no `field-sizing` yet, so the field stays one row there however
+ * long the question is. It still scrolls and still sends, so the degradation
+ * is acceptable; a ResizeObserver to cover it would be a frame behind on
+ * every keystroke in every other browser.
+ */
+.ka-composer__field textarea {
+  field-sizing: content; /* grows with the content, answer 54 */
+  max-block-size: var(--ka-composer-max-height);
+  overflow-y: auto;
+  resize: none; /* the height follows the text; a drag handle would fight it */
+  border: 0;
+  background: transparent;
+  padding: var(--ds-size-1) var(--ds-size-2);
+}
+
+.ka-composer__field textarea:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
+.ka-composer__buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-size-2);
+}
+
+.ka-composer__disclaimer {
+  color: var(--ds-color-neutral-text-subtle);
+  text-align: center;
+}
+
+.ka-follow-ups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ----------------------------------------------------------------- hidden */
+
+/*
+ * The pair every `display` rule above needs. Without it, hiding one of these
+ * elements with the `hidden` attribute would do nothing, because the rules
+ * above are unlayered and beat the browser's own `[hidden]` rule.
+ */
+.ka-chat[hidden],
+.ka-chat-greeting[hidden],
+.ka-kickstarters[hidden],
+.ka-kickstarters__list[hidden],
+.ka-messages[hidden],
+.ka-message[hidden],
+.ka-answer-skeleton[hidden],
+.ka-streaming-status[hidden],
+.ka-retrieval__summary[hidden],
+.ka-retrieval__keywords[hidden],
+.ka-answer-actions[hidden],
+.ka-composer-area[hidden],
+.ka-composer[hidden],
+.ka-composer__buttons[hidden],
+.ka-follow-ups[hidden] {
+  display: none;
+}
