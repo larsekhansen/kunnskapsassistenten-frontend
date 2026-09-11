@@ -1,0 +1,260 @@
+/*
+ * CSS for the chat view.
+ *
+ * Unlayered on purpose, like the rest of our CSS: unlayered author CSS beats
+ * all layered author CSS, so Designsystemet is overridden without !important.
+ * It lives here rather than in src/styles/global.css because that file
+ * belongs to the foundation and this view owns src/views/chat/.
+ *
+ * No hex colours and no raw font sizes: var(--ds-*) follows the theme, the
+ * size mode and dark mode. The three px values below are measurements from
+ * the design that have no token, and each one says where it comes from —
+ * same pattern as the --ka-* widths in global.css.
+ */
+
+.ka-chat {
+  --ka-chat-content-max-width: 728px; /* content in Figma 1530:44994 */
+  --ka-composer-max-height: 274px; /* chatInput LongText, answer 54 */
+  --ka-composer-radius: var(--ds-border-radius-xl);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-8);
+  inline-size: 100%;
+  max-inline-size: var(--ka-chat-content-max-width);
+  margin-inline: auto;
+}
+
+/* ---------------------------------------------------------------- greeting */
+
+.ka-chat-greeting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-1);
+  margin-block-start: var(--ds-size-10);
+}
+
+/* ------------------------------------------------------------ kickstarters */
+
+.ka-kickstarters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-1);
+}
+
+.ka-kickstarters__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ka-kickstarters__list > li + li {
+  border-block-start: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+}
+
+/*
+ * A kickstarter is a tertiary Button (answer 40), but it holds a full
+ * question, so it has to wrap and read as a row rather than as a label.
+ */
+.ka-kickstarter {
+  inline-size: 100%;
+  justify-content: start;
+  align-items: start;
+  gap: var(--ds-size-3);
+  padding-block: var(--ds-size-3);
+  text-align: start;
+  white-space: normal;
+}
+
+.ka-kickstarter__icon {
+  flex-shrink: 0;
+  margin-block-start: var(--ds-size-1);
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+/* --------------------------------------------------------------- messages */
+
+.ka-messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ka-message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+}
+
+/* The reader's own question, set apart as a quoted block, not as a bubble. */
+.ka-message--user {
+  padding-inline-start: var(--ds-size-4);
+  border-inline-start: var(--ds-size-1) solid var(--ds-color-accent-border-subtle);
+}
+
+.ka-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+}
+
+/* Headings from the model sit closer to the text they introduce. */
+.ka-answer__heading {
+  margin-block-start: var(--ds-size-2);
+}
+
+.ka-answer__heading:first-child {
+  margin-block-start: 0;
+}
+
+/* ------------------------------------------------------------- citations */
+
+/*
+ * A citation marker: the `[n]` in the answer, as a control that points at
+ * source n. Small, raised, and never the size of a real button, because it
+ * sits inside running text.
+ */
+.ka-citation {
+  --dsc-button-padding-inline: var(--ds-size-1);
+  min-block-size: 0;
+  min-inline-size: 0;
+  padding-block: 0;
+  padding-inline: var(--ds-size-1);
+  font-size: var(--ds-font-size-minus-1);
+  vertical-align: super;
+}
+
+/* ------------------------------------------------------------- retrieval */
+
+.ka-retrieval__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-2);
+}
+
+.ka-retrieval__keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-3);
+  margin-block-start: var(--ds-size-2);
+  padding: 0;
+  list-style: none;
+}
+
+/* --------------------------------------------------------------- actions */
+
+.ka-answer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-size-2);
+  padding-block-start: var(--ds-size-2);
+  border-block-start: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+}
+
+/* --------------------------------------------------------------- composer */
+
+.ka-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+  padding: var(--ds-size-3);
+  background: var(--ds-color-neutral-background-default);
+  border: var(--ds-border-width-default) solid var(--ds-color-neutral-border-default);
+  border-radius: var(--ka-composer-radius);
+}
+
+/*
+ * The focus ring is Designsystemet's own, taken from its --dsc-focus-*
+ * custom properties rather than drawn here. The field and the buttons are one
+ * control to a reader, so the ring belongs on the frame around them; the
+ * textarea inside therefore gives up its own border and ring.
+ */
+.ka-composer:focus-within {
+  box-shadow: var(--dsc-focus-boxShadow);
+  outline: var(--dsc-focus-outline);
+  outline-offset: var(--ds-border-width-focus);
+}
+
+.ka-composer__field textarea {
+  field-sizing: content; /* grows with the content, answer 54 */
+  max-block-size: var(--ka-composer-max-height);
+  overflow-y: auto;
+  resize: none; /* the height follows the text; a drag handle would fight it */
+  border: 0;
+  background: transparent;
+  padding: var(--ds-size-1) var(--ds-size-2);
+}
+
+.ka-composer__field textarea:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
+.ka-composer__buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-size-2);
+}
+
+.ka-composer__disclaimer {
+  color: var(--ds-color-neutral-text-subtle);
+  text-align: center;
+}
+
+.ka-follow-ups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ----------------------------------------------------------- status area */
+
+.ka-answer-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+}
+
+.ka-streaming-status {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-2);
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+/*
+ * The cursor that shows an answer is still being written. Decorative: the
+ * live region says the same thing in words.
+ */
+.ka-streaming-caret {
+  display: inline-block;
+  inline-size: 0.5em;
+  block-size: 1em;
+  margin-inline-start: 0.1em;
+  background: var(--ds-color-neutral-text-subtle);
+  vertical-align: text-bottom;
+  animation: ka-blink 1s step-end infinite;
+}
+
+@keyframes ka-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ka-streaming-caret {
+    animation: none;
+  }
+}
