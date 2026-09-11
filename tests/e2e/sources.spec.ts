@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations, setColorScheme } from './a11y';
-import { ask, citation, expectEveryStepReachable, openSources, walkWithTab } from './helpers';
+import {
+  ask,
+  citation,
+  composer,
+  expectEveryStepReachable,
+  openSources,
+  walkWithTab,
+} from './helpers';
 
 /**
  * The sources panel: the excerpts the answer rests on, and the link from a
@@ -15,6 +22,37 @@ test.describe('kildepanelet', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+  });
+
+  test('panelet sier fra mens kildene er på vei', async ({ page }, testInfo) => {
+    covers(testInfo, 'lastetilstand i kildepanelet');
+
+    // Back to a page nobody has asked anything on: the loading state is what
+    // the panel shows while the FIRST answer is on its way, and the empty
+    // state is what it shows before that. Both are lost once an answer has
+    // landed, which is the state `beforeEach` leaves behind.
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Vis kilder' }).click();
+
+    const empty = page.getByRole('complementary', { name: 'Kilder' });
+    // Before the first question nothing is loading, and saying «henter» would
+    // be a lie. Answer 36.
+    await expect(empty.getByText('Ingen kilder ennå')).toBeVisible();
+
+    await composer(page).click();
+    await page.keyboard.type('Hva mer sier rapporten?');
+    await page.keyboard.press('Enter');
+
+    const panel = page.getByRole('complementary', { name: 'Kilder' });
+
+    // Skeleton is aria-hidden, so a sentence has to carry the state, and
+    // `aria-busy` has to say the region is not finished.
+    await expect(panel.locator('[aria-busy="true"]')).toBeVisible();
+    await expect(panel.getByText('Henter kilder …')).toBeAttached();
+
+    // And it resolves into real sources rather than staying busy.
+    await expect(panel.locator('.source-document').first()).toBeVisible({ timeout: 30_000 });
+    await expect(panel.locator('[aria-busy="true"]')).toHaveCount(0);
   });
 
   test('panelet er lukket til noe peker inn i det', async ({ page }, testInfo) => {

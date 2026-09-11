@@ -9,8 +9,8 @@ Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 `lang="nb"`. Hver testet tilstand kontrolleres med axe mot `wcag2a` og
 `wcag2aa`; et brudd feiler testen.
 
-**30 tester, alle grønne på under 20 sekunder.** Sist kjørt mot `main`
-`7eec90d`, altså med monterings-PR-en inne. `npm run test:e2e` finnes nå.
+**36 tester, alle grønne på under 30 sekunder.** Sist kjørt mot `main`
+`8088328`. `npm run test:e2e` finnes nå.
 
 De 22 testene for de tre viewene ble skrevet mot en lokal montering i
 arbeidstreet mens monterings-PR-en ble laget, og **de passerte uendret mot den
@@ -54,6 +54,12 @@ slik de ble anmeldt.
 | Lastetilstanden i kildepanelet                | Vises bare mens `documents` er `undefined`, og monteringen gir dem med én gang. Trenger enten en treg mock eller en egen rute                                                                                                                  |
 | Opplasting, «Vis flere dokumenter», topplinje | Ikke bygget. Se `skal-dette-implementeres.md`                                                                                                                                                                                                  |
 
+## Skjermbilder
+
+`screenshots.spec.ts` lagrer hvert view i lys og mørk under faste navn i
+`design/skjermbilder-frontend/e2e/`. Ingen av dem er en assert. Gjennomgangen
+mot Figma står i [`visuell-2026-09-11.md`](visuell-2026-09-11.md).
+
 ## Det som måtte måles før det kunne påstås
 
 **Hopp-lenka lander to forskjellige steder, og begge er riktige.**
@@ -71,6 +77,14 @@ eller `aria-expanded`. De kommer først ved første klikk. En rollebasert
 låsning finner derfor ingenting på en side ingen har tatt på, og testene
 låser på `<label for>` i stedet. Det er en feil i Designsystemet 1.21.0, ikke
 i filterpanelet, og den står i `funn-tverrgaaende.md`.
+
+**Et bygg som ikke er ferdig, lyver.** Første måling av lastetilstanden viste
+at kildepanelet sto og hentet i det uendelige på en tom forside. Det var en
+gammel `dist` som ble servert av en preview-server jeg hadde startet for hånd,
+og som Playwright gjenbrukte. Mot et ferskt bygg er tilstanden riktig: tom
+forside gir «Ingen kilder ennå», og «Henter kilder …» kommer først når et svar
+faktisk er underveis. Verdt å vite for neste måling: drep preview-serveren før
+du konkluderer.
 
 **Et helt mock-svar tar rundt 7,5 sekunder.** Fire tenkesteg à 500 ms, så
 svaret token for token à 18 ms. Ventingene i testene poller, så en test
@@ -91,8 +105,6 @@ noe er ikke piksler.
 - **`tests/` typesjekkes ikke av `npm run build`.** `tsconfig.node.json`
   inkluderer bare `vite.config.ts`. Playwright typesjekker selv når testene
   kjører, så feil oppdages, men senere enn de kunne.
-- **En utløser for feiltilstanden** i mock-modus, og en lastetilstand som
-  varer lenge nok til å se. Begge er på vei fra #5.
 - **Første overskrift i DOM er fortsatt en `h2`**, fordi skallet tegner
   panelene før `<main>`. Ingen axe-regel fanger det, og ingen test heller:
   det er en avgjørelse om rekkefølge, ikke en feil i et view.

@@ -58,6 +58,10 @@ export async function expectNoAxeViolations(page: Page, what: string): Promise<v
  */
 export async function saveScreenshot(page: Page, name: string): Promise<void> {
   if (!SCREENSHOTS) return;
+  // Drop focus first. A reference image is the resting state; a button left
+  // focused by the click that got us here reads as a hover or an active
+  // state, and the person comparing against Figma has to guess which.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await mkdir(SCREENSHOTS, { recursive: true });
   await page.screenshot({ path: join(SCREENSHOTS, `${name}.png`), fullPage: false });
 }

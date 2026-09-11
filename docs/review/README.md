@@ -22,6 +22,7 @@ eier bare denne mappa.
 | [`main-2026-09-11-pr8.md`](main-2026-09-11-pr8.md)                                             | Etterrevisjon av PR #8 på `main`, den ekte klienten                  |
 | [`runde-2-pr3-pr5-2026-09-11.md`](runde-2-pr3-pr5-2026-09-11.md)                               | Etterrevisjon av PR #3 og PR #5: alle blokkerende rettet             |
 | [`funksjonssjekk.md`](funksjonssjekk.md)                                                       | Hva e2e-testene dekker, hva som er merget men udekket                |
+| [`visuell-2026-09-11.md`](visuell-2026-09-11.md)                                               | Visuell gjennomgang mot Figma, alle fire views i lys og mørk         |
 
 ## Sånn går en review
 

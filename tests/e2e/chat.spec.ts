@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations, setColorScheme } from './a11y';
+import { MOCK_FAILURE_QUERY } from '../../src/api/mock';
 import { ask, citation, composer, expectEveryStepReachable, walkWithTab } from './helpers';
 
 /**
@@ -136,6 +137,35 @@ test.describe('hovedkolonnen', () => {
 
     await expect(page.getByRole('button', { name: 'Avbryt genereringen' })).toBeVisible();
     await expect(page.locator('.ka-message--assistant')).toHaveCount(answersBefore + 1);
+  });
+
+  test('en feil vises som Alert med «Prøv igjen», og et nytt forsøk tar fokus', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'feil vises som Alert');
+
+    // `simuler feil` is the one question the mock client always fails on,
+    // exported as MOCK_FAILURE_QUERY so the test and the client cannot drift.
+    await composer(page).click();
+    await page.keyboard.type(MOCK_FAILURE_QUERY);
+    await page.keyboard.press('Enter');
+
+    // Scoped to the main column: every view that can fail renders its own
+    // alert region, and that they all resolve by role is the point — a region
+    // hidden with `display: none` would not be in the accessibility tree at
+    // all, and then the message would never announce.
+    const alert = page.getByRole('main').getByRole('alert');
+    await expect(alert).toContainText('Svaret kom ikke fram');
+    await expect(alert.getByRole('button', { name: 'Prøv igjen' })).toBeVisible();
+
+    const retry = alert.getByRole('button', { name: 'Prøv igjen' });
+    await retry.focus();
+    await retry.press('Enter');
+
+    // The button removed itself by doing its job. Focus must land somewhere a
+    // keyboard user can carry on from, never on `body`.
+    const landed = await page.evaluate(() => document.activeElement?.tagName.toLowerCase());
+    expect(landed, 'fokus skal ikke falle til body etter «Prøv igjen»').not.toBe('body');
   });
 
   test('Tab gjennom hovedkolonnen i lys og mørk', async ({ page }, testInfo) => {
