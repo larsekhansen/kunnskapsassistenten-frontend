@@ -1,9 +1,9 @@
 import { Button, Heading, Paragraph, Skeleton } from '@digdir/designsystemet-react';
+import { ArrowLeftIcon } from '@navikt/aksel-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { createChatClient } from '../../api';
 import type { FilterFacet, FilterSelection } from '../../model';
 import { emptyFilterSelection } from '../../model';
-import { BackIcon } from './BackIcon';
 import { DocumentsList } from './DocumentsList';
 import { FacetField } from './FacetField';
 import './filters.css';
@@ -67,7 +67,7 @@ export function FiltersView({
     <div className="filters-view">
       {onShowThreads && (
         <Button variant="tertiary" data-color="neutral" onClick={onShowThreads}>
-          <BackIcon />
+          <ArrowLeftIcon aria-hidden="true" />
           Tråder
         </Button>
       )}
