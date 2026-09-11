@@ -10,14 +10,15 @@ eier bare denne mappa.
 
 ## Rapporter
 
-| Fil                                                                            | Hva                                                                  |
-| ------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| [`main-2026-09-11.md`](main-2026-09-11.md)                                     | Grunnlinje for skallet etter Trinn 1, og første måling av mørk modus |
-| [`feat-foundation-2026-09-11.md`](feat-foundation-2026-09-11.md)               | PR #1, domenetyper og mock-klient                                    |
-| [`feat-secondary-sidebar-2026-09-11.md`](feat-secondary-sidebar-2026-09-11.md) | PR #2, kildepanelet                                                  |
-| [`main-2026-09-11-pr6.md`](main-2026-09-11-pr6.md)                             | Etterrevisjon av PR #6 på `main`                                     |
-| [`feat-primary-sidebar-2026-09-11.md`](feat-primary-sidebar-2026-09-11.md)     | PR #3, navigasjonspanelet                                            |
-| [`feat-chat-2026-09-11.md`](feat-chat-2026-09-11.md)                           | PR #5, chat-flyten i hovedkolonnen                                   |
+| Fil                                                                                            | Hva                                                                  |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [`main-2026-09-11.md`](main-2026-09-11.md)                                                     | Grunnlinje for skallet etter Trinn 1, og første måling av mørk modus |
+| [`feat-foundation-2026-09-11.md`](feat-foundation-2026-09-11.md)                               | PR #1, domenetyper og mock-klient                                    |
+| [`feat-secondary-sidebar-2026-09-11.md`](feat-secondary-sidebar-2026-09-11.md)                 | PR #2, kildepanelet                                                  |
+| [`main-2026-09-11-pr6.md`](main-2026-09-11-pr6.md)                                             | Etterrevisjon av PR #6 på `main`                                     |
+| [`feat-primary-sidebar-2026-09-11.md`](feat-primary-sidebar-2026-09-11.md)                     | PR #3, navigasjonspanelet                                            |
+| [`feat-chat-2026-09-11.md`](feat-chat-2026-09-11.md)                                           | PR #5, chat-flyten i hovedkolonnen                                   |
+| [`feat-secondary-sidebar-2026-09-11-runde-2.md`](feat-secondary-sidebar-2026-09-11-runde-2.md) | PR #2, etterrevisjon: de tre blokkerende er rettet                   |
 
 ## Sånn går en review
 
