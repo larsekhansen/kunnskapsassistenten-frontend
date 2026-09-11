@@ -1,0 +1,189 @@
+/*
+ * CSS for the sources view.
+ *
+ * It sits in the view's own folder rather than in src/styles/global.css,
+ * because that file belongs to the foundation and four workers editing one
+ * stylesheet is four conflicts. Imported from SourcesView.tsx, so it loads
+ * after global.css and, like it, OUTSIDE every layer — unlayered author CSS
+ * beats all layered author CSS, so nothing here needs !important.
+ *
+ * No px, no hex, no font names: every value is a --ds-* token, so the panel
+ * follows the theme, the size mode and dark mode.
+ *
+ * The view fills whatever width the slot gives it. The slot's width — 198 px
+ * collapsed, open width still open in question 26 — belongs to the layout.
+ */
+
+.sources-view {
+  display: flex;
+  flex-direction: column;
+  /* 48 px between the blocks of the panel, as in the `kilder` frame. */
+  gap: var(--ds-size-12);
+  inline-size: 100%;
+}
+
+/*
+ * Author CSS sits outside every layer, so `display: flex` above beats the
+ * browser's own `[hidden] { display: none }` and the panel would stay on
+ * screen while the button said it was hidden. See CONTRIBUTING.
+ */
+.sources-view[hidden] {
+  display: none;
+}
+
+/* Search */
+
+.sources-search__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+}
+
+.sources-search__description {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+.sources-search__results {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-size-2);
+  /* Reserve the row even when empty, so the layout does not jump the moment
+     the first hit count appears. */
+  min-block-size: var(--ds-size-8);
+}
+
+.sources-search__count {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+.sources-search__steps {
+  display: flex;
+  gap: var(--ds-size-1);
+}
+
+/* Shortcut list */
+
+.sources-overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+}
+
+.sources-overview__excerpts {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+/* Document cards */
+
+.sources-documents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-6);
+}
+
+.source-document {
+  /* Clip the tinted title block to the card's own corners. */
+  overflow: clip;
+}
+
+.source-document__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-1);
+  /* The title bar is light blue in Figma without the colour being explained
+     (dokument.md says so plainly). Kept as brand3, which is where that blue
+     lives in the theme, and paired with brand3 text so it survives dark mode. */
+  background: var(--ds-color-brand3-surface-tinted);
+  color: var(--ds-color-brand3-text-default);
+}
+
+.source-document__subtitle,
+.source-document__count {
+  color: var(--ds-color-brand3-text-subtle);
+}
+
+/* Excerpts */
+
+.source-excerpt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+  background: var(--ds-color-neutral-background-tinted);
+}
+
+.source-excerpt__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-size-2);
+}
+
+/* The quote's own section heading and page, the first line of the body in
+   Figma. Shown in both the closed preview and the open quote. */
+.source-excerpt__quote-heading {
+  color: var(--ds-color-neutral-text-default);
+}
+
+.source-excerpt__page,
+.source-excerpt__uncited {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+.source-excerpt__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-1);
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+/* The excerpt a [n] marker in the answer points at. A band along the inline
+   start edge, drawn as an inset shadow so nothing shifts when it appears. */
+.source-excerpt[data-active='true'] {
+  background: var(--ds-color-accent-surface-tinted);
+  box-shadow: inset var(--ds-size-1) 0 0 0 var(--ds-color-accent-base-default);
+}
+
+/* Search matches */
+
+.sources-mark {
+  background: var(--ds-color-warning-surface-tinted);
+  color: var(--ds-color-warning-text-default);
+  border-radius: var(--ds-border-radius-sm);
+}
+
+.sources-mark[data-current='true'] {
+  background: var(--ds-color-warning-base-default);
+  color: var(--ds-color-warning-base-contrast-default);
+}
+
+/* Loading and empty */
+
+.sources-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-8);
+}
+
+.sources-placeholder__shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-3);
+}
+
+.sources-placeholder__shortcut {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-2);
+}
+
+.sources-placeholder__documents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-6);
+}
+
+.sources-empty {
+  color: var(--ds-color-neutral-text-subtle);
+}
