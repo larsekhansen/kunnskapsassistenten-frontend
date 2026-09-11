@@ -24,13 +24,14 @@
 
 :root {
   /*
-   * Widths decided by Lars 2026-09-11; see
-   * design/skal-dette-implementeres.md answers 46, 59 and 26.
+   * Slot widths are NOT set here. They come from the layout model as
+   * --ka-<slot>-width, --ka-main-min-width and --ka-main-max-width, written
+   * onto .shell as an inline style by layoutStyle() in
+   * src/layout/viewModel.ts. That is what lets a slot be collapsed, resized
+   * or rearranged without CSS knowing anything about it.
+   *
+   * Gaps and padding stay here, because they are on Designsystemet's scale.
    */
-  --ka-primary-sidebar-content-width: 328px;
-  --ka-secondary-sidebar-collapsed-width: 198px;
-  --ka-main-min-width: 640px;
-  --ka-main-max-width: 800px;
   --ka-slot-gap: var(--ds-size-8); /* 32 px */
   --ka-sidebar-padding-inline: var(--ds-size-9); /* 36 px */
 }
@@ -47,43 +48,69 @@ body {
   font-feature-settings: 'cv05' 1; /* hale på liten l */
 }
 
-/* Skip link to the main content. Visible on keyboard focus only. */
-.skip-link {
-  position: absolute;
-  inset-block-start: var(--ds-size-2);
-  inset-inline-start: var(--ds-size-2);
-  z-index: 100;
-  padding: var(--ds-size-2) var(--ds-size-4);
-  background: var(--ds-color-neutral-surface-default);
-  border-radius: var(--ds-border-radius-md);
-}
-.skip-link:not(:focus-visible) {
-  /* Same technique as Designsystemet's ds-sr-only */
-  clip-path: inset(50%);
-  height: 1px;
-  width: 1px;
-  overflow: hidden;
-  white-space: nowrap;
-}
+/*
+ * The skip link is Designsystemet's SkipLink, so there is nothing to style
+ * here: it brings its own screen-reader-only technique, its own focus ring
+ * and its own Norwegian-safe markup. See src/layout/Shell.tsx.
+ */
 
-/* The shell: three slots on one row, named after position. */
+/*
+ * The shell: three slots on one row, named after position.
+ *
+ * The page surface is the tinted neutral, not white: the design puts white
+ * cards on a light grey page, and a white page would make the cards vanish.
+ * The primary sidebar keeps its own white surface below.
+ */
 .shell {
   display: flex;
   gap: var(--ka-slot-gap);
   align-items: stretch;
   height: 100%;
-  background: var(--ds-color-neutral-background-default);
+  background: var(--ds-color-neutral-background-tinted);
+}
+
+.primary-sidebar,
+.secondary-sidebar {
+  flex: 0 0 auto;
+  box-sizing: content-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+  align-items: start;
+  padding-block: var(--ds-size-8);
+  padding-inline: var(--ka-sidebar-padding-inline);
+  overflow-y: auto;
 }
 
 .primary-sidebar {
-  flex: 0 0 auto;
-  box-sizing: content-box;
-  inline-size: var(--ka-primary-sidebar-content-width);
-  padding-block: var(--ds-size-8);
-  padding-inline: var(--ka-sidebar-padding-inline);
+  inline-size: var(--ka-primary-sidebar-width);
   background: var(--ds-color-neutral-surface-default);
-  border-inline-end: 1px solid var(--ds-color-neutral-border-subtle);
-  overflow-y: auto;
+  border-inline-end: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+}
+
+.secondary-sidebar {
+  inline-size: var(--ka-secondary-sidebar-width);
+}
+
+/*
+ * The view inside a sidebar.
+ *
+ * The [hidden] rule is not belt and braces. `display: flex` below is author
+ * CSS and beats the browser's own `[hidden] { display: none }`, so without
+ * this the content of a collapsed slot stays on screen while the button says
+ * «Vis kilder». Any rule that sets `display` on an element that can be
+ * hidden needs the same pair.
+ */
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+  align-items: start;
+  inline-size: 100%;
+}
+
+.sidebar-content[hidden] {
+  display: none;
 }
 
 .main {
@@ -95,14 +122,6 @@ body {
   overflow-y: auto;
 }
 
-.secondary-sidebar {
-  flex: 0 0 auto;
-  inline-size: var(--ka-secondary-sidebar-collapsed-width);
-  padding-block: var(--ds-size-8);
-  padding-inline-end: var(--ka-sidebar-padding-inline);
-  overflow-y: auto;
-}
-
 /* A plain vertical stack. Designsystemet ships no layout primitives, see
    design/designsystemet/behov-til-komponent.md. */
 .stack {
@@ -110,4 +129,110 @@ body {
   flex-direction: column;
   gap: var(--ds-size-4);
   align-items: start;
+}
+
+/* ── Shared components ─────────────────────────────────────────────────── */
+
+.panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+  inline-size: 100%;
+}
+
+.panel-header__top {
+  display: flex;
+  gap: var(--ds-size-2);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.panel-header__actions {
+  display: flex;
+  gap: var(--ds-size-2);
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+  align-items: start;
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+.error-state:empty {
+  display: none;
+}
+
+/*
+ * Markdown answers. Designsystemet has no prose container, so the spacing
+ * between blocks is set here — see design/designsystemet/behov-til-komponent.md,
+ * question 14. Headings, paragraphs, lists, links and tables are Designsystemet
+ * components and carry their own typography; only the rhythm is ours.
+ */
+.markdown > * + * {
+  margin-block-start: var(--ds-size-4);
+}
+
+.markdown > :is(h2, h3, h4, h5, h6) {
+  margin-block-start: var(--ds-size-8);
+}
+
+/*
+ * A wide table scrolls inside its own box rather than pushing the answer
+ * column past its 800 px maximum. Table does not scale down. The box is
+ * focusable so it can be scrolled from the keyboard; ds-focus--visible gives
+ * it Designsystemet's own focus ring instead of a hand-drawn one.
+ */
+.markdown__table {
+  overflow-x: auto;
+  max-inline-size: 100%;
+}
+
+/*
+ * pre, code and blockquote have no styling in Designsystemet at all —
+ * verified across all 39 CSS files in packages/css/src.
+ *
+ * Measured while writing this: design/designsystemet/behov-til-komponent.md
+ * says data-typography="secondary" is the monospace track. It is not, at
+ * least not in the digdir theme — both primary and secondary set
+ * --ds-font-family: Inter. The theme has no monospace token at all, so code
+ * uses the CSS generic `monospace`, which is the reader's own setting rather
+ * than a typeface we picked.
+ */
+.markdown__pre {
+  overflow-x: auto;
+  padding: var(--ds-size-3);
+  border-radius: var(--ds-border-radius-md);
+  background: var(--ds-color-neutral-surface-tinted);
+  color: var(--ds-color-neutral-text-default);
+}
+
+.markdown__code {
+  font-family: monospace;
+  font-size: var(--ds-body-sm-font-size);
+}
+
+.markdown__pre .markdown__code {
+  background: none;
+  padding: 0;
+}
+
+.markdown__quote {
+  margin: 0;
+  padding-inline-start: var(--ds-size-4);
+  border-inline-start: var(--ds-size-1) solid var(--ds-color-neutral-border-subtle);
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+/*
+ * A `[n]` marker in an answer. It points at an excerpt in the sources panel,
+ * and its accessible name says which document and page — see
+ * src/components/Markdown.tsx. line-height: 0 keeps the superscript from
+ * pushing the lines of a paragraph apart.
+ */
+.markdown__citation {
+  line-height: 0;
 }

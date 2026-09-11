@@ -1,6 +1,12 @@
-import { Button, Heading, Paragraph } from '@digdir/designsystemet-react';
+import { Button, SkipLink } from '@digdir/designsystemet-react';
+import { useId, useRef } from 'react';
 import { Outlet } from 'react-router';
-import { defaultLayout, slotLabel, views } from './viewModel';
+import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
+import { MainScrollContext } from './scrollContext';
+import { useCitation } from './useCitation';
+import { useLayout } from './useLayout';
+import { viewComponents } from './viewComponents';
+import { layoutStyle, slotLabel, views } from './viewModel';
 
 /**
  * The shell: three slots on one row.
@@ -19,46 +25,91 @@ import { defaultLayout, slotLabel, views } from './viewModel';
  *   2. The user will be able to choose what sits where. A name tied to
  *      position cannot survive that.
  *
- * Widths and which view is active come from defaultLayout, see viewModel.ts.
+ * Widths come from the layout as CSS custom properties, so CSS never needs to
+ * know whether a slot is collapsed. See viewModel.ts and LayoutProvider.tsx.
  */
 export function Shell() {
-  const primary = defaultLayout.slots['primary-sidebar'];
-  const secondary = defaultLayout.slots['secondary-sidebar'];
+  const { layout } = useLayout();
+  // The main slot owns the scroll, so the element is handed to the views
+  // rather than looked up from inside them. See scrollContext.ts.
+  const mainScroll = useRef<HTMLElement | null>(null);
 
   return (
-    <>
-      <a className="skip-link" href="#main-content">
-        Hopp til hovedinnhold
-      </a>
+    <MainScrollContext value={mainScroll}>
+      <SkipLink href="#main-content">Hopp til hovedinnhold</SkipLink>
 
-      <div className="shell">
-        <nav aria-label={slotLabel(defaultLayout, 'primary-sidebar')} className="primary-sidebar">
-          <div className="stack">
-            <Heading level={2} data-size="xs">
-              {views[primary.activeView].label}
-            </Heading>
-            <Paragraph data-size="sm">
-              Dokumentfilter og trådliste kommer her. En førstegangsbruker lander på filtrering.
-            </Paragraph>
-            <Button variant="tertiary" data-color="neutral">
-              {views.threads.label}
-            </Button>
-          </div>
-        </nav>
+      <div className="shell" style={layoutStyle(layout)}>
+        <Sidebar slot="primary-sidebar" element="nav" />
 
-        <main id="main-content" className="main">
+        <main id="main-content" className="main" ref={mainScroll}>
           <Outlet />
         </main>
 
-        <aside
-          aria-label={slotLabel(defaultLayout, 'secondary-sidebar')}
-          className="secondary-sidebar"
-        >
-          <Button variant="tertiary" data-color="neutral">
-            {secondary.collapsed ? 'Vis kilder' : 'Skjul kilder'}
-          </Button>
-        </aside>
+        <Sidebar slot="secondary-sidebar" element="aside" />
       </div>
-    </>
+    </MainScrollContext>
+  );
+}
+
+/**
+ * One sidebar slot: a collapse button, and the active view under it.
+ *
+ * The content stays in the DOM when collapsed and is hidden with `hidden`, so
+ * the button's `aria-controls` always points at something that exists and
+ * `aria-expanded` means what it says.
+ */
+// The glyph shows which edge the panel sits at, so it is chosen per slot
+// rather than per view. See src/components/icons.ts.
+const slotIcons = {
+  'primary-sidebar': PrimarySidebarIcon,
+  'secondary-sidebar': SecondarySidebarIcon,
+} as const;
+
+function Sidebar({
+  slot,
+  element: Element,
+}: {
+  slot: 'primary-sidebar' | 'secondary-sidebar';
+  element: 'nav' | 'aside';
+}) {
+  const { layout, toggleCollapsed, setCollapsed, setActiveView } = useLayout();
+  const { activeCitation } = useCitation();
+  const state = layout.slots[slot];
+  const contentId = useId();
+  const label = slotLabel(layout, slot);
+  const ActiveView = viewComponents[state.activeView];
+  const Icon = slotIcons[slot];
+
+  // «Vis kilder» / «Skjul kilder», «Vis tråder og filter» / «Skjul tråder og
+  // filter». Derived from the slot's own name so a moved view takes its
+  // wording with it, rather than from a hardcoded string per slot.
+  const toggleLabel = `${state.collapsed ? 'Vis' : 'Skjul'} ${(label ?? views[state.activeView].label).toLocaleLowerCase('nb-NO')}`;
+
+  return (
+    <Element aria-label={label} className={slot} data-collapsed={state.collapsed || undefined}>
+      <Button
+        variant="tertiary"
+        data-color="neutral"
+        data-size="sm"
+        aria-expanded={!state.collapsed}
+        aria-controls={contentId}
+        onClick={() => toggleCollapsed(slot)}
+      >
+        <Icon aria-hidden />
+        {toggleLabel}
+      </Button>
+
+      <div id={contentId} hidden={state.collapsed} className="sidebar-content">
+        <ActiveView
+          view={state.activeView}
+          collapsed={state.collapsed}
+          onCollapsedChange={(collapsed) => setCollapsed(slot, collapsed)}
+          activeCitationNumber={activeCitation?.number}
+          activeCitationNonce={activeCitation?.nonce}
+          siblingViews={state.views.filter((id) => id !== state.activeView)}
+          onShowView={(view) => setActiveView(slot, view)}
+        />
+      </div>
+    </Element>
   );
 }

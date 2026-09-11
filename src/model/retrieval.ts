@@ -8,7 +8,12 @@
  * backend: mangler, se API-bestilling A2 for the facet side of the same hole.
  */
 export interface RetrievalDetails {
-  /** Number of relevant excerpts found. One hit is one chunk (answer 12). */
+  /**
+   * Number of relevant excerpts the search found. One hit is one chunk
+   * (answer 12). This counts what was RETRIEVED, not what the answer cited —
+   * the answer normally uses fewer, and «10 treff» beside five sources is
+   * therefore correct, not a bug.
+   */
   hitCount: number;
   /** Number of distinct documents those hits came from. */
   documentCount: number;

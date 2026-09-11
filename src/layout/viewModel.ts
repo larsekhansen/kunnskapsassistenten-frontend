@@ -18,6 +18,7 @@
  * switching layouts, no drag handles and no persistence yet. The abstraction
  * comes first because slot content, slot width and the mode switching in both
  * sidebars are the same problem; solved once, four open questions disappear.
+ * LayoutProvider holds the state and the operations a future UI would call.
  */
 
 /** A place in the layout. Named after position, never after content. */
@@ -43,6 +44,57 @@ export const views: Record<ViewId, View> = {
   sources: { id: 'sources', label: 'Kilder' },
 };
 
+/**
+ * How wide a slot is. Two modes, because the design has two kinds of slot:
+ * sidebars hold a width, the answer column takes what remains within bounds.
+ *
+ * Widths are content widths in CSS pixels, written into CSS custom properties
+ * by the shell. They are numbers rather than `--ds-size-*` tokens because
+ * none of them sit on Designsystemet's spacing scale: they are measurements
+ * from the page template. Padding and gaps do use the tokens.
+ *
+ * A drag handle, when it arrives, writes `width` here and changes nothing
+ * else. That is the whole point of putting the numbers in the model.
+ */
+export type SlotSizing =
+  | { mode: 'fixed'; width: number; collapsedWidth: number }
+  | { mode: 'flexible'; minWidth: number; maxWidth: number };
+
+/**
+ * What the shell hands a view. Every view takes the same props, so a view can
+ * be mounted in any slot without the shell knowing what it is.
+ *
+ * The slot owns collapsed/open, not the view: a view that hid itself would
+ * leave the toggle button lying about its own state. The view asks with
+ * `onCollapsedChange`.
+ */
+export type SlotViewProps = {
+  /** Which view the shell is rendering. A view may ignore it. */
+  view: ViewId;
+  /** Whether the slot this view sits in is collapsed. */
+  collapsed: boolean;
+  /** Ask the slot to collapse or open. */
+  onCollapsedChange: (collapsed: boolean) => void;
+  /**
+   * The citation the user last asked to see, for a view that shows sources.
+   * Undefined until someone activates a `[n]` marker.
+   */
+  activeCitationNumber?: number;
+  /**
+   * Counts up on every request, including a repeat of the same number, so a
+   * view can react to being asked twice for the same citation.
+   */
+  activeCitationNonce?: number;
+  /**
+   * The other views in the same slot, in declared order. The primary sidebar
+   * shows filters or threads, and this is how a view knows the other one is
+   * there to switch to.
+   */
+  siblingViews: ViewId[];
+  /** Switch the slot to another view it holds. */
+  onShowView: (view: ViewId) => void;
+};
+
 export type SlotState = {
   slot: Slot;
   /**
@@ -54,6 +106,7 @@ export type SlotState = {
   activeView: ViewId;
   /** Collapsed to a single button? */
   collapsed: boolean;
+  sizing: SlotSizing;
 };
 
 export type Layout = {
@@ -82,12 +135,20 @@ export const defaultLayout: Layout = {
       // A first-time user lands on filters, not on the thread list (answer 1).
       activeView: 'filters',
       collapsed: false,
+      // 328 is the inner width Lars settled on 2026-09-11 (answer 59b).
+      // The collapsed width is not drawn anywhere; 198 matches the collapsed
+      // secondary sidebar in the page template, so both collapse to the same
+      // width and the shell stays symmetric. Revisit when it is drawn.
+      sizing: { mode: 'fixed', width: 328, collapsedWidth: 198 },
     },
     main: {
       slot: 'main',
       views: ['chat'],
       activeView: 'chat',
       collapsed: false,
+      // 640 is a hard floor, not a preference: the sources must be readable
+      // beside the answer (answers 46, 49 and 59).
+      sizing: { mode: 'flexible', minWidth: 640, maxWidth: 800 },
     },
     'secondary-sidebar': {
       slot: 'secondary-sidebar',
@@ -96,6 +157,13 @@ export const defaultLayout: Layout = {
       views: ['sources'],
       activeView: 'sources',
       collapsed: true,
+      // 198 collapsed comes from the page template. The open width is still
+      // Lars's to settle (question 26). 432 for now: it is inside the
+      // 410–680 band the sources design needs, and it is the number that
+      // makes 400 + 32 + 640 + 32 + 432 = 1536, the narrowest common laptop
+      // width where all three slots can be open with the answer column at
+      // its 640 px floor. Wider than that and the answer column grows first.
+      sizing: { mode: 'fixed', width: 432, collapsedWidth: 198 },
     },
   },
 };
@@ -122,4 +190,94 @@ export function slotLabel(layout: Layout, slot: Slot): string | undefined {
   return labels
     .map((label, index) => (index === 0 ? label : label.toLocaleLowerCase('nb-NO')))
     .join(' og ');
+}
+
+/** The slot a view currently sits in, or undefined if it sits nowhere. */
+export function slotOf(layout: Layout, view: ViewId): Slot | undefined {
+  return slotOrder.find((slot) => layout.slots[slot].views.includes(view));
+}
+
+/** Show `view` in its slot. No-op if the view is not in that slot. */
+export function withActiveView(layout: Layout, slot: Slot, view: ViewId): Layout {
+  const state = layout.slots[slot];
+  if (!state.views.includes(view) || state.activeView === view) return layout;
+  return {
+    ...layout,
+    slots: { ...layout.slots, [slot]: { ...state, activeView: view } },
+  };
+}
+
+export function withCollapsed(layout: Layout, slot: Slot, collapsed: boolean): Layout {
+  const state = layout.slots[slot];
+  if (state.collapsed === collapsed) return layout;
+  return {
+    ...layout,
+    slots: { ...layout.slots, [slot]: { ...state, collapsed } },
+  };
+}
+
+/** Resize a slot. Clamped by the sizing mode; flexible slots ignore it. */
+export function withWidth(layout: Layout, slot: Slot, width: number): Layout {
+  const state = layout.slots[slot];
+  if (state.sizing.mode !== 'fixed' || state.sizing.width === width) return layout;
+  return {
+    ...layout,
+    slots: { ...layout.slots, [slot]: { ...state, sizing: { ...state.sizing, width } } },
+  };
+}
+
+/**
+ * Move a view to another slot. There is no UI for this yet; it exists so the
+ * model can carry the feature the day the UI arrives (answers 10 and 48).
+ *
+ * A slot that loses its active view falls back to the first view it still
+ * has, and a slot with no views remaining is collapsed — an empty slot has nothing to
+ * name itself after, and an unnamed landmark is worse than no landmark.
+ */
+export function withViewMoved(layout: Layout, view: ViewId, target: Slot): Layout {
+  const source = slotOf(layout, view);
+  if (!source || source === target) return layout;
+
+  const from = layout.slots[source];
+  const remaining = from.views.filter((id) => id !== view);
+  const to = layout.slots[target];
+
+  return {
+    ...layout,
+    slots: {
+      ...layout.slots,
+      [source]: {
+        ...from,
+        views: remaining,
+        activeView: remaining[0] ?? from.activeView,
+        collapsed: remaining.length === 0 ? true : from.collapsed,
+      },
+      [target]: {
+        ...to,
+        views: [...to.views, view],
+        activeView: view,
+        collapsed: false,
+      },
+    },
+  };
+}
+
+/**
+ * The slot widths as CSS custom properties, for the shell's inline style.
+ * A collapsed slot reports its collapsed width, so CSS never has to know
+ * which state the slot is in.
+ */
+export function layoutStyle(layout: Layout): Record<string, string> {
+  const style: Record<string, string> = {};
+  for (const slot of slotOrder) {
+    const state = layout.slots[slot];
+    if (state.sizing.mode === 'fixed') {
+      const width = state.collapsed ? state.sizing.collapsedWidth : state.sizing.width;
+      style[`--ka-${slot}-width`] = `${width}px`;
+    } else {
+      style[`--ka-${slot}-min-width`] = `${state.sizing.minWidth}px`;
+      style[`--ka-${slot}-max-width`] = `${state.sizing.maxWidth}px`;
+    }
+  }
+  return style;
 }
