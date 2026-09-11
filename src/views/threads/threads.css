@@ -1,0 +1,72 @@
+/*
+ * Styles for ThreadsView.
+ *
+ * Imported from the component, so it lands outside every layer and wins over
+ * ds.components without !important. See README, «Temaet».
+ *
+ * No px, no hex. Everything is --ds-* so the panel follows the theme, the
+ * size mode and dark mode.
+ */
+
+.threads-view {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--ds-size-6);
+}
+
+/* The search form and the button both need the full column width. */
+.threads-view > form,
+.threads-view > .ds-btn {
+  align-self: stretch;
+}
+
+.threads-view__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+  align-self: stretch;
+}
+
+.threads-view__group {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+}
+
+/*
+ * A navigation list, not body text, so it carries none of the ds-list
+ * styling. See design/designsystemet/behov-til-komponent.md.
+ */
+.threads-view__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-1);
+}
+
+.threads-view__thread {
+  display: block;
+  padding: var(--ds-size-1) var(--ds-size-2);
+  border-radius: var(--ds-border-radius-md);
+  color: var(--ds-color-neutral-text-default);
+  text-decoration: none;
+}
+
+.threads-view__thread:hover {
+  background: var(--ds-color-accent-surface-hover);
+  text-decoration: underline;
+}
+
+/*
+ * The selected thread. aria-current is the semantics; this is only the paint,
+ * and it is bound to the same attribute so the two cannot disagree. Weight
+ * carries the state as well as colour, because colour alone is not enough.
+ */
+.threads-view__thread[aria-current='page'] {
+  background: var(--ds-color-accent-surface-active);
+  font-weight: var(--ds-font-weight-medium);
+}
