@@ -101,6 +101,29 @@ body {
 }
 
 /*
+ * A collapsed slot carries its padding on the outer edge only.
+ *
+ * 198 px is the collapsed width the page template draws, and it draws the
+ * button on one line inside it. It only adds up with the template's own
+ * padding, `32px 36px 32px 0`: 36 px against the edge of the window and none
+ * against the answer column, which leaves 162 px of content rather than 126.
+ * With 36 px on both sides «Vis kilder» needed 129 px in 126 and broke over
+ * two lines, and the navigation panel's longer label broke over three.
+ *
+ * The two slots mirror each other because slots ARE positional — that is what
+ * the name `primary-sidebar` means — and the 32 px gap keeps the button clear
+ * of the answer column either way. The logical properties are the vendor
+ * exception to the naming rule; see CONTRIBUTING.
+ */
+.primary-sidebar[data-collapsed] {
+  padding-inline-end: 0;
+}
+
+.secondary-sidebar[data-collapsed] {
+  padding-inline-start: 0;
+}
+
+/*
  * The view inside a sidebar.
  *
  * The [hidden] rule is not belt and braces. `display: flex` below is author
