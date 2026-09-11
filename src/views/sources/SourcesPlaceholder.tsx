@@ -23,8 +23,11 @@ export function SourcesPlaceholder() {
           without this sentence a screen reader user is told nothing at all. */}
       <output className="ds-sr-only">Henter kilder …</output>
 
-      <section className="sources-overview" aria-labelledby="kilder-snarveier-laster">
-        <Heading level={3} data-size="xs" id="kilder-snarveier-laster">
+      <div className="sources-overview">
+        {/* A `div`, not a labelled `section`, and no fixed id: the same two
+            reasons as in SourcesOverview. A labelled section is a landmark,
+            and a module-level id breaks the day two panels are on screen. */}
+        <Heading level={3} data-size="xs">
           Snarveier til dokumentene
         </Heading>
 
@@ -36,7 +39,7 @@ export function SourcesPlaceholder() {
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
       <div className="sources-placeholder__documents">
         {SHORTCUT_WIDTHS.map((width) => (

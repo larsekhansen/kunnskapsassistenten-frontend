@@ -6,8 +6,10 @@
  * from the same function. Import it from the model, or from this view's
  * `index.ts`, which re-exports it for the main column.
  *
- * The id strings are Norwegian because they end up in the address bar as
- * fragments, which the user can see and share.
+ * `documentDomId` is Norwegian because it ends up in the address bar as a
+ * fragment, which the user can see and share. `excerptDomId` is not: it was
+ * already `excerpt-n` when the convention was settled, and the answer links
+ * to it, so renaming it now would break links users have copied.
  */
 
 /** Scroll target for a document card, used by the shortcut list. */

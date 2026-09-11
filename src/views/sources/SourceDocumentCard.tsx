@@ -42,7 +42,14 @@ export function SourceDocumentCard({
     .join(' · ');
 
   return (
-    <Card className="source-document ds-focus" id={documentDomId(source.id)} tabIndex={-1}>
+    <Card
+      // Neutral surface, like the answer card. Without it the card
+      // inherits accent from the root and turns marine in dark mode.
+      data-color="neutral"
+      className="source-document ds-focus"
+      id={documentDomId(source.id)}
+      tabIndex={-1}
+    >
       <Card.Block className="source-document__head">
         <Heading level={3} data-size="xs">
           {source.title}
