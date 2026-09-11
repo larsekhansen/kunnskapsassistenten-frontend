@@ -1,0 +1,89 @@
+/*
+ * Styles for FiltersView.
+ *
+ * Imported from the component, so it lands outside every layer and wins over
+ * ds.components without !important. See README, «Temaet».
+ *
+ * No px, no hex. Everything is --ds-* so the panel follows the theme, the
+ * size mode and dark mode.
+ */
+
+.filters-view {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--ds-size-6);
+}
+
+.filters-view > ds-field,
+.filters-view > section,
+.filters-view__loading {
+  align-self: stretch;
+}
+
+.filters-view__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+}
+
+/* The label and its two actions share one line above the field. */
+.facet-field__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ds-size-2);
+  flex-wrap: wrap;
+}
+
+.facet-field__actions {
+  display: flex;
+  gap: var(--ds-size-1);
+}
+
+/*
+ * The width of the suggestion list.
+ *
+ * data-overscroll="contain" stops Designsystemet from writing the input's
+ * width onto the list as an inline style, and once that is off the list has
+ * no width at all — so one has to be set here. The design draws the list
+ * wider than the field, and the values («Nasjonal kommunikasjonsmyndighet»,
+ * «Proposisjon til Stortinget») need it.
+ *
+ * No --ds-* token exists for a popover width, and a percentage would be read
+ * against the viewport, because the list sits in the top layer with no
+ * positioned ancestor. Hence rem and min(): they still follow the root font
+ * size, which is what the size mode changes.
+ */
+.ds-suggestion > u-datalist {
+  width: min(26rem, calc(100vw - var(--ds-size-8)));
+}
+
+.documents-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+}
+
+.documents-list__heading-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-2);
+}
+
+/*
+ * The upload area, drawn in Figma as a dashed drop zone. It is text and not a
+ * control until upload exists anywhere in the stack, so it is styled to look
+ * like what it is: a placeholder, not a target.
+ */
+.documents-list__upload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-1);
+  padding: var(--ds-size-6) var(--ds-size-4);
+  border: var(--ds-border-width-default) dashed var(--ds-color-neutral-border-subtle);
+  border-radius: var(--ds-border-radius-lg);
+  background: var(--ds-color-neutral-background-tinted);
+  color: var(--ds-color-neutral-text-subtle);
+  text-align: center;
+}

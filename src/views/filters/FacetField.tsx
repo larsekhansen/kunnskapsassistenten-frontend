@@ -1,0 +1,174 @@
+import {
+  Button,
+  EXPERIMENTAL_Suggestion as Suggestion,
+  Field,
+  Label,
+} from '@digdir/designsystemet-react';
+import { useRef } from 'react';
+import type { FilterFacet } from '../../model';
+
+/**
+ * Norwegian screen reader strings for the multi-select.
+ *
+ * Measured, not guessed: with `lang="nb"` and Designsystemet 1.21.0, only the
+ * clear and toggle buttons get Norwegian names. Everything u-combobox writes
+ * for the selected values stays English — the chip container is announced as
+ * «Selected», the input's `aria-description` as «No selected», and a chip as
+ * «…, Press to remove». In a service that has to be Norwegian all the way
+ * into the accessible names, that is a defect, not a detail.
+ *
+ * `data-sr-*` is u-combobox's own override: the keys are its observed
+ * attributes, and an empty value falls back to the English default. See
+ * @u-elements/u-combobox, `TEXTS` and `observedAttributes`.
+ */
+const SCREEN_READER_TEXTS = {
+  'data-sr-items': 'Valgte verdier',
+  'data-sr-empty': 'Ingen verdier er valgt',
+  'data-sr-found': '%d valgt, naviger bakover for å endre',
+  'data-sr-remove': 'Trykk for å fjerne',
+  'data-sr-added': 'Lagt til',
+  'data-sr-removed': 'Fjernet',
+  'data-sr-invalid': 'Ugyldig verdi',
+  'data-sr-of': 'av',
+};
+
+export type FacetFieldProps = {
+  facet: FilterFacet;
+  /** Selected {@link FacetValue.value}s. Empty means «no restriction». */
+  selected: string[];
+  onChange: (values: string[]) => void;
+};
+
+/**
+ * One filter dimension as a multi-select dropdown.
+ *
+ * Designsystemet's Suggestion with `multiple`, decided by Lars. Three things
+ * are worth knowing about it, all from design/designsystemet/suggestion.md:
+ *
+ *   1. Selected values render as chips inside the field. That is the chip
+ *      requirement (answer 50) already satisfied, so we do not add a second
+ *      row of Chip.Removable — showing both would show every filter twice.
+ *   2. The list is locked to the width of the input by an inline style unless
+ *      `data-overscroll="contain"` turns that off. It does, and the width
+ *      then has to come from our own CSS. The design draws the list wider
+ *      than the field, and the labels here are long enough to need it.
+ *   3. `autoPlacement` is a dead prop in 1.21.0 — destructured and never
+ *      used. `data-autoplacement` is the attribute that works.
+ *
+ * Suggestion.Clear only clears the text the user has typed, not the
+ * selection: u-combobox hides it whenever the input is empty. «Tøm» is
+ * therefore our own button, which is also what answer 50 asks for.
+ */
+export function FacetField({ facet, selected, onChange }: FacetFieldProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const total = facet.values.length;
+  const chosen = selected.length;
+  const allChosen = chosen === total;
+
+  /*
+   * Suggestion must be given `{ label, value }`, not bare strings: a bare
+   * string becomes both the label and the value, and the chip then shows the
+   * key («arsrapport») instead of the name («Årsrapport»). Measured, not
+   * assumed — see `sanitizeItems` in the component.
+   */
+  const selectedItems = selected.map((value) => ({
+    value,
+    label: facet.values.find((candidate) => candidate.value === value)?.label ?? value,
+  }));
+
+  /*
+   * The label for the selected state (question 4, which Lars has not
+   * answered).
+   * Chosen: the dimension name stays the field's Label, and the state goes in
+   * the description under it. Renaming a control as its value changes is what
+   * the Figma sketch does with «Alle valgt», and it breaks the promise a
+   * label makes to a screen reader user — the name has to stay put. «Alle
+   * valgt» also fits an empty selection: an empty selection is no
+   * restriction, so every document is still in play.
+   */
+  const state = chosen === 0 || allChosen ? 'Alle valgt' : `${chosen} av ${total} valgt`;
+
+  /*
+   * Empties the search text.
+   *
+   * Picking a value from the list leaves the value key in the input —
+   * `u-combobox` only restores what the user typed when the click arrives
+   * through the native datalist path, and it does not here. The list is
+   * filtered on that text, so the next open would show «Ingen treff».
+   * Clearing after every change is what a multi-select should do anyway: the
+   * search is spent once the value is a chip.
+   *
+   * The event is dispatched because both `u-combobox` and Suggestion's own
+   * filtering listen for it; setting `value` alone would leave both stale.
+   */
+  function clearQuery() {
+    const input = inputRef.current;
+    if (!input || input.value === '') return;
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function change(values: string[]) {
+    clearQuery();
+    onChange(values);
+  }
+
+  return (
+    <Field>
+      <div className="facet-field__label-row">
+        <Label>{facet.label}</Label>
+
+        <div className="facet-field__actions">
+          {!allChosen && (
+            <Button
+              variant="tertiary"
+              data-color="neutral"
+              data-size="sm"
+              aria-label={`Velg alle ${facet.label.toLocaleLowerCase('nb-NO')}`}
+              onClick={() => change(facet.values.map((value) => value.value))}
+            >
+              Velg alle
+            </Button>
+          )}
+          {chosen > 0 && (
+            <Button
+              variant="tertiary"
+              data-color="neutral"
+              data-size="sm"
+              aria-label={`Tøm ${facet.label.toLocaleLowerCase('nb-NO')}`}
+              onClick={() => change([])}
+            >
+              Tøm
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <Suggestion
+        multiple
+        selected={selectedItems}
+        onSelectedChange={(items) => change(items.map((item) => item.value))}
+        {...SCREEN_READER_TEXTS}
+      >
+        <Suggestion.Input ref={inputRef} placeholder="Søk" />
+        <Suggestion.Toggle />
+        <Suggestion.Clear />
+        <Suggestion.List data-overscroll="contain" data-autoplacement="false">
+          <Suggestion.Empty>Ingen treff</Suggestion.Empty>
+          {facet.values.map((value) => (
+            /*
+              `label` is what the chip and the filtering use, the children are
+              what the list shows. Keeping the count out of the label means a
+              chip reads «Årsrapport», not «Årsrapport (1032)».
+            */
+            <Suggestion.Option key={value.value} value={value.value} label={value.label}>
+              {value.count === undefined ? value.label : `${value.label} (${value.count})`}
+            </Suggestion.Option>
+          ))}
+        </Suggestion.List>
+      </Suggestion>
+
+      <Field.Description>{state}</Field.Description>
+    </Field>
+  );
+}
