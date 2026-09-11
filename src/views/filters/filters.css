@@ -1,0 +1,117 @@
+/*
+ * Styles for FiltersView.
+ *
+ * Imported from the component, so it lands outside every layer and wins over
+ * ds.components without !important. See README, «Temaet».
+ *
+ * No px, no hex. Everything is --ds-* so the panel follows the theme, the
+ * size mode and dark mode.
+ *
+ * Every rule here that sets `display` is paired with a `[hidden]` rule.
+ * Unlayered author CSS beats the browser's own `[hidden] { display: none }`,
+ * so without the pair an element stays on screen after being hidden. See
+ * CONTRIBUTING.
+ */
+
+.filters-view {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--ds-size-6);
+  /* The slot lays its children out with align-items: start, so the view has
+     to claim the width itself. */
+  inline-size: 100%;
+}
+
+.filters-view > .ds-btn,
+.filters-view > ds-field,
+.filters-view > section {
+  inline-size: 100%;
+}
+
+.filters-view__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-4);
+  inline-size: 100%;
+}
+
+/* The label and its two actions share one line above the field. */
+.facet-field__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ds-size-2);
+  flex-wrap: wrap;
+}
+
+.facet-field__actions {
+  display: flex;
+  gap: var(--ds-size-1);
+}
+
+/*
+ * The width of the suggestion list.
+ *
+ * data-overscroll="contain" stops Designsystemet from writing the input's
+ * width onto the list as an inline style, and once that is off the list has
+ * no width at all — so one has to be set here. The design draws the list
+ * wider than the field, and the values («Nasjonal kommunikasjonsmyndighet»,
+ * «Proposisjon til Stortinget») need it.
+ *
+ * No --ds-* token exists for a popover width, and a percentage would be read
+ * against the viewport, because the list sits in the top layer with no
+ * positioned ancestor. Hence rem and min(): they still follow the root font
+ * size, which is what the size mode changes.
+ *
+ * Only `width`, never `display`: u-combobox opens and closes this element
+ * with `hidden`, and a `display` here would keep it on screen.
+ *
+ * Scoped to this view. The list is drawn in the top layer, but it stays in
+ * the DOM under the Suggestion that opened it, so the descendant selector
+ * still matches — and an unscoped rule in a file imported by a component
+ * would set the width of every Suggestion in the app, including the ones
+ * other owners build.
+ */
+.filters-view .ds-suggestion > u-datalist {
+  width: min(26rem, calc(100vw - var(--ds-size-8)));
+}
+
+.documents-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+}
+
+.documents-list__heading-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-2);
+}
+
+/*
+ * The upload area, drawn in Figma as a dashed drop zone. It is text and not a
+ * control until upload exists anywhere in the stack, so it is styled to look
+ * like what it is: a placeholder, not a target.
+ */
+.documents-list__upload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-1);
+  padding: var(--ds-size-6) var(--ds-size-4);
+  border: var(--ds-border-width-default) dashed var(--ds-color-neutral-border-subtle);
+  border-radius: var(--ds-border-radius-lg);
+  background: var(--ds-color-neutral-background-tinted);
+  color: var(--ds-color-neutral-text-subtle);
+  text-align: center;
+}
+
+.filters-view[hidden],
+.filters-view__loading[hidden],
+.facet-field__label-row[hidden],
+.facet-field__actions[hidden],
+.documents-list[hidden],
+.documents-list__heading-row[hidden],
+.documents-list__upload[hidden] {
+  display: none;
+}

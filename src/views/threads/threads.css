@@ -1,0 +1,106 @@
+/*
+ * Styles for ThreadsView.
+ *
+ * Imported from the component, so it lands outside every layer and wins over
+ * ds.components without !important. See README, «Temaet».
+ *
+ * No px, no hex. Everything is --ds-* so the panel follows the theme, the
+ * size mode and dark mode.
+ *
+ * Every rule here that sets `display` is paired with a `[hidden]` rule.
+ * Unlayered author CSS beats the browser's own `[hidden] { display: none }`,
+ * so without the pair an element stays on screen after being hidden. See
+ * CONTRIBUTING.
+ */
+
+.threads-view {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--ds-size-6);
+  /* The slot lays its children out with align-items: start, so the view has
+     to claim the width itself. */
+  inline-size: 100%;
+}
+
+/* The button and the search field both need the full column width. */
+.threads-view > .ds-btn,
+.threads-view search,
+.threads-view form,
+.threads-view .ds-search {
+  inline-size: 100%;
+}
+
+.threads-view__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+  inline-size: 100%;
+}
+
+.threads-view__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+  inline-size: 100%;
+}
+
+/*
+ * A navigation list, not body text, so it carries none of the ds-list
+ * styling. See design/designsystemet/behov-til-komponent.md.
+ */
+.threads-view__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-1);
+}
+
+.threads-view__thread {
+  display: block;
+  padding: var(--ds-size-1) var(--ds-size-2);
+  border-radius: var(--ds-border-radius-md);
+  color: var(--ds-color-neutral-text-default);
+  text-decoration: none;
+}
+
+.threads-view__thread:hover {
+  background: var(--ds-color-accent-surface-hover);
+  text-decoration: underline;
+}
+
+/*
+ * The selected thread. aria-current is the semantics; this is only the paint,
+ * and it is bound to the same attribute so the two cannot disagree.
+ *
+ * The spec marks the active thread with weight alone. The surface is an
+ * addition, and a deliberate one — but it only reaches 1.6:1 against the
+ * panel, so it cannot be the signal on its own. Semibold rather than medium
+ * is what actually carries the state at 14 px; text contrast is 8.6:1 light
+ * and 8.4:1 dark either way.
+ */
+.threads-view__thread[aria-current='page'] {
+  background: var(--ds-color-accent-surface-active);
+  font-weight: var(--ds-font-weight-semibold);
+}
+
+/*
+ * The hit count is rendered even when there is nothing to say, so that the
+ * live region exists before its text does. Collapse the empty box; never
+ * `display: none`, which would take the region out of the accessibility tree
+ * and bring the announcement problem back.
+ */
+.threads-view__search-status:empty {
+  margin: 0;
+  block-size: 0;
+}
+
+.threads-view[hidden],
+.threads-view__loading[hidden],
+.threads-view__group[hidden],
+.threads-view__list[hidden],
+.threads-view__thread[hidden] {
+  display: none;
+}

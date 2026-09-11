@@ -1,0 +1,48 @@
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { FilterContext } from '../../layout/filterContext';
+import { emptyFilterSelection, type FilterFacet } from '../../model';
+import { FiltersView } from './FiltersView';
+
+function renderView(facets?: FilterFacet[]) {
+  return render(
+    <FilterContext value={{ selection: emptyFilterSelection, setSelection: () => {} }}>
+      <FiltersView siblingViews={['filters']} onShowView={() => {}} facets={facets} />
+    </FilterContext>,
+  );
+}
+
+describe('FiltersView', () => {
+  it('says so when there are no facets, instead of showing nothing', () => {
+    renderView([]);
+
+    expect(
+      screen.getByRole('heading', { name: 'Filtrering er ikke tilgjengelig ennå' }),
+    ).toBeTruthy();
+    expect(screen.queryByText('Henter filtre')).toBeNull();
+  });
+
+  it('does not mistake an empty list for still loading', () => {
+    const { container } = renderView([]);
+
+    // An empty array is truthy, so the loading branch has to test !facets and
+    // the empty branch facets.length === 0. Getting that wrong showed a
+    // skeleton forever, or nothing at all.
+    expect(container.querySelector('.filters-view__loading')).toBeNull();
+  });
+
+  it('shows a field per facet when there are facets', () => {
+    renderView([
+      {
+        dimension: 'documentType',
+        label: 'Dokumenttype',
+        values: [{ value: 'arsrapport', label: 'Årsrapport', count: 3 }],
+      },
+    ]);
+
+    expect(
+      screen.queryByRole('heading', { name: 'Filtrering er ikke tilgjengelig ennå' }),
+    ).toBeNull();
+    expect(screen.getByLabelText('Dokumenttype')).toBeTruthy();
+  });
+});
