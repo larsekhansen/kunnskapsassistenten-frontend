@@ -9,8 +9,12 @@ Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 `lang="nb"`. Hver testet tilstand kontrolleres med axe mot `wcag2a` og
 `wcag2aa`; et brudd feiler testen.
 
-**36 tester, alle grønne på under 30 sekunder.** Sist kjørt mot `main`
-`8088328`. `npm run test:e2e` finnes nå.
+**36 tester grønne på under 30 sekunder**, pluss to i `layout.spec.ts` som er
+røde med vilje: de holder de to funnene fra den visuelle gjennomgangen, og de
+blir grønne når funnene rettes. De ligger på `chore/e2e-layout` og hører til
+review-en av rettelsene, ikke på `main` ennå.
+
+Sist kjørt mot `main` `7f61bc7`.
 
 De 22 testene for de tre viewene ble skrevet mot en lokal montering i
 arbeidstreet mens monterings-PR-en ble laget, og **de passerte uendret mot den
@@ -85,6 +89,13 @@ og som Playwright gjenbrukte. Mot et ferskt bygg er tilstanden riktig: tom
 forside gir «Ingen kilder ennå», og «Henter kilder …» kommer først når et svar
 faktisk er underveis. Verdt å vite for neste måling: drep preview-serveren før
 du konkluderer.
+
+**Mål aldri tekstoppsett før fonten er lastet.** Inter hentes fra en CDN, og
+fallback-fonten har andre metrikker. Testen for kollapsknappens etikett
+passerte først, fordi «Vis kilder» får plass på én linje i fallbacken og
+brytes i Inter. `await page.evaluate(() => document.fonts.ready)` er hekta, og
+den står nå både i den testen og i `saveScreenshot`. Referansebildene var
+utilsiktet trygge fordi de tas etter mye annet arbeid, men det var flaks.
 
 **Et helt mock-svar tar rundt 7,5 sekunder.** Fire tenkesteg à 500 ms, så
 svaret token for token à 18 ms. Ventingene i testene poller, så en test

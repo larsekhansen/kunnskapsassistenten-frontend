@@ -58,6 +58,10 @@ export async function expectNoAxeViolations(page: Page, what: string): Promise<v
  */
 export async function saveScreenshot(page: Page, name: string): Promise<void> {
   if (!SCREENSHOTS) return;
+  // Inter comes from a CDN, and the fallback's metrics are not Inter's. A
+  // reference image taken before the font lands has different line breaks
+  // from the product, which is the one thing a reference image must not have.
+  await page.evaluate(() => document.fonts.ready);
   // Drop focus first. A reference image is the resting state; a button left
   // focused by the click that got us here reads as a hover or an active
   // state, and the person comparing against Figma has to guess which.
