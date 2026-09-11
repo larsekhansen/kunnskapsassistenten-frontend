@@ -56,6 +56,13 @@ export function ErrorState({
   useEffect(() => {
     if (message || !retryHeldFocus.current) return;
     retryHeldFocus.current = false;
+
+    // Only rescue focus that actually got lost. A caller whose retry handler
+    // already moved focus somewhere deliberate — the chat view sends it to
+    // the compose field — must not have it taken back. Focus on `<body>` is
+    // the signal that nobody claimed it.
+    if (document.activeElement !== document.body && document.activeElement !== null) return;
+
     (focusAfterRetry?.current ?? region.current)?.focus();
   }, [message, focusAfterRetry]);
 

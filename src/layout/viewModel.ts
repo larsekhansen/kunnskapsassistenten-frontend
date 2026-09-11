@@ -150,11 +150,15 @@ export const defaultLayout: Layout = {
       // A first-time user lands on filters, not on the thread list (answer 1).
       activeView: 'filters',
       collapsed: false,
-      // 328 is the inner width Lars settled on 2026-09-11 (answer 59b).
+      // Every width here is what the slot OCCUPIES, padding included, because
+      // the CSS is border-box. 400 = the 328 inner width Lars settled on
+      // 2026-09-11 (answer 59b) plus the 36 px padding on each side, and 400
+      // is also what the page template draws the navigation panel at.
+      //
       // The collapsed width is not drawn anywhere; 198 matches the collapsed
       // secondary sidebar in the page template, so both collapse to the same
       // width and the shell stays symmetric. Revisit when it is drawn.
-      sizing: { mode: 'fixed', width: 328, collapsedWidth: 198 },
+      sizing: { mode: 'fixed', width: 400, collapsedWidth: 198 },
     },
     main: {
       slot: 'main',
@@ -178,10 +182,15 @@ export const defaultLayout: Layout = {
       // the only numbers that exist, 410–560 px for `kilder` and 434–466 px
       // for `right-sidebar`, and 432 sits inside both.
       //
-      // What that buys: 328 + 32 + 640 + 32 + 432 = 1464 px is the narrowest
+      // What that buys: 400 + 32 + 640 + 32 + 432 = 1536 px is the narrowest
       // window where all three slots are open with the answer column still at
-      // its 640 px floor. A 1536 px laptop has 72 px left over, and the answer
-      // column takes it, because it is the only flexible slot.
+      // its 640 px floor, and that is the common laptop width exactly.
+      //
+      // At the 1440 the design frames are drawn at, the three do NOT fit with
+      // the sources panel open: 96 px short. The template never draws that
+      // state — it draws the sources panel collapsed — so it is undesigned
+      // rather than wrong, and question 26 is where it gets settled. Measured
+      // 2026-09-11 with the panels mounted.
       //
       // Figma's 514 is not used. It comes from a frame under
       // design/omraader/september-2026/brukes-ikke/, it disagrees with the

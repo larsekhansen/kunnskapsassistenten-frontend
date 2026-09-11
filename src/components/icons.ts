@@ -21,3 +21,12 @@ export {
   // different glyph, and then this line is the only one that changes.
   ArrowLeftIcon as BackIcon,
 } from '@navikt/aksel-icons';
+
+/*
+ * These two carry no side in the vendor's name, so the naming rule does not
+ * force them through here. They pass through anyway because the role is what
+ * the views mean and the glyph is a choice: a funnel for filtering and a
+ * pencil for a new thread are both conventions, not facts, and a designer who
+ * changes one should change one line.
+ */
+export { FunnelIcon as FilterIcon, PencilWritingIcon as NewThreadIcon } from '@navikt/aksel-icons';

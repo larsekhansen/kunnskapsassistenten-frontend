@@ -206,11 +206,29 @@ Praktisk betyr det:
   tegner kildepanelet bare kollapset, så de eneste tallene som finnes er
   organism-framene, 410–560 px for `kilder` og 434–466 px for
   `right-sidebar`. 432 ligger inni begge, og gir
-  328 + 32 + 640 + 32 + 432 = 1464 px som smaleste vindu der alle tre
-  plassene er åpne med svarkolonnen på gulvet sitt på 640. Figmas 514 er
-  ikke brukt: den kommer fra en frame under `brukes-ikke/`, den er uenig med
-  organismen den er en instans av, og den summerer til 1471 i sin egen
-  1440-frame. Ett tall å endre, i `src/layout/viewModel.ts`.
+  400 + 32 + 640 + 32 + 432 = 1536 px som smaleste vindu der alle tre
+  plassene er åpne med svarkolonnen på gulvet sitt på 640. Det er akkurat den
+  vanlige laptop-bredden. Figmas 514 er ikke brukt: den kommer fra en frame
+  under `brukes-ikke/`, den er uenig med organismen den er en instans av, og
+  den summerer til 1471 i sin egen 1440-frame. Ett tall å endre, i
+  `src/layout/viewModel.ts`.
+- **På 1440 får ikke alle tre plass med kildepanelet åpent.** Det mangler
+  96 px, og sida ruller vannrett. Malen tegner aldri den tilstanden, den
+  tegner kildepanelet kollapset, så dette er utegnet og ikke feil. Målt
+  2026-09-11 med panelene montert. Hører til spørsmål 26.
+
+### Bredder er det plassen opptar
+
+Tallene i `viewModel.ts` er **yttermål**, padding medregnet, fordi sidepanelene
+er `border-box`. Det var de ikke før: med `content-box` ble de 36 px paddingen
+på hver side lagt utenpå, og hvert tall i modellen var 72 px kortere enn det
+tegnet. Et kildepanel oppgitt til 198 px kollapset målte 270, og tre åpne
+plasser trengte 1609 px i stedet for de 1536 modellen lovet. Målt, ikke
+resonnert fram.
+
+Navigasjonspanelets 400 er de 328 Lars satte (svar 59b) pluss paddingen, og
+400 er også det malen tegner panelet som.
+
 - **Topplinje** er ikke bestemt, så det finnes ingen.
 - ~~React Router-versjonen.~~ **Avgjort 2026-09-11:** 8.3.1, pinnet uten
   caret, samme versjon som ki.norge.no og Designsystemets egen nettside. Se

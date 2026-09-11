@@ -14,11 +14,17 @@ import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from '.
  * rather than a test id.
  */
 
+/**
+ * The level 1 heading names the application on every route, and the thread
+ * title is the level 2 under it. A page named after the thread would rename
+ * itself mid-session, the first time a title is generated from a question.
+ */
 const ROUTES = {
   newConversation: { path: '/', heading: 'Kunnskapsassistenten', name: 'ny-samtale' },
   thread: {
     path: '/threads/nkom-maaloppnaaelse',
-    heading: 'NKOM måloppnåelse',
+    heading: 'Kunnskapsassistenten',
+    subheading: 'NKOM måloppnåelse',
     name: 'traad',
   },
 } as const;
@@ -33,6 +39,11 @@ test.describe('skallet', () => {
       // still have landmarks.
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(route.heading);
       await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+
+      // The thread title is a section of the page, not the page itself.
+      if ('subheading' in route) {
+        await expect(page.getByRole('heading', { level: 2, name: route.subheading })).toBeVisible();
+      }
 
       // The slots are named after the views in them, never after the side
       // they sit on. That is the rule the names have to prove.
@@ -180,9 +191,17 @@ test.describe('skallet', () => {
     // Designsystemet's SkipLink sets outline: 0 on purpose and carries its
     // focus state with a surface and an underline instead, so it is the one
     // step measured differently. Everything else draws a ring.
+    //
+    // `ringOnAncestor` is the other honest exception. The compose field and
+    // its buttons read as one control, so the frame around them carries the
+    // ring with `:focus-within` and the textarea inside gives up its own.
+    // What the rule asks is that the user can see where focus is, not which
+    // element the browser painted it on.
     const ringless = steps
       .slice(1)
-      .filter((step) => step.outline === 'none' && step.boxShadow === 'none');
+      .filter(
+        (step) => step.outline === 'none' && step.boxShadow === 'none' && !step.ringOnAncestor,
+      );
     expect(ringless, 'hvert steg etter hopp-lenka skal ha en synlig fokusring').toEqual([]);
 
     // Reading order: the slots come in the order the shell renders them, and
@@ -205,7 +224,14 @@ test.describe('skallet', () => {
   });
 });
 
-type FocusStep = { tag: string; name: string; outline: string; boxShadow: string };
+type FocusStep = {
+  tag: string;
+  name: string;
+  outline: string;
+  boxShadow: string;
+  /** An ancestor draws the ring instead, through `:focus-within`. */
+  ringOnAncestor: boolean;
+};
 
 /**
  * Presses Tab until the walk comes back to an element it has already seen.
@@ -240,6 +266,17 @@ async function walkWithTab(page: import('@playwright/test').Page): Promise<Focus
           clean(element.getAttribute('title')),
         outline: styles.outlineStyle === 'none' ? 'none' : styles.outline,
         boxShadow: styles.boxShadow === 'none' ? 'none' : styles.boxShadow,
+        ringOnAncestor: (() => {
+          let parent = element.parentElement;
+          while (parent && parent !== document.body) {
+            if (parent.matches(':focus-within')) {
+              const style = getComputedStyle(parent);
+              if (style.outlineStyle !== 'none' || style.boxShadow !== 'none') return true;
+            }
+            parent = parent.parentElement;
+          }
+          return false;
+        })(),
       };
     });
 

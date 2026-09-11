@@ -13,6 +13,7 @@
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "tokens:build": "designsystemet tokens create --config designsystemet.config.json && designsystemet tokens build -t ./design-tokens -o ./design-tokens-build",

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { emptyFilterSelection, type FilterSelection } from '../model';
+import { emptyFilterSelection, type FilterSelection, type SourceDocument } from '../model';
+import { AnswerSourcesContext } from './answerSourcesContext';
 import { CitationContext, type ActiveCitation } from './citationContext';
 import { FilterContext } from './filterContext';
 import { LayoutContext } from './layoutContext';
@@ -23,9 +24,10 @@ import {
  * purpose (answers 10 and 48). Nothing here persists yet: a reload returns to
  * `defaultLayout`.
  *
- * It also holds the two pieces of state that two views have to agree on and
- * therefore neither can own: the active citation and the document filter. See
- * citationContext.ts and filterContext.ts.
+ * It also holds the pieces of state that two views have to agree on and
+ * therefore neither can own: the active citation, the document filter, and
+ * the sources behind the answer on screen. See citationContext.ts,
+ * filterContext.ts and answerSourcesContext.ts.
  */
 export function LayoutProvider({
   children,
@@ -37,6 +39,7 @@ export function LayoutProvider({
   const [layout, setLayout] = useState(initialLayout);
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | undefined>(undefined);
   const [selection, setSelection] = useState<FilterSelection>(emptyFilterSelection);
+  const [answerDocuments, setAnswerDocuments] = useState<SourceDocument[] | undefined>(undefined);
   // The view the user last switched each slot to. Empty on a page load, which
   // is the whole point: a view that mounts because the default layout opened
   // on it must not take focus off the skip link.
@@ -100,10 +103,17 @@ export function LayoutProvider({
 
   const filter = useMemo(() => ({ selection, setSelection }), [selection]);
 
+  const answerSources = useMemo(
+    () => ({ documents: answerDocuments, setDocuments: setAnswerDocuments }),
+    [answerDocuments],
+  );
+
   return (
     <LayoutContext value={value}>
       <CitationContext value={citation}>
-        <FilterContext value={filter}>{children}</FilterContext>
+        <FilterContext value={filter}>
+          <AnswerSourcesContext value={answerSources}>{children}</AnswerSourcesContext>
+        </FilterContext>
       </CitationContext>
     </LayoutContext>
   );

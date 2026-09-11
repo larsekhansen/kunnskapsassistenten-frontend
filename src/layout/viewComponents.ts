@@ -1,27 +1,32 @@
 import type { ComponentType } from 'react';
-import { ViewPlaceholder } from './ViewPlaceholder';
+import { ChatSlotView } from './slotViews/ChatSlotView';
+import { SourcesSlotView } from './slotViews/SourcesSlotView';
 import type { SlotViewProps, ViewId } from './viewModel';
+import { FiltersView } from '../views/filters';
+import { ThreadsView } from '../views/threads';
 
 /**
  * Which component renders which view.
  *
- * The four views are owned by three other workers, so until their components
- * land every entry is the placeholder. When a view arrives, only its entry
- * changes — the shell, the layout model and the slot labels do not.
+ * All four views go through this table, `chat` included. It used to be an
+ * exception, drawn by the router outlet in the main slot, and that exception
+ * is gone: a view that only one slot can render is not movable, and movable
+ * is the whole reason the layout is modelled at all (answers 10 and 48).
  *
- * `chat` is the exception: the main slot renders the router outlet, because
- * the route decides whether it shows a new conversation or an existing
- * thread. Its entry is kept so the model stays complete for the day a view
- * can be moved out of main.
+ * The shell hands every view the same `SlotViewProps`. Two of them take those
+ * props as they are. The two that do not are adapted in `slotViews/`, one
+ * small component each, rather than growing `SlotViewProps` a field per view:
  *
- * This is also where a view's own prop names are adapted. The shell hands
- * every view the same `SlotViewProps`; a view that would rather be called
- * with `onShowThreads` or `selection` gets a three-line wrapper here, and
- * `SlotViewProps` does not grow a field per view. The shell stays a shell.
+ *   - `chat` needs the thread named in the URL, which is a router concern,
+ *     and the sources it produces have to reach the sources view.
+ *   - `sources` needs those documents.
+ *
+ * The adapters are the seam. A view stays a plain component that knows
+ * nothing about routes or about the other views, and the shell stays a shell.
  */
 export const viewComponents: Record<ViewId, ComponentType<SlotViewProps>> = {
-  threads: ViewPlaceholder,
-  filters: ViewPlaceholder,
-  chat: ViewPlaceholder,
-  sources: ViewPlaceholder,
+  threads: ThreadsView,
+  filters: FiltersView,
+  chat: ChatSlotView,
+  sources: SourcesSlotView,
 };

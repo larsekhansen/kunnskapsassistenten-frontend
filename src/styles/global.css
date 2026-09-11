@@ -69,10 +69,18 @@ body {
   background: var(--ds-color-neutral-background-tinted);
 }
 
+/*
+ * `border-box`, so a slot occupies exactly the width the layout model says.
+ * With `content-box` the 36 px padding on each side was added on top, and
+ * every number in viewModel.ts was 72 px short of what it drew: a sources
+ * panel declared at 198 px collapsed measured 270, and the three slots open
+ * needed 1609 px instead of the 1464 the model promised. Measured, not
+ * reasoned about.
+ */
 .primary-sidebar,
 .secondary-sidebar {
   flex: 0 0 auto;
-  box-sizing: content-box;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-4);
