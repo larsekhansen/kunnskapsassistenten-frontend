@@ -15,6 +15,8 @@ eier bare denne mappa.
 | [`main-2026-09-11.md`](main-2026-09-11.md)                                     | Grunnlinje for skallet etter Trinn 1, og første måling av mørk modus |
 | [`feat-foundation-2026-09-11.md`](feat-foundation-2026-09-11.md)               | PR #1, domenetyper og mock-klient                                    |
 | [`feat-secondary-sidebar-2026-09-11.md`](feat-secondary-sidebar-2026-09-11.md) | PR #2, kildepanelet                                                  |
+| [`main-2026-09-11-pr6.md`](main-2026-09-11-pr6.md)                             | Etterrevisjon av PR #6 på `main`                                     |
+| [`feat-primary-sidebar-2026-09-11.md`](feat-primary-sidebar-2026-09-11.md)     | PR #3, navigasjonspanelet                                            |
 
 ## Sånn går en review
 
@@ -138,7 +140,20 @@ avslutningskoden.
 - [ ] Kontrast målt der det er tvil. AA er 4,5:1 for tekst, 3:1 for stor
       tekst og grafiske elementer.
 - [ ] Alle synlig fokuserbare elementer nås med Tab. Verktøyet teller dem i
-      DOM-en og sier fra hvis vandringen fant færre.
+      DOM-en og sier fra hvis vandringen fant færre. Tre av dem er alltid
+      Designsystemets egne: `Suggestion.Toggle` og `Suggestion.Clear` har
+      `tabindex="-1"` med vilje, og funksjonen ligger på inputfeltet
+      (ArrowDown åpner lista). Sjekk hva som mangler før du melder funn.
+- [ ] **En knapp som avmonterer seg selv, mister fokus til `<body>`.** Hver
+      kontroll som bare rendres på en tilstand den selv endrer — «Velg alle»,
+      «Tøm», en modusveksler — kaster tastaturbrukeren til toppen av
+      dokumentet. Klikk hver slik knapp og les av `document.activeElement`.
+      Fire tilfeller i PR #3.
+- [ ] **Et live-område monteres før innholdet, aldri sammen med det.** Et
+      `<output>` eller `role="status"` som dukker opp samtidig med teksten
+      sin, kunngjøres ikke. `src/components/ErrorState.tsx` viser formen som
+      virker. Gjelder også lastemeldinger; `Skeleton` er `aria-hidden`, så
+      noe annet må si fra.
 - [ ] **Mål synlighet med `checkVisibility()`, aldri med
       `getBoundingClientRect()`.** Innhold bak `content-visibility: hidden` —
       som er det en lukket `Details` bruker — rapporterer siste kjente
