@@ -10,19 +10,20 @@ eier bare denne mappa.
 
 ## Rapporter
 
-| Fil                                                                                            | Hva                                                                  |
-| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| [`main-2026-09-11.md`](main-2026-09-11.md)                                                     | Grunnlinje for skallet etter Trinn 1, og første måling av mørk modus |
-| [`feat-foundation-2026-09-11.md`](feat-foundation-2026-09-11.md)                               | PR #1, domenetyper og mock-klient                                    |
-| [`feat-secondary-sidebar-2026-09-11.md`](feat-secondary-sidebar-2026-09-11.md)                 | PR #2, kildepanelet                                                  |
-| [`main-2026-09-11-pr6.md`](main-2026-09-11-pr6.md)                                             | Etterrevisjon av PR #6 på `main`                                     |
-| [`feat-primary-sidebar-2026-09-11.md`](feat-primary-sidebar-2026-09-11.md)                     | PR #3, navigasjonspanelet                                            |
-| [`feat-chat-2026-09-11.md`](feat-chat-2026-09-11.md)                                           | PR #5, chat-flyten i hovedkolonnen                                   |
-| [`feat-secondary-sidebar-2026-09-11-runde-2.md`](feat-secondary-sidebar-2026-09-11-runde-2.md) | PR #2, etterrevisjon: de tre blokkerende er rettet                   |
-| [`main-2026-09-11-pr8.md`](main-2026-09-11-pr8.md)                                             | Etterrevisjon av PR #8 på `main`, den ekte klienten                  |
-| [`runde-2-pr3-pr5-2026-09-11.md`](runde-2-pr3-pr5-2026-09-11.md)                               | Etterrevisjon av PR #3 og PR #5: alle blokkerende rettet             |
-| [`funksjonssjekk.md`](funksjonssjekk.md)                                                       | Hva e2e-testene dekker, hva som er merget men udekket                |
-| [`visuell-2026-09-11.md`](visuell-2026-09-11.md)                                               | Visuell gjennomgang mot Figma, alle fire views i lys og mørk         |
+| Fil                                                                                            | Hva                                                                       |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [`main-2026-09-11.md`](main-2026-09-11.md)                                                     | Grunnlinje for skallet etter Trinn 1, og første måling av mørk modus      |
+| [`feat-foundation-2026-09-11.md`](feat-foundation-2026-09-11.md)                               | PR #1, domenetyper og mock-klient                                         |
+| [`feat-secondary-sidebar-2026-09-11.md`](feat-secondary-sidebar-2026-09-11.md)                 | PR #2, kildepanelet                                                       |
+| [`main-2026-09-11-pr6.md`](main-2026-09-11-pr6.md)                                             | Etterrevisjon av PR #6 på `main`                                          |
+| [`feat-primary-sidebar-2026-09-11.md`](feat-primary-sidebar-2026-09-11.md)                     | PR #3, navigasjonspanelet                                                 |
+| [`feat-chat-2026-09-11.md`](feat-chat-2026-09-11.md)                                           | PR #5, chat-flyten i hovedkolonnen                                        |
+| [`feat-secondary-sidebar-2026-09-11-runde-2.md`](feat-secondary-sidebar-2026-09-11-runde-2.md) | PR #2, etterrevisjon: de tre blokkerende er rettet                        |
+| [`main-2026-09-11-pr8.md`](main-2026-09-11-pr8.md)                                             | Etterrevisjon av PR #8 på `main`, den ekte klienten                       |
+| [`runde-2-pr3-pr5-2026-09-11.md`](runde-2-pr3-pr5-2026-09-11.md)                               | Etterrevisjon av PR #3 og PR #5: alle blokkerende rettet                  |
+| [`funksjonssjekk.md`](funksjonssjekk.md)                                                       | Hva e2e-testene dekker, hva som er merget men udekket                     |
+| [`visuell-2026-09-11.md`](visuell-2026-09-11.md)                                               | Visuell gjennomgang mot Figma, alle fire views i lys og mørk              |
+| [`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md)                                           | E2E-spec for layoutbeslutningen for V1, og hullet i regnestykket ved 1280 |
 
 ## Sånn går en review
 

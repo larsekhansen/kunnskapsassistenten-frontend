@@ -9,12 +9,15 @@ Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 `lang="nb"`. Hver testet tilstand kontrolleres med axe mot `wcag2a` og
 `wcag2aa`; et brudd feiler testen.
 
-**36 tester grønne på under 30 sekunder**, pluss to i `layout.spec.ts` som er
-røde med vilje: de holder de to funnene fra den visuelle gjennomgangen, og de
-blir grønne når funnene rettes. De ligger på `chore/e2e-layout` og hører til
-review-en av rettelsene, ikke på `main` ennå.
+**36 tester grønne på under 30 sekunder** på `main`, pluss 18 i
+`layout.spec.ts` som ligger på `chore/e2e-layout` og ikke på `main`. Av dem er
+**13 røde med vilje**: de er skrevet mot layoutbeslutningen for V1
+(`design/_briefs/bygg/rolle-5c-layout-v1.md`) før #5 har bygget den, og blir
+grønne når PR-en lander. Én av de tretten kan ikke bli grønn uten at
+beslutningen utvides; den og hele matrisen står i
+[`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md).
 
-Sist kjørt mot `main` `7f61bc7`.
+Sist kjørt mot `main` `8060c9b`.
 
 De 22 testene for de tre viewene ble skrevet mot en lokal montering i
 arbeidstreet mens monterings-PR-en ble laget, og **de passerte uendret mot den
@@ -48,6 +51,8 @@ slik de ble anmeldt.
 | Hopper til et dokument fra snarveislista                  | `sources.spec.ts`          |
 | Søker i utdragene og stepper mellom treff                 | `sources.spec.ts`          |
 | Tabber gjennom hvert view i lys og mørk                   | alle fire spec-ene         |
+| Måler layouten på 1280, 1440 og 1536 i lys og mørk        | `layout.spec.ts`           |
+| Åpner og kollapser sidekolonnene i hver kombinasjon       | `layout.spec.ts`           |
 
 ## Merget, men ikke dekket
 
