@@ -56,6 +56,19 @@ const PREFERRED_VIEWPORT = NAV_OPEN + GAP + MAIN_FLOOR + GAP + SOURCES_PREFERRED
  */
 const V1_MIN_VIEWPORT = 1280;
 
+/**
+ * The answer column's floor while the sources panel is collapsed.
+ *
+ * 640 exists so the sources can be read BESIDE the answer (answers 46, 49,
+ * 59). With the panel collapsed there is nothing beside it, so the reason
+ * does not apply in that state — and the state has to fit at 1280, which 640
+ * does not: 400 + 32 + 640 + 32 + 198 = 1302. The conductor settled this on
+ * 2026-09-14 (`rolle-5c-layout-v1.md`, lever a) after this file measured the
+ * 22 px; 618 is not a new number but what V1's narrowest window leaves once
+ * the other three are paid.
+ */
+const MAIN_FLOOR_SOURCES_COLLAPSED = V1_MIN_VIEWPORT - NAV_OPEN - GAP - GAP - SOURCES_COLLAPSED;
+
 const WIDTHS = [V1_MIN_VIEWPORT, BOTH_SIDEBARS_MIN_VIEWPORT, PREFERRED_VIEWPORT];
 
 const HEIGHT = 900;
@@ -216,10 +229,14 @@ function expectLayoutFits(measured: Measurement, state: LayoutState, where: stri
     );
   }
 
+  // Two floors, one per state, and which one applies is the whole of lever a:
+  // the 640 floor is about reading the sources beside the answer, so it is
+  // only the floor while there are sources beside the answer.
+  const mainFloor = state.sources === 'open' ? MAIN_FLOOR : MAIN_FLOOR_SOURCES_COLLAPSED;
   expect(
     measured.mainWidth,
-    `hovedkolonnen skal aldri under gulvet i ${where}`,
-  ).toBeGreaterThanOrEqual(MAIN_FLOOR);
+    `hovedkolonnen skal aldri under gulvet sitt (${mainFloor}) i ${where}`,
+  ).toBeGreaterThanOrEqual(mainFloor);
   expect(measured.mainWidth, `hovedkolonnen skal aldri over taket i ${where}`).toBeLessThanOrEqual(
     MAIN_CEILING,
   );
@@ -281,12 +298,13 @@ test.describe('layouten', () => {
    * but whether it is the SAME layout. Measuring both in one page and
    * comparing answers that directly, and costs one page load instead of two.
    *
-   * One cell of this matrix cannot pass as the decision is written today:
-   * 1280 with only the navigation panel open needs
+   * One cell of this matrix is the reason the decision grew a paragraph.
+   * 1280 with only the navigation panel open needed
    * 400 + 32 + 640 + 32 + 198 = 1302 px, and the decision's own arithmetic
-   * only checks the state where the navigation panel is collapsed. It is the
-   * state `defaultLayout` opens on, so it is what a user at 1280 meets. Left
-   * red on purpose rather than loosened: see
+   * only checked the state where the navigation panel is collapsed — while
+   * this is the state `defaultLayout` opens on, so it is what a user at 1280
+   * meets. The conductor answered it with lever a on 2026-09-14: the answer
+   * column's floor is 618 while the sources panel is collapsed. See
    * `docs/review/layout-v1-2026-09-14.md`, finding 1.
    */
   test.describe('ingen vannrett rulling fra 1280 og opp', () => {
@@ -318,10 +336,34 @@ test.describe('layouten', () => {
   });
 
   /**
-   * The two widths where the sum is exact. They are the reason the numbers
+   * The three widths where the sum is exact. They are the reason the numbers
    * are what they are, so a change to any width shows up here first, with the
    * arithmetic written out rather than hidden in a tolerance.
    */
+  test('ved 1280 med bare navigasjonspanelet åpent står hovedkolonnen på 618', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'layout: 1280 med kollapset kildepanel går opp på 618');
+    await page.setViewportSize({ width: V1_MIN_VIEWPORT, height: HEIGHT });
+    await page.goto('/');
+    await setSidebars(page, stateNamed('nav-aapent'));
+
+    const measured = await measure(page);
+
+    // Lever a, measured rather than assumed: the answer column gives up the
+    // 22 px the row was short, and gives up exactly those, so the state that
+    // `defaultLayout` opens on fits in V1's narrowest window.
+    expect(measured.navWidth).toBe(NAV_OPEN);
+    expect(measured.sourcesWidth).toBe(SOURCES_COLLAPSED);
+    expect(measured.mainWidth, 'hovedkolonnens gulv med kildepanelet kollapset').toBe(
+      MAIN_FLOOR_SOURCES_COLLAPSED,
+    );
+    expect(
+      measured.navWidth + GAP + measured.mainWidth + GAP + measured.sourcesWidth,
+      'summen er 1280, gulvet i V1',
+    ).toBe(V1_MIN_VIEWPORT);
+  });
+
   test('ved 1440 går de tre plassene nøyaktig opp, med kildepanelet på gulvet', async ({
     page,
   }, testInfo) => {

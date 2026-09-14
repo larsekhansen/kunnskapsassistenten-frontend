@@ -9,12 +9,12 @@ Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 `lang="nb"`. Hver testet tilstand kontrolleres med axe mot `wcag2a` og
 `wcag2aa`; et brudd feiler testen.
 
-**36 tester grønne på under 30 sekunder** på `main`, pluss 18 i
+**36 tester grønne på under 30 sekunder** på `main`, pluss 19 i
 `layout.spec.ts` som ligger på `chore/e2e-layout` og ikke på `main`. Av dem er
-**13 røde med vilje**: de er skrevet mot layoutbeslutningen for V1
-(`design/_briefs/bygg/rolle-5c-layout-v1.md`) før #5 har bygget den, og blir
-grønne når PR-en lander. Én av de tretten kan ikke bli grønn uten at
-beslutningen utvides; den og hele matrisen står i
+**14 røde med vilje**: de er skrevet mot layoutbeslutningen for V1
+(`design/_briefs/bygg/rolle-5c-layout-v1.md`) før #5 har bygget den, og skal
+alle bli grønne når PR-en lander. Matrisen og hullet i regnestykket som
+beslutningen måtte utvides for, står i
 [`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md).
 
 Sist kjørt mot `main` `8060c9b`.
