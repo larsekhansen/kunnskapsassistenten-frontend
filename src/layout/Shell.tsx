@@ -1,5 +1,5 @@
 import { Button, SkipLink } from '@digdir/designsystemet-react';
-import { useId, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
 import { MainScrollContext } from './scrollContext';
@@ -111,6 +111,60 @@ function Sidebar({
   const ActiveView = viewComponents[state.activeView];
   const Icon = slotIcons[slot];
 
+  const toggle = useRef<HTMLButtonElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+
+  /**
+   * Whether the keyboard focus is inside this slot's content right now.
+   *
+   * A ref rather than state: nothing renders differently because of it, and
+   * re-rendering a panel on every focus move inside it would be a great many
+   * renders for nothing.
+   *
+   * Cleared only when focus goes somewhere we can name. `relatedTarget` is
+   * null when focus is lost to nothing at all, which is precisely what hiding
+   * this panel does — so that is the one blur that must NOT clear the flag.
+   * It is the case the repair below exists for.
+   */
+  const holdsFocus = useRef(false);
+
+  /**
+   * A collapsing panel must not take the keyboard focus down with it.
+   *
+   * The slot can be collapsed by something other than the user pressing its
+   * own button: below `bothSidebarsMinViewport` only one sidebar may be open,
+   * so shrinking or zooming the window past 1440 collapses one of them
+   * (LayoutProvider). The content is hidden with `hidden`, the browser blurs
+   * whatever was focused inside it, and focus lands on `<body>` — a whole page
+   * away from what the user was doing, with the next Tab starting again at the
+   * skip link. WCAG 2.4.3. Found by KA CC in review of PR #14, measured at
+   * 1536 → 1439 with the focus in the search field of the sources panel.
+   *
+   * The repair is the same move CONTRIBUTING asks of any control that
+   * disappears by its own action: send focus to the thing the action left
+   * behind, which here is the button that now says «Vis kilder».
+   *
+   * This sits in the slot rather than in the provider on purpose. The provider
+   * knows WHY a panel closed; only the slot knows whether it was holding the
+   * focus, and that is the only question the repair turns on. Written this way
+   * it covers every route into a collapse, including ones nobody has built
+   * yet, rather than the one route review happened to find.
+   */
+  useEffect(() => {
+    if (!state.collapsed || !holdsFocus.current) return;
+
+    // Both readings mean the same thing — focus is gone — and which one the
+    // browser leaves behind depends on whether it has recalculated style yet.
+    // Anything else means focus has moved somewhere real and is not ours to
+    // take back.
+    const active = document.activeElement;
+    const lost = active === null || active === document.body || content.current?.contains(active);
+    if (!lost) return;
+
+    holdsFocus.current = false;
+    toggle.current?.focus();
+  }, [state.collapsed]);
+
   // «Vis kilder» / «Skjul kilder», «Vis tråder og filter» / «Skjul tråder og
   // filter». Derived from the slot's own name so a moved view takes its
   // wording with it, rather than from a hardcoded string per slot.
@@ -119,6 +173,7 @@ function Sidebar({
   return (
     <Element aria-label={label} className={slot} data-collapsed={state.collapsed || undefined}>
       <Button
+        ref={toggle}
         variant="tertiary"
         data-color="neutral"
         data-size="sm"
@@ -130,7 +185,24 @@ function Sidebar({
         {toggleLabel}
       </Button>
 
-      <div id={contentId} hidden={state.collapsed} className="sidebar-content">
+      {/*
+        onFocus and onBlur are React's focusin and focusout, which bubble, so
+        this pair is «does the focus sit anywhere inside me». They are here to
+        observe, not to handle an interaction: nothing about this container is
+        clickable and no keyboard handler belongs on it.
+      */}
+      <div
+        id={contentId}
+        ref={content}
+        hidden={state.collapsed}
+        className="sidebar-content"
+        onFocus={() => {
+          holdsFocus.current = true;
+        }}
+        onBlur={(event) => {
+          if (event.relatedTarget) holdsFocus.current = false;
+        }}
+      >
         <ActiveView
           view={state.activeView}
           collapsed={state.collapsed}

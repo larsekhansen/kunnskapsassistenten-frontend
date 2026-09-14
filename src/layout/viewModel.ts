@@ -497,10 +497,14 @@ export function layoutStyle(layout: Layout): Record<string, string> {
     const sizing = state.sizing;
 
     if (sizing.mode === 'flexible') {
-      // Keyed on the SLOT, not on the sources view that sits in it today: the
-      // question is whether anything is drawn beside the answer, and that is
-      // a fact about the slot. Move sources elsewhere and the rule still
-      // asks about whatever took its place.
+      // Named slot, deliberately, and it is a limitation rather than a
+      // design. The question the floor asks is whether anything is drawn
+      // BESIDE the answer column, and in this layout the secondary sidebar is
+      // the one slot that can be. It does not follow the sources view: move
+      // sources into the primary sidebar and this still asks about the
+      // secondary slot, which is then the wrong question. The day layouts can
+      // really be rearranged, this has to ask about the neighbour instead of
+      // about a slot by name.
       const alone = layout.slots['secondary-sidebar'].collapsed;
       style[`--ka-${slot}-min-width`] = `${alone ? sizing.minWidthAlone : sizing.minWidth}px`;
       style[`--ka-${slot}-max-width`] = `${sizing.maxWidth}px`;
