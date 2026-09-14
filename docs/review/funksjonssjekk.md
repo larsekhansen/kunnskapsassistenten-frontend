@@ -9,8 +9,16 @@ Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 `lang="nb"`. Hver testet tilstand kontrolleres med axe mot `wcag2a` og
 `wcag2aa`; et brudd feiler testen.
 
-**36 tester, alle grønne på under 30 sekunder.** Sist kjørt mot `main`
-`8088328`. `npm run test:e2e` finnes nå.
+**55 tester grønne og 1 rød**, kjørt mot PR #14 (`feat/foundation` `a219e9d`)
+med `layout.spec.ts` fra `chore/e2e-layout` lagt oppå. De 19 layouttestene som
+holder V1-beslutningen er **alle grønne**; den røde er et nytt funn, ikke en
+tilstand #5 ikke har bygget: regel B mister tastaturet når den kollapser et
+panel brukeren står i. Se
+[`feat-foundation-2026-09-14.md`](feat-foundation-2026-09-14.md).
+
+Mot `main` `8060c9b` alene er 36 grønne og layouttestene røde, siden layouten
+ikke er merget ennå. Matrisen og hullet ved 1280 står i
+[`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md).
 
 De 22 testene for de tre viewene ble skrevet mot en lokal montering i
 arbeidstreet mens monterings-PR-en ble laget, og **de passerte uendret mot den
@@ -44,6 +52,8 @@ slik de ble anmeldt.
 | Hopper til et dokument fra snarveislista                  | `sources.spec.ts`          |
 | Søker i utdragene og stepper mellom treff                 | `sources.spec.ts`          |
 | Tabber gjennom hvert view i lys og mørk                   | alle fire spec-ene         |
+| Måler layouten på 1280, 1440 og 1536 i lys og mørk        | `layout.spec.ts`           |
+| Åpner og kollapser sidekolonnene i hver kombinasjon       | `layout.spec.ts`           |
 
 ## Merget, men ikke dekket
 
@@ -85,6 +95,13 @@ og som Playwright gjenbrukte. Mot et ferskt bygg er tilstanden riktig: tom
 forside gir «Ingen kilder ennå», og «Henter kilder …» kommer først når et svar
 faktisk er underveis. Verdt å vite for neste måling: drep preview-serveren før
 du konkluderer.
+
+**Mål aldri tekstoppsett før fonten er lastet.** Inter hentes fra en CDN, og
+fallback-fonten har andre metrikker. Testen for kollapsknappens etikett
+passerte først, fordi «Vis kilder» får plass på én linje i fallbacken og
+brytes i Inter. `await page.evaluate(() => document.fonts.ready)` er hekta, og
+den står nå både i den testen og i `saveScreenshot`. Referansebildene var
+utilsiktet trygge fordi de tas etter mye annet arbeid, men det var flaks.
 
 **Et helt mock-svar tar rundt 7,5 sekunder.** Fire tenkesteg à 500 ms, så
 svaret token for token à 18 ms. Ventingene i testene poller, så en test
