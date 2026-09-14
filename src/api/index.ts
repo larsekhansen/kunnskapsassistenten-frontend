@@ -13,5 +13,13 @@ export type { AskParams, ChatClient } from './chatClient';
  */
 export function createChatClient(): ChatClient {
   const mode = import.meta.env.VITE_API_MODE ?? 'mock';
-  return mode === 'live' ? new LiveChatClient() : new MockChatClient();
+  if (mode !== 'live') return new MockChatClient();
+
+  // Which corpus to ask, when somebody has said. Both or neither; the client
+  // drops a lone one and says so. Unset is the behaviour up to now: the
+  // backend picks, which on the local stack is the demo corpus.
+  return new LiveChatClient({
+    tenant: import.meta.env.VITE_KA_TENANT,
+    datasetConfigKey: import.meta.env.VITE_KA_DATASET_CONFIG_KEY,
+  });
 }

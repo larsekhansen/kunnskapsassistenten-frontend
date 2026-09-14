@@ -325,6 +325,33 @@ bruke ekte backend:
 VITE_API_MODE=live npm run dev
 ```
 
+### Hvilket korpus
+
+`VITE_KA_TENANT` og `VITE_KA_DATASET_CONFIG_KEY` peker live-modus på et bestemt
+datasett. De er **valgfrie**, og er de ikke satt skjer det som før: backenden
+velger selv, som på den lokale stacken er demokorpuset.
+
+```sh
+VITE_API_MODE=live VITE_KA_TENANT=demo VITE_KA_DATASET_CONFIG_KEY=kudos-pilot npm run dev
+```
+
+De har `VITE_`-prefiks fordi de **skal** nå klientkoden, og det er greit: dette
+er navn på datasett, ikke hemmeligheter. Nøkkelen er en annen sak og blir hos
+proxyen.
+
+**Begge eller ingen.** Backenden bygger datasett-scopet med
+`(when (and tenant dataset_config_key) …)` i
+`server/src/digdir/mcp/tools.clj`, så én alene blir forkastet der og svaret
+kommer fra standardkorpuset. Da ville en halvkonfigurert frontend se ut som den
+sto på pilotdatasettet og svare fra demodataene, uten at noe nedstrøms kunne se
+forskjell. Klienten dropper derfor en enslig verdi og skriver en advarsel i
+konsollen. Se `datasetArguments()` i `src/api/live/mcp.ts`.
+
+På tråden sendes de som `tenant` og `dataset_config_key` i `tools/call`-
+argumentene, ved siden av `query`.
+
+### Nøkkelen
+
 `KA_API_URL` og `KA_API_KEY` har **ikke** `VITE_`-prefiks, og det er poenget:
 Vite eksponerer bare `VITE_`-variabler for klientkoden, så nøkkelen kan ikke
 havne i bundlen ved et uhell. Dev-serveren er proxyen som setter

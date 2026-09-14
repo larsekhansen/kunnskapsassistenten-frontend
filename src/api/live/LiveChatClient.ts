@@ -4,6 +4,7 @@ import {
   DEFAULT_TOOL_NAME,
   MCP_PROTOCOL_VERSION,
   McpStreamState,
+  datasetArguments,
   toCitations,
   toSourceDocuments,
 } from './mcp';
@@ -13,6 +14,16 @@ export type LiveChatClientOptions = {
   /** Where the proxy lives. Relative on purpose: same origin, no CORS. */
   basePath?: string;
   toolName?: string;
+  /**
+   * Which corpus to ask. Both or neither; see `datasetArguments` in mcp.ts.
+   * Left out, the backend picks, which is the behaviour up to now.
+   *
+   * These are dataset names and not credentials, which is why they may come
+   * from `VITE_`-prefixed variables at all. The API key is a different thing
+   * entirely and stays with the proxy.
+   */
+  tenant?: string;
+  datasetConfigKey?: string;
 };
 
 /** The server answers two ways, and the question they answer is not the same. */
@@ -45,10 +56,14 @@ function errorFromStatus(status: number): ChatError {
 export class LiveChatClient implements ChatClient {
   readonly #basePath: string;
   readonly #toolName: string;
+  readonly #dataset: Record<string, string>;
 
   constructor(options: LiveChatClientOptions = {}) {
     this.#basePath = options.basePath ?? '/api';
     this.#toolName = options.toolName ?? DEFAULT_TOOL_NAME;
+    // Resolved once, in the constructor, so a misconfiguration is reported
+    // when the client is built rather than once per question asked.
+    this.#dataset = datasetArguments(options.tenant, options.datasetConfigKey);
   }
 
   async *ask(params: AskParams): AsyncIterable<StreamEvent> {
@@ -61,6 +76,7 @@ export class LiveChatClient implements ChatClient {
         name: this.#toolName,
         arguments: {
           query: params.query,
+          ...this.#dataset,
           ...(params.conversationId ? { conversation_id: params.conversationId } : {}),
         },
         _meta: {

@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   McpStreamState,
+  datasetArguments,
   parseHeadingPath,
   relevanceFromRank,
   toCitations,
@@ -159,5 +160,52 @@ describe('McpStreamState', () => {
     const state = new McpStreamState();
     expect(state.progress({ event: 'agent/iteration-started', iteration: 2 })).toEqual([]);
     expect(state.progress({ event: 'response/chunk' })).toEqual([]);
+  });
+});
+
+describe('datasetArguments', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('sends nothing when nothing is configured', () => {
+    // The behaviour up to now, and the one this must not disturb: no dataset
+    // in the arguments means the backend chooses, which on the local stack is
+    // the demo corpus.
+    expect(datasetArguments(undefined, undefined)).toEqual({});
+  });
+
+  it('sends both, in the snake case the server reads', () => {
+    expect(datasetArguments('demo', 'kudos-pilot')).toEqual({
+      tenant: 'demo',
+      dataset_config_key: 'kudos-pilot',
+    });
+  });
+
+  it('sends neither when only one is set, and says so', () => {
+    // The backend builds the scope with `(when (and tenant
+    // dataset_config_key) ...)`, so a lone one is dropped there instead and
+    // the answer comes from the default corpus. Sending it would look like it
+    // did something.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(datasetArguments('demo', undefined)).toEqual({});
+    expect(datasetArguments(undefined, 'kudos-pilot')).toEqual({});
+
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn.mock.calls[0][0]).toContain('VITE_KA_TENANT');
+  });
+
+  it('treats an empty string as unset', () => {
+    // `VITE_KA_TENANT=` in an .env file arrives as '', not as undefined, and
+    // an empty tenant is not a tenant.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(datasetArguments('', '')).toEqual({});
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('says nothing when nothing is configured', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    datasetArguments(undefined, undefined);
+    expect(warn).not.toHaveBeenCalled();
   });
 });

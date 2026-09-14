@@ -30,6 +30,45 @@ export const MCP_PROTOCOL_VERSION = '2026-07-28';
  */
 export const DEFAULT_TOOL_NAME = 'builtin.agent-rag-agent__agent-rag-graph-bundled';
 
+/**
+ * Which corpus to ask, as `tools/call` arguments, or nothing.
+ *
+ * The backend takes `tenant` and `dataset_config_key` beside the query and
+ * resolves them to a dataset. Left out, it falls back to the scopes on the
+ * API key and then to its own `TENANT` / `DATASET_CONFIG_KEY`, which on the
+ * local stack is the demo corpus. That fallback is the behaviour this
+ * function must not disturb when nothing is configured.
+ *
+ * **Both or neither, and that is the backend's rule rather than a preference
+ * of ours.** `resolve-dataset-scope` in server/src/digdir/mcp/tools.clj builds
+ * the scope with `(when (and tenant dataset_config_key) ...)`, so one alone is
+ * dropped on the floor and the call quietly answers from the default corpus
+ * instead. A half-configured frontend would then look like it was pointed at
+ * the pilot and answer from the demo data — which is the one failure worth
+ * guarding against here, because nothing downstream could tell the difference.
+ *
+ * Snake case on the wire on purpose: the server reads `dataset_config_key`
+ * exactly, and only converts to its internal `:dataset-config-key` after.
+ */
+export function datasetArguments(
+  tenant: string | undefined,
+  datasetConfigKey: string | undefined,
+): { tenant: string; dataset_config_key: string } | Record<string, never> {
+  const both = tenant && datasetConfigKey;
+  if (both) return { tenant, dataset_config_key: datasetConfigKey };
+
+  if (tenant || datasetConfigKey) {
+    // Not an error the user can act on and not worth failing the question
+    // over, but the developer who set one of the two has to hear about it.
+    console.warn(
+      'KA: VITE_KA_TENANT og VITE_KA_DATASET_CONFIG_KEY må settes sammen. ' +
+        'Bare den ene er satt, så begge er utelatt og backend velger datasett selv.',
+    );
+  }
+
+  return {};
+}
+
 type ProgressMeta = {
   event?: string;
   delta?: string;
