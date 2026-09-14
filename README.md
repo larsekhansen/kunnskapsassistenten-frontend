@@ -57,12 +57,13 @@ src/
     live/                     LiveChatClient, MCP-oversettelse, SSE-leser
   layout/
     Shell.tsx                 de tre plassene
-    viewModel.ts              Slot, ViewId, View, Layout, bredder, operasjoner
+    viewModel.ts              Slot, ViewId, View, Layout, bredder, brytepunkt
     layoutContext.ts          React-konteksten
     LayoutProvider.tsx        tilstanden: aktivt view, kollapset, bredder
     useLayout.ts              useLayout() og useSlot()
     viewComponents.ts         hvilken komponent som tegner hvilket view
     ViewPlaceholder.tsx       står i til viewene er bygget
+    useNarrowViewport.ts      om begge sidekolonner får plass samtidig
     colorScheme.ts            mørk modus, window.ka.colorScheme
     citationContext.ts        hvilken [n] brukeren vil se
     useCitation.ts            useCitation()
@@ -71,7 +72,9 @@ src/
   routes/
     NewConversation.tsx       ruten /
     Thread.tsx                ruten /threads/:threadId
-  test/setup.ts               jsdom-oppsett for vitest
+  test/
+    setup.ts                  jsdom-oppsett for vitest
+    matchMedia.ts             matchMedia for jsdom, med bredde testen kan sette
 ```
 
 Rutene er `/` for ny samtale og `/threads/:threadId` for én samtale.
@@ -198,37 +201,106 @@ Praktisk betyr det:
 - Hopp-lenka er Designsystemets `SkipLink` og er alltid første fokuserbare
   element.
 
-## Åpne punkter
+## Layout og brytepunkter
 
-- **Brytepunkter** finnes ikke. Se «Bredder».
-- **Bredden på åpen `secondary-sidebar`** er fortsatt ikke bestemt (spørsmål
-  26). Verdien i `defaultLayout` er **432 px**. Malen måler den ikke: den
-  tegner kildepanelet bare kollapset, så de eneste tallene som finnes er
-  organism-framene, 410–560 px for `kilder` og 434–466 px for
-  `right-sidebar`. 432 ligger inni begge, og gir
-  400 + 32 + 640 + 32 + 432 = 1536 px som smaleste vindu der alle tre
-  plassene er åpne med svarkolonnen på gulvet sitt på 640. Det er akkurat den
-  vanlige laptop-bredden. Figmas 514 er ikke brukt: den kommer fra en frame
-  under `brukes-ikke/`, den er uenig med organismen den er en instans av, og
-  den summerer til 1471 i sin egen 1440-frame. Ett tall å endre, i
-  `src/layout/viewModel.ts`.
-- **På 1440 får ikke alle tre plass med kildepanelet åpent.** Det mangler
-  96 px, og sida ruller vannrett. Malen tegner aldri den tilstanden, den
-  tegner kildepanelet kollapset, så dette er utegnet og ikke feil. Målt
-  2026-09-11 med panelene montert. Hører til spørsmål 26.
+Avgjort 2026-09-14, se `design/visjon-og-beslutninger.md`. Appen har **ett**
+brytepunkt, og det er regnet ut, ikke valgt.
 
-### Bredder er det plassen opptar
+### Bredder
 
-Tallene i `viewModel.ts` er **yttermål**, padding medregnet, fordi sidepanelene
-er `border-box`. Det var de ikke før: med `content-box` ble de 36 px paddingen
-på hver side lagt utenpå, og hvert tall i modellen var 72 px kortere enn det
-tegnet. Et kildepanel oppgitt til 198 px kollapset målte 270, og tre åpne
-plasser trengte 1609 px i stedet for de 1536 modellen lovet. Målt, ikke
-resonnert fram.
+| Plass               | Åpen           | Kollapset | Gir etter?                |
+| ------------------- | -------------- | --------- | ------------------------- |
+| `primary-sidebar`   | 400            | 236       | nei                       |
+| `main`              | 640–800        | —         | ja, først, ned til gulvet |
+| `secondary-sidebar` | 432, minst 336 | 198       | ja, deretter, ned til 336 |
+
+Hovedkolonnen har **to gulv**, avgjort 2026-09-14: **640** når kildepanelet er
+åpent, **618** når det er kollapset. Grunnen til 640 (svar 46, 49 og 59) er at
+kildene skal kunne leses _ved siden av_ svaret; er panelet kollapset, står det
+ingenting ved siden av. 618 er utledet, ikke valgt:
+1280 − 400 − 32 − 32 − 198, altså det som er igjen til svaret på 1280 med
+navigasjonspanelet åpent og kildepanelet kollapset. `layoutStyle()` vet om
+kildepanelet er kollapset og skriver `--ka-main-min-width` deretter.
+
+Mellom plassene er det 32 px (`--ds-size-8`). Tallene er **yttermål**, padding
+medregnet, fordi sidepanelene er `border-box`. Det var de ikke før: med
+`content-box` ble de 36 px paddingen på hver side lagt utenpå, og hvert tall i
+modellen var 72 px kortere enn det tegnet. Et kildepanel oppgitt til 198 px
+kollapset målte 270. Målt, ikke resonnert fram.
 
 Navigasjonspanelets 400 er de 328 Lars satte (svar 59b) pluss paddingen, og
-400 er også det malen tegner panelet som.
+400 er også det malen tegner panelet som. De 236 kollapset er knappen «Vis
+tråder og filter» på 195,78 px, pluss 36 px padding mot vinduskanten og 1 px
+for panelets egen kant. Utledningen står i `src/layout/viewModel.ts`.
 
+### Rekkefølgen når plassen blir knapp
+
+1. **Hovedkolonnen** krymper først, ned til gulvet sitt på 640.
+2. **Kildepanelet** deretter, fra 432 ned til 336.
+3. **Navigasjonspanelet** gir aldri.
+
+Ingen mediespørring bestemmer noe av det. Det faller ut av tre `flex`-linjer i
+`src/styles/global.css`: hovedkolonnen vokser fra null og nekter å krympe,
+kildepanelet er det eneste elementet på rada med `flex-shrink: 1`.
+
+### Brytepunktet: 1440
+
+Under 1440 kan ikke begge sidekolonnene være åpne samtidig. Åpner du den ene,
+kollapses den andre; krymper vinduet forbi 1440 mens begge er åpne, kollapses
+**kildepanelet**, som er det som gir etter. En kildehenvisning i svaret følger
+samme regel, siden den også er en forespørsel om å åpne kildepanelet.
+
+1440 er ikke et magisk tall og ikke en skjermstørrelse. Det er summen av det
+de tre plassene trenger når ingen har noe å gi:
+
+```
+400 + 32 + 640 + 32 + 336 = 1440
+```
+
+640 og ikke de 618 hovedkolonnen kan falle til: dette er bredden der begge
+sidekolonnene er åpne, og det lavere gulvet gjelder bare med kildepanelet
+kollapset.
+
+Konstanten heter `bothSidebarsMinViewport` i `src/layout/viewModel.ts` og er
+**regnet ut** av breddene, ikke skrevet ned, så den flytter seg om en bredde
+endres. At den lander på 1440, bredden alle Figma-framene er tegnet i, er en
+sammentreff verdt å merke seg og ikke grunnen til tallet.
+
+Regelen ligger i `LayoutProvider`, ikke i CSS, og `useNarrowViewport.ts`
+forklarer hvorfor: det brytepunktet endrer er **kollapset tilstand**, som
+knappene melder med `aria-expanded`. En CSS-regel som skjulte et panel ville
+latt knappen påstå at panelet er åpent.
+
+Regelen tar et panel bort når det ikke er plass. Den gir ikke noe tilbake når
+vinduet vokser igjen: et panel som åpnet seg selv ville overstyrt et valg
+brukeren har tatt.
+
+### Garantien
+
+**Ingen vannrett rulling ved 1280 eller bredere, i alle tilstander.** Målt i
+bygget app, headless, lys og mørk modus:
+
+| Bredde | Tilstand                          | Nav | Hoved | Kilder | Sum  |
+| ------ | --------------------------------- | --- | ----- | ------ | ---- |
+| 1536   | alt åpent                         | 400 | 640   | 432    | 1536 |
+| 1440   | begge sidekolonner åpne           | 400 | 640   | 336    | 1440 |
+| 1440   | nav åpent, kildepanelet kollapset | 400 | 778   | 198    | 1440 |
+| 1280   | nav åpent, kildepanelet kollapset | 400 | 618   | 198    | 1280 |
+| 1280   | kildepanelet åpent, nav kollapset | 236 | 640   | 340    | 1280 |
+| 1280   | begge kollapset                   | 236 | 782   | 198    | 1280 |
+
+Den fjerde rada er **tilstanden appen åpner i**, og den er grunnen til at
+hovedkolonnen har to gulv: med ett gulv på 640 trengte den 1302 og rullet
+22 px vannrett ved 1280.
+
+## Åpne punkter
+
+- **Under 1280 er et kjent avvik fra WCAG 1.4.10 Reflow (AA).** Kravet er at
+  innhold skal kunne vises i 320 px bredde uten vannrett rulling; appen
+  garanterer 1280. Det er en bevisst begrensning i v1 (spørsmål 45: desktop og
+  stor tablet først), men det er et avvik og skal telles som det. **Planlagt
+  fiks:** kildepanelet som **skuff** over hovedkolonnen, Designsystemets
+  `Dialog` fra kanten, og tilsvarende for navigasjonspanelet. Ikke bygget.
 - **Topplinje** er ikke bestemt, så det finnes ingen.
 - ~~React Router-versjonen.~~ **Avgjort 2026-09-11:** 8.3.1, pinnet uten
   caret, samme versjon som ki.norge.no og Designsystemets egen nettside. Se
@@ -240,9 +312,17 @@ Navigasjonspanelets 400 er de 328 Lars satte (svar 59b) pluss paddingen, og
 Kopier `.env.example` til `.env.local` og fyll inn nøkkelen:
 
 ```sh
-VITE_API_MODE=live
 KA_API_URL=http://localhost:8080
 KA_API_KEY=rag_…
+```
+
+**`VITE_API_MODE` skal ikke stå i `.env.local`.** Alle Vite-servere fra samme
+sjekkout leser den samme fila, så en live-modus lagt inn der slår inn for alle
+som kjører i treet. Sett den på kommandolinja for den ene kjøringen som skal
+bruke ekte backend:
+
+```sh
+VITE_API_MODE=live npm run dev
 ```
 
 `KA_API_URL` og `KA_API_KEY` har **ikke** `VITE_`-prefiks, og det er poenget:
