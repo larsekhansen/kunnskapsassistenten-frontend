@@ -8,9 +8,16 @@ import { ask, citation } from './helpers';
  * Two kinds of test live here. The first two came out of the visual review
  * against Figma (`docs/review/visuell-2026-09-11.md`) and are here so the
  * same two cannot come back. The rest hold the V1 decision the conductor made
- * on 2026-09-14 (`design/_briefs/bygg/rolle-5c-layout-v1.md`), which is what
- * #5 is building: the sources panel gives way, one sidebar at a time below
- * 1440, and no horizontal scrolling at 1280 or above in any state.
+ * on 2026-09-14 (`design/_briefs/bygg/rolle-5c-layout-v1.md`): the sources
+ * panel gives way, one sidebar at a time below 1440, and no horizontal
+ * scrolling at 1280 or above in any state.
+ *
+ * The decision was amended twice the same day, both times because something
+ * here measured it: the answer column's floor drops to 618 while the sources
+ * panel is collapsed (the addendum «hullet ved 1280»), and the collapsed
+ * navigation panel is 236 rather than 232. Both are written up where the
+ * number is, and the review of #5's PR is in
+ * `docs/review/feat-foundation-2026-09-14.md`.
  *
  * 1440 is not an arbitrary number twice over. Every frame in
  * `design/omraader/` is drawn at 1440, so it is the one width the design
@@ -28,7 +35,18 @@ import { ask, citation } from './helpers';
  * and that is the point — the decision is the fixture, not the source.
  */
 const NAV_OPEN = 400;
-const NAV_COLLAPSED = 232;
+/**
+ * 236, not the 232 the decision first wrote down.
+ *
+ * 232 was 196 + 36: the label «Vis tråder og filter» on one line, plus the
+ * padding against the edge of the window. Built and measured, the button is
+ * 195,78 px — the icon, the gap, the button's own padding and its border —
+ * and the slot carries 1 px of border as well, so the state needs 233 and 232
+ * still wraps to two lines. 236 is the next step on the 4 px scale. #5
+ * measured it on the built app on 2026-09-14 and this file's own matrix is
+ * what says so: 7 red at 232, all 19 green at 236 with nothing else changed.
+ */
+const NAV_COLLAPSED = 236;
 const MAIN_FLOOR = 640;
 const MAIN_CEILING = 800;
 const SOURCES_PREFERRED = 432;
