@@ -24,6 +24,7 @@ eier bare denne mappa.
 | [`funksjonssjekk.md`](funksjonssjekk.md)                                                       | Hva e2e-testene dekker, hva som er merget men udekket                     |
 | [`visuell-2026-09-11.md`](visuell-2026-09-11.md)                                               | Visuell gjennomgang mot Figma, alle fire views i lys og mørk              |
 | [`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md)                                           | E2E-spec for layoutbeslutningen for V1, og hullet i regnestykket ved 1280 |
+| [`feat-foundation-2026-09-14.md`](feat-foundation-2026-09-14.md)                               | PR #14, layout V1: garantien holder, men regel B mister tastaturet        |
 
 ## Sånn går en review
 

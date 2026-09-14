@@ -9,15 +9,16 @@ Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 `lang="nb"`. Hver testet tilstand kontrolleres med axe mot `wcag2a` og
 `wcag2aa`; et brudd feiler testen.
 
-**36 tester grønne på under 30 sekunder** på `main`, pluss 19 i
-`layout.spec.ts` som ligger på `chore/e2e-layout` og ikke på `main`. Av dem er
-**14 røde med vilje**: de er skrevet mot layoutbeslutningen for V1
-(`design/_briefs/bygg/rolle-5c-layout-v1.md`) før #5 har bygget den, og skal
-alle bli grønne når PR-en lander. Matrisen og hullet i regnestykket som
-beslutningen måtte utvides for, står i
-[`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md).
+**55 tester grønne og 1 rød**, kjørt mot PR #14 (`feat/foundation` `a219e9d`)
+med `layout.spec.ts` fra `chore/e2e-layout` lagt oppå. De 19 layouttestene som
+holder V1-beslutningen er **alle grønne**; den røde er et nytt funn, ikke en
+tilstand #5 ikke har bygget: regel B mister tastaturet når den kollapser et
+panel brukeren står i. Se
+[`feat-foundation-2026-09-14.md`](feat-foundation-2026-09-14.md).
 
-Sist kjørt mot `main` `8060c9b`.
+Mot `main` `8060c9b` alene er 36 grønne og layouttestene røde, siden layouten
+ikke er merget ennå. Matrisen og hullet ved 1280 står i
+[`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md).
 
 De 22 testene for de tre viewene ble skrevet mot en lokal montering i
 arbeidstreet mens monterings-PR-en ble laget, og **de passerte uendret mot den

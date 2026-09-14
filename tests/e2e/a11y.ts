@@ -66,6 +66,13 @@ export async function saveScreenshot(page: Page, name: string): Promise<void> {
   // focused by the click that got us here reads as a hover or an active
   // state, and the person comparing against Figma has to guess which.
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  // And move the pointer off whatever was clicked last. Blurring does not
+  // end a hover: the mouse stays where Playwright left it, so the last
+  // button pressed keeps its hover surface and the image says the user is
+  // pointing at something. Caught in the collapsed-sidebar shots on
+  // 2026-09-14, where the nav toggle sat highlighted and the sources toggle
+  // beside it did not.
+  await page.mouse.move(0, 0);
   await mkdir(SCREENSHOTS, { recursive: true });
   await page.screenshot({ path: join(SCREENSHOTS, `${name}.png`), fullPage: false });
 }

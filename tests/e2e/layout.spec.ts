@@ -507,5 +507,62 @@ test.describe('layouten', () => {
       // string in it is the other way a slot gets wider than its box.
       await expectNoAxeViolations(page, `layouten ved ${V1_MIN_VIEWPORT}`);
     });
+
+    /**
+     * Rule B takes a panel away. Whoever was standing in it has to be put
+     * somewhere, and `document.body` is not somewhere.
+     *
+     * The two ways a user opens a sidebar both leave focus on a control that
+     * survives — the toggle button they pressed, or the excerpt a citation
+     * scrolled to. The crossing does not: nobody pressed anything, the
+     * content is hidden with `hidden`, and focus falls to the top of the
+     * document with no announcement. Measured on the built app 2026-09-14;
+     * see `docs/review/feat-foundation-2026-09-14.md`, finding 1.
+     *
+     * Reached by dragging a window narrower here, and by browser zoom in
+     * real use: the query reads CSS pixels, so zooming to 125 % at 1600
+     * lands at 1280 — and a user who zooms is disproportionately likely to
+     * be the keyboard user this strands.
+     */
+    test('regel B mister ikke tastaturet når den tar panelet', async ({ page }, testInfo) => {
+      covers(testInfo, 'layout: regel B beholder fokus ved krymping');
+      await page.setViewportSize({ width: PREFERRED_VIEWPORT, height: HEIGHT });
+      await page.goto('/');
+
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+      await citation(page, 1).click();
+      await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
+
+      // Stand inside the panel, not on the button that opens it.
+      const stood = await page.evaluate(() => {
+        const inside = document.querySelector<HTMLElement>(
+          'aside .sidebar-content a, aside .sidebar-content button, aside .sidebar-content input, aside .sidebar-content summary',
+        );
+        inside?.focus();
+        return inside !== null;
+      });
+      expect(stood, 'kildepanelet har noe fokuserbart å stå i').toBe(true);
+
+      await page.setViewportSize({ width: BOTH_SIDEBARS_MIN_VIEWPORT - 1, height: HEIGHT });
+      await expect(page.getByRole('button', { name: /^(Vis|Skjul) kilder$/ })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+
+      const landed = await page.evaluate(() => {
+        const element = document.activeElement;
+        if (!element || element === document.body) return 'body';
+        return (
+          element.getAttribute('aria-label') ||
+          (element.textContent ?? '').trim().slice(0, 45) ||
+          element.tagName.toLowerCase()
+        );
+      });
+
+      // The toggle button of the panel that was taken away is where focus
+      // belongs: it is the control that now says «Vis kilder», it is where
+      // the panel went, and it is one keystroke from bringing it back.
+      expect(landed, 'fokus skal ikke falle til dokumentet når panelet kollapses').not.toBe('body');
+    });
   });
 });
