@@ -1,5 +1,7 @@
 # Kunnskapsassistenten, frontend
 
+[![CI](https://github.com/larsekhansen/kunnskapsassistenten-frontend/actions/workflows/ci.yml/badge.svg)](https://github.com/larsekhansen/kunnskapsassistenten-frontend/actions/workflows/ci.yml)
+
 Ny frontend for Kunnskapsassistenten (KA) i Digdir. Vite, React, TypeScript,
 React Router i klientmodus, og Designsystemet 1.21.0.
 
@@ -33,6 +35,13 @@ Node 24 eller nyere.
 
 Kjør `tokens:verify` etter hver oppgradering av Designsystemet. Feiler den, er
 det informasjonen du vil ha: les diffen før du sjekker inn.
+
+## CI
+
+`.github/workflows/ci.yml` kjører de samme fem sjekkene pluss e2e-suiten på
+hver pull request og hver push til `main`. Den trenger ingen hemmeligheter:
+suiten kjører i mock-modus, så CI snakker aldri med KA-backenden. Feiler
+e2e-steget, lastes Playwright-rapporten opp som artefakt på kjøringen.
 
 ## Mappestruktur
 
