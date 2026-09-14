@@ -79,7 +79,6 @@ body {
  */
 .primary-sidebar,
 .secondary-sidebar {
-  flex: 0 0 auto;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -90,25 +89,56 @@ body {
   overflow-y: auto;
 }
 
+/*
+ * Which slot gives way when the window runs short is written here, in three
+ * `flex` declarations, and nowhere else. Decision 2026-09-14, option A in
+ * design/visjon-og-beslutninger.md, with the answer column's floor from
+ * answers 46 and 59 left standing:
+ *
+ *   1. the answer column takes the free space and shrinks first, down to its
+ *      640 px floor — `flex-grow: 1` from a zero basis, `flex-shrink: 0`;
+ *   2. then the sources panel, from 432 down to 336 — the only item on the
+ *      row with `flex-shrink: 1`;
+ *   3. the navigation panel never gives — `flex: 0 0`.
+ *
+ * No media query and no JavaScript decides any of that. The one thing the
+ * browser cannot work out for itself is that the two sidebars stop fitting
+ * side by side below 1440, because that is collapsed state and not width;
+ * LayoutProvider owns it. See `bothSidebarsMinViewport` in viewModel.ts.
+ */
 .primary-sidebar {
-  inline-size: var(--ka-primary-sidebar-width);
+  flex: 0 0 var(--ka-primary-sidebar-width);
   background: var(--ds-color-neutral-surface-default);
   border-inline-end: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
 }
 
 .secondary-sidebar {
-  inline-size: var(--ka-secondary-sidebar-width);
+  flex: 0 1 var(--ka-secondary-sidebar-width);
+  /*
+   * Explicit, because a flex item's own minimum is `auto` — its content —
+   * and content is the wrong floor twice over: an excerpt with a long word
+   * would hold the panel wider than the design allows, and an empty panel
+   * would let it collapse to nothing. The model says 336, or the collapsed
+   * width when it is collapsed, and the model is what draws the number.
+   */
+  min-inline-size: var(--ka-secondary-sidebar-min-width);
 }
 
 /*
  * A collapsed slot carries its padding on the outer edge only.
  *
- * 198 px is the collapsed width the page template draws, and it draws the
- * button on one line inside it. It only adds up with the template's own
- * padding, `32px 36px 32px 0`: 36 px against the edge of the window and none
- * against the answer column, which leaves 162 px of content rather than 126.
- * With 36 px on both sides «Vis kilder» needed 129 px in 126 and broke over
- * two lines, and the navigation panel's longer label broke over three.
+ * 198 px is the collapsed width the page template draws for the sources
+ * panel, and it draws the button on one line inside it. It only adds up with
+ * the template's own padding, `32px 36px 32px 0`: 36 px against the edge of
+ * the window and none against the answer column, which leaves 162 px of
+ * content rather than 126. With 36 px on both sides «Vis kilder» needed
+ * 129 px in 126 and broke over two lines.
+ *
+ * The navigation panel collapses to 236 rather than 198 for the same reason
+ * read the other way: its label is longer, and it spends a border the sources
+ * panel does not. Both numbers are the button plus the one padding plus what
+ * the slot's own frame costs — the slots share the derivation, not the
+ * result. The terms are written out in viewModel.ts.
  *
  * The two slots mirror each other because slots ARE positional — that is what
  * the name `primary-sidebar` means — and the 32 px gap keeps the button clear

@@ -1,5 +1,6 @@
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { resetViewport } from './matchMedia';
 
 /**
  * Test environment fixes for jsdom.
@@ -25,3 +26,11 @@ if (typeof globalThis.CSS === 'undefined') {
  * is still there in the next.
  */
 afterEach(cleanup);
+
+/**
+ * jsdom has no matchMedia at all, so importing this installs one. See
+ * matchMedia.ts: without it any component that asks about the viewport — the
+ * layout, SourcesView and its reduced-motion check — throws before a test
+ * reaches its first assertion.
+ */
+afterEach(resetViewport);
