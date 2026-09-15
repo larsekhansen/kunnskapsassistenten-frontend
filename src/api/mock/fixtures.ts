@@ -8,6 +8,8 @@ import type {
   ThreadDetail,
   ThinkingStep,
 } from '../../model';
+import { daysAgo } from './clock';
+import { scriptedThreads } from './conversations/threads';
 
 /**
  * Norwegian fixtures for development without a backend.
@@ -27,12 +29,6 @@ import type {
  */
 
 /** Timestamps relative to now, so the thread grouping has something to group. */
-function daysAgo(days: number, hour = 9): string {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  date.setHours(hour, 30, 0, 0);
-  return date.toISOString();
-}
 
 const NKOM_QUESTION =
   'Hvordan jobber Nasjonal kommunikasjonsmyndighet med måloppnåelse, og hva har endret seg fra 2022 til 2023?';
@@ -225,81 +221,43 @@ export const nkomThinkingSteps: ThinkingStep[] = [
   },
 ];
 
-export const threads: Thread[] = [
-  {
-    id: 'nkom-maaloppnaaelse',
-    title: 'NKOM måloppnåelse',
-    createdAt: daysAgo(0, 8),
-    updatedAt: daysAgo(0, 9),
-    conversationId: 'conv-nkom-1',
-  },
-  {
-    id: 'digdir-rapportering',
-    title: 'Digdir rapportering 2022-2023',
-    createdAt: daysAgo(0, 7),
-    updatedAt: daysAgo(0, 8),
-  },
-  {
-    id: 'politiet-ungdomskriminalitet',
-    title: 'Politiet om ungdomskriminalitet',
-    createdAt: daysAgo(3),
-    updatedAt: daysAgo(3),
-  },
-  {
-    id: 'om-stimulab',
-    title: 'Om Stimulab',
-    createdAt: daysAgo(4),
-    updatedAt: daysAgo(4),
-  },
-  {
-    id: 'aarsrapport-digdir-2021',
-    title: 'Årsrapport Digdir 2021',
-    createdAt: daysAgo(6),
-    updatedAt: daysAgo(6),
-  },
-  {
-    id: 'tilgang-til-aarsrapporter',
-    title: 'Tilgang til årsrapporter',
-    createdAt: daysAgo(7),
-    updatedAt: daysAgo(7),
-  },
-  {
-    id: 'fullmaktene-dss',
-    title: 'Fullmaktene for departementenes sikkerhets- og serviceorganisasjon',
-    createdAt: daysAgo(12),
-    updatedAt: daysAgo(12),
-  },
-  {
-    id: 'okonomifullmaktene-dss',
-    title: 'Økonomifullmaktene til DSS',
-    createdAt: daysAgo(18),
-    updatedAt: daysAgo(18),
-  },
-  {
-    id: 'tilleggsoppdrag-dss',
-    title: 'Tilleggsoppdrag for DSS',
-    createdAt: daysAgo(26),
-    updatedAt: daysAgo(26),
-  },
-  {
-    id: 'anskaffelser-tre-aar',
-    title: 'Anskaffelser i årsrapportene de siste tre årene',
-    createdAt: daysAgo(48),
-    updatedAt: daysAgo(48),
-  },
-  {
-    id: 'evaluering-av-stimulab',
-    title: 'Evaluering av Stimulab-prosjektene',
-    createdAt: daysAgo(83),
-    updatedAt: daysAgo(83),
-  },
-  {
-    id: 'tildelingsbrev-2024',
-    title: 'Tildelingsbrev 2024 mot 2023',
-    createdAt: daysAgo(310),
-    updatedAt: daysAgo(310),
-  },
-];
+/**
+ * The one thread written by hand, and the only one that is not a scripted
+ * conversation.
+ *
+ * It stays because it is the only fixture with `page` on its excerpts — Kudos
+ * gives a summary per document and no page for any part of it, so the
+ * scripted conversations have none, and this is what keeps the sources
+ * panel's page rendering drawn by something. It is also the thread the
+ * end-to-end suite opens by name.
+ */
+const nkomThread: Thread = {
+  id: 'nkom-maaloppnaaelse',
+  title: 'NKOM måloppnåelse',
+  createdAt: daysAgo(0, 8),
+  updatedAt: daysAgo(0, 9),
+  conversationId: 'conv-nkom-1',
+};
+
+/** A `ThreadDetail` as it appears in the list, without its messages. */
+function withoutMessages({ messages, ...thread }: ThreadDetail): Thread {
+  void messages;
+  return thread;
+}
+
+/**
+ * The thread list.
+ *
+ * Every row has a conversation under it, which it did not until 2026-09-15:
+ * the list was twelve titles and one of them had messages, so eleven of the
+ * twelve threads a reader could open were empty. The scripted conversations
+ * were sitting right there with the whole shape of a real turn — answer,
+ * sources, thinking steps, «Fremgangsmåte» — and reachable only by typing the
+ * question they answer. Punkt 16 på brukerreise-lista, målt av #4.
+ *
+ * Sorting is the list view's own business; it orders by `updatedAt`.
+ */
+export const threads: Thread[] = [nkomThread, ...scriptedThreads.map(withoutMessages)];
 
 const nkomMessages: Message[] = [
   {
@@ -323,12 +281,15 @@ const nkomMessages: Message[] = [
   },
 ];
 
-/** Threads that have messages. The rest resolve to an empty conversation. */
+/** Threads whose messages are written out here rather than scripted. */
 const messagesByThread: Record<string, Message[]> = {
   'nkom-maaloppnaaelse': nkomMessages,
 };
 
 export function findThread(threadId: string): ThreadDetail | null {
+  const scripted = scriptedThreads.find((candidate) => candidate.id === threadId);
+  if (scripted) return scripted;
+
   const thread = threads.find((candidate) => candidate.id === threadId);
   if (!thread) return null;
   return { ...thread, messages: messagesByThread[thread.id] ?? [] };

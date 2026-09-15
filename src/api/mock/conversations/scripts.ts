@@ -21,6 +21,7 @@ const dssRegnskap: ScriptedConversation = {
   question:
     'Hva rapporteres om regnskap, kostnader og bevilgning i DSS sine årsrapporter for 2022 og 2023?',
   threadTitle: 'Regnskap og bevilgning i DSS sine årsrapporter',
+  daysAgo: 0,
   answer: `# Regnskap og bevilgning hos DSS
 
 Jeg finner ingen årsrapport fra Departementenes sikkerhets- og
@@ -123,6 +124,7 @@ const udirLaererspesial: ScriptedConversation = {
   id: 'udir-laererspesial',
   question: 'Hvilke utfordringer rapporterer Udir om i evaluering om lærerspesialtordningen?',
   threadTitle: 'Evaluering av lærerspesialordningen',
+  daysAgo: 3,
   outcome: 'needs-clarification',
   answer: `Jeg finner ingen evaluering av **lærerspesialordningen** i dette
 korpuset, så jeg vil ikke gjette på hva den sier.
@@ -176,6 +178,7 @@ const digdirStyring: ScriptedConversation = {
   question:
     'Hva rapporterer Digdir om prioriteringene i tildelingsbrevene fra 2022 og 2023 sammenlignet med årsrapportene?',
   threadTitle: 'Digdir: tildelingsbrev mot årsrapport',
+  daysAgo: 4,
   answer: `# Styringssignal mot rapportert resultat
 
 Korpuset har ikke tildelingsbrev eller årsrapport for Digdir fra 2022 og
@@ -285,6 +288,7 @@ const bufdirBarnevern: ScriptedConversation = {
   question: 'Hva er hovedutfordringene Bufdir rapporterer om i institusjonsbarnevernet?',
   aliases: ['Hva sier Bufdir om kapasitet i barnevernet?'],
   threadTitle: 'Hovedutfordringer i institusjonsbarnevernet',
+  daysAgo: 6,
   answer: `# Kapasitet og fosterhjem
 
 Bufdirs årsrapport for 2024 peker på to utfordringer som henger sammen:
@@ -362,6 +366,7 @@ const digitaliseringBredt: ScriptedConversation = {
   question: 'Hvordan omtales digitalisering på tvers av virksomhetene i 2026?',
   aliases: ['Hva sier dokumentene om digitalisering i 2026?'],
   threadTitle: 'Digitalisering på tvers av virksomhetene',
+  daysAgo: 7,
   answer: `# Digitalisering som gjennomgående tema
 
 Digitalisering går igjen i alle dokumenttypene i 2026, men den betyr
@@ -523,6 +528,7 @@ const klimaFeil: ScriptedConversation = {
   id: 'klima-feil',
   question: 'Hvordan har klimagassutslippene utviklet seg i statlige virksomheter?',
   threadTitle: 'Klimagassutslipp i statlige virksomheter',
+  daysAgo: 9,
   answer: '',
   documents: [],
   retrieval: { hitCount: 0, documentCount: 0, keywords: [] },
@@ -554,6 +560,7 @@ const forskningKunnskapsgrunnlag: ScriptedConversation = {
   question:
     'Hva sier dokumentene om kunnskapsgrunnlag, datatilgjengelighet og samordning av forskningsmiljøer?',
   threadTitle: 'Kunnskapsgrunnlag og samordning av forskning',
+  daysAgo: 12,
   answer: `# Fragmenterte miljøer og data som ikke er tilgjengelige
 
 To dokumenter tar opp dette fra hver sin kant.
@@ -649,6 +656,7 @@ const folkehelse: ScriptedConversation = {
   id: 'folkehelse-tiltak',
   question: 'Hvilke folkehelsetiltak foreslår Helsedirektoratet for 2026?',
   threadTitle: 'Folkehelsetiltak 2026',
+  daysAgo: 18,
   answer: `# Innspill til ny folkehelsemelding
 
 Helsedirektoratets innspill foreslår tiltak på tre nivåer: levevaner,
@@ -723,6 +731,7 @@ const isbjorn: ScriptedConversation = {
   id: 'isbjorn-arktis',
   question: 'Hva er hovedtrusselen mot isbjørn i norsk Arktis, og hvem har ansvaret?',
   threadTitle: 'Bevaring av isbjørn i norsk Arktis',
+  daysAgo: 26,
   answer: `# Klimaendringer og tap av sjøis
 
 Hovedtrusselen er **klimaendringer og tap av sjøis**, forsterket av
@@ -801,6 +810,7 @@ const helseVentetid: ScriptedConversation = {
   id: 'helse-ventetid',
   question: 'Hvilke krav stilles til de regionale helseforetakene om ventetid og teknologi i 2026?',
   threadTitle: 'Krav til helseforetakene i 2026',
+  daysAgo: 48,
   answer: `# Ventetid, psykisk helsevern og teknologi
 
 Oppdragsdokumentet for 2026 setter mål om rask tilgang til trygge
@@ -867,6 +877,7 @@ const naeringsforenkling: ScriptedConversation = {
   id: 'naering-forenkling',
   question: 'Hvordan skal effekten av forenklingstiltak for næringslivet måles?',
   threadTitle: 'Måling av forenkling for næringslivet',
+  daysAgo: 310,
   answer: `# Oppgaveregisteret som målestokk
 
 Strategien for forenklinger 2026–2029 peker ut **Oppgaveregisteret som

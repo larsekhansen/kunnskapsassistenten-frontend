@@ -104,13 +104,52 @@ describe('MockChatClient.ask', () => {
 });
 
 describe('MockChatClient reads', () => {
-  it('finds a thread with messages, and one without', async () => {
-    const withMessages = await client.getThread('nkom-maaloppnaaelse');
-    const withoutMessages = await client.getThread('om-stimulab');
+  it('gives every thread in the list a conversation, and an unknown id nothing', async () => {
+    // It used to find «a thread with messages, and one without»: the list was
+    // titles, and eleven of the twelve rows opened an empty conversation.
+    // There is no thread without messages left to look for — that was the
+    // whole of punkt 16 på brukerreise-lista.
+    const list = await client.listThreads();
+    expect(list.length).toBeGreaterThan(1);
 
-    expect(withMessages?.messages).toHaveLength(2);
-    expect(withoutMessages?.messages).toHaveLength(0);
+    for (const thread of list) {
+      const detail = await client.getThread(thread.id);
+      expect(detail?.messages.length, `tråden «${thread.title}» skal ha en samtale`).toBe(2);
+    }
+
     expect(await client.getThread('finnes-ikke')).toBeNull();
+  });
+
+  it('gives a scripted thread its answer, with the sources behind it', async () => {
+    const thread = await client.getThread('dss-regnskap');
+    const answer = thread?.messages.at(-1);
+
+    expect(thread?.title).toBe('Regnskap og bevilgning i DSS sine årsrapporter');
+    expect(answer?.role).toBe('assistant');
+    expect(answer?.status).toBe('complete');
+    expect(answer?.sources?.length).toBeGreaterThan(0);
+    expect(answer?.thinkingSteps?.length).toBeGreaterThan(0);
+    expect(answer?.retrieval).toBeDefined();
+
+    // Every `[n]` in the answer resolves to an excerpt that is actually
+    // there. A thread that cites a marker with nothing behind it draws a link
+    // into an empty panel.
+    const markers = new Set(
+      [...(answer?.content ?? '').matchAll(/\[(\d+)\]/g)].map((match) => Number(match[1])),
+    );
+    const cited = new Set(answer?.citations.map((citation) => citation.number));
+    expect(markers.size).toBeGreaterThan(0);
+    for (const marker of markers) expect(cited.has(marker)).toBe(true);
+  });
+
+  it('keeps the turn the agent asked back on as a finished turn, not a failed one', async () => {
+    const thread = await client.getThread('udir-laererspesial');
+    const answer = thread?.messages.at(-1);
+
+    expect(answer?.status).toBe('needs-clarification');
+    // Nothing was retrieved, so there is nothing behind it. That is the
+    // honest empty, not a missing fixture.
+    expect(answer?.sources).toEqual([]);
   });
 
   it('returns the three filter dimensions', async () => {
