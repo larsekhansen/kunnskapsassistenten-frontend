@@ -119,7 +119,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
    * `/` has none until the client names it, and then the question stands in.
    * See threadHeading.ts for why a stand-in is heard and not seen.
    */
-  const heading = threadHeading(thread?.title, messages);
+  const heading = threadHeading(thread, messages);
 
   /**
    * The agent asked back and is waiting: the last turn ended as

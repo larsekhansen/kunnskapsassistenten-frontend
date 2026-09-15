@@ -73,10 +73,11 @@ function ask(question: string) {
   fireEvent.click(screen.getByRole('button', { name: 'Send spørsmålet' }));
 }
 
-function threadWith(title: string): ThreadDetail {
+function threadWith(title: string, titleFromQuestion?: boolean): ThreadDetail {
   return {
     id: 't1',
     title,
+    titleFromQuestion,
     createdAt: '2026-09-15T09:00:00Z',
     updatedAt: '2026-09-15T09:00:00Z',
     messages: [
@@ -134,6 +135,24 @@ describe('ChatView', () => {
     const head = screen.getByRole('heading', { level: 2 });
     expect(head.textContent).toBe('NKOM måloppnåelse');
     expect(head.className).not.toContain('ds-sr-only');
+  });
+
+  it('hides a title the client made out of the question', () => {
+    // `threadFromQuestion` stores the whole question and says so with
+    // `titleFromQuestion`. The flag decides, not a comparison of the strings:
+    // the stored title is the whole question and the stand-in is its first
+    // sentence, so the two do not match for a question of several sentences.
+    render(
+      <Shell>
+        <ChatView
+          client={clientYielding([done])}
+          thread={threadWith('Hva sier rapporten? Og hva med 2023?', true)}
+        />
+      </Shell>,
+    );
+
+    const head = screen.getByRole('heading', { level: 2 });
+    expect(head.className).toContain('ds-sr-only');
   });
 
   it('gives the conversation an address when a question is sent', async () => {
