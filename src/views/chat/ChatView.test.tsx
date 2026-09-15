@@ -320,6 +320,83 @@ describe('ChatView', () => {
     expect(last?.documents).toEqual([]);
   });
 
+  it('keeps what the reader is typing while the thread is still loading', async () => {
+    /*
+     * `ChatSlotView` draws the chat straight away and fills `thread` in when
+     * the client answers, so on `/threads/:id` the thread arrives a moment
+     * after the first render. The view used to key itself on the thread id,
+     * so that moment replaced the whole session — and took the compose field
+     * with it. Type while it loads and the text was gone; in CI, which is
+     * slower, the same remount landed in the middle of a test's keystrokes.
+     */
+    const { rerender } = render(
+      <Shell>
+        <ChatView client={clientYielding([])} />
+      </Shell>,
+    );
+
+    fireEvent.change(field(), { target: { value: 'a/b' } });
+    const describedBy = field().getAttribute('aria-describedby') ?? '';
+
+    rerender(
+      <Shell>
+        <ChatView client={clientYielding([])} thread={threadWith('NKOM måloppnåelse')} />
+      </Shell>,
+    );
+
+    expect(field()).toHaveProperty('value', 'a/b');
+    // And the description the field points at is still the one in the page.
+    // CI failed on this half as often as on the value: a remount hands out
+    // fresh `useId`s, so for a moment the field named an element that was gone.
+    expect(describedBy).not.toBe('');
+    for (const id of describedBy.split(/\s+/u)) {
+      expect(document.getElementById(id), id).not.toBeNull();
+    }
+  });
+
+  it('takes on the thread when it arrives', async () => {
+    // The other half of the same change: the messages used to get in by
+    // remounting, so dropping the remount without taking them on would have
+    // left a restored conversation empty. Measured — the reload journey in
+    // the e2e suite went red on exactly that.
+    const { rerender } = render(
+      <Shell>
+        <ChatView client={clientYielding([])} />
+      </Shell>,
+    );
+    expect(screen.queryByText('Hva sier rapporten?')).toBeNull();
+
+    rerender(
+      <Shell>
+        <ChatView client={clientYielding([])} thread={threadWith('NKOM måloppnåelse')} />
+      </Shell>,
+    );
+
+    expect(await screen.findByText('Hva sier rapporten?')).toBeTruthy();
+  });
+
+  it('does not let a late thread overwrite a question already asked', async () => {
+    const { rerender } = render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    ask('Hva er måloppnåelse?');
+    await screen.findByText('Svaret på spørsmålet.');
+
+    rerender(
+      <Shell>
+        <ChatView client={clientYielding(answer)} thread={threadWith('NKOM måloppnåelse')} />
+      </Shell>,
+    );
+
+    // The reader got in first. A thread landing afterwards is the address
+    // catching up, not a second conversation.
+    expect(screen.getByText('Hva er måloppnåelse?')).toBeTruthy();
+    expect(screen.queryByText('Hva sier rapporten?')).toBeNull();
+  });
+
   it('reports the sources again when something empties the shell', async () => {
     /*
      * Brukerblikk runde 2, funn 1: a reloaded conversation came back with its

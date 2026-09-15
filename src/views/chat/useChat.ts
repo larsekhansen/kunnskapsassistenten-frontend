@@ -118,6 +118,42 @@ export function useChat(
   filters: FilterSelection = emptyFilterSelection,
 ): UseChat {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+
+  /*
+   * The thread can arrive after the view has mounted, and usually does:
+   * `ChatSlotView` draws the chat straight away and fills `thread` in when
+   * the client answers, so on `/threads/:id` this hook starts with no
+   * messages and the conversation lands a moment later.
+   *
+   * It used to land by remounting — the view keyed itself on the thread id,
+   * so `undefined → id` replaced the whole session. That is how the restored
+   * conversation got in, and it is also why anything the reader had typed
+   * while it loaded was thrown away with it, and why CI went red on main
+   * (the remount fell in the middle of a test's keystrokes; two different
+   * assertions, one cause). So the messages are adopted instead.
+   *
+   * Only into an empty conversation. A reader who has already asked
+   * something at this address keeps what they asked: a thread arriving late
+   * must not overwrite a turn that is already under way.
+   *
+   * Adjusted while rendering the change rather than in an effect, which is
+   * React's own answer to «a prop changed and state has to follow»: an effect
+   * would draw the empty conversation once first.
+   *
+   * Compared on what the messages ARE and not on the identity of the array
+   * that carries them. `initialMessages` has a default of `[]`, which is a
+   * fresh array on every call, so a reference check said «a new thread» every
+   * render and looped. Length plus the last id is enough: a thread that has
+   * grown or been replaced differs, and the same thread handed over twice
+   * does not.
+   */
+  const threadSignature =
+    initialMessages.length === 0 ? '' : `${initialMessages.length}:${initialMessages.at(-1)?.id}`;
+  const [adopted, setAdopted] = useState(threadSignature);
+  if (threadSignature !== '' && threadSignature !== adopted) {
+    setAdopted(threadSignature);
+    if (messages.length === 0) setMessages(initialMessages);
+  }
   const [appliedFilters, setAppliedFilters] = useState<Record<string, FilterSelection>>({});
   const [status, setStatus] = useState<ChatStatus>('idle');
   const [error, setError] = useState<ChatError | null>(null);
