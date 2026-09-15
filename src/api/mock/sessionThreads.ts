@@ -98,7 +98,17 @@ export type MockTurn = {
   question: string;
   /** The answer's own id, the one the `done` event reported. */
   answerId: string;
-  answer: Omit<Message, 'id' | 'role' | 'createdAt'>;
+  /**
+   * The answer, carrying its own `createdAt`.
+   *
+   * The time comes with the turn rather than being taken here, because the
+   * same turn is also on screen and the two have to say the same thing. They
+   * did not: the message was stamped when its placeholder was made and the
+   * stored copy when it was written down, which is the whole length of the
+   * answer apart — «14:32» on screen, «14:32:15» after a reload, one answer
+   * that had not changed (KA CC on #71).
+   */
+  answer: Omit<Message, 'id' | 'role'>;
 };
 
 /**
@@ -126,7 +136,7 @@ export function recordMockTurn(turn: MockTurn): void {
       citations: [],
       status: 'complete',
     },
-    { id: turn.answerId, role: 'assistant', createdAt: now, ...turn.answer },
+    { id: turn.answerId, role: 'assistant', ...turn.answer },
   ];
   entry.thread = { ...entry.thread, updatedAt: now };
   write(store);

@@ -322,3 +322,240 @@ describe('useChat', () => {
     expect(result.current.announcement).toBe('Kunnskapsassistenten søker …');
   });
 });
+
+describe('useChat og tråden som kommer for sent', () => {
+  const stored = (id: string, role: 'user' | 'assistant', content: string): Message => ({
+    id,
+    role,
+    content,
+    createdAt: '2026-09-11T09:05:00.000Z',
+    citations: [],
+    status: 'complete',
+  });
+
+  const lagret = [
+    stored('t1-question', 'user', 'Hva er måloppnåelse?'),
+    stored('t1-answer', 'assistant', 'Måloppnåelse måles mot tildelingsbrevet.'),
+  ];
+
+  const summary = (messages: Message[]) =>
+    messages.map((message) => `${message.role}:${message.content}`);
+
+  it('legger den lagrede samtalen foran spørsmålet som ble stilt mens den lastet', async () => {
+    const { client, turns } = heldClient();
+    // `getThread` har ikke svart ennå: hooken starter uten meldinger.
+    const { result, rerender } = renderHook(({ thread }) => useChat(client, thread), {
+      initialProps: { thread: [] as Message[] },
+    });
+
+    act(() => result.current.send('Hva med DSS?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    act(() => turns[0].emit({ type: 'token', text: 'DSS rapporterer ' }));
+    await waitFor(() => expect(result.current.status).toBe('streaming'));
+
+    // Nå lander tråden.
+    rerender({ thread: lagret });
+
+    /*
+     * Den lagrede samtalen sto der først, så den står først. Turen som var i
+     * gang er urørt: spørsmålet, svaret som strømmer, og teksten som alt var
+     * kommet.
+     */
+    expect(summary(result.current.messages)).toEqual([
+      'user:Hva er måloppnåelse?',
+      'assistant:Måloppnåelse måles mot tildelingsbrevet.',
+      'user:Hva med DSS?',
+      'assistant:DSS rapporterer ',
+    ]);
+    expect(result.current.status).toBe('streaming');
+  });
+
+  it('tar tråden som den er når leseren ikke har rukket å spørre om noe', async () => {
+    const { client } = heldClient();
+    const { result, rerender } = renderHook(({ thread }) => useChat(client, thread), {
+      initialProps: { thread: [] as Message[] },
+    });
+
+    expect(result.current.messages).toHaveLength(0);
+    rerender({ thread: lagret });
+
+    expect(summary(result.current.messages)).toEqual([
+      'user:Hva er måloppnåelse?',
+      'assistant:Måloppnåelse måles mot tildelingsbrevet.',
+    ]);
+  });
+
+  it('dupliserer ingenting når tråden kommer tilbake med turen som nettopp ble ferdig', async () => {
+    const { client, turns } = heldClient();
+    const { result, rerender } = renderHook(({ thread }) => useChat(client, thread), {
+      initialProps: { thread: [] as Message[] },
+    });
+
+    act(() => result.current.send('Hva med DSS?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    act(() => turns[0].emit({ type: 'token', text: 'DSS rapporterer.' }));
+    act(() => turns[0].emit({ type: 'done', messageId: 'm1', conversationId: 'c1' }));
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+
+    /*
+     * Mocken skriver et ferdig svar inn i lageret under den id-en den nettopp
+     * strømmet (`recordMockTurn`), så en tråd som svarer etterpå bærer turen
+     * tilbake. Den er alt på skjermen, og skal ikke inn en gang til.
+     */
+    const live = result.current.messages;
+    const svarId = live.at(-1)!.id;
+    rerender({
+      thread: [
+        ...lagret,
+        stored(`${svarId}-question`, 'user', 'Hva med DSS?'),
+        { ...stored(svarId, 'assistant', 'DSS rapporterer.'), id: svarId },
+      ],
+    });
+
+    const ids = result.current.messages.map((message) => message.id);
+    expect(new Set(ids).size, ids.join(', ')).toBe(ids.length);
+    // Svaret som står på skjermen er det som ble strømmet, ikke en kopi fra
+    // lageret lagt oppå.
+    expect(result.current.messages.filter((message) => message.id === svarId)).toHaveLength(1);
+  });
+
+  it('lar en tråd som lander etter at turen er ferdig legge seg foran den', async () => {
+    const { client, turns } = heldClient();
+    const { result, rerender } = renderHook(({ thread }) => useChat(client, thread), {
+      initialProps: { thread: [] as Message[] },
+    });
+
+    act(() => result.current.send('Hva med DSS?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    act(() => turns[0].emit({ type: 'token', text: 'DSS rapporterer.' }));
+    act(() => turns[0].emit({ type: 'done', messageId: 'm1', conversationId: 'c1' }));
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+
+    rerender({ thread: lagret });
+
+    // Rekkefølgen er den samme om tråden kommer midt i turen eller etter den.
+    expect(summary(result.current.messages)).toEqual([
+      'user:Hva er måloppnåelse?',
+      'assistant:Måloppnåelse måles mot tildelingsbrevet.',
+      'user:Hva med DSS?',
+      'assistant:DSS rapporterer.',
+    ]);
+  });
+
+  it('legger ikke den samme tråden inn to ganger når den rekkes over på nytt', async () => {
+    const { client, turns } = heldClient();
+    const { result, rerender } = renderHook(({ thread }) => useChat(client, thread), {
+      initialProps: { thread: [] as Message[] },
+    });
+
+    act(() => result.current.send('Hva med DSS?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    act(() => turns[0].emit({ type: 'token', text: 'DSS rapporterer ' }));
+    await waitFor(() => expect(result.current.status).toBe('streaming'));
+
+    rerender({ thread: lagret });
+    // Samme tråd, ny array: en referansesjekk ville sagt «en ny tråd».
+    rerender({ thread: [...lagret] });
+
+    expect(summary(result.current.messages)).toEqual([
+      'user:Hva er måloppnåelse?',
+      'assistant:Måloppnåelse måles mot tildelingsbrevet.',
+      'user:Hva med DSS?',
+      'assistant:DSS rapporterer ',
+    ]);
+  });
+});
+
+describe('useChat og tida ramma bærer', () => {
+  /*
+   * En tid ingen klokke kan finne på å produsere, så testen ikke kan bli
+   * grønn ved flaks. Det er nettopp flaksen som er faren her: lager og skjerm
+   * stempler millisekunder fra hverandre, så en test som bare sammenlikner to
+   * klokker er grønn med feilen på plass (målt).
+   */
+  const RAMMENS_TID = '2011-11-11T11:11:11.111Z';
+
+  const svaret = (messages: Message[]) =>
+    messages.filter((message) => message.role === 'assistant').at(-1);
+
+  it('tar tida fra done-ramma i stedet for sin egen klokke', async () => {
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    act(() => turns[0].emit({ type: 'token', text: 'Svaret.' }));
+    act(() =>
+      turns[0].emit({
+        type: 'done',
+        messageId: 'm1',
+        conversationId: 'c1',
+        createdAt: RAMMENS_TID,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    expect(svaret(result.current.messages)?.createdAt).toBe(RAMMENS_TID);
+  });
+
+  it('tar tida fra error-ramma når leseren stoppet turen', async () => {
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    act(() => turns[0].emit({ type: 'token', text: 'Måloppnåelse er ' }));
+    act(() =>
+      turns[0].emit({
+        type: 'error',
+        error: { code: 'aborted' },
+        createdAt: RAMMENS_TID,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    const answer = svaret(result.current.messages);
+    expect(answer?.status).toBe('aborted');
+    expect(answer?.createdAt).toBe(RAMMENS_TID);
+  });
+
+  it('tar tida fra error-ramma når søket ikke fant noe', async () => {
+    // `no-hits` er ikke en feil: det er et ferdig svar med tom kildeliste, og
+    // det tegnes med tidsstempel som et hvilket som helst annet svar.
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    act(() =>
+      turns[0].emit({
+        type: 'error',
+        error: { code: 'no-hits' },
+        createdAt: RAMMENS_TID,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    const answer = svaret(result.current.messages);
+    expect(answer?.status).toBe('complete');
+    expect(answer?.createdAt).toBe(RAMMENS_TID);
+  });
+
+  it('bruker sin egen klokke når ramma ikke bærer noen tid', async () => {
+    // En levende backend som ikke rapporterer feltet skal ikke gi et svar
+    // uten tid; da er klokka her det nærmeste som finnes.
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    const foer = Date.now();
+    act(() => turns[0].emit({ type: 'token', text: 'Svaret.' }));
+    act(() => turns[0].emit({ type: 'done', messageId: 'm1', conversationId: 'c1' }));
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    const satt = Date.parse(svaret(result.current.messages)!.createdAt);
+    expect(satt).toBeGreaterThanOrEqual(foer);
+    expect(satt).toBeLessThanOrEqual(Date.now());
+  });
+});

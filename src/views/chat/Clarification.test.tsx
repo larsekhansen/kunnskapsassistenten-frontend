@@ -9,16 +9,19 @@ const question = [
   'Mener du måloppnåelsen i årsrapportene, eller målene i tildelingsbrevene [1]?',
 ].join('\n');
 
+/** 11. september 2026 kl. 09:05, en fredag. */
+const ASKED_AT = new Date(2026, 8, 11, 9, 5).toISOString();
+
 describe('Clarification', () => {
   it('frames the question as a question, in Norwegian', () => {
-    render(<Clarification question={question} />);
+    render(<Clarification createdAt={ASKED_AT} question={question} />);
 
     expect(screen.getByText(CLARIFICATION_TAG)).toBeTruthy();
     expect(screen.getByText(/Jeg trenger litt mer/u)).toBeTruthy();
   });
 
   it('leaves a bracketed number as text, because nothing was retrieved', () => {
-    render(<Clarification question={question} />);
+    render(<Clarification createdAt={ASKED_AT} question={question} />);
 
     // No search ran, so there is no excerpt behind «[1]» to link to.
     expect(screen.queryByRole('link')).toBeNull();
@@ -26,7 +29,7 @@ describe('Clarification', () => {
   });
 
   it('offers only the copy action', () => {
-    render(<Clarification question={question} />);
+    render(<Clarification createdAt={ASKED_AT} question={question} />);
 
     const buttons = screen.getAllByRole('button').map((button) => button.textContent);
     expect(buttons).toEqual([CLARIFICATION_COPY]);
@@ -36,7 +39,7 @@ describe('Clarification', () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
 
-    render(<Clarification question={question} />);
+    render(<Clarification createdAt={ASKED_AT} question={question} />);
     fireEvent.click(screen.getByRole('button', { name: CLARIFICATION_COPY }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());

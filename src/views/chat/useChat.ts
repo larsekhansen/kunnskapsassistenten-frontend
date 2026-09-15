@@ -132,9 +132,22 @@ export function useChat(
    * (the remount fell in the middle of a test's keystrokes; two different
    * assertions, one cause). So the messages are adopted instead.
    *
-   * Only into an empty conversation. A reader who has already asked
-   * something at this address keeps what they asked: a thread arriving late
-   * must not overwrite a turn that is already under way.
+   * A reader who has already asked something at this address keeps what they
+   * asked. The stored conversation is laid in FRONT of it rather than instead
+   * of it: both are real, and the order is the one they happened in — the
+   * saved turns are older than the question asked while they loaded.
+   *
+   * It used to be dropped outright (`if (messages.length === 0)`), which is
+   * the hole KA CC found in #66: ask something on `/threads/:id` before
+   * `getThread` answers, and the conversation that was already there never
+   * arrived. Only the turn in flight was protected, and protecting it did not
+   * require throwing the rest away.
+   *
+   * By id, so nothing lands twice. The live turn and the stored one can be
+   * the same turn — the mock writes a finished answer into the store under
+   * the id it just streamed (`recordMockTurn`), so a thread that resolves
+   * after the answer settled carries it back. What is already on screen wins;
+   * only ids the conversation has not seen are prepended.
    *
    * Adjusted while rendering the change rather than in an effect, which is
    * React's own answer to «a prop changed and state has to follow»: an effect
@@ -152,7 +165,12 @@ export function useChat(
   const [adopted, setAdopted] = useState(threadSignature);
   if (threadSignature !== '' && threadSignature !== adopted) {
     setAdopted(threadSignature);
-    if (messages.length === 0) setMessages(initialMessages);
+    setMessages((current) => {
+      if (current.length === 0) return initialMessages;
+      const here = new Set(current.map((message) => message.id));
+      const stored = initialMessages.filter((message) => !here.has(message.id));
+      return stored.length === 0 ? current : [...stored, ...current];
+    });
   }
   const [appliedFilters, setAppliedFilters] = useState<Record<string, FilterSelection>>({});
   const [status, setStatus] = useState<ChatStatus>('idle');
@@ -192,13 +210,34 @@ export function useChat(
    * word, left both. So a stopped turn stays whatever phase it was in, and
    * the card says it was stopped and offers to run it again.
    */
-  const settleAnswer = useCallback((id: string, status: SettledStatus) => {
+  const settleAnswer = useCallback((id: string, status: SettledStatus, createdAt?: string) => {
+    /*
+     * The answer is stamped here and not when its placeholder was made,
+     * because the time on an answer means «when the answer was finished»
+     * — that is what a reader refers back to, and it is what the turn is
+     * written down with.
+     *
+     * Stamping it at both ends is what made one answer carry two times:
+     * the placeholder was made when the question was sent and the stored
+     * copy when the turn was recorded, a whole answer apart. «14:32» on
+     * screen, «14:32:15» after a reload (KA CC on #71). Nothing draws the
+     * time until the turn settles, so moving it costs nothing on screen.
+     *
+     * The `done` frame's own time wins when there is one, so the message
+     * and the stored turn are the same string and not merely the same
+     * second. A stream that ends any other way — stopped, failed, or with
+     * no `done` at all — has no time to be given, and the local clock is
+     * that same instant give or take the trip home.
+     */
+    const settledAt = createdAt ?? new Date().toISOString();
     setMessages((current) => {
       const answer = current.find((message) => message.id === id);
       if (answer && answer.content.length === 0 && status !== 'aborted') {
         return current.filter((message) => message.id !== id);
       }
-      return current.map((message) => (message.id === id ? { ...message, status } : message));
+      return current.map((message) =>
+        message.id === id ? { ...message, createdAt: settledAt, status } : message,
+      );
     });
   }, []);
 
@@ -309,7 +348,11 @@ export function useChat(
               // `outcome` absent means the turn completed, which is what every
               // answer was before the field existed. See model/stream.ts.
               const clarifying = event.outcome === 'needs-clarification';
-              settleAnswer(answerId, clarifying ? 'needs-clarification' : 'complete');
+              settleAnswer(
+                answerId,
+                clarifying ? 'needs-clarification' : 'complete',
+                event.createdAt,
+              );
               if (isCurrentTurn()) {
                 setAnnouncement(clarifying ? CLARIFICATION_ANNOUNCEMENT : 'Svaret er ferdig.');
                 setStatus('idle');
@@ -319,7 +362,7 @@ export function useChat(
 
             case 'error':
               if (event.error.code === 'aborted') {
-                settleAnswer(answerId, 'aborted');
+                settleAnswer(answerId, 'aborted', event.createdAt);
                 if (isCurrentTurn()) {
                   setAnnouncement('Genereringen ble avbrutt.');
                   setStatus('idle');
@@ -350,7 +393,7 @@ export function useChat(
                   sources: [],
                   citations: [],
                 }));
-                settleAnswer(answerId, 'complete');
+                settleAnswer(answerId, 'complete', event.createdAt);
                 setNoHitsAnswers((current) => new Set(current).add(answerId));
                 if (isCurrentTurn()) {
                   setAnnouncement(NO_HITS_ANNOUNCEMENT);
@@ -359,7 +402,7 @@ export function useChat(
                 return;
               }
 
-              settleAnswer(answerId, 'error');
+              settleAnswer(answerId, 'error', event.createdAt);
               if (isCurrentTurn()) {
                 setError(event.error);
                 // The Alert has role="alert" and announces itself.
