@@ -279,11 +279,30 @@ test.describe('hovedkolonnen', () => {
     await expect(page.locator('.ka-composer__shortcut')).toHaveText(
       /^Trykk (Ctrl|Cmd) \+ \/ for å hoppe hit$/,
     );
-    const description = await field.evaluate((element) => {
-      const id = element.getAttribute('aria-describedby') ?? '';
-      return document.getElementById(id)?.textContent?.trim() ?? '';
-    });
-    expect(description, 'beskrivelsen skriver tasten med bokstaver').toContain('skråstrek');
+    /*
+     * `aria-describedby` er en LISTE av id-er, ikke én id, så oppslaget må
+     * splitte på mellomrom — `getElementById` på hele strengen finner
+     * ingenting den dagen feltet får en beskrivelse til (#5).
+     *
+     * Og `expect.poll` og ikke et engangs-`evaluate`: uten retry leser den én
+     * gang, og leser den i et øyeblikk der feltet byttes ut, får den tom
+     * streng fra et element som ikke er i dokumentet lenger. Det var den ene
+     * av de to måtene denne testen falt på i CI 15.09 — sidebildet viste
+     * beskrivelsen stå der med riktig tekst mens testen leste «».
+     */
+    await expect
+      .poll(
+        () =>
+          field.evaluate((element) =>
+            (element.getAttribute('aria-describedby') ?? '')
+              .split(/\s+/)
+              .filter(Boolean)
+              .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+              .join(' '),
+          ),
+        { message: 'beskrivelsen skriver tasten med bokstaver' },
+      )
+      .toContain('skråstrek');
   });
 
   test('Tab gjennom hovedkolonnen i lys og mørk', async ({ page }, testInfo) => {
