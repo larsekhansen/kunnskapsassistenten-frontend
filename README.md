@@ -474,6 +474,49 @@ noe annet», når sannheten er «du har ikke bedt om noe annet ennå».
 De andre dimensjonene snevrer inn. Huker du av «Helsedirektoratet», viser
 årene hvor mange av Helsedirektoratets dokumenter hvert år har.
 
+### Elleve cachede samtaler
+
+Mocken har elleve ferdige samtaler over korpuset, så det går an å se hele
+flyten uten backend: skjelett, tenkesteg, strømming, kilder og
+«Fremgangsmåte». `src/api/mock/conversations/scripts.ts`.
+
+**Tre av dem er kickstarterne på tomtilstanden, ord for ord.** Trykk et
+forslag og send, og du får svar. Det krevde ingen endring i chat-viewet:
+spørsmålene var allerede skrevet, så svarene er skrevet til dem.
+
+To av de tre spør om år korpuset ikke har, og svarene sier det. Det er ikke
+et hull i fikstureringen — det er det en søkeassistent gjør når arkivet
+stopper før spørsmålet, og verdt å kunne se på.
+
+| Samtale                               | Hva den viser                                                    |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| Regnskap og bevilgning i DSS          | Kickstarter 1. Årene finnes ikke; svaret sier hva som gjør       |
+| Lærerspesialordningen                 | Kickstarter 2. `needs-clarification`: spør tilbake, ingen kilder |
+| Digdir: tildelingsbrev mot årsrapport | Kickstarter 3. Sammenlikning, med tabell                         |
+| Institusjonsbarnevernet               | Ett dokument, og svaret sier at det er ett                       |
+| Digitalisering på tvers               | 12 utdrag fordelt på 6 dokumenter                                |
+| Klimagassutslipp                      | Feiler etter tenkestegene                                        |
+| Kunnskapsgrunnlag og samordning       | Lange nøkkelord i «Fremgangsmåte»                                |
+| Folkehelsetiltak 2026                 | Punktliste                                                       |
+| Isbjørn i norsk Arktis                | Ett dokument, fire utdrag                                        |
+| Krav til helseforetakene              | Oppdragsdokument                                                 |
+| Måling av forenkling                  | Sier fra når sammendraget ikke har måltall                       |
+
+Spørsmålet trenger ikke treffe ordrett: sammenlikningen ser bort fra
+tegnsetting og store bokstaver, og godtar at brukeren har kuttet slutten av
+forslaget — kickstarterne fyller feltet uten å sende (svar 40), så spørsmålet
+som kommer er ofte redigert.
+
+**Utdragene er ordrette sitater.** `conversations.test.ts` sjekker at hvert
+utdrag fortsatt er en delstreng av sammendraget det sier det kommer fra, at
+tittel, type, virksomhet, år og lenke er hentet fra korpuset og ikke skrevet
+av, og at hver `[n]` i svaret peker på et utdrag som finnes. Svarene,
+tenkestegene og nøkkelordene er våre og kan ikke sjekkes av en maskin.
+
+**Ingen sidetall.** Kudos gir ett sammendrag per dokument og ingen sider, og
+et sidetall diktet opp fra ingenting er verre enn ingen. NKOM-fikstureringen
+beholder sine, så visningen av sidetall fortsatt har noe å tegne.
+
 ### Tempo
 
 `VITE_MOCK_SPEED` styrer hvor lang tid mocken bruker:

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { StreamEvent } from '../../model';
+import { emptyFilterSelection, type FilterSelection, type StreamEvent } from '../../model';
+import { KICKSTARTERS } from '../../views/chat/text';
+import { scriptedFor } from './conversations';
 import { MOCK_CLARIFICATION_QUERY, MockChatClient } from './MockChatClient';
 import { mockAnswerMarkdown, nkomThinkingSteps } from './fixtures';
 
@@ -116,5 +118,115 @@ describe('MockChatClient og avklaring', () => {
     // bære feltet bare fordi feltet finnes.
     expect(events.at(-1)).toMatchObject({ type: 'done' });
     expect(events.at(-1)).not.toHaveProperty('outcome');
+  });
+});
+
+/**
+ * The filter and the scripted conversations, together.
+ *
+ * Eleven of the twelve questions the mock can answer are scripted, and three
+ * of them are the kickstarters — the road a first-time user actually takes.
+ * Until this branch met #38 none of them went through `narrowToSelection`, so
+ * the filter worked on exactly one question, the unscripted NKOM answer, and
+ * the «control with no effect» of reise 8 was back on the main road. KA CC
+ * found it; these hold it.
+ *
+ * Written against the real `KICKSTARTERS` strings and not against a question
+ * copied in here. The matching is deliberately loose, but it is still
+ * matching: the day one of the three is reworded past the threshold, this is
+ * what has to go red. A test file reaching into a view for one constant is
+ * the point — nothing in `src/api/` does.
+ */
+const [dssKickstarter, clarificationKickstarter] = KICKSTARTERS;
+
+function withSelection(partial: Partial<FilterSelection>): FilterSelection {
+  return { ...emptyFilterSelection, ...partial };
+}
+
+function sourcesIn(events: StreamEvent[]) {
+  return events.find((event) => event.type === 'sources');
+}
+
+function answerIn(events: StreamEvent[]): string {
+  return events
+    .filter((event) => event.type === 'token')
+    .map((event) => event.text)
+    .join('');
+}
+
+describe('filteret og de scriptede samtalene', () => {
+  it('har en scriptet samtale bak hver kickstarter', () => {
+    for (const question of KICKSTARTERS) {
+      expect(scriptedFor(question), question).toBeDefined();
+    }
+  });
+
+  it('lar en kickstarter uten filter beholde alle kildene sine', async () => {
+    const events = await collect(client.ask({ query: dssKickstarter! }));
+    const sources = sourcesIn(events);
+    if (sources?.type !== 'sources') throw new Error('ingen kilder i strømmen');
+
+    expect(sources.documents).toHaveLength(2);
+    expect(sources.citations.map((citation) => citation.number)).toEqual([1, 2, 3, 4]);
+    expect(answerIn(events)).toContain('[4]');
+  });
+
+  it('snevrer kildene, markørene og henvisningene til en kickstarter', async () => {
+    // «Årsrapport» lar det ene av de to dokumentene stå igjen. Det andre er
+    // et tildelingsbrev, og markørene som pekte inn i det må forsvinne med
+    // det: en død [3] i prosaen sier «frontenden er ødelagt», ikke «det
+    // dokumentet er utenfor utvalget».
+    const events = await collect(
+      client.ask({
+        query: dssKickstarter!,
+        filters: withSelection({ documentType: ['Årsrapport'] }),
+      }),
+    );
+    const sources = sourcesIn(events);
+    if (sources?.type !== 'sources') throw new Error('ingen kilder i strømmen');
+
+    expect(sources.documents).toHaveLength(1);
+    expect(sources.documents[0]?.documentType).toBe('Årsrapport');
+    expect(sources.citations.map((citation) => citation.number)).toEqual([1, 2]);
+    expect(sources.retrieval.documentCount).toBe(1);
+
+    const answer = answerIn(events);
+    expect(answer).toContain('[1]');
+    expect(answer).not.toContain('[3]');
+    expect(answer).not.toContain('[4]');
+  });
+
+  it('sender kilder med tom liste når utvalget ikke slipper noe gjennom', async () => {
+    // Ikke det samme som en avklaring, og derfor ikke samme vei ut av
+    // løkka: kildepanelet må få beskjed om at utvalget er tomt, ellers står
+    // det igjen med forrige svars kilder.
+    const events = await collect(
+      client.ask({
+        query: dssKickstarter!,
+        filters: withSelection({ organisation: ['Virksomheten som ikke finnes'] }),
+      }),
+    );
+    const sources = sourcesIn(events);
+    if (sources?.type !== 'sources') throw new Error('kildehendelsen skal komme, også tom');
+
+    expect(sources.documents).toHaveLength(0);
+    expect(sources.citations).toHaveLength(0);
+    expect(sources.retrieval.documentCount).toBe(0);
+    expect(answerIn(events)).not.toContain('[1]');
+  });
+
+  it('lar en avklaring være en avklaring, også med filter på', async () => {
+    // Vakten leser scriptets egen liste og ikke den filtrerte. En samtale som
+    // aldri hentet noe skal hoppe over hele kildehendelsen, uansett hva som
+    // står i filteret.
+    const events = await collect(
+      client.ask({
+        query: clarificationKickstarter!,
+        filters: withSelection({ documentType: ['Årsrapport'] }),
+      }),
+    );
+
+    expect(sourcesIn(events)).toBeUndefined();
+    expect(events.at(-1)).toMatchObject({ type: 'done', outcome: 'needs-clarification' });
   });
 });
