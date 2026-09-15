@@ -321,23 +321,27 @@ test.describe('layouten', () => {
       // across the switch is how this test first failed — on a product that
       // had the surface right in both.
       await setSidebars(page, stateNamed('nav-aapent'));
+      // `.panel` and not the slot itself: the slot is the landmark and holds
+      // the width and the drag handle, and the box inside it is what draws
+      // the surface, the border and the padding. Split on 2026-09-15 so the
+      // handle could sit inside the landmark without being clipped by it.
       const openSurface = await page.evaluate(
-        () => getComputedStyle(document.querySelector('.primary-sidebar')!).backgroundColor,
+        () => getComputedStyle(document.querySelector('.primary-sidebar .panel')!).backgroundColor,
       );
 
       await setSidebars(page, stateNamed('begge-kollapset'));
       const rails = await page.evaluate(() => {
-        const read = (selector: string) => {
-          const element = document.querySelector(selector)!;
-          const style = getComputedStyle(element);
+        const read = (slotSelector: string, panelSelector: string) => {
+          const slot = document.querySelector(slotSelector)!;
+          const style = getComputedStyle(document.querySelector(panelSelector)!);
           return {
-            width: Math.round(element.getBoundingClientRect().width),
+            width: Math.round(slot.getBoundingClientRect().width),
             background: style.backgroundColor,
             // The border is what draws the rail's edge against the answer
             // column; it is the term that makes 67 out of 66.
             border: Math.round(
               parseFloat(
-                selector.includes('primary')
+                slotSelector.includes('primary')
                   ? style.borderInlineEndWidth
                   : style.borderInlineStartWidth,
               ),
@@ -345,8 +349,10 @@ test.describe('layouten', () => {
           };
         };
         return {
-          nav: read('.primary-sidebar'),
-          sources: read('.secondary-sidebar'),
+          // The width is the slot's; the surface and the border are drawn by
+          // the panel box inside it.
+          nav: read('.primary-sidebar', '.primary-sidebar .panel'),
+          sources: read('.secondary-sidebar', '.secondary-sidebar .panel'),
           ground: getComputedStyle(document.querySelector('.shell')!).backgroundColor,
         };
       });
