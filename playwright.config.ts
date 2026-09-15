@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { ARTIFACTS, PORT } from './tests/e2e/paths';
+import { ARTIFACTS, PORT, RUN_ARTIFACTS } from './tests/e2e/paths';
 
 /**
  * End-to-end tests for kunnskapsassistenten-frontend.
@@ -28,7 +28,9 @@ import { ARTIFACTS, PORT } from './tests/e2e/paths';
  */
 export default defineConfig({
   testDir: './tests/e2e',
-  outputDir: `${ARTIFACTS}/test-results`,
+  // Per run, not per suite: see RUN_ARTIFACTS in tests/e2e/paths.ts for
+  // what a shared one costs.
+  outputDir: RUN_ARTIFACTS,
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,

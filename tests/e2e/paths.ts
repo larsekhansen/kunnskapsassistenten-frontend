@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,8 +8,20 @@ import { fileURLToPath } from 'node:url';
  * The port is 4173, `vite preview`'s own default. It deliberately sits
  * outside the 5173–5177 band the build rules hand out to the workers, so
  * running the tests never collides with somebody's dev server.
+ *
+ * `KA_E2E_PORT` moves it, and there is one situation that needs it: **two
+ * runs of this suite must never share a port.** `reuseExistingServer` lets
+ * the second run attach to the first one's preview server, and when the first
+ * run finishes it takes the server down under the second — which then reports
+ * every remaining test as failed with `ERR_CONNECTION_REFUSED`. Measured
+ * 2026-09-15: 49 of 58 «failures» in the run that started second, none of
+ * them the product.
+ *
+ * So: one run per port at a time. Running the suite from two worktrees on
+ * this machine at once means `KA_E2E_PORT=4174 npx playwright test` in the
+ * second one.
  */
-export const PORT = 4173;
+export const PORT = Number(process.env.KA_E2E_PORT ?? 4173);
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -26,6 +38,49 @@ export const ARTIFACTS = join(
   'ka-review',
   'e2e',
 );
+
+/**
+ * Traces and failure screenshots, in a directory belonging to this run alone.
+ *
+ * It has to be per-run, and that is a bug fix rather than tidiness. Playwright
+ * empties `outputDir` when a run starts and writes a trace for every test
+ * while it runs (`retain-on-failure` records them all and throws the passing
+ * ones away). Two runs sharing the directory means the second one deletes
+ * files the first is still writing, and the first then fails in
+ * `browserContext.close` with `ENOENT` on a `.trace` file.
+ *
+ * Playwright reports that as a failed test. It is not: the test body has
+ * already passed and the teardown is what threw. Measured 2026-09-15 with
+ * overlapping runs on this machine — 13 of 58 «failures», every one of them a
+ * trace file and not a single product assertion, and a different 13 each time.
+ * A suite that reports red for reasons in its own plumbing is worse than no
+ * suite, because the first thing it costs is the reviewer's trust in it.
+ *
+ * The HTML report stays at a fixed path, because it is written once at the
+ * end and is meant to be found again.
+ */
+export const RUN_ARTIFACTS = join(ARTIFACTS, 'runs', `${process.pid}-${Date.now().toString(36)}`);
+
+/**
+ * Drop run directories older than a day, so the cache does not grow forever.
+ * Best effort: a run that cannot clean up is not a run that should fail.
+ */
+function pruneOldRuns(): void {
+  const runs = join(ARTIFACTS, 'runs');
+  if (!existsSync(runs)) return;
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  try {
+    for (const entry of readdirSync(runs)) {
+      const path = join(runs, entry);
+      if (statSync(path).mtimeMs < dayAgo) rmSync(path, { recursive: true, force: true });
+    }
+  } catch {
+    // Another run may be pruning the same directory. Nothing here is worth
+    // failing a test suite over.
+  }
+}
+
+pruneOldRuns();
 
 /**
  * The umbrella folder that holds `design/`, found by walking up until
