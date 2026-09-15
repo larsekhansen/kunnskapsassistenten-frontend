@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Message } from '../../model';
 import { AnswerMessage } from './AnswerMessage';
 import { AnswerTime } from './AnswerTime';
+import { MessageList } from './MessageList';
 
 /** A Tuesday at 14:00, so «i går» and the weekday cases are not the same day. */
 const NOW = new Date(2026, 8, 15, 14, 0, 0);
@@ -192,5 +193,93 @@ describe('AnswerTime', () => {
     );
 
     expect(container.querySelectorAll('time')).toHaveLength(1);
+  });
+  it('stempler også en tur som spurte tilbake, med de samme ordene', () => {
+    /*
+     * En avklaring er ikke et svar, men den er det assistenten svarte med, og
+     * den kom på et tidspunkt leseren kan vise tilbake til. Uten stempel fikk
+     * en gjenopprettet samtale som endte i en avklaring et hull, når hver
+     * eneste rad i trådlista sier når (dirigenten, 2026-09-16).
+     */
+    const spurte: Message = {
+      id: 'a1',
+      role: 'assistant',
+      content: 'Mener du målene i tildelingsbrevet, eller måloppnåelsen i årsrapporten?',
+      createdAt: at(2026, 8, 11, 9, 5),
+      citations: [],
+      status: 'needs-clarification',
+    };
+
+    const { container } = render(
+      <MessageList
+        canScrollToBottom={false}
+        messages={[spurte]}
+        onRegenerate={() => {}}
+        onScrollToBottom={() => {}}
+        onSelectSource={() => {}}
+      />,
+    );
+
+    const times = container.querySelectorAll('time');
+    expect(times).toHaveLength(1);
+    expect(times[0].getAttribute('datetime')).toBe(spurte.createdAt);
+    expect(times[0].querySelector('.ds-sr-only')?.textContent).toBe(
+      'Svaret kom 11. september 2026 kl. 09:05',
+    );
+    expect(times[0].closest('button')).toBeNull();
+  });
+
+  it('gir en gjenopprettet samtale ett stempel per tur assistenten tok', () => {
+    // Spørsmål, svar, oppfølging, avklaring: to turer fra assistenten, to
+    // stempler. Leserens egne spørsmål teller ikke med.
+    const messages: Message[] = [
+      {
+        id: 'q1',
+        role: 'user',
+        content: 'Hva er måloppnåelse?',
+        createdAt: at(2026, 8, 11, 9, 0),
+        citations: [],
+        status: 'complete',
+      },
+      {
+        id: 'a1',
+        role: 'assistant',
+        content: 'Et svar.',
+        createdAt: at(2026, 8, 11, 9, 5),
+        citations: [],
+        status: 'complete',
+      },
+      {
+        id: 'q2',
+        role: 'user',
+        content: 'Og i Digdir?',
+        createdAt: at(2026, 8, 11, 9, 10),
+        citations: [],
+        status: 'complete',
+      },
+      {
+        id: 'a2',
+        role: 'assistant',
+        content: 'Mener du 2025 eller 2026?',
+        createdAt: at(2026, 8, 11, 9, 12),
+        citations: [],
+        status: 'needs-clarification',
+      },
+    ];
+
+    const { container } = render(
+      <MessageList
+        canScrollToBottom={false}
+        messages={messages}
+        onRegenerate={() => {}}
+        onScrollToBottom={() => {}}
+        onSelectSource={() => {}}
+      />,
+    );
+
+    expect([...container.querySelectorAll('time')].map((t) => t.getAttribute('datetime'))).toEqual([
+      at(2026, 8, 11, 9, 5),
+      at(2026, 8, 11, 9, 12),
+    ]);
   });
 });

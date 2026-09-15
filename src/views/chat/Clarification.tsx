@@ -1,6 +1,7 @@
 import { Button, Card, Tag } from '@digdir/designsystemet-react';
 import { ClipboardIcon } from '@navikt/aksel-icons';
 import { Markdown } from '../../components';
+import { AnswerTime } from './AnswerTime';
 import { answerAsPlainText } from './answerText';
 import { CLARIFICATION_COPIED, CLARIFICATION_COPY, CLARIFICATION_TAG } from './text';
 import { useCopy } from './useCopy';
@@ -8,6 +9,16 @@ import { useCopy } from './useCopy';
 type ClarificationProps = {
   /** The agent's question back, as markdown. */
   question: string;
+  /**
+   * When the agent asked back, ISO 8601.
+   *
+   * The same stamp an answer carries, and the same words: this is the moment
+   * the assistant replied, whether it replied with an answer or with a
+   * question. Without it a restored thread had a hole — every row in the list
+   * says when, and a conversation that ended in a clarification said nothing
+   * once it was opened.
+   */
+  createdAt: string;
 };
 
 /**
@@ -29,7 +40,7 @@ type ClarificationProps = {
  * answer the question, and the compose field below is already waiting for it
  * with its own placeholder. See ChatView.
  */
-export function Clarification({ question }: ClarificationProps) {
+export function Clarification({ question, createdAt }: ClarificationProps) {
   const { receipt, copy } = useCopy();
 
   return (
@@ -55,6 +66,8 @@ export function Clarification({ question }: ClarificationProps) {
             <ClipboardIcon aria-hidden />
             {CLARIFICATION_COPY}
           </Button>
+
+          <AnswerTime createdAt={createdAt} />
 
           <p aria-live="polite" className="ka-answer-actions__receipt">
             {receipt}

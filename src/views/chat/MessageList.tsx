@@ -93,7 +93,7 @@ export function MessageList({
                   thoughtMs={message.thoughtMs}
                 />
               ) : null}
-              <Clarification question={message.content} />
+              <Clarification createdAt={message.createdAt} question={message.content} />
             </li>
           );
         }

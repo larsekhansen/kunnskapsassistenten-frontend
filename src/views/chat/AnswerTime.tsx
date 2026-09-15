@@ -22,6 +22,13 @@ type AnswerTimeProps = {
  * refers back to, and a time over every turn would double the count without
  * adding a fact — the question is the line directly above this one.
  *
+ * A turn that came back as `needs-clarification` gets one, in the same words:
+ * «Svaret kom» is the moment the assistant replied, and it replied — with a
+ * question rather than an answer, but at a time the reader can refer to.
+ * Without it a restored conversation that ended in a clarification had a
+ * hole, when every row in the thread list says when (the conductor,
+ * 2026-09-16).
+ *
  * Restored answers show the time they were given, not the time they were
  * loaded: `createdAt` is written when the turn happens and stored with it
  * (`recordMockTurn`), the same discipline `thoughtMs` follows. An answer that
