@@ -1,5 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
+import {
+  covers,
+  expectAllContentInLandmarks,
+  expectNoAxeViolations,
+  saveScreenshot,
+  setColorScheme,
+} from './a11y';
 import { walkWithTab } from './helpers';
 
 /**
@@ -422,6 +428,32 @@ test.describe('panelbredder', () => {
       }
     });
   }
+
+  test('skillet ligger inne i landemerket det endrer bredden på', async ({ page }, testInfo) => {
+    covers(testInfo, 'panelbredde: tilgjengelig i begge moduser');
+    await page.setViewportSize({ width: 1920, height: HEIGHT });
+
+    // Regresjonen #50 slapp gjennom: skillet lå som et søsken av landemerkene
+    // i stedet for inni ett, og `region` er en best-practice-regel som
+    // `expectNoAxeViolations` ikke kjører. Målt av KA CC på fire ruter.
+    for (const path of ['/', '/threads/nkom-maaloppnaaelse', '/tull']) {
+      await page.goto(path);
+      await expectAllContentInLandmarks(page, path);
+    }
+
+    // Og med begge panelene åpne, som er den eneste tilstanden der begge
+    // skillene finnes samtidig.
+    await page.goto('/threads/nkom-maaloppnaaelse');
+    await showSources(page);
+    await expectAllContentInLandmarks(page, 'begge sidekolonner åpne');
+
+    const inside = await page.evaluate(() =>
+      [...document.querySelectorAll('.panel-separator')].map((separator) =>
+        separator.closest('nav, aside, main')?.tagName.toLowerCase(),
+      ),
+    );
+    expect(inside, 'hvert skille ligger i landemerket det hører til').toEqual(['nav', 'aside']);
+  });
 
   test('skillet har navn, fokusring og null axe-brudd i lys og mørk', async ({
     page,

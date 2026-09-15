@@ -122,6 +122,27 @@ export async function setColorScheme(page: Page, scheme: 'light' | 'dark'): Prom
   await expect(page.locator('html')).toHaveAttribute('data-color-scheme', scheme);
 }
 
+/**
+ * Everything on the page sits inside a landmark.
+ *
+ * Its own check rather than a tag in `RULE_SETS`, because `region` is a
+ * best-practice rule and not `wcag2a`/`wcag2aa` — so every existing call to
+ * `expectNoAxeViolations` is blind to it, and adding the whole
+ * `best-practice` set to the shared run would change what every test in the
+ * suite asserts. This one rule is what caught the drag handle sitting outside
+ * every landmark after #50, and this is what keeps it from happening again.
+ */
+export async function expectAllContentInLandmarks(page: Page, what: string): Promise<void> {
+  await settle(page);
+
+  const results = await new AxeBuilder({ page }).withRules(['region']).analyze();
+  const outside = results.violations.flatMap((violation) =>
+    violation.nodes.map((node) => node.target.join(' ')),
+  );
+
+  expect(outside, `innhold utenfor alle landemerker i ${what}`).toEqual([]);
+}
+
 /** Marks a test as covering one line in docs/review/funksjonssjekk.md. */
 export function covers(testInfo: TestInfo, row: string): void {
   testInfo.annotations.push({ type: 'dekker', description: row });
