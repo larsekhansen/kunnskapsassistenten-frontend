@@ -7,7 +7,7 @@ import {
 } from '../../model';
 import { KICKSTARTERS } from '../../views/chat/text';
 import { scriptedFor } from './conversations';
-import { MOCK_CLARIFICATION_QUERY, MockChatClient } from './MockChatClient';
+import { MOCK_CLARIFICATION_QUERY, MOCK_ERROR_QUERIES, MockChatClient } from './MockChatClient';
 import { mockAnswerMarkdown, nkomThinkingSteps, threads } from './fixtures';
 import { resetMockThreads } from './sessionThreads';
 
@@ -25,6 +25,28 @@ async function collect(iterable: AsyncIterable<StreamEvent>): Promise<StreamEven
   for await (const event of iterable) events.push(event);
   return events;
 }
+
+describe('MockChatClient og de simulerte feilene', () => {
+  it('gir hvert nøkkelord sin egen kode', async () => {
+    for (const [query, code] of Object.entries(MOCK_ERROR_QUERIES)) {
+      const events = await collect(client.ask({ query }));
+      const last = events.at(-1);
+
+      // Etter et tenkesteg, ikke med en gang: tilstanden viewene går gjennom
+      // er «et svar var på vei, og så var det ikke det».
+      expect(events[0]?.type, query).toBe('thinking-step');
+      expect(last, query).toEqual({ type: 'error', error: { code } });
+    }
+  });
+
+  it('er eksakte treff, ikke ord inni et ekte spørsmål', async () => {
+    // «simuler feil modell» er sitt eget spørsmål og ikke et prefiks-treff på
+    // «simuler feil»; et ekte spørsmål med de samme ordene skal få et ekte svar.
+    const events = await collect(client.ask({ query: 'Hva er feil i rapporten?' }));
+
+    expect(events.map((event) => event.type)).not.toContain('error');
+  });
+});
 
 describe('MockChatClient.ask', () => {
   it('streams thinking steps, then text, then sources, then done', async () => {
@@ -74,7 +96,9 @@ describe('MockChatClient.ask', () => {
 
     expect(events.at(-1)).toEqual({
       type: 'error',
-      error: { code: 'aborted', message: 'Svaret ble avbrutt.' },
+      // No message: the text that goes on screen belongs to the code, and a
+      // stopped answer never draws an alert anyway.
+      error: { code: 'aborted' },
     });
   });
 });

@@ -21,6 +21,7 @@ import {
   CLARIFICATION_TAG,
   COMPOSE_PLACEHOLDER,
   FOLLOW_UP_QUESTIONS,
+  NO_HITS_WHOLE_CORPUS,
   SHORTCUT_DESCRIPTION,
   shortcutHint,
 } from './text';
@@ -240,6 +241,80 @@ describe('ChatView', () => {
 
     // Once, on the button (finding 9).
     expect(alert.textContent?.match(/Prøv igjen/gu)).toHaveLength(1);
+  });
+
+  it('names the case in the heading and tells two failures apart', async () => {
+    const { unmount } = render(
+      <Shell>
+        <ChatView
+          client={clientYielding([{ type: 'error', error: { code: 'model-unavailable' } }])}
+        />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    const first = await screen.findByRole('alert');
+    await waitFor(() => expect(first.textContent).toContain('Assistenten svarte ikke'));
+    unmount();
+
+    render(
+      <Shell>
+        <ChatView
+          client={clientYielding([{ type: 'error', error: { code: 'retrieval-unavailable' } }])}
+        />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    const second = await screen.findByRole('alert');
+    // «Noe gikk galt» said the same thing for both, and the two need
+    // different things from the reader (brukerreiser punkt 12).
+    await waitFor(() => expect(second.textContent).toContain('Søket i dokumentene svarte ikke'));
+  });
+
+  it('offers no «Prøv igjen» when the key was rejected', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding([{ type: 'error', error: { code: 'unauthorized' } }])} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+
+    const alert = await screen.findByRole('alert');
+    await waitFor(() => expect(alert.textContent).toContain('Ingen tilgang'));
+    // The same question with the same key fails the same way; a button that
+    // cannot work sends the reader round the loop instead of onwards.
+    expect(screen.queryByRole('button', { name: 'Prøv igjen' })).toBeNull();
+  });
+
+  it('draws a search that found nothing as an answer, not as an alert', async () => {
+    const reported: AnswerSources[] = [];
+    render(
+      <Shell onAnswerSources={(answerSources) => reported.push(answerSources)}>
+        <ChatView client={clientYielding([{ type: 'error', error: { code: 'no-hits' } }])} />
+      </Shell>,
+    );
+
+    ask('Hva sier dokumentene om romfart?');
+
+    // In the thread, as a turn of its own. The live region says the same
+    // thing, so the answer is looked for where answers are.
+    await waitFor(() =>
+      expect(document.querySelector('.ka-messages')?.textContent).toContain(
+        NO_HITS_WHOLE_CORPUS.split('\n')[0],
+      ),
+    );
+    // No red box and no retry: the search ran, and running it again against
+    // the same documents finds the same nothing.
+    expect(screen.getByRole('alert').textContent).toBe('');
+    expect(screen.queryByRole('button', { name: 'Prøv igjen' })).toBeNull();
+
+    // The sources panel is told it is a finished answer with nothing behind
+    // it, which is what stops it waiting on «Henter kilder …».
+    const last = reported.at(-1);
+    expect(last?.status).toBe('complete');
+    expect(last?.documents).toEqual([]);
   });
 
   it('says «Avbryt» in words while the answer is on its way', async () => {

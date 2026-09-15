@@ -1,5 +1,6 @@
 import {
   emptyFilterSelection,
+  type ChatErrorCode,
   type FilterFacet,
   type FilterSelection,
   type StreamEvent,
@@ -105,6 +106,30 @@ export const defaultMockDelays: MockDelays = mockSpeeds[defaultMockSpeed];
 export const MOCK_FAILURE_QUERY = 'simuler feil';
 
 /**
+ * One question per error code, so each of the cases can be seen.
+ *
+ * The frontend now says something different for a model that is down, a
+ * corpus that is down, a request that timed out, a key that was rejected and
+ * a search that found nothing — and none of those five could be reached from
+ * a built app before, for the same reason `MOCK_FAILURE_QUERY` exists. The
+ * backend does not send the codes yet either (API-bestilling A16), so this is
+ * the only way in until it does.
+ *
+ * `simuler feil` keeps its old meaning, `unknown`: the generic failure the
+ * end-to-end suite and the brukerblikk tests already ask for by name. The
+ * longer phrases are exact matches too, so `simuler feil modell` is its own
+ * question and not a prefix match on the short one.
+ */
+export const MOCK_ERROR_QUERIES: Readonly<Record<string, ChatErrorCode>> = {
+  [MOCK_FAILURE_QUERY]: 'unknown',
+  'simuler feil modell': 'model-unavailable',
+  'simuler feil korpus': 'retrieval-unavailable',
+  'simuler tidsavbrudd': 'timeout',
+  'simuler ingen treff': 'no-hits',
+  'simuler avvist nøkkel': 'unauthorized',
+};
+
+/**
  * Ask this and the mock answers with a question back instead of an answer.
  *
  * Same reasoning as the failure query: `needs-clarification` is a real state
@@ -194,17 +219,19 @@ export class MockChatClient implements ChatClient {
     // remembered as the half-answer it is rather than dropped.
     let written = '';
     try {
-      if (params.query.trim().toLocaleLowerCase('nb-NO') === MOCK_FAILURE_QUERY) {
+      const simulated = MOCK_ERROR_QUERIES[params.query.trim().toLocaleLowerCase('nb-NO')];
+      if (simulated) {
         // After a thinking step, not instantly: a failure that arrives before
         // anything has happened does not exercise the state the views go
         // through, which is «an answer was under way and then it was not».
+        // The same holds for a search that came back empty — it searched
+        // first, and the thinking panel is what says so.
         await wait(this.#delays.thinkingStepMs, signal);
         yield { type: 'thinking-step', step: nkomThinkingSteps[0]! };
         await wait(this.#delays.firstTokenMs, signal);
-        yield {
-          type: 'error',
-          error: { code: 'unknown', message: 'Noe gikk galt. Prøv igjen.' },
-        };
+        // No `message`: the whole point is that the text comes from the code,
+        // so a mock that wrote its own would be testing the mock's wording.
+        yield { type: 'error', error: { code: simulated } };
         return;
       }
 
@@ -368,9 +395,7 @@ export class MockChatClient implements ChatClient {
       }
       yield {
         type: 'error',
-        error: signal?.aborted
-          ? { code: 'aborted', message: 'Svaret ble avbrutt.' }
-          : { code: 'unknown', message: 'Noe gikk galt. Prøv igjen.' },
+        error: signal?.aborted ? { code: 'aborted' } : { code: 'unknown' },
       };
     }
   }

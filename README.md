@@ -562,18 +562,39 @@ tegner ikke noe kort, og et lagret tomt svar ville tegnet et kort som aldri
 fantes. En tur i en fixture-tråd legges etter fixture-meldingene fra koden,
 så det samme svaret aldri skrives ned to ganger.
 
-## Mock-modus: to spørsmål som gjør noe spesielt
+## Mock-modus: spørsmål som gjør noe spesielt
 
-| Spørsmål            | Hva mocken gjør                                              |
-| ------------------- | ------------------------------------------------------------ |
-| `simuler feil`      | Feiler etter første tenkesteg, så feiltilstanden kan testes  |
-| `simuler avklaring` | Svarer med et spørsmål tilbake, status `needs-clarification` |
+| Spørsmål                | Hva mocken gjør                                              |
+| ----------------------- | ------------------------------------------------------------ |
+| `simuler feil`          | Feiler etter første tenkesteg, generisk feil (`unknown`)     |
+| `simuler feil modell`   | Språkmodellen svarer ikke (`model-unavailable`)              |
+| `simuler feil korpus`   | Søket i dokumentene er nede (`retrieval-unavailable`)        |
+| `simuler tidsavbrudd`   | Svaret tok for lang tid (`timeout`)                          |
+| `simuler ingen treff`   | Søket fant ingen utdrag (`no-hits`), tegnes som et svar      |
+| `simuler avvist nøkkel` | Nøkkelen ble avvist (`unauthorized`), ingen «Prøv igjen»     |
+| `simuler avklaring`     | Svarer med et spørsmål tilbake, status `needs-clarification` |
 
-Begge er eksakte treff på hele spørsmålet, ikke ord inni det: «hva er feil i
-rapporten» er et ekte spørsmål og skal få et ekte svar. De finnes fordi ingen
-av de to tilstandene ellers kan nås fra et bygget bygg, verken av en e2e-test
-eller av en designer, uten en backend som er nede eller en agent som spør
-tilbake.
+Alle er eksakte treff på hele spørsmålet, ikke ord inni det: «hva er feil i
+rapporten» er et ekte spørsmål og skal få et ekte svar, og `simuler feil
+modell` er sitt eget spørsmål og ikke et prefiks-treff på `simuler feil`. De
+finnes fordi ingen av tilstandene ellers kan nås fra et bygget bygg, verken av
+en e2e-test eller av en designer, uten en backend som er nede eller en agent
+som spør tilbake.
+
+**Feilkoden bestemmer teksten.** `ChatError` bærer en kode, og
+`src/views/chat/errorText.ts` slår opp overskrift, to setninger — hva som
+skjedde og hva brukeren kan gjøre — og om «Prøv igjen» i det hele tatt tilbys.
+En avvist nøkkel får ingen knapp: samme spørsmål med samme nøkkel feiler likt.
+Backend sender ikke kodene ennå (API-bestilling A16), så live-klienten mapper
+det den faktisk får: 401/403 → `unauthorized`, 408/504 → `timeout`, 429 →
+`rate-limited`, alt annet → `unknown`. En 5xx sier ikke om det var modellen
+eller korpuset, og den forskjellen gjettes ikke.
+
+`no-hits` er **ikke** en feil i rødt: søket kjørte og fant ingenting, som er et
+svar med tom kildeliste. Chatten tegner det som en ferdig tur i tråden, og
+kildepanelet sier det samme med sine egne ord i stedet for å vente på utdrag
+som ikke kommer. Rådet følger filteret: har leseren avgrenset korpuset, står
+det at filteret kan løsnes, ellers ikke.
 
 `needs-clarification` er en **ferdig** tur, ikke en feilet: innholdet er et
 ekte spørsmål til brukeren. Backend melder den i `_meta.status`, og

@@ -10,6 +10,7 @@ import { useThread } from '../../layout/useThread';
 import { isEmptySelection, type ThreadDetail } from '../../model';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
+import { chatErrorText } from './errorText';
 import { filterSummaryText } from './filterSummary';
 import { CLARIFICATION_PLACEHOLDER } from './text';
 import { threadHeading } from './threadHeading';
@@ -46,6 +47,10 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
     thread?.messages ?? [],
     selection,
   );
+
+  // What the alert says, per case. Undefined while the turn is fine, which is
+  // what keeps the region mounted and empty.
+  const errorText = error ? chatErrorText(error) : undefined;
 
   const filterSummary = useCallback(
     (messageId: string) => {
@@ -300,14 +305,23 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         Mounted whether or not there is an error: an alert region only
         announces content that appears inside a region already in the page.
         See src/components/ErrorState.tsx.
+
+        Heading, text and whether there is a button at all come from the code
+        (errorText.ts). A rejected key gets no «Prøv igjen»: the same question
+        with the same key fails the same way, and a button that cannot work
+        sends the reader round the loop instead of towards whoever can fix it.
       */}
       <ErrorState
-        message={error ?? undefined}
-        onRetry={() => {
-          retry();
-          focusField();
-        }}
-        title="Svaret kom ikke fram"
+        message={errorText?.message}
+        onRetry={
+          errorText?.retryable
+            ? () => {
+                retry();
+                focusField();
+              }
+            : undefined
+        }
+        title={errorText?.title}
       />
 
       <Composer

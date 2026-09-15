@@ -2,13 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatClient } from '../../api';
 import {
   emptyFilterSelection,
+  isEmptySelection,
+  type ChatError,
   type FilterSelection,
   type Message,
   type MessageStatus,
 } from '../../model';
 import { announcedText } from './answerText';
-import { GENERIC_CHAT_ERROR, withoutRetryPrompt } from './errorText';
-import { CLARIFICATION_ANNOUNCEMENT } from './text';
+import {
+  CLARIFICATION_ANNOUNCEMENT,
+  NO_HITS_ANNOUNCEMENT,
+  NO_HITS_FILTERED,
+  NO_HITS_WHOLE_CORPUS,
+} from './text';
 
 /** Where the current turn is. Drives the skeleton, the stop button and the error. */
 export type ChatStatus = 'idle' | 'pending' | 'streaming' | 'error';
@@ -28,8 +34,15 @@ function nextId(prefix: string): string {
 export type UseChat = {
   messages: Message[];
   status: ChatStatus;
-  /** Norwegian error text, set only when status is 'error'. */
-  error: string | null;
+  /**
+   * Why the turn failed, set only when status is 'error'.
+   *
+   * The code and not the sentence: which case it was decides the heading, the
+   * text and whether «Prøv igjen» is offered at all, and that mapping belongs
+   * to the view (errorText.ts). A hook that handed over a finished string
+   * would have to know what the button under it says.
+   */
+  error: ChatError | null;
   /**
    * What the polite live region should say at this moment (answer 33).
    *
@@ -69,15 +82,21 @@ export type UseChat = {
  *   idle       nothing in flight
  *   pending    question sent, no token yet — this is what the skeleton shows
  *   streaming  tokens arriving
- *   error      the turn failed; `error` carries the Norwegian message
+ *   error      the turn failed; `error` carries the code, and the view
+ *              looks the Norwegian up from it
  *
- * Cancelling is not an error. The client reports it as an `error` event with
+ * Two of the codes never reach that last state. Cancelling is not an error:
+ * the client reports it as an `error` event with
  * code `aborted`, and here that means: keep the partial answer, mark it
  * `aborted`, go back to idle. That is what a reader expects from a stop
  * button, and it is why the code checks the code rather than the event type.
  * The status is kept apart from `complete` because a stopped answer is not a
  * whole one — its sources never arrived, so it carries no action row of a
  * finished answer and offers to run again instead.
+ *
+ * `no-hits` is not one either: the search ran and found nothing, which is a
+ * finished answer with an empty source list rather than a failure. It is the
+ * same move in the other direction — an `error` frame settled as `complete`.
  *
  * Only one turn counts at a time. A question asked mid-stream aborts the one
  * before it, and the old turn is then forbidden from touching status,
@@ -91,7 +110,7 @@ export function useChat(
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [appliedFilters, setAppliedFilters] = useState<Record<string, FilterSelection>>({});
   const [status, setStatus] = useState<ChatStatus>('idle');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ChatError | null>(null);
   const [announcement, setAnnouncement] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
@@ -151,6 +170,14 @@ export function useChat(
       // The running text, so a finished paragraph can be spotted without
       // reading it back out of state.
       let content = '';
+
+      /*
+       * Which of the two «fant ingenting» answers fits this turn. Read here,
+       * from the filter the question was asked under, and not when it lands:
+       * telling a reader to loosen a filter they never set sends them looking
+       * for a control they have not touched.
+       */
+      const noHitsAnswer = isEmptySelection(filters) ? NO_HITS_WHOLE_CORPUS : NO_HITS_FILTERED;
 
       // Said once per turn, when the first step lands. The steps arrive
       // seconds apart and there can be a dozen of them; a polite region that
@@ -226,9 +253,41 @@ export function useChat(
                 }
                 return;
               }
+
+              /*
+               * A search that found nothing is not a failure: the assistant
+               * did the work and came back empty-handed, which is an answer
+               * with an empty source list (API-bestilling A16). So the turn
+               * finishes rather than fails — no red alert, no «Prøv igjen»
+               * offering to ask the same question of the same documents
+               * again — and the empty `sources` is what makes the sources
+               * panel say the same thing in its own words instead of waiting
+               * for excerpts that are not coming.
+               *
+               * It arrives as an `error` event because that is the frame
+               * that ends a stream with no content in it; see model/stream.ts.
+               */
+              if (event.error.code === 'no-hits') {
+                patchAnswer(answerId, (message) => ({
+                  ...message,
+                  // Whatever the agent managed to write stands; the notice
+                  // only stands in when it wrote nothing, which is the case
+                  // this exists for.
+                  content: message.content.length > 0 ? message.content : noHitsAnswer,
+                  sources: [],
+                  citations: [],
+                }));
+                settleAnswer(answerId, 'complete');
+                if (isCurrentTurn()) {
+                  setAnnouncement(NO_HITS_ANNOUNCEMENT);
+                  setStatus('idle');
+                }
+                return;
+              }
+
               settleAnswer(answerId, 'error');
               if (isCurrentTurn()) {
-                setError(withoutRetryPrompt(event.error.message));
+                setError(event.error);
                 // The Alert has role="alert" and announces itself.
                 setAnnouncement('');
                 setStatus('error');
@@ -254,7 +313,9 @@ export function useChat(
         }
         settleAnswer(answerId, 'error');
         if (isCurrentTurn()) {
-          setError(GENERIC_CHAT_ERROR);
+          // A client that threw rather than yielding an error frame says
+          // nothing about what went wrong, which is what `unknown` means.
+          setError({ code: 'unknown' });
           setAnnouncement('');
           setStatus('error');
         }
