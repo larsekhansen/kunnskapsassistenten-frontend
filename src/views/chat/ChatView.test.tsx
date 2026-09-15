@@ -4,9 +4,16 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AskParams, ChatClient } from '../../api';
 import { AnswerSourcesContext } from '../../layout/answerSourcesContext';
 import { CitationContext } from '../../layout/citationContext';
+import { FilterContext } from '../../layout/filterContext';
 import { MainScrollContext } from '../../layout/scrollContext';
 import { ThreadContext } from '../../layout/threadContext';
-import { threadFromQuestion, type StreamEvent, type ThreadDetail } from '../../model';
+import {
+  emptyFilterSelection,
+  threadFromQuestion,
+  type FilterSelection,
+  type StreamEvent,
+  type ThreadDetail,
+} from '../../model';
 import { ChatView } from './ChatView';
 import {
   CLARIFICATION_PLACEHOLDER,
@@ -41,8 +48,15 @@ function clientYielding(events: StreamEvent[]): ChatClient {
   };
 }
 
+type ShellProps = {
+  children: ReactNode;
+  startThread?: () => void;
+  /** What the filter view has narrowed to, as the shell would hold it. */
+  selection?: FilterSelection;
+};
+
 /** The pieces of the shell the chat view reads. */
-function Shell({ children, startThread }: { children: ReactNode; startThread?: () => void }) {
+function Shell({ children, startThread, selection }: ShellProps) {
   const scrollRef = useRef<HTMLElement | null>(null);
   return (
     <MainScrollContext value={scrollRef}>
@@ -56,7 +70,11 @@ function Shell({ children, startThread }: { children: ReactNode; startThread?: (
               },
             }}
           >
-            {children}
+            <FilterContext
+              value={{ selection: selection ?? emptyFilterSelection, setSelection: () => {} }}
+            >
+              {children}
+            </FilterContext>
           </ThreadContext>
         </AnswerSourcesContext>
       </CitationContext>
@@ -95,7 +113,31 @@ function threadWith(title: string, titleFromQuestion?: boolean): ThreadDetail {
 
 const done: StreamEvent = { type: 'done', messageId: 'm1', conversationId: 'c1' };
 const answer: StreamEvent[] = [{ type: 'token', text: 'Svaret på spørsmålet.' }, done];
+/** An answer with a source behind its one marker, for the clipboard. */
+const sourcedAnswer: StreamEvent[] = [
+  { type: 'token', text: 'Nkom melder kvartalsvis [1].' },
+  {
+    type: 'sources',
+    documents: [
+      {
+        id: 'd1',
+        title: 'Årsrapport Nkom 2022',
+        organisation: 'Nkom',
+        year: 2022,
+        excerpts: [{ id: 'e1', text: '', relevance: 'high', citationNumber: 1, page: 41 }],
+      },
+    ],
+    citations: [{ number: 1, excerptId: 'e1', documentId: 'd1' }],
+    retrieval: { hitCount: 1, documentCount: 1, keywords: [] },
+  },
+  done,
+];
+
 const clarification: StreamEvent[] = [
+  {
+    type: 'thinking-step',
+    step: { id: 's1', kind: 'search', label: 'Jeg leter etter årsrapporter.', durationMs: 2000 },
+  },
   { type: 'token', text: 'Mener du årsrapporten eller tildelingsbrevet?' },
   { type: 'done', messageId: 'm1', conversationId: 'c1', outcome: 'needs-clarification' },
 ];
@@ -253,5 +295,148 @@ describe('ChatView', () => {
     // An ordinary next turn: same thread, no special path.
     await waitFor(() => expect(asked).toEqual(['Hva er måloppnåelse?', 'Årsrapporten.']));
     await waitFor(() => expect(field()).toHaveProperty('placeholder', COMPOSE_PLACEHOLDER));
+  });
+
+  it('sends the document filter with the question, and says so over the answer', async () => {
+    const asked: (FilterSelection | undefined)[] = [];
+    const client: ChatClient = {
+      async *ask({ filters }: AskParams): AsyncIterable<StreamEvent> {
+        asked.push(filters);
+        for (const event of answer) yield event;
+      },
+      listThreads: async () => [],
+      getThread: async () => null,
+      listFacets: async () => [],
+    };
+
+    const selection: FilterSelection = {
+      ...emptyFilterSelection,
+      documentType: ['Årsrapport'],
+      year: ['2023'],
+    };
+
+    render(
+      <Shell selection={selection}>
+        <ChatView client={client} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+
+    // The filter is part of the question, not a view decoration (reise 8).
+    await waitFor(() => expect(asked).toEqual([selection]));
+
+    // And the answer says what it was asked against.
+    expect(await screen.findByText(/Avgrenset til: Årsrapport · 2023/u)).toBeTruthy();
+  });
+
+  it('says nothing about the filter when nothing was narrowed', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    await screen.findByRole('button', { name: 'Kopier svaret' });
+
+    expect(screen.queryByText(/Avgrenset til/u)).toBeNull();
+  });
+
+  it('copies the answer with its sources, and counts them in the receipt', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+
+    render(
+      <Shell>
+        <ChatView client={clientYielding(sourcedAnswer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    fireEvent.click(await screen.findByRole('button', { name: 'Kopier svaret' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    const copied = writeText.mock.calls[0]![0] as string;
+    // The marker survives, because there is now something for it to point at.
+    expect(copied).toContain('kvartalsvis [1].');
+    expect(copied).toContain('[1] Nkom (2022). Årsrapport Nkom 2022, s. 41.');
+    expect(await screen.findByText('Svaret og 1 kilde er kopiert.')).toBeTruthy();
+
+    vi.unstubAllGlobals();
+  });
+
+  it('offers to run a stopped answer again, and says why it has no sources', async () => {
+    const asked: string[] = [];
+    const client: ChatClient = {
+      async *ask({ query, signal }: AskParams): AsyncIterable<StreamEvent> {
+        asked.push(query);
+        yield { type: 'token', text: 'Halve svaret' };
+        if (asked.length === 1) {
+          await new Promise<void>((resolve) => signal?.addEventListener('abort', () => resolve()));
+          yield { type: 'error', error: { code: 'aborted', message: 'Svaret ble avbrutt.' } };
+          return;
+        }
+        yield done;
+      },
+      listThreads: async () => [],
+      getThread: async () => null,
+      listFacets: async () => [],
+    };
+
+    render(
+      <Shell>
+        <ChatView client={client} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    fireEvent.click(await screen.findByRole('button', { name: 'Avbryt genereringen' }));
+
+    // The text that arrived stays, and the card says why nothing is behind it.
+    const again = await screen.findByRole('button', { name: /Generer på nytt/u });
+    expect(screen.getByText(/Halve svaret/u)).toBeTruthy();
+    expect(screen.getByText(/kildene bak det kom aldri fram/u)).toBeTruthy();
+    // Nothing to copy from half an answer.
+    expect(screen.queryByRole('button', { name: 'Kopier svaret' })).toBeNull();
+
+    fireEvent.click(again);
+    await waitFor(() => expect(asked).toEqual(['Hva sier rapporten?', 'Hva sier rapporten?']));
+  });
+
+  it('takes focus back to the field when a failure arrives after a mouse click', async () => {
+    render(
+      <Shell>
+        <ChatView
+          client={clientYielding([
+            { type: 'error', error: { code: 'unknown', message: 'Noe gikk galt.' } },
+          ])}
+        />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    // The click landed on the send button, which became the stop button and
+    // then vanished with the failure. A real browser leaves focus on body;
+    // so does this.
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    await screen.findByRole('alert');
+    await waitFor(() => expect(document.activeElement).toBe(field()));
+  });
+
+  it('keeps «Tenkte i N sekunder» over a clarification', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(clarification)} />
+      </Shell>,
+    );
+
+    ask('Hva er måloppnåelse?');
+    await screen.findByText(CLARIFICATION_TAG);
+
+    // The agent searched before it asked back, and that is the same fact here
+    // as over an answer.
+    expect(screen.getByText('Tenkte i 2 sekunder')).toBeTruthy();
   });
 });

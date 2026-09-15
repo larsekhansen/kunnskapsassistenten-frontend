@@ -110,6 +110,27 @@
   padding-inline: var(--ds-size-2);
 }
 
+/*
+ * «Avgrenset til: Årsrapport · 2023» over the answer.
+ *
+ * Deliberately not a Chip. A Chip is a control — Designsystemet's own note on
+ * Tag says filtering belongs to Chip precisely because chips are pressed and
+ * removed — and this one is a statement about a question that has already
+ * been asked. Set in from the card edge like the reader's own question, so
+ * the two line up as the two things that framed the answer.
+ */
+.ka-filter-summary {
+  margin: 0;
+  padding-inline: var(--ds-size-2);
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: var(--ds-font-size-minus-1);
+}
+
+/* Why a stopped answer has no sources under it. */
+.ka-aborted-note {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
 .ka-answer-card {
   /* Chat is not a link target: nothing in the card should feel clickable. */
   cursor: auto;
@@ -438,6 +459,7 @@
 .ka-kickstarters__list[hidden],
 .ka-messages[hidden],
 .ka-message[hidden],
+.ka-filter-summary[hidden],
 .ka-answer-skeleton[hidden],
 .ka-streaming-status[hidden],
 .ka-thinking[hidden],

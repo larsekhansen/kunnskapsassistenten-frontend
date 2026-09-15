@@ -40,6 +40,19 @@ export const FOLLOW_UP_QUESTIONS = [
 ] as const;
 
 /*
+ * A stopped answer (reise 9 in design/brukerreiser-2026-09-15.md). The
+ * sources arrive in the last frame of the stream, so an answer that was
+ * stopped has none — and the `[n]` markers left in the text point nowhere.
+ * Saying that is what keeps them from reading as a bug.
+ */
+
+/** Under the text of an answer the reader stopped. */
+export const ABORTED_NOTE = 'Svaret ble avbrutt, så kildene bak det kom aldri fram.';
+
+/** The only action on a stopped answer: ask the same question again. */
+export const REGENERATE = 'Generer på nytt';
+
+/*
  * The agent asking for more before it answers: backend status
  * `needs-clarification` (design/eksisterende/api-for-frontend.md l.208).
  *
