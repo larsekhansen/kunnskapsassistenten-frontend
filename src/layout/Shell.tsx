@@ -5,6 +5,7 @@ import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
 import { ComposerContext } from './composerContext';
 import { COMPOSER_ID } from './ids';
 import { PanelSeparator } from './PanelSeparator';
+import { PanelWidthButtons } from './PanelWidthButtons';
 import { MainScrollContext } from './scrollContext';
 import { useAnswerSources } from './useAnswerSources';
 import { useNoAnswers } from './useNoAnswers';
@@ -392,6 +393,11 @@ function Sidebar({
         docs/review/brukerblikk-2026-09-15.md.
       */}
       <div className="sidebar-header">
+        {/*
+          The collapse button, and — while the panel is open — the two buttons
+          that move its edge a step at a time. Those are the pointer path WCAG
+          2.5.7 asks for beside the drag; see PanelWidthButtons.tsx.
+        */}
         {state.collapsed ? (
           /*
             BadgePosition is rendered whether or not there is a badge, on
@@ -415,6 +421,7 @@ function Sidebar({
         ) : (
           toggleButton
         )}
+        {state.collapsed ? null : <PanelWidthButtons slot={slot} />}
       </div>
 
       <div id={contentId} ref={content} hidden={state.collapsed} className="sidebar-content">

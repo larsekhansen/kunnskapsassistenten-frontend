@@ -286,14 +286,37 @@ tastaturet er der.
 | `Shift` + pil              | 64 px                                       |
 | `Home` / `End`             | smaleste / bredeste panelet kan være        |
 | `Enter` eller dobbeltklikk | tilbake til standardbredden                 |
+| knappene i panelhodet      | 16 px per klikk, uten draging               |
 
-Musa og fingeren drar den samme kanten. **Tastaturet er likeverdig, ikke en
-nødløsning:** WCAG 2.5.7 Dragging Movements krever at alt som kan gjøres ved å
-dra, også kan gjøres uten, og 2.1.1 krever at det går fra tastatur i det hele
-tatt.
+Musa og fingeren drar den samme kanten, og tastaturet gjør det samme uten å
+dra — det er WCAG 2.1.1 Keyboard.
+
+**To knapper i panelhodet er pekerveien:** «Gjør tråder og filter bredere» og
+«… smalere», ett steg på 16 px per klikk. De er der for WCAG 2.5.7 Dragging
+Movements (AA), som handler om **peker**-inndata: alt som betjenes med en
+draging skal også kunne betjenes med én peker uten å dra. Et tastatur
+oppfyller ikke den, for de kriteriet er skrevet for bruker peker og kan
+klikke, men ikke holde og bevege — hodepeker, skjelving, styrepinne. En
+gripeflate på 8 px er dessuten vrien å dra for flere enn dem. Funn fra KA CC
+sin anmeldelse av PR #50.
+
+Står kanten på en grense, blir knappen `aria-disabled` og ikke `disabled`. Å
+gjøre et panel bredere er noe man gjør ved å trykke på den samme knappen flere
+ganger, og en `disabled`-knapp slipper fokus til `body` i det den slår seg av.
+Samme par som i utdragssøket.
+
+**Skillet er ikke et tabbstopp når det ikke kan flytte seg.** Ved 1440 med
+begge sidekolonner åpne er 400 + 32 + 640 + 32 + 336 nøyaktig vinduet, og da er
+`aria-valuemin`, `aria-valuemax` og `aria-valuenow` det samme tallet. Linja
+står fortsatt — kanten er der — men `tabIndex` er −1 og `aria-disabled` er
+satt, for det er den samme regelen skallet alt følger om et sammenlagt panel:
+et tabbstopp som ikke kan gjøre noe er et tabbstopp i veien. 1440 er bredden
+alle Figma-rammene er tegnet i, så det er bredden flest møter.
 
 Skillet er `role="separator"` med tab-stopp, som er splitter-rollen i ARIA
-1.2, med `aria-orientation="vertical"` og `aria-valuenow/min/max` i piksler.
+1.2, med `aria-orientation="vertical"`, `aria-valuenow/min/max` i piksler og
+`aria-valuetext` («400 piksler»), siden en separator ikke bærer noen enhet en
+leser kan gjette.
 Ingen live-region: verdien _er_ meldingen, og en region som sa det samme en
 gang til ville snakket over leseren. Navnet kommer fra viewene i plassen, som
 alle andre navn i skallet — «Endre bredde på tråder og filter», ikke

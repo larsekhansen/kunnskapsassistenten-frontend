@@ -234,8 +234,26 @@ body {
   padding-inline: var(--ka-sidebar-padding-inline);
 }
 
+/*
+ * The panel head: the collapse button, and the two width buttons pushed to
+ * the far end of the row.
+ *
+ * `space-between` and not a margin, so the rail — which draws the collapse
+ * button alone — is unaffected: one item in a `space-between` row sits where
+ * it would have sat anyway, and the rail's own padding is what centres it.
+ */
 .sidebar-header {
   flex: 0 0 auto;
+  display: flex;
+  gap: var(--ds-size-2);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-width-buttons {
+  display: flex;
+  gap: var(--ds-size-1);
+  flex-shrink: 0;
 }
 
 /*

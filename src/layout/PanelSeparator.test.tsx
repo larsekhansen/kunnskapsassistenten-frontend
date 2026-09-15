@@ -64,6 +64,29 @@ describe('the separator as a control', () => {
     expect(separator.getAttribute('aria-valuemin')).toBe('400');
     expect(separator.getAttribute('aria-valuemax')).toBe('480');
   });
+
+  it('says what the number is, since a separator carries no unit', () => {
+    // Without `aria-valuetext` a screen reader reads «400» and the reader has
+    // to guess at what. KA CC, reviewing PR #50.
+    const separator = open('primary-sidebar');
+    expect(separator.getAttribute('aria-valuetext')).toBe('400 piksler');
+
+    fireEvent.keyDown(separator, { key: 'ArrowRight' });
+    expect(separator.getAttribute('aria-valuetext')).toBe('416 piksler');
+  });
+
+  it('is a tab stop while there is something to do, and not while there is not', () => {
+    expect(open('primary-sidebar').getAttribute('tabindex')).toBe('0');
+    document.body.innerHTML = '';
+
+    // 1440 is the three slots at their floors exactly. Every key on the
+    // separator then does nothing, and a tab stop that cannot do anything is
+    // a tab stop in the way — the rule the shell already keeps about a
+    // collapsed panel. The line stays drawn: the edge is still there.
+    const stuck = open('primary-sidebar', { width: 1440 });
+    expect(stuck.getAttribute('tabindex')).toBe('-1');
+    expect(stuck.getAttribute('aria-disabled')).toBe('true');
+  });
 });
 
 describe('the arrow keys', () => {

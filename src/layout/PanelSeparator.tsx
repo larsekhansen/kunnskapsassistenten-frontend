@@ -16,10 +16,10 @@ import {
   type PointerEvent as ReactPointerEvent,
   type KeyboardEvent,
 } from 'react';
-import { clampWidth, growthDirection, widthRange, widthStep, widthStride } from './resize';
+import { widthStep, widthStride } from './resize';
 import { useLayout } from './useLayout';
-import { useViewportWidth } from './useViewportWidth';
-import { defaultLayout, fittedWidths, slotLabel, type SidebarSlot } from './viewModel';
+import { usePanelWidth } from './usePanelWidth';
+import { slotLabel, type SidebarSlot } from './viewModel';
 
 /**
  * The edge between an open panel and the answer column, which the reader can
@@ -45,31 +45,20 @@ import { defaultLayout, fittedWidths, slotLabel, type SidebarSlot } from './view
  * neither fact is written down per slot.
  */
 export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
-  const { layout, setWidth } = useLayout();
-  const viewport = useViewportWidth();
+  const { layout } = useLayout();
   const [dragging, setDragging] = useState(false);
   /** Where the drag started, and the width it started from. */
   const origin = useRef({ x: 0, width: 0 });
 
-  const range = widthRange(layout, slot, viewport);
-  const direction = growthDirection(slot);
-  // What the panel is DRAWN at, which is what the reader is moving. The model
-  // may still be holding a wider number it asked for in a wider window; see
-  // `fittedWidths`.
-  const width = fittedWidths(layout, viewport)[slot];
+  // The edge, and everything that can move it. The buttons in the panel head
+  // read the same hook, so the two controls cannot disagree about where the
+  // edge is or how far it may go. See usePanelWidth.ts.
+  //
+  // `width` is what the panel is DRAWN at, which is what the reader is
+  // moving; the model may still be holding a wider number it asked for in a
+  // wider window. See `fittedWidths`.
+  const { width, range, direction, fixed, setWidth: resize, reset } = usePanelWidth(slot);
   const label = slotLabel(layout, slot) ?? '';
-
-  const resize = (next: number) => setWidth(slot, clampWidth(next, range));
-
-  /**
-   * Back to the width the design draws, and the stored one is forgotten with
-   * it: `writeStoredLayout` only writes down a width that differs from the
-   * default.
-   */
-  const reset = () => {
-    const sizing = defaultLayout.slots[slot].sizing;
-    if (sizing.mode !== 'flexible') setWidth(slot, sizing.width);
-  };
 
   function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     // Left button and touch and pen; a right-click is a menu, not a drag.
@@ -152,6 +141,12 @@ export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
       aria-valuemax={range.max}
       aria-valuemin={range.min}
       aria-valuenow={width}
+      /*
+        A separator carries no unit a screen reader can guess, so
+        `aria-valuenow` on its own is read as a bare number. This is the one
+        attribute that says what the number is. KA CC, reviewing PR #50.
+      */
+      aria-valuetext={`${width} piksler`}
       className="panel-separator ds-focus"
       data-before-main={direction === 1 || undefined}
       data-dragging={dragging || undefined}
@@ -163,7 +158,23 @@ export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
       role="separator"
-      tabIndex={0}
+      /*
+        Out of the tab order when the window has nothing to give — floor,
+        ceiling and current width one number — because then every key on it
+        does nothing. It is the rule the shell already keeps four lines away,
+        about a collapsed panel: a tab stop that cannot do anything is a tab
+        stop in the way. And the width it is true at is 1440, which is what
+        every Figma frame is drawn in and what the e2e suite runs in, so it is
+        the width most readers meet.
+
+        `aria-disabled` says the same thing to anyone who reaches it another
+        way — a screen reader's own navigation does not use the tab order.
+        The line itself stays drawn: the edge is still there, it just cannot
+        move, and removing it would take away the boundary as well as the
+        control. KA CC, reviewing PR #50.
+      */
+      aria-disabled={fixed || undefined}
+      tabIndex={fixed ? -1 : 0}
     />
   );
 }

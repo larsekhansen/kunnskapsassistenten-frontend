@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
+import { walkWithTab } from './helpers';
 
 /**
  * The edges between the panels, which the reader can move.
@@ -35,9 +36,16 @@ const HEIGHT = 900;
 
 const WIDTHS = [1280, 1440, 1536];
 
-function separator(page: Page, panel: 'tråder og filter' | 'kilder'): Locator {
+type Panel = 'tråder og filter' | 'kilder';
+
+function separator(page: Page, panel: Panel): Locator {
   return page.getByRole('separator', { name: `Endre bredde på ${panel}` });
 }
+
+const wider = (page: Page, panel: Panel) =>
+  page.getByRole('button', { name: `Gjør ${panel} bredere` });
+const narrower = (page: Page, panel: Panel) =>
+  page.getByRole('button', { name: `Gjør ${panel} smalere` });
 
 function panelWidth(page: Page, selector: string): Promise<number> {
   return page.evaluate(
@@ -139,6 +147,100 @@ test.describe('panelbredder', () => {
     await drag(page, handle, 40);
 
     expect(await panelWidth(page, '.secondary-sidebar')).toBe(SOURCES_DEFAULT - 40);
+  });
+
+  test('ett klikk gjør panelet bredere og smalere, uten en eneste draging', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'panelbredde: pekervei uten draging (WCAG 2.5.7)');
+    await page.setViewportSize({ width: 1920, height: HEIGHT });
+    await page.goto('/');
+
+    // `click()` er trykk og slipp på samme punkt: ingen bevegelse mellom dem,
+    // som er nettopp det 2.5.7 krever at skal holde. Ingen mouse.down/move
+    // her med vilje.
+    await wider(page, 'tråder og filter').click();
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT + STEP, 'etter ett klikk');
+
+    await wider(page, 'tråder og filter').click();
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT + 2 * STEP, 'etter to klikk');
+
+    await narrower(page, 'tråder og filter').click();
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT + STEP, 'etter ett klikk tilbake');
+
+    // Og separatoren melder det samme tallet: de to kontrollene flytter den
+    // samme kanten.
+    await expect(separator(page, 'tråder og filter')).toHaveAttribute(
+      'aria-valuenow',
+      String(NAV_DEFAULT + STEP),
+    );
+  });
+
+  test('knappene når helt opp til taket, og sier fra når de er der', async ({ page }, testInfo) => {
+    covers(testInfo, 'panelbredde: pekervei uten draging (WCAG 2.5.7)');
+    await page.setViewportSize({ width: 1920, height: HEIGHT });
+    await page.goto('/');
+
+    // Gulvet er der panelet står, så «smalere» er av fra første render.
+    await expect(narrower(page, 'tråder og filter')).toHaveAttribute('aria-disabled', 'true');
+
+    for (let press = 0; press < 5; press += 1) await wider(page, 'tråder og filter').click();
+    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter fem klikk');
+
+    // `aria-disabled`, ikke `disabled`: knappen blir stående i tab-rekkefølgen
+    // så fokus ikke faller til body midt i en serie klikk på den.
+    const atTop = wider(page, 'tråder og filter');
+    await expect(atTop).toHaveAttribute('aria-disabled', 'true');
+    expect(await atTop.evaluate((element) => element.hasAttribute('disabled'))).toBe(false);
+
+    // `force`, fordi Playwright regner `aria-disabled` som av og ellers venter
+    // på at knappen skal bli aktiv igjen. Poenget med paret er nettopp at
+    // nettleseren fortsatt leverer klikket, og at håndtereren er det som gjør
+    // knappen inert — så det er det klikket som skal måles.
+    await atTop.click({ force: true });
+    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter et klikk på grensa');
+  });
+
+  test('en kollapset sidekolonne har ingen breddeknapper', async ({ page }, testInfo) => {
+    covers(testInfo, 'panelbredde: ett skille per åpen sidekolonne');
+    await page.goto('/');
+
+    await expect(wider(page, 'kilder')).toHaveCount(0);
+    await expect(wider(page, 'tråder og filter')).toHaveCount(1);
+
+    await page.getByRole('button', { name: 'Skjul tråder og filter' }).click();
+    await expect(wider(page, 'tråder og filter')).toHaveCount(0);
+  });
+
+  test('på 1440 er skillene ute av tab-rekkefølgen, for da kan de ingenting', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'panelbredde: ingen tomme tabbstopp');
+    await page.setViewportSize({ width: 1440, height: HEIGHT });
+    await page.goto('/');
+    await showSources(page);
+
+    // 400 + 32 + 640 + 32 + 336 er vinduet nøyaktig: ingen av kantene kan
+    // flytte seg, og et tabbstopp som ikke kan gjøre noe er et tabbstopp i
+    // veien. Linjene står fortsatt; det er kanten, den kan bare ikke flyttes.
+    for (const panel of ['tråder og filter', 'kilder'] as const) {
+      const handle = separator(page, panel);
+      await expect(handle).toHaveCount(1);
+      await expect(handle).toHaveAttribute('tabindex', '-1');
+      await expect(handle).toHaveAttribute('aria-disabled', 'true');
+
+      // Og knappene sier det samme: det er vinduet som er fullt, ikke
+      // panelet som står på sitt eget tak.
+      await expect(wider(page, panel)).toHaveAttribute('aria-disabled', 'true');
+      await expect(narrower(page, panel)).toHaveAttribute('aria-disabled', 'true');
+    }
+
+    // Ingen av dem dukker opp i en Tab-vandring.
+    const steps = await walkWithTab(page);
+    expect(
+      steps.filter((step) => step.name.startsWith('Endre bredde på')),
+      'skillene skal ikke være tabbstopp når de ikke kan flytte seg',
+    ).toEqual([]);
   });
 
   test('piltastene gjør det samme som musa, 16 px og 64 med Shift', async ({ page }, testInfo) => {
@@ -318,6 +420,10 @@ test.describe('panelbredder', () => {
     page,
   }, testInfo) => {
     covers(testInfo, 'panelbredde: tilgjengelig i begge moduser');
+    // 1920 og ikke 1536: på 1536 med begge panelene åpne står navigasjons-
+    // panelet på gulvet og taket sitt samtidig, og da er skillet ute av
+    // tab-rekkefølgen med vilje. Fokusringen måles der det er noe å gjøre.
+    await page.setViewportSize({ width: 1920, height: HEIGHT });
     await page.goto('/');
     await showSources(page);
 
