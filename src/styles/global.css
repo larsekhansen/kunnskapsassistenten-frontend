@@ -209,7 +209,7 @@ body {
   border-inline-start: var(--ka-panel-border);
   /*
    * No surface of its own while it is open, and that is Lars's call on
-   * 2026-09-16: the sources belong with the answer, so this column shares the
+   * 2026-09-15: the sources belong with the answer, so this column shares the
    * answer column's ground and the border is what marks the edge. Finding 15
    * asked whether the asymmetry was deliberate. It is.
    *

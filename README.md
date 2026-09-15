@@ -313,7 +313,7 @@ sida er 3,95:1 og 4,23:1, over de 3:1 WCAG 1.4.11 ber om for en grense som
 betyr noe. `border-subtle`, som sto der før, er 1,73:1 og 2,04:1. Målt i bygget
 app 2026-09-15. Funn 4.
 
-**Kildepanelet har ingen egen flate når det er åpent** (Lars, 2026-09-16):
+**Kildepanelet har ingen egen flate når det er åpent** (Lars, 2026-09-15):
 kildene hører sammen med svaret, så kolonnen deler hovedkolonnens grunn og
 kanten markerer skillet. Funn 15 spurte om asymmetrien var med vilje. Den er
 det. Kollapset er det en rail, og da har det flate som den andre — en kolonne
