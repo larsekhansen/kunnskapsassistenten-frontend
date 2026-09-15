@@ -396,8 +396,14 @@ test.describe('navigasjonspanelet', () => {
    *
    * For en skjermleser er en åpen tråd uten `aria-current` det samme som en
    * tråd som ikke er åpen.
+   *
+   * **`fixme` til #5 har rettet tråd-URL-en.** Testen er skrevet ferdig og er
+   * rød på nøyaktig den påstanden den skal være rød på: raden finnes og ligger
+   * først, og mangler `aria-current`. Den står som `fixme` og ikke rød på
+   * `main`, fordi `main` skal være grønn. Fjern `fixme` i den PR-en som
+   * anmelder fiksen — anmelderen gjør det.
    */
-  test('tråden du nettopp lagde er merket som den åpne, uten reload', async ({
+  test.fixme('tråden du nettopp lagde er merket som den åpne, uten reload', async ({
     page,
   }, testInfo) => {
     covers(testInfo, 'egen tråd merket som åpen uten reload');

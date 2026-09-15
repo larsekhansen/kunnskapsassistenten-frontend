@@ -11,14 +11,14 @@ rapporten forklarer hvorfor.
 
 ## Portene
 
-| Port             | Resultat                                                |
-| ---------------- | ------------------------------------------------------- |
-| `build`          | grønn                                                   |
-| `lint`           | grønn                                                   |
-| `format:check`   | grønn                                                   |
-| `tokens:verify`  | grønn                                                   |
-| `npm test`       | grønn, **427 tester i 42 filer** på sammenslåingen      |
-| axe, fire ruter  | 1 brudd, `region` — står likt på `main`, se «Riktig» 5  |
+| Port            | Resultat                                               |
+| --------------- | ------------------------------------------------------ |
+| `build`         | grønn                                                  |
+| `lint`          | grønn                                                  |
+| `format:check`  | grønn                                                  |
+| `tokens:verify` | grønn                                                  |
+| `npm test`      | grønn, **427 tester i 42 filer** på sammenslåingen     |
+| axe, fire ruter | 1 brudd, `region` — står likt på `main`, se «Riktig» 5 |
 
 PR-en oppgir 379 unit; sammenslåingen har 427, fordi `main` har flyttet seg
 sytten commits siden grenpunktet.
@@ -33,13 +33,13 @@ Dirigenten ba meg måle min egen reise om igjen. Jeg har kjørt den i fem
 varianter, på tre commits: `5be38f1` (der brukerblikk runde 2 ble skrevet),
 `7f7147f` (`main` nå) og `9251b78` (sammenslåingen).
 
-| Variant                                     | 5be38f1 | 7f7147f | 9251b78 |
-| ------------------------------------------- | ------- | ------- | ------- |
-| Ett spørsmål, ferdig, reload                | ikke reprodusert | ikke reprodusert | ikke reprodusert |
-| To spørsmål, begge ferdige, reload          | ikke reprodusert | ikke reprodusert | ikke reprodusert |
-| Panelet parkert på svar 1, så reload        | ikke reprodusert | –       | –       |
-| Reload mens svar 2 strømmer                 | ikke reprodusert | –       | –       |
-| Reload straks etter at svar 2 ble ferdig    | ikke reprodusert | –       | –       |
+| Variant                                  | 5be38f1          | 7f7147f          | 9251b78          |
+| ---------------------------------------- | ---------------- | ---------------- | ---------------- |
+| Ett spørsmål, ferdig, reload             | ikke reprodusert | ikke reprodusert | ikke reprodusert |
+| To spørsmål, begge ferdige, reload       | ikke reprodusert | ikke reprodusert | ikke reprodusert |
+| Panelet parkert på svar 1, så reload     | ikke reprodusert | –                | –                |
+| Reload mens svar 2 strømmer              | ikke reprodusert | –                | –                |
+| Reload straks etter at svar 2 ble ferdig | ikke reprodusert | –                | –                |
 
 På sammenslåingen, to svar og reload: 3 kildekort før, 3 etter; «Kilder til
 svar 2 av 2» før og etter; «Fra Kudos» med 3 rader før og etter; 14 markører
@@ -161,7 +161,7 @@ ved siden av `filterSummary`, som har samme form.
    Det står **likt på `main` `7f7147f`**, kom med #50 og er #5 sitt. Samme
    svar for «første overskrift er h2, ikke h1».
 6. **Ikke-funn, så ingen melder det på nytt:** verktøyet skriver «textarea
-   *Spørsmål til Kunnskapsassistenten* ingen outline/box-shadow». Feltet har
+   _Spørsmål til Kunnskapsassistenten_ ingen outline/box-shadow». Feltet har
    likevel synlig fokus: `.ka-composer:focus-within` tegner
    `outline: solid 3px` og en hvit innerskygge, målt før og etter fokus.
    Verktøyet leser elementet og `ds-field`, ikke omslaget. Jeg legger det i

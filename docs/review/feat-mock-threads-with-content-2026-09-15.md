@@ -9,13 +9,13 @@ sammenslåingen, bygget app på 4173, 1440 × 900, mock-modus.
 
 ## Portene
 
-| Port            | Resultat                              |
-| --------------- | ------------------------------------- |
-| `build`         | grønn                                 |
-| `lint`          | grønn                                 |
-| `format:check`  | grønn                                 |
-| `tokens:verify` | grønn                                 |
-| `npm test`      | grønn, **434 i 42 filer**             |
+| Port               | Resultat                                          |
+| ------------------ | ------------------------------------------------- |
+| `build`            | grønn                                             |
+| `lint`             | grønn                                             |
+| `format:check`     | grønn                                             |
+| `tokens:verify`    | grønn                                             |
+| `npm test`         | grønn, **434 i 42 filer**                         |
 | `npm run test:e2e` | grønn, **113 tester på 51 s**, port 4173, CI=true |
 
 PR-en oppgir 430 og 112; sammenslåingen har fire unit og én e2e mer, som er
@@ -26,14 +26,14 @@ PR-en oppgir 430 og 112; sammenslåingen har fire unit og én e2e mer, som er
 **1. En tråd fra lista åpner hele samtalen.** Klikket «Regnskap og bevilgning
 i DSS sine årsrapporter» i navigasjonspanelet:
 
-| Målt                   | Verdi                        |
-| ---------------------- | ---------------------------- |
-| rute                   | `/threads/dss-regnskap`      |
-| meldinger              | 1 spørsmål, 1 svar           |
-| tenketid               | «Tenkte i 6 sekunder»        |
-| «Fremgangsmåte»        | til stede                    |
-| markører i svaret      | 4                            |
-| klikk på `[1]`         | 2 kildekort, utdraget synlig |
+| Målt              | Verdi                        |
+| ----------------- | ---------------------------- |
+| rute              | `/threads/dss-regnskap`      |
+| meldinger         | 1 spørsmål, 1 svar           |
+| tenketid          | «Tenkte i 6 sekunder»        |
+| «Fremgangsmåte»   | til stede                    |
+| markører i svaret | 4                            |
+| klikk på `[1]`    | 2 kildekort, utdraget synlig |
 
 Altså den samme skjermen som å stille spørsmålet og vente, som var hele
 poenget. (`pr58/traad-fra-lista.png`.)
@@ -41,13 +41,13 @@ poenget. (`pr58/traad-fra-lista.png`.)
 **2. Tidsstempel og gruppering stemmer.** Elleve tråder, og alle fem bøttene i
 `views/threads/grouping.ts` tegnes:
 
-| Gruppe          | Tråder |
-| --------------- | ------ |
-| I dag           | 2      |
-| Siste 7 dager   | 3      |
-| Siste 30 dager  | 4      |
-| Juli            | 1      |
-| 2025            | 1      |
+| Gruppe         | Tråder |
+| -------------- | ------ |
+| I dag          | 2      |
+| Siste 7 dager  | 3      |
+| Siste 30 dager | 4      |
+| Juli           | 1      |
+| 2025           | 1      |
 
 **3. En tråd brukeren lager selv ligger øverst.** Stilte et spørsmål på
 forsida: tolv rader etterpå, og den nye står først, under «I dag», med sin
@@ -103,7 +103,7 @@ reload, så tilstanden uten reload har aldri vært målt.
    under seg; «årsrapport» treffer nøyaktig to av de nye titlene og ingen
    andre, og påstandene rundt er de samme. Unit-testen ble **strengere**, ikke
    løsere: den sa før «finner en tråd med meldinger, og en uten», og sier nå at
-   *hver* tråd i lista har en samtale på to meldinger. Det er den riktige
+   _hver_ tråd i lista har en samtale på to meldinger. Det er den riktige
    veien.
 2. **`klima-feil` er utelatt med en grunn som holder.** En feilet tur har
    ingen tekst å lagre — teksten bor i `errorText.ts`, slått opp på koden — så

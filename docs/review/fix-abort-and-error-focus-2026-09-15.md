@@ -8,15 +8,15 @@
 
 ## Portene
 
-| Port               | Resultat                                            |
-| ------------------ | --------------------------------------------------- |
-| `build`            | grønn                                               |
-| `lint`             | grønn                                               |
-| `format:check`     | grønn                                               |
-| `tokens:verify`    | grønn                                               |
-| `npm test`         | grønn, **431 i 42 filer**                           |
+| Port               | Resultat                                               |
+| ------------------ | ------------------------------------------------------ |
+| `build`            | grønn                                                  |
+| `lint`             | grønn                                                  |
+| `format:check`     | grønn                                                  |
+| `tokens:verify`    | grønn                                                  |
+| `npm test`         | grønn, **431 i 42 filer**                              |
 | `npm run test:e2e` | **116 grønne** på 50 s (andre kjøring, se «Om suiten») |
-| axe, fire ruter    | 1 brudd, `region`, likt på `main`                   |
+| axe, fire ruter    | 1 brudd, `region`, likt på `main`                      |
 
 PR-en oppgir 427 og 115; de fire og den ene er #57 sine.
 
@@ -26,14 +26,14 @@ PR-en oppgir 427 og 115; de fire og den ene er #57 sine.
 
 Stilte spørsmålet, stoppet mens «Tenker …» sto på skjermen:
 
-| Målt                             | Verdi                                 |
-| -------------------------------- | ------------------------------------- |
-| notis under kortet               | «Du stoppet søket før svaret begynte.» |
-| «Generer på nytt»                | til stede                             |
-| svarmeldinger                    | 1                                     |
-| kort tegnet                      | 1                                     |
-| kildepanelet sier                | «Svaret ble avbrutt før kildene kom»  |
-| «Ingen kilder ennå»              | 0                                     |
+| Målt                | Verdi                                  |
+| ------------------- | -------------------------------------- |
+| notis under kortet  | «Du stoppet søket før svaret begynte.» |
+| «Generer på nytt»   | til stede                              |
+| svarmeldinger       | 1                                      |
+| kort tegnet         | 1                                      |
+| kildepanelet sier   | «Svaret ble avbrutt før kildene kom»   |
+| «Ingen kilder ennå» | 0                                      |
 
 Turen forsvant her før. Nå står den, med en vei videre og et panel som sier
 hva som skjedde. (`pr59/avbrutt-tenkefase.png`.)
@@ -46,21 +46,21 @@ det **ikke** gir den tomme `<li>`-en kommentaren over advarte mot, fordi
 
 Sporet `document.activeElement` hver 200 ms fra klikket til etter feilen:
 
-| ms   | fokus                     | alert |
-| ---- | ------------------------- | ----- |
-| 0    | «Avbryt genereringen»     | 0     |
-| 5093 | **«Prøv igjen»**          | 1     |
+| ms   | fokus                 | alert |
+| ---- | --------------------- | ----- |
+| 0    | «Avbryt genereringen» | 0     |
+| 5093 | **«Prøv igjen»**      | 1     |
 
 To skifter, ingen innom `body`. Fokus lander der PR-en sier det skal, i det
 samme bildet som feilen kommer. (`pr59/feil-museklikk.png`.)
 
 ### Steg C: avvist nøkkel, som ikke har noen «Prøv igjen»
 
-| Målt           | Verdi                                              |
-| -------------- | -------------------------------------------------- |
-| «Prøv igjen»   | 0 knapper                                          |
-| fokus          | `textarea «Spørsmål til Kunnskapsassistenten»`     |
-| varselet       | «Ingen tilgang — Kunnskapsassistenten avviste nøkkelen …» |
+| Målt         | Verdi                                                     |
+| ------------ | --------------------------------------------------------- |
+| «Prøv igjen» | 0 knapper                                                 |
+| fokus        | `textarea «Spørsmål til Kunnskapsassistenten»`            |
+| varselet     | «Ingen tilgang — Kunnskapsassistenten avviste nøkkelen …» |
 
 Riktig: en feil uten vei tilbake sender leseren til den veien som finnes.
 
@@ -77,7 +77,7 @@ const onComposerButton =
 
 Kommentaren over begrunner den slik: «A button inside the composer counts as
 lost too: it is the control that just changed meaning underneath the reader.»
-Men *hvilken som helst* knapp i skrivefeltsområdet teller, også de som ikke
+Men _hvilken som helst_ knapp i skrivefeltsområdet teller, også de som ikke
 byttet mening. Målt på sammenslåingen: send med Enter, flytt fokus til
 «Vedlegg kommer», vent på feilen —
 
