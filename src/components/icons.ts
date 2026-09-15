@@ -30,3 +30,24 @@ export {
  * changes one should change one line.
  */
 export { FunnelIcon as FilterIcon, PencilWritingIcon as NewThreadIcon } from '@navikt/aksel-icons';
+
+/*
+ * The two ends of the inline axis, for a control that moves an edge along it.
+ *
+ * These keep a direction in the name where every other export here has a
+ * role, and that is because the direction IS the role: the width buttons in a
+ * panel head point the way the edge will travel, and which end that is
+ * depends on which side of the answer column the panel sits — the same fact
+ * `growthDirection()` reads off `slotOrder`. A role name like «wider» could
+ * not carry a glyph, because wider is one direction for one panel and the
+ * other for the other.
+ *
+ * «Inline start» and «inline end» are CSS's own words for the two ends, the
+ * vendor vocabulary the naming rule makes an exception for — not «left» and
+ * «right», which would be wrong the day the app is read in a language that
+ * runs the other way.
+ */
+export {
+  ChevronLeftIcon as InlineStartIcon,
+  ChevronRightIcon as InlineEndIcon,
+} from '@navikt/aksel-icons';

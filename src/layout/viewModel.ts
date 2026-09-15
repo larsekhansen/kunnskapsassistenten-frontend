@@ -60,31 +60,27 @@ export const views: Record<ViewId, View> = {
  */
 export type SlotSizing =
   /**
-   * Holds its width, and does not give when the window is short of room. The
-   * navigation panel is 400 px or it is collapsed; there is nothing between.
-   */
-  | { mode: 'fixed'; width: number; collapsedWidth: number }
-  /**
-   * Holds a preferred width and gives down to `minWidth` when the window runs
-   * out of room. The sources panel is the one slot that does — decision
-   * 2026-09-14, option A in design/visjon-og-beslutninger.md.
+   * Has a width of its own, between a floor and a ceiling. Both sidebars.
    *
-   * It gives AFTER the answer column has reached its own floor, and that
-   * ordering is not coded anywhere: it falls out of the flexbox rules in
-   * global.css, where the answer column grows from a zero basis and refuses
-   * to shrink, and this slot starts at `width` and is the only item allowed
-   * to shrink.
+   * `width` is what the slot asks for; `minWidth` and `maxWidth` are the
+   * bounds a drag may not leave, and the floor the window may squeeze it to.
+   * It was two modes until 2026-09-15 — one that held its width and one that
+   * gave way — and the drag handle collapsed them into one: a panel the user
+   * has widened DOES give way, back to the width it had before.
+   *
+   * Which of the two gives first is a rule rather than a mode, and it is
+   * written out in `fittedWidths` below, where it can be read and tested.
    */
-  | { mode: 'shrinkable'; width: number; minWidth: number; collapsedWidth: number }
+  | { mode: 'sized'; width: number; minWidth: number; maxWidth: number; collapsedWidth: number }
   /** Takes what is left, between bounds. The answer column, and only it. */
   | { mode: 'flexible'; minWidth: number; maxWidth: number };
 
 /**
  * The narrowest a slot can be drawn while open, which is what the breakpoint
- * below is summed from. A slot that does not give reports the width it keeps.
+ * below is summed from.
  */
 export function slotFloor(sizing: SlotSizing): number {
-  return sizing.mode === 'fixed' ? sizing.width : sizing.minWidth;
+  return sizing.minWidth;
 }
 
 /**
@@ -216,7 +212,21 @@ export const defaultLayout: Layout = {
       // Collapsed, this slot is a rail; see `railWidth`. It was 236 until
       // 2026-09-15, wide enough to draw «Vis tråder og filter» on one line,
       // which turned out to be the wrong thing to be wide enough for.
-      sizing: { mode: 'fixed', width: 400, collapsedWidth: railWidth },
+      //
+      // The bounds are the drag handle's, added 2026-09-15 (rolle-5i). 400 is
+      // the floor as well as the default: the panel may be widened and never
+      // narrowed, because 328 inner is what the filter controls were drawn
+      // for. 480 is the ceiling Lars set — 408 inner, room for a longer
+      // document title on one line, and still short of the answer column's
+      // own 640 floor at 1280 with the sources panel railed
+      // (480 + 32 + 640 + 67 = 1219).
+      sizing: {
+        mode: 'sized',
+        width: 400,
+        minWidth: 400,
+        maxWidth: 480,
+        collapsedWidth: railWidth,
+      },
     },
     main: {
       slot: 'main',
@@ -270,7 +280,18 @@ export const defaultLayout: Layout = {
       // design/omraader/september-2026/brukes-ikke/, it disagrees with the
       // `right-sidebar` organism it instantiates, and it sums to 1471 inside
       // its own 1440 px frame.
-      sizing: { mode: 'shrinkable', width: 432, minWidth: 336, collapsedWidth: railWidth },
+      //
+      // 560 is the ceiling, and it is the top of the `kilder` organism frame
+      // quoted above — the widest this column is drawn anywhere in the
+      // design. The floor stays 336, which is both the drag's floor and the
+      // width the window may squeeze it to.
+      sizing: {
+        mode: 'sized',
+        width: 432,
+        minWidth: 336,
+        maxWidth: 560,
+        collapsedWidth: railWidth,
+      },
     },
   },
 };
@@ -423,8 +444,15 @@ export function withWidth(layout: Layout, slot: Slot, width: number): Layout {
   const state = layout.slots[slot];
   if (state.sizing.mode === 'flexible') return layout;
 
-  const clamped =
-    state.sizing.mode === 'shrinkable' ? Math.max(width, state.sizing.minWidth) : width;
+  // The model's own bounds, and they are a backstop rather than the rule the
+  // drag follows: what fits in THIS window is narrower, and `widthRange` in
+  // resize.ts works it out. This is what stops a stored number nobody can
+  // produce any more — an old `ka.layout.v1`, a hand-edited one — from
+  // reaching the layout.
+  const clamped = Math.min(
+    Math.max(Math.round(width), state.sizing.minWidth),
+    state.sizing.maxWidth,
+  );
   if (state.sizing.width === clamped) return layout;
 
   return {
@@ -469,33 +497,104 @@ export function withViewMoved(layout: Layout, view: ViewId, target: Slot): Layou
   };
 }
 
+/** What a slot takes up on the row right now, collapsed or open. */
+export function slotOccupied(state: SlotState): number {
+  const sizing = state.sizing;
+  if (sizing.mode === 'flexible') return slotFloor(sizing);
+  return state.collapsed ? sizing.collapsedWidth : sizing.width;
+}
+
+/** The gap this slot puts between itself and the answer column. A rail has none. */
+export function slotGapFor(state: SlotState): number {
+  return state.collapsed ? 0 : slotGap;
+}
+
+/**
+ * The widths the sidebars are actually DRAWN at in a window this wide.
+ *
+ * The model holds what the reader asked for. This is what fits, and the two
+ * are the same number until the reader has dragged a panel wider than the
+ * window can hold — which a window they then shrink, or a second panel they
+ * open, can both produce.
+ *
+ * Somebody has to give, and the order is the decision of 2026-09-14 (option A
+ * in design/visjon-og-beslutninger.md) with the drag handle's addition:
+ *
+ *   1. the answer column, down to its 640 px floor. That is CSS, not here:
+ *      it grows from a zero basis and never shrinks, so it simply takes what
+ *      is left. This function reserves the floor and no more.
+ *   2. the sources panel, down to 336. It is the panel a reader opens to
+ *      check a citation, while the navigation panel is where the
+ *      conversation is steered from.
+ *   3. the navigation panel, down to 400 — the width it had before anybody
+ *      dragged it. Nothing gives below its floor, and a window narrower than
+ *      the floors is the undesigned range under 1280.
+ *
+ * It is pure, and it is what `aria-valuenow` on the separator reports: a
+ * value that says 480 while the panel is drawn at 400 is a lie told to the
+ * one reader who cannot see the difference.
+ */
+export function fittedWidths(layout: Layout, viewport: number): Record<SidebarSlot, number> {
+  const fitted = {} as Record<SidebarSlot, number>;
+  for (const slot of sidebarSlots) fitted[slot] = slotOccupied(layout.slots[slot]);
+
+  let over =
+    fitted['primary-sidebar'] +
+    fitted['secondary-sidebar'] +
+    slotGapFor(layout.slots['primary-sidebar']) +
+    slotGapFor(layout.slots['secondary-sidebar']) +
+    slotFloor(layout.slots.main.sizing) -
+    viewport;
+
+  // `yieldingSidebar` first and the other after it, which is the rule above
+  // read off the model rather than written out again.
+  for (const slot of [yieldingSidebar, otherSidebar(yieldingSidebar)]) {
+    if (over <= 0) break;
+    const state = layout.slots[slot];
+    if (state.collapsed || state.sizing.mode === 'flexible') continue;
+
+    const give = Math.min(over, fitted[slot] - state.sizing.minWidth);
+    if (give <= 0) continue;
+    fitted[slot] -= give;
+    over -= give;
+  }
+
+  return fitted;
+}
+
 /**
  * The slot widths as CSS custom properties, for the shell's inline style.
  * A collapsed slot reports its collapsed width, so CSS never has to know
  * which state the slot is in.
+ *
+ * `viewport` is the window's inner width, because an open panel's width is no
+ * longer a property of the layout alone: see `fittedWidths`.
  */
-export function layoutStyle(layout: Layout): Record<string, string> {
+export function layoutStyle(layout: Layout, viewport: number): Record<string, string> {
   const style: Record<string, string> = {};
+  const fitted = fittedWidths(layout, viewport);
 
-  for (const slot of slotOrder) {
+  // The answer column and the sidebars separately, rather than one loop over
+  // `slotOrder`: `flexible` is the answer column's mode and `sized` is the
+  // sidebars', the model says so in `defaultLayout`, and a loop that pretends
+  // otherwise only makes the types lie about which slot can be collapsed.
+  const main = layout.slots.main.sizing;
+  if (main.mode === 'flexible') {
+    style['--ka-main-min-width'] = `${main.minWidth}px`;
+    style['--ka-main-max-width'] = `${main.maxWidth}px`;
+  }
+
+  for (const slot of sidebarSlots) {
     const state = layout.slots[slot];
     const sizing = state.sizing;
+    if (sizing.mode === 'flexible') continue;
 
-    if (sizing.mode === 'flexible') {
-      style[`--ka-${slot}-min-width`] = `${sizing.minWidth}px`;
-      style[`--ka-${slot}-max-width`] = `${sizing.maxWidth}px`;
-      continue;
-    }
-
-    style[`--ka-${slot}-width`] = `${state.collapsed ? sizing.collapsedWidth : sizing.width}px`;
-
-    if (sizing.mode === 'shrinkable') {
-      // Collapsed, the floor is the collapsed width itself. A button is not
-      // something to squeeze: the slot stops giving the moment it is down to
-      // the one control it still shows.
-      style[`--ka-${slot}-min-width`] =
-        `${state.collapsed ? sizing.collapsedWidth : sizing.minWidth}px`;
-    }
+    style[`--ka-${slot}-width`] = `${state.collapsed ? sizing.collapsedWidth : fitted[slot]}px`;
+    // Collapsed, the floor is the collapsed width itself. A button is not
+    // something to squeeze: the slot stops giving the moment it is down to
+    // the one control it still shows.
+    style[`--ka-${slot}-min-width`] =
+      `${state.collapsed ? sizing.collapsedWidth : sizing.minWidth}px`;
   }
 
   return style;

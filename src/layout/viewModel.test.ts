@@ -45,40 +45,50 @@ describe('withViewMoved', () => {
 });
 
 describe('layoutStyle', () => {
+  // The window every frame in design/omraader/ is drawn at, and what
+  // Playwright opens. Widths are no longer a property of the layout alone —
+  // see `fittedWidths` — so every case here has to say which window it is in.
+  const wide = 1536;
+
   it('reports the collapsed width for a collapsed slot', () => {
-    expect(layoutStyle(defaultLayout)['--ka-secondary-sidebar-width']).toBe(`${railWidth}px`);
+    expect(layoutStyle(defaultLayout, wide)['--ka-secondary-sidebar-width']).toBe(`${railWidth}px`);
 
     const open = withCollapsed(defaultLayout, 'secondary-sidebar', false);
-    expect(layoutStyle(open)['--ka-secondary-sidebar-width']).toBe('432px');
+    expect(layoutStyle(open, wide)['--ka-secondary-sidebar-width']).toBe('432px');
   });
 
   it('gives the sources panel a floor to shrink to, and none when collapsed', () => {
     const open = withCollapsed(defaultLayout, 'secondary-sidebar', false);
-    expect(layoutStyle(open)['--ka-secondary-sidebar-min-width']).toBe('336px');
+    expect(layoutStyle(open, wide)['--ka-secondary-sidebar-min-width']).toBe('336px');
 
     // Collapsed, the floor is the collapsed width: there is one button left
     // in the panel and it is not something to squeeze.
-    expect(layoutStyle(defaultLayout)['--ka-secondary-sidebar-min-width']).toBe(`${railWidth}px`);
+    expect(layoutStyle(defaultLayout, wide)['--ka-secondary-sidebar-min-width']).toBe(
+      `${railWidth}px`,
+    );
   });
 
   it('collapses both sidebars to the same rail', () => {
     // Two rails of different widths would read as a mistake rather than as a
     // pair, so the derivation in `railWidth` has to hold for both slots.
     const collapsed = withCollapsed(defaultLayout, 'primary-sidebar', true);
-    const style = layoutStyle(collapsed);
+    const style = layoutStyle(collapsed, wide);
 
     expect(style['--ka-primary-sidebar-width']).toBe(`${railWidth}px`);
     expect(style['--ka-secondary-sidebar-width']).toBe(`${railWidth}px`);
     expect(railWidth).toBe(67);
   });
 
-  it('gives the navigation panel no floor, because it never gives way', () => {
-    expect(layoutStyle(defaultLayout)['--ka-primary-sidebar-min-width']).toBeUndefined();
-    expect(layoutStyle(defaultLayout)['--ka-primary-sidebar-width']).toBe('400px');
+  it('gives the navigation panel a floor too, now that it can be widened', () => {
+    // It had none while 400 was the only width it could have. A panel the
+    // reader has dragged wider is the one that has something to give back,
+    // and the floor is the width it started at.
+    expect(layoutStyle(defaultLayout, wide)['--ka-primary-sidebar-min-width']).toBe('400px');
+    expect(layoutStyle(defaultLayout, wide)['--ka-primary-sidebar-width']).toBe('400px');
   });
 
   it('gives the flexible slot bounds rather than a width', () => {
-    const style = layoutStyle(defaultLayout);
+    const style = layoutStyle(defaultLayout, wide);
     expect(style['--ka-main-max-width']).toBe('800px');
     expect(style['--ka-main-width']).toBeUndefined();
   });
@@ -87,10 +97,25 @@ describe('layoutStyle', () => {
     // It had a second, lower floor of 618 for one state that did not fit at
     // 1280. The rail took that state's shortfall away, so the floor is one
     // number again. Decision 2026-09-15.
-    expect(layoutStyle(defaultLayout)['--ka-main-min-width']).toBe('640px');
+    expect(layoutStyle(defaultLayout, wide)['--ka-main-min-width']).toBe('640px');
 
     const open = withCollapsed(defaultLayout, 'secondary-sidebar', false);
-    expect(layoutStyle(open)['--ka-main-min-width']).toBe('640px');
+    expect(layoutStyle(open, wide)['--ka-main-min-width']).toBe('640px');
+  });
+
+  it('draws a widened panel at what the window can hold, not at what was asked for', () => {
+    // The reader widened the navigation panel in a window with room, then
+    // opened the sources panel at 1440 — where there is none. What is drawn
+    // has to fit, and `aria-valuenow` reports this number and not the wish.
+    const both = withCollapsed(
+      withWidth(defaultLayout, 'primary-sidebar', 480),
+      'secondary-sidebar',
+      false,
+    );
+    const style = layoutStyle(both, 1440);
+
+    expect(style['--ka-primary-sidebar-width']).toBe('400px');
+    expect(style['--ka-secondary-sidebar-width']).toBe('336px');
   });
 });
 
@@ -144,6 +169,25 @@ describe('withWidth', () => {
   it('will not drag the sources panel below the width it may shrink to', () => {
     const narrower = withWidth(defaultLayout, 'secondary-sidebar', 200);
     expect(narrower.slots['secondary-sidebar'].sizing).toMatchObject({ width: 336 });
+  });
+
+  it('will not drag a panel past the ceiling the design gives it', () => {
+    expect(
+      withWidth(defaultLayout, 'primary-sidebar', 900).slots['primary-sidebar'].sizing,
+    ).toMatchObject({
+      width: 480,
+    });
+    expect(
+      withWidth(defaultLayout, 'secondary-sidebar', 900).slots['secondary-sidebar'].sizing,
+    ).toMatchObject({ width: 560 });
+  });
+
+  it('keeps whole pixels, because a fraction of one is a fraction of a border', () => {
+    expect(
+      withWidth(defaultLayout, 'primary-sidebar', 432.6).slots['primary-sidebar'].sizing,
+    ).toMatchObject({
+      width: 433,
+    });
   });
 
   it('ignores the answer column, which has no width of its own', () => {

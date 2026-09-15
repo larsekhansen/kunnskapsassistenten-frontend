@@ -4,12 +4,15 @@ import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
 import { ComposerContext } from './composerContext';
 import { COMPOSER_ID } from './ids';
+import { PanelSeparator } from './PanelSeparator';
+import { PanelWidthButtons } from './PanelWidthButtons';
 import { MainScrollContext } from './scrollContext';
 import { useAnswerSources } from './useAnswerSources';
 import { useNoAnswers } from './useNoAnswers';
 import { useCitation } from './useCitation';
 import { useComposerRegistry } from './useComposerPresence';
 import { useLayout } from './useLayout';
+import { useViewportWidth } from './useViewportWidth';
 import { viewComponents } from './viewComponents';
 import { layoutStyle, slotLabel, views } from './viewModel';
 
@@ -44,6 +47,12 @@ export type ShellProps = {
  */
 export function Shell({ routeOwnsMain = false }: ShellProps) {
   const { layout } = useLayout();
+  /*
+   * A panel's drawn width depends on the window as well as on the layout: a
+   * panel dragged wider than this window can hold is drawn at what fits. See
+   * `fittedWidths` in viewModel.ts.
+   */
+  const viewport = useViewportWidth();
   // The main slot owns the scroll, so the element is handed to the views
   // rather than looked up from inside them. See scrollContext.ts.
   const mainScroll = useRef<HTMLElement | null>(null);
@@ -92,8 +101,21 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
       ) : null}
 
       <ComposerContext value={composerPresence}>
-        <div className="shell" style={layoutStyle(layout)}>
+        <div className="shell" style={layoutStyle(layout, viewport)}>
           <Sidebar slot="primary-sidebar" element="nav" />
+          {/*
+            One separator per OPEN panel, on the edge it shares with the
+            answer column. A collapsed panel is a rail with a fixed width and
+            nothing to drag, and a tab stop that cannot do anything is a tab
+            stop in the way.
+
+            Outside the landmark rather than inside it: what it resizes is the
+            slot, and the panel's own content has no business containing the
+            handle that moves its edge.
+          */}
+          {layout.slots['primary-sidebar'].collapsed ? null : (
+            <PanelSeparator slot="primary-sidebar" />
+          )}
 
           <main id="main-content" className="main" ref={mainScroll}>
             {/*
@@ -113,6 +135,9 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
             {routeOwnsMain ? null : <MainSlot />}
           </main>
 
+          {layout.slots['secondary-sidebar'].collapsed ? null : (
+            <PanelSeparator slot="secondary-sidebar" />
+          )}
           <Sidebar slot="secondary-sidebar" element="aside" />
         </div>
       </ComposerContext>
@@ -368,6 +393,11 @@ function Sidebar({
         docs/review/brukerblikk-2026-09-15.md.
       */}
       <div className="sidebar-header">
+        {/*
+          The collapse button, and — while the panel is open — the two buttons
+          that move its edge a step at a time. Those are the pointer path WCAG
+          2.5.7 asks for beside the drag; see PanelWidthButtons.tsx.
+        */}
         {state.collapsed ? (
           /*
             BadgePosition is rendered whether or not there is a badge, on
@@ -391,6 +421,7 @@ function Sidebar({
         ) : (
           toggleButton
         )}
+        {state.collapsed ? null : <PanelWidthButtons slot={slot} />}
       </div>
 
       <div id={contentId} ref={content} hidden={state.collapsed} className="sidebar-content">

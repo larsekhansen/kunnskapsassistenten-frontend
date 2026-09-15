@@ -37,6 +37,18 @@
   --ka-rail-padding-inline: var(--ds-size-3); /* 12 px, the 24 in railWidth */
 
   /*
+   * How wide a hand has to be right to take hold of a panel's edge.
+   *
+   * The edge itself stays the 1 px line it has always been; this is only the
+   * part that answers the pointer. 8 px is the narrowest that is comfortable
+   * with a mouse without the grip reading as a second, thicker border, and
+   * WCAG 2.5.8 is met by the keyboard rather than by the target: a separator
+   * can be moved with the arrow keys, so the 24 px target rule's «equivalent»
+   * exception applies. See src/layout/PanelSeparator.tsx.
+   */
+  --ka-separator-grip: var(--ds-size-2); /* 8 px */
+
+  /*
    * What separates a panel from the page, on the edge facing the answer
    * column.
    *
@@ -86,21 +98,99 @@ body {
 
 /*
  * The 32 px belongs between an OPEN panel and the answer column, and nowhere
- * else, so it is a margin on the panel rather than `gap` on the row.
+ * else, so it is a margin rather than `gap` on the row.
  *
  * `gap` cannot say that: it spaces every pair of items alike, and a collapsed
  * rail must sit flush against the answer column. That is the whole point of
  * the rail — Lars, 2026-09-15, on the collapsed navigation panel in dark
  * mode: «skjult filter kolonne er ikke skjult». 32 px of tinted page beside a
  * 67 px rail reads as a hole where a column used to be.
+ *
+ * The margin sits on the SEPARATOR below and not on the panel, because the
+ * separator is the one element that exists exactly when the gap does: one per
+ * open panel, none for a rail.
  */
-.primary-sidebar:not([data-collapsed]) {
-  margin-inline-end: var(--ka-slot-gap);
+
+/*
+ * The edge a reader can take hold of.
+ *
+ * It contributes nothing to the row's arithmetic — 400 + 32 + 640 + 32 + 336
+ * is still the sum at 1440 — and that is what the margins below are for. The
+ * box is `--ka-separator-grip` wide and the negative margins take the same
+ * amount back, so the only thing left over is the 32 px gap it carries on
+ * the answer column's side.
+ *
+ * Centred on the panel's own 1 px border rather than sitting beside it: the
+ * line is what the reader sees as the edge, so it has to be what they reach
+ * for. Half the grip and half the border, hence the two halves in each
+ * `calc`.
+ *
+ * `position: relative` puts it above both neighbours without a `z-index`: a
+ * positioned flex item paints after its unpositioned siblings, and the 4 px
+ * it hangs over the panel would otherwise be painted over by the panel that
+ * comes later in the DOM.
+ */
+.panel-separator {
+  flex: 0 0 auto;
+  align-self: stretch;
+  position: relative;
+  inline-size: var(--ka-separator-grip);
+  cursor: col-resize;
+  /*
+   * A touch that lands here is a drag, not a scroll. Without it the browser
+   * claims the gesture and the panel never moves — WCAG 2.5.7 asks that a
+   * drag have a non-drag alternative, not that the drag itself be broken.
+   */
+  touch-action: none;
 }
 
-.secondary-sidebar:not([data-collapsed]) {
-  margin-inline-start: var(--ka-slot-gap);
+/*
+ * Before the answer column: the panel's border box ends where this one
+ * starts, so it is pulled back over the border, and the gap is on its other
+ * side. After the answer column, the same two the other way round.
+ */
+.panel-separator[data-before-main] {
+  margin-inline-start: calc(-0.5 * (var(--ka-separator-grip) + var(--ds-border-width-default)));
+  margin-inline-end: calc(
+    var(--ka-slot-gap) - 0.5 * (var(--ka-separator-grip) - var(--ds-border-width-default))
+  );
 }
+
+.panel-separator:not([data-before-main]) {
+  margin-inline-start: calc(
+    var(--ka-slot-gap) - 0.5 * (var(--ka-separator-grip) - var(--ds-border-width-default))
+  );
+  margin-inline-end: calc(-0.5 * (var(--ka-separator-grip) + var(--ds-border-width-default)));
+}
+
+/*
+ * The line the grip draws while it is being used.
+ *
+ * The panel's own border is what marks the edge the rest of the time, so this
+ * one only shows up under the pointer, under the keyboard focus, and while
+ * the edge is moving. `--ds-color-base-default` is the accent role without a
+ * family, which is what CONTRIBUTING asks of anything interactive; the panel
+ * border beside it is explicit neutral, and the two are meant to differ.
+ */
+.panel-separator::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(0.5 * (var(--ka-separator-grip) - var(--ds-border-width-focus)));
+  inline-size: var(--ds-border-width-focus);
+  background: transparent;
+}
+
+.panel-separator:hover::before,
+.panel-separator[data-dragging]::before {
+  background: var(--ds-color-base-default);
+}
+
+/*
+ * The focus ring is Designsystemet's, through `ds-focus` on the element, so
+ * there is nothing to draw here. It rings the 8 px box over its whole height,
+ * which is what makes an edge a visible target.
+ */
 
 /*
  * `border-box`, so a slot occupies exactly the width the layout model says.
@@ -144,8 +234,26 @@ body {
   padding-inline: var(--ka-sidebar-padding-inline);
 }
 
+/*
+ * The panel head: the collapse button, and the two width buttons pushed to
+ * the far end of the row.
+ *
+ * `space-between` and not a margin, so the rail — which draws the collapse
+ * button alone — is unaffected: one item in a `space-between` row sits where
+ * it would have sat anyway, and the rail's own padding is what centres it.
+ */
 .sidebar-header {
   flex: 0 0 auto;
+  display: flex;
+  gap: var(--ds-size-2);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-width-buttons {
+  display: flex;
+  gap: var(--ds-size-1);
+  flex-shrink: 0;
 }
 
 /*
@@ -191,7 +299,16 @@ body {
  * LayoutProvider owns it. See `bothSidebarsMinViewport` in viewModel.ts.
  */
 .primary-sidebar {
-  flex: 0 0 var(--ka-primary-sidebar-width);
+  /*
+   * `0 1` and a floor rather than `0 0`, and the floor is what makes it the
+   * same slot it was: the basis is 400 until the reader drags it wider, and a
+   * basis equal to the minimum cannot shrink. What the shrink is for is the
+   * pixel of slack a fractional window width leaves — `fittedWidths` has
+   * already made the sums fit, so the browser is the backstop and not the
+   * rule.
+   */
+  flex: 0 1 var(--ka-primary-sidebar-width);
+  min-inline-size: var(--ka-primary-sidebar-min-width);
   background: var(--ds-color-neutral-surface-default);
   border-inline-end: var(--ka-panel-border);
 }

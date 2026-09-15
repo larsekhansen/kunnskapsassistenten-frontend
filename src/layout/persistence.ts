@@ -11,9 +11,9 @@
  * Two keys, both carrying a version, because the two hold different kinds of
  * thing and go stale for different reasons:
  *
- *   ka.layout.v1  which sidebars are collapsed, and whether the reader has
- *                 said no to the sources panel. Shaped by the slots, which
- *                 change when the layout model changes.
+ *   ka.layout.v1  which sidebars are collapsed, how wide they are, and
+ *                 whether the reader has said no to the sources panel. Shaped
+ *                 by the slots, which change when the layout model changes.
  *   ka.filter.v1  the document filter. Shaped by the CORPUS: the values are
  *                 the keys the backend filters on, so a new corpus can make
  *                 every stored value meaningless. Bump the version then.
@@ -27,13 +27,21 @@
  * edit it. A remembered panel is never worth a blank page, so a bad value is
  * dropped and the app opens on its defaults.
  *
- * Widths are deliberately not here. Nothing can change them yet — the drag
- * handle is answer 10's «later» — and remembering a number no one can produce
- * only makes something to migrate the day the handle arrives.
+ * Widths joined the key on 2026-09-15, when the drag handle gave the reader a
+ * way to produce one (rolle-5i). Only a width that differs from the design's
+ * own is written down, so resetting an edge removes it again rather than
+ * storing the default a second time.
  */
 
 import { emptyFilterSelection, type FilterDimension, type FilterSelection } from '../model';
-import { sidebarSlots, withCollapsed, type Layout, type SidebarSlot } from './viewModel';
+import {
+  defaultLayout,
+  sidebarSlots,
+  withCollapsed,
+  withWidth,
+  type Layout,
+  type SidebarSlot,
+} from './viewModel';
 
 export const LAYOUT_STORAGE_KEY = 'ka.layout.v1';
 export const FILTER_STORAGE_KEY = 'ka.filter.v1';
@@ -42,6 +50,11 @@ export const FILTER_STORAGE_KEY = 'ka.filter.v1';
 export type StoredLayout = {
   /** Per sidebar. A slot missing here simply keeps whatever the default says. */
   collapsed: Partial<Record<SidebarSlot, boolean>>;
+  /**
+   * Per sidebar, in CSS pixels, and only for a panel the reader has actually
+   * moved. A slot missing here is a slot at the width the design draws.
+   */
+  widths: Partial<Record<SidebarSlot, number>>;
   /**
    * Has the reader said, in so many words, that they do not want the sources
    * panel?
@@ -94,22 +107,46 @@ export function readStoredLayout(): StoredLayout | undefined {
     if (typeof stored[slot] === 'boolean') collapsed[slot] = stored[slot];
   }
 
-  return { collapsed, sourcesDismissed: value.sourcesDismissed === true };
+  // A width has to be a finite number and nothing else. `Infinity` and `NaN`
+  // both survive `typeof === 'number'` and both reach CSS as a broken length;
+  // the bounds are applied later, by `withWidth`, against the model.
+  const storedWidths = isRecord(value.widths) ? value.widths : {};
+  const widths: Partial<Record<SidebarSlot, number>> = {};
+  for (const slot of sidebarSlots) {
+    const width = storedWidths[slot];
+    if (typeof width === 'number' && Number.isFinite(width)) widths[slot] = width;
+  }
+
+  return { collapsed, widths, sourcesDismissed: value.sourcesDismissed === true };
 }
 
 export function writeStoredLayout(layout: Layout, sourcesDismissed: boolean): void {
   const collapsed: Partial<Record<SidebarSlot, boolean>> = {};
   for (const slot of sidebarSlots) collapsed[slot] = layout.slots[slot].collapsed;
-  writeJson(LAYOUT_STORAGE_KEY, { collapsed, sourcesDismissed });
+
+  // Only a width the reader has moved. Writing the default down as well would
+  // make «tilbakestill» and «never touched» two different stored states that
+  // mean the same thing, and the day a default changes, every browser that
+  // had merely opened the app once would hold the old number.
+  const widths: Partial<Record<SidebarSlot, number>> = {};
+  for (const slot of sidebarSlots) {
+    const sizing = layout.slots[slot].sizing;
+    const fallback = defaultLayout.slots[slot].sizing;
+    if (sizing.mode === 'flexible' || fallback.mode === 'flexible') continue;
+    if (sizing.width !== fallback.width) widths[slot] = sizing.width;
+  }
+
+  writeJson(LAYOUT_STORAGE_KEY, { collapsed, widths, sourcesDismissed });
 }
 
 /**
  * Apply what was remembered to a layout.
  *
- * Only collapse, and only for the slots that were stored. The rest of the
- * layout — which views exist, which one is active, the widths — comes from
- * the code, so a stored value can never resurrect a slot that has been
- * removed or a view that has been renamed.
+ * Only collapse, and only for the slots that were stored. Widths are the
+ * other half and are applied by `withStoredWidths` below; the rest of the
+ * layout — which views exist, which one is active — comes from the code, so a
+ * stored value can never resurrect a slot that has been removed or a view
+ * that has been renamed.
  *
  * It can produce a layout that breaks rule B, with both sidebars open in a
  * window too narrow for them. That is fine and is not fixed here:
@@ -123,6 +160,26 @@ export function withStoredCollapse(layout: Layout, stored: StoredLayout | undefi
   for (const slot of sidebarSlots) {
     const collapsed = stored.collapsed[slot];
     if (collapsed !== undefined) next = withCollapsed(next, slot, collapsed);
+  }
+  return next;
+}
+
+/**
+ * Apply the remembered widths.
+ *
+ * `withWidth` clamps to the model's own bounds, so a stored 900 from a
+ * browser that once ran a version with a different ceiling comes back as the
+ * ceiling rather than as a panel wider than the window. What FITS is a
+ * separate question and belongs to the window, not to storage; see
+ * `fittedWidths`.
+ */
+export function withStoredWidths(layout: Layout, stored: StoredLayout | undefined): Layout {
+  if (!stored) return layout;
+
+  let next = layout;
+  for (const slot of sidebarSlots) {
+    const width = stored.widths[slot];
+    if (width !== undefined) next = withWidth(next, slot, width);
   }
   return next;
 }

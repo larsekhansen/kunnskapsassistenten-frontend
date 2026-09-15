@@ -140,10 +140,14 @@ fortsette å være det.
 ### Layout-abstraksjonen
 
 `src/layout/viewModel.ts` har typene `Slot`, `ViewId`, `View`, `SlotState` og
-`Layout`, pluss `defaultLayout` som skallet leser fra. Det finnes **ikke** noe
-grensesnitt for å bytte layout ennå, ingen dra-håndtak og ingen lagring.
-Grunnen til at abstraksjonen kommer først står i fila: plassinnhold,
-plassbredde og modusvekslingen i begge sidepaneler er samme problem.
+`Layout`, pluss `defaultLayout` som skallet leser fra. Grunnen til at
+abstraksjonen kom først står i fila: plassinnhold, plassbredde og
+modusvekslingen i begge sidepaneler er samme problem.
+
+Bredden var det første som fikk et grensesnitt, 2026-09-15: hver åpen
+sidekolonne har et skille leseren kan dra i, `src/layout/PanelSeparator.tsx`.
+Se «Panelbredder». Det finnes fortsatt **ikke** noe grensesnitt for å flytte
+et view mellom plasser — `withViewMoved` er der, knappen er det ikke.
 
 ## Sideflaten
 
@@ -245,11 +249,11 @@ Appen har **ett** brytepunkt, og det er regnet ut, ikke valgt.
 
 ### Bredder
 
-| Plass               | Åpen           | Kollapset | Gir etter?                |
-| ------------------- | -------------- | --------- | ------------------------- |
-| `primary-sidebar`   | 400            | 67        | nei                       |
-| `main`              | 640–800        | —         | ja, først, ned til 640    |
-| `secondary-sidebar` | 432, minst 336 | 67        | ja, deretter, ned til 336 |
+| Plass               | Åpen           | Kan dras til | Kollapset | Gir etter?                |
+| ------------------- | -------------- | ------------ | --------- | ------------------------- |
+| `primary-sidebar`   | 400            | 400–480      | 67        | ja, sist, tilbake til 400 |
+| `main`              | 640–800        | —            | —         | ja, først, ned til 640    |
+| `secondary-sidebar` | 432, minst 336 | 336–560      | 67        | ja, deretter, ned til 336 |
 
 Tallene er **yttermål**, padding medregnet, fordi sidepanelene er `border-box`.
 Det var de ikke før: med `content-box` ble de 36 px paddingen på hver side lagt
@@ -257,7 +261,83 @@ utenpå, og hvert tall i modellen var 72 px kortere enn det tegnet. Målt, ikke
 resonnert fram.
 
 Navigasjonspanelets 400 er de 328 Lars satte (svar 59b) pluss paddingen, og
-400 er også det malen tegner panelet som.
+400 er også det malen tegner panelet som. Taket på 480 er Lars sitt, satt da
+skillene kom; kildepanelets tak på 560 er toppen av `kilder`-rammen i
+designet, den bredeste den kolonnen er tegnet noe sted.
+
+Kolonnen «Åpen» er standarden. Har leseren dratt i et skille, er det den
+bredden som gjelder — så langt vinduet rekker. Se «Panelbredder».
+
+### Panelbredder leseren kan dra i
+
+Fra visjonen i `design/visjon-og-beslutninger.md`: kolonnene skal kunne endres
+i størrelse. Punkt 24 i brukerreise-lista kaller det essensielt — svaret og
+kilden det hviler på skal kunne leses ved siden av hverandre, og 640 px svar
+ved siden av 336 px utdrag er ikke alltid delen leseren vil ha.
+
+**Ett skille per åpen sidekolonne**, på kanten mot hovedkolonnen. En rail har
+ingen bredde å endre og får ingen. Skillet er 1 px-linja panelet alt hadde,
+med en gripeflate på 8 px midt på seg; den viser seg først når pekeren eller
+tastaturet er der.
+
+| Tast                       | Hva                                         |
+| -------------------------- | ------------------------------------------- |
+| pil mot venstre/høyre      | flytter kanten 16 px den veien tasten peker |
+| `Shift` + pil              | 64 px                                       |
+| `Home` / `End`             | smaleste / bredeste panelet kan være        |
+| `Enter` eller dobbeltklikk | tilbake til standardbredden                 |
+| knappene i panelhodet      | 16 px per klikk, uten draging               |
+
+Musa og fingeren drar den samme kanten, og tastaturet gjør det samme uten å
+dra — det er WCAG 2.1.1 Keyboard.
+
+**To knapper i panelhodet er pekerveien:** «Gjør tråder og filter bredere» og
+«… smalere», ett steg på 16 px per klikk. De er der for WCAG 2.5.7 Dragging
+Movements (AA), som handler om **peker**-inndata: alt som betjenes med en
+draging skal også kunne betjenes med én peker uten å dra. Et tastatur
+oppfyller ikke den, for de kriteriet er skrevet for bruker peker og kan
+klikke, men ikke holde og bevege — hodepeker, skjelving, styrepinne. En
+gripeflate på 8 px er dessuten vrien å dra for flere enn dem. Funn fra KA CC
+sin anmeldelse av PR #50.
+
+Står kanten på en grense, blir knappen `aria-disabled` og ikke `disabled`. Å
+gjøre et panel bredere er noe man gjør ved å trykke på den samme knappen flere
+ganger, og en `disabled`-knapp slipper fokus til `body` i det den slår seg av.
+Samme par som i utdragssøket.
+
+**Skillet er ikke et tabbstopp når det ikke kan flytte seg.** Ved 1440 med
+begge sidekolonner åpne er 400 + 32 + 640 + 32 + 336 nøyaktig vinduet, og da er
+`aria-valuemin`, `aria-valuemax` og `aria-valuenow` det samme tallet. Linja
+står fortsatt — kanten er der — men `tabIndex` er −1 og `aria-disabled` er
+satt, for det er den samme regelen skallet alt følger om et sammenlagt panel:
+et tabbstopp som ikke kan gjøre noe er et tabbstopp i veien. 1440 er bredden
+alle Figma-rammene er tegnet i, så det er bredden flest møter.
+
+Skillet er `role="separator"` med tab-stopp, som er splitter-rollen i ARIA
+1.2, med `aria-orientation="vertical"`, `aria-valuenow/min/max` i piksler og
+`aria-valuetext` («400 piksler»), siden en separator ikke bærer noen enhet en
+leser kan gjette.
+Ingen live-region: verdien _er_ meldingen, og en region som sa det samme en
+gang til ville snakket over leseren. Navnet kommer fra viewene i plassen, som
+alle andre navn i skallet — «Endre bredde på tråder og filter», ikke
+«navigasjonspanelet», slik at et view som flyttes tar navnet med seg.
+
+**Hva som begrenser dragingen** er det trangeste av to: modellens egne tall i
+tabellen over, og det vinduet har igjen når det andre panelet og
+hovedkolonnens gulv på 640 har fått sitt. En draging tar plass fra
+hovedkolonnen og aldri fra det andre panelet — å dra i én kant og se den
+motsatte flytte seg er å se appen gjøre noe ingen ba om. Ved 1440 med begge
+sidekolonner åpne står alt på gulvet sitt, og da er `aria-valuemin`,
+`aria-valuemax` og `aria-valuenow` det samme tallet: det er sant, og det er
+bedre enn en kant som spretter tilbake.
+
+Bredden huskes i `ka.layout.v1`, og bare når den er en annen enn standarden —
+tilbakestilling fjerner den, den skriver ikke standarden ned en gang til.
+
+Designsystemet 1.21.0 har ingen Splitter, ingen Resizable og ingen fokuserbar
+Separator; `Divider` er en vannrett strek med `aria-hidden`. Det er notert i
+`design/designsystemet/behov-til-komponent.md`. Fokusringen er likevel
+Designsystemets, gjennom klassen `ds-focus`.
 
 ### Kollapset sidekolonne er en rail
 
@@ -282,12 +362,23 @@ kollapse et panel er å gi plassen tilbake.
 ### Rekkefølgen når plassen blir knapp
 
 1. **Hovedkolonnen** krymper først, ned til gulvet sitt på 640.
-2. **Kildepanelet** deretter, fra 432 ned til 336.
-3. **Navigasjonspanelet** gir aldri.
+2. **Kildepanelet** deretter, fra bredden sin ned til 336.
+3. **Navigasjonspanelet** sist, fra bredden sin ned til 400.
 
-Ingen mediespørring bestemmer noe av det. Det faller ut av tre `flex`-linjer i
-`src/styles/global.css`: hovedkolonnen vokser fra null og nekter å krympe,
-kildepanelet er det eneste elementet på rada med `flex-shrink: 1`.
+Punkt 1 er `flex` i `src/styles/global.css`: hovedkolonnen vokser fra null og
+nekter å krympe, så den tar det som er igjen og ikke mer. Punkt 2 og 3 er
+`fittedWidths()` i `src/layout/viewModel.ts`, en ren funksjon av layout og
+vindusbredde.
+
+Rekkefølgen sto i CSS fram til 2026-09-15 og måtte flytte: `flex-shrink`
+fordeler mangelen på alle som kan krympe samtidig og kjenner ingen rekkefølge,
+og et panel som er drukket bredere må gi tilbake _etter_ kildepanelet, ikke
+sammen med det. Regnestykket eier dessuten `aria-valuenow` på skillet — en
+verdi som sier 480 over et panel som tegnes på 400 er en løgn fortalt til den
+ene leseren som ikke ser forskjellen.
+
+**Navigasjonspanelet gir aldri under 400.** Det var «gir aldri» så lenge 400
+var den eneste bredden det kunne ha.
 
 ### Brytepunktet: 1440
 
@@ -519,12 +610,12 @@ ikke noe frontenden kan fikse.
 Fire nøkler, og ingenting annet. Tre i `localStorage`, som varer til
 nettleseren tømmes, og én i `sessionStorage`, som varer så lenge fana lever.
 
-| Nøkkel               | Lager          | Hva                                                                             |
-| -------------------- | -------------- | ------------------------------------------------------------------------------- |
-| `ka.color-scheme`    | localStorage   | lys, mørk eller auto. Se «Mørk modus»                                           |
-| `ka.layout.v1`       | localStorage   | hvilke sidekolonner som er lagt sammen, og om brukeren selv lukket kildepanelet |
-| `ka.filter.v1`       | localStorage   | filtervalget                                                                    |
-| `ka.mock.threads.v1` | sessionStorage | samtalene denne fana har hatt. **Bare i mock-modus**                            |
+| Nøkkel               | Lager          | Hva                                                                                               |
+| -------------------- | -------------- | ------------------------------------------------------------------------------------------------- |
+| `ka.color-scheme`    | localStorage   | lys, mørk eller auto. Se «Mørk modus»                                                             |
+| `ka.layout.v1`       | localStorage   | hvilke sidekolonner som er lagt sammen, hvor brede de er, og om brukeren selv lukket kildepanelet |
+| `ka.filter.v1`       | localStorage   | filtervalget                                                                                      |
+| `ka.mock.threads.v1` | sessionStorage | samtalene denne fana har hatt. **Bare i mock-modus**                                              |
 
 **Layout og filter** ligger i `src/layout/persistence.ts` og leses én gang når
 `LayoutProvider` monteres. Punkt 9 i reise 16: `localStorage` var tom, og et

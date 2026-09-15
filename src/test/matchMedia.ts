@@ -106,6 +106,13 @@ function install(): void {
  */
 export function setViewportWidth(width: number): void {
   viewportWidth = width;
+  // The layout asks the window itself as well as the media query: a panel the
+  // reader has dragged wider is drawn at what fits, and that is arithmetic on
+  // `innerWidth`. See src/layout/useViewportWidth.ts. Setting one without the
+  // other would leave a test in a 1440 px window that answers 1024 to half
+  // the questions.
+  window.innerWidth = width;
+  window.dispatchEvent(new Event('resize'));
 
   for (const stub of stubs) {
     const matches = evaluateWidth(stub.media, width) ?? false;
@@ -120,8 +127,11 @@ export function setViewportWidth(width: number): void {
 
 /** Back to the default width, and forget the queries the last test made. */
 export function resetViewport(): void {
-  viewportWidth = defaultViewportWidth;
+  setViewportWidth(defaultViewportWidth);
   stubs.clear();
 }
 
 install();
+// jsdom opens at 1024 and the design's window is 1440. The queries answered
+// 1440 from the first line of this module; `innerWidth` has to say the same.
+window.innerWidth = viewportWidth;
