@@ -6,6 +6,7 @@ import { threadFromQuestion, type Thread, type ThreadDetail } from '../../model'
 import { ChatView } from '../../views/chat';
 import { ThreadContext } from '../threadContext';
 import { useAnswerSources } from '../useAnswerSources';
+import { useComposerPresence } from '../useComposerPresence';
 import { useNoAnswers } from '../useNoAnswers';
 
 /**
@@ -26,7 +27,9 @@ import { useNoAnswers } from '../useNoAnswers';
  * An id the client does not know draws «Fant ikke tråden» instead of a
  * conversation. Before that it drew a fresh, working front page under an
  * address naming a thread, so a shared link that had gone stale looked like
- * it had worked — reise 14 in design/brukerreiser-2026-09-15.md.
+ * it had worked — reise 14 in design/brukerreiser-2026-09-15.md. That state
+ * has no compose field, and the shell is told, because the shell draws a skip
+ * link straight to one. See composerContext.ts.
  *
  * The sources behind the answer are lifted to the shell, so the sources view
  * can draw them without the two views knowing about each other. See
@@ -94,6 +97,23 @@ function ChatSlot({ threadId }: { threadId?: string }) {
   // The sources on screen belong to the answer on screen. Leaving a thread
   // has to clear them, or the sources panel keeps citing the previous answer.
   useEffect(() => () => setDocuments(undefined), [setDocuments]);
+
+  /**
+   * «Fant ikke tråden» has no compose field, so «Hopp til skrivefeltet» must
+   * not be drawn over it. The shell cannot see this: the route is an ordinary
+   * `/threads/:threadId` and draws an ordinary main slot, and only the answer
+   * from the client says which of the two things goes in it. Tab Tab + Enter
+   * on an unknown thread left the focus on a link to an element that was not
+   * in the document (KA CC, 2026-09-15).
+   *
+   * `!missing` and not «the view is mounted»: the chat view always brings a
+   * composer when it draws a conversation, and this is the one branch where
+   * it draws something else. While the client is still answering, `missing`
+   * is false and a composer really is on screen — the welcome screen is drawn
+   * until the answer comes — so the link is right at every moment, not only
+   * at the end.
+   */
+  useComposerPresence(!missing);
 
   // A thread that is not there has no answers either, and the panel has to
   // say so rather than draw skeletons. It happens to be right without this

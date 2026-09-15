@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
-import { chooseFacetValue, expectEveryStepReachable, walkWithTab } from './helpers';
+import { chooseFacetValue, composer, expectEveryStepReachable, walkWithTab } from './helpers';
 
 /**
  * The shell: the three slots, the routes, the skip link and dark mode.
@@ -202,6 +202,12 @@ test.describe('skallet', () => {
    * En delt lenke som er blitt gammel tegnet før en fersk, fungerende
    * forside under en adresse som navnga en samtale. Leseren fikk vite
    * ingenting.
+   *
+   * Ruta er en helt vanlig `/threads/:threadId` og tegner hovedkolonnen på
+   * vanlig vis; det er viewet i kolonnen som svarer «Fant ikke tråden». Derfor
+   * står hopp-lenka til skrivefeltet med i denne testen og ikke i sin egen:
+   * den ble tegnet ut fra ruta, og pekte på et element som ikke var i
+   * dokumentet, så Tab Tab + Enter lot fokus bli stående på en blindvei.
    */
   test('en tråd som ikke finnes sier det, i stedet for å se ut som en ny samtale', async ({
     page,
@@ -209,9 +215,17 @@ test.describe('skallet', () => {
     covers(testInfo, 'ukjent tråd-id');
     await page.goto('/threads/finnes-ikke-her');
 
-    await expect(page.getByRole('heading', { name: 'Fant ikke tråden' })).toBeVisible();
-    await expect(page.locator('.ka-composer__field textarea')).toHaveCount(0);
+    await expect(page.getByRole('heading', { level: 2, name: 'Fant ikke tråden' })).toBeVisible();
+    await expect(composer(page)).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Gå til forsiden' })).toBeVisible();
+
+    // Ingen hopp-lenke til et felt som ikke er der, og steg to i
+    // tabbrekkefølgen er en knapp som gjør noe.
+    await expect(page.getByRole('link', { name: 'Hopp til skrivefeltet' })).toHaveCount(0);
+    const steps = await walkWithTab(page);
+    expect(steps[0]?.name).toBe('Hopp til hovedinnhold');
+    expect(steps[1]?.name).toBe('Skjul tråder og filter');
+    expectEveryStepReachable(steps, 'en tråd som ikke finnes');
 
     await expectNoAxeViolations(page, 'ukjent tråd');
   });

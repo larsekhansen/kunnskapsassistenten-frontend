@@ -2,11 +2,13 @@ import { Badge, BadgePosition, Button, SkipLink, Tooltip } from '@digdir/designs
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
+import { ComposerContext } from './composerContext';
 import { COMPOSER_ID } from './ids';
 import { MainScrollContext } from './scrollContext';
 import { useAnswerSources } from './useAnswerSources';
 import { useNoAnswers } from './useNoAnswers';
 import { useCitation } from './useCitation';
+import { useComposerRegistry } from './useComposerPresence';
 import { useLayout } from './useLayout';
 import { viewComponents } from './viewComponents';
 import { layoutStyle, slotLabel, views } from './viewModel';
@@ -51,6 +53,19 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
   // coming. See useNoAnswers.ts.
   useNoAnswers(routeOwnsMain);
 
+  /**
+   * Whether the views below have a compose field on screen, for the second
+   * skip link. See composerContext.ts for why the shell has to be told rather
+   * than work it out from the route.
+   *
+   * Held here and not in `LayoutProvider`, because the question is about what
+   * is on screen in THIS shell and the provider outlives it: the two layout
+   * routes in App.tsx mount separate shells, and a count kept above them
+   * would carry a field from the page being left over to the page being
+   * entered.
+   */
+  const composerPresence = useComposerRegistry();
+
   return (
     <MainScrollContext value={mainScroll}>
       <SkipLink href="#main-content">Hopp til hovedinnhold</SkipLink>
@@ -62,36 +77,45 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
         7 and 15 in design/brukerreiser-2026-09-15.md, punkt 8 on the ranked
         list. #3 asked for it; #41 put the id where both sides can read it.
 
-        Not drawn when the route draws its own main: there is no conversation
-        on «Siden finnes ikke», so there is no field to jump to, and a skip
-        link to nothing is worse than no skip link. `COMPOSER_ID` comes from
-        ids.ts rather than from the chat view, so the shell never imports a
-        view to build its own chrome.
+        Drawn only while a compose field is actually mounted, which is a
+        question only the view holding the conversation can answer — it says
+        so through `ComposerContext`. It used to be drawn whenever the route
+        did not draw its own main, and those are different questions: on
+        `/threads/<ukjent>` the chat view draws «Fant ikke tråden» in a main
+        slot the route did not draw, and the link pointed at nothing.
+
+        `COMPOSER_ID` comes from ids.ts rather than from the chat view, so the
+        shell never imports a view to build its own chrome.
       */}
-      {routeOwnsMain ? null : <SkipLink href={`#${COMPOSER_ID}`}>Hopp til skrivefeltet</SkipLink>}
+      {composerPresence.hasComposer ? (
+        <SkipLink href={`#${COMPOSER_ID}`}>Hopp til skrivefeltet</SkipLink>
+      ) : null}
 
-      <div className="shell" style={layoutStyle(layout)}>
-        <Sidebar slot="primary-sidebar" element="nav" />
+      <ComposerContext value={composerPresence}>
+        <div className="shell" style={layoutStyle(layout)}>
+          <Sidebar slot="primary-sidebar" element="nav" />
 
-        <main id="main-content" className="main" ref={mainScroll}>
-          {/*
-            The route contributes the page's level 1 heading and nothing else;
-            the view in the slot is what draws the content, looked up in
-            viewComponents like every other slot. Chat used to BE the outlet,
-            and that made it the one view no reader could ever move.
+          <main id="main-content" className="main" ref={mainScroll}>
+            {/*
+              The route contributes the page's level 1 heading and nothing
+              else; the view in the slot is what draws the content, looked up
+              in viewComponents like every other slot. Chat used to BE the
+              outlet, and that made it the one view no reader could ever move.
 
-            `routeOwnsMain` is the one exception, and it is about pages rather
-            than about views: the catch-all route draws its own main, because
-            «siden finnes ikke» with a working conversation under it would be
-            two answers to one question. The sidebars stay: the thread list and
-            the filter are still there to steer to somewhere that exists.
-          */}
-          <Outlet />
-          {routeOwnsMain ? null : <MainSlot />}
-        </main>
+              `routeOwnsMain` is the one exception, and it is about pages
+              rather than about views: the catch-all route draws its own main,
+              because «siden finnes ikke» with a working conversation under it
+              would be two answers to one question. The sidebars stay: the
+              thread list and the filter are still there to steer to somewhere
+              that exists.
+            */}
+            <Outlet />
+            {routeOwnsMain ? null : <MainSlot />}
+          </main>
 
-        <Sidebar slot="secondary-sidebar" element="aside" />
-      </div>
+          <Sidebar slot="secondary-sidebar" element="aside" />
+        </div>
+      </ComposerContext>
     </MainScrollContext>
   );
 }
