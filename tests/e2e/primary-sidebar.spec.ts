@@ -3,6 +3,7 @@ import { covers, expectNoAxeViolations, setColorScheme } from './a11y';
 import {
   ask,
   chooseFacetValue,
+  citation,
   expectEveryStepReachable,
   facetField,
   showFilters,
@@ -353,7 +354,10 @@ test.describe('navigasjonspanelet', () => {
     await expect(counter).toBeAttached();
     await expect(counter).toHaveText('');
 
-    await search.fill('stimulab');
+    // «stimulab» fram til 15.09, da trådlista ble de scriptede samtalene og
+    // de to Stimulab-titlene forsvant med resten av titlene uten samtale
+    // under. «årsrapport» treffer to av de nye og ingen andre.
+    await search.fill('årsrapport');
     await expect(counter).toHaveText('2 tråder');
     await expect(panel.locator('.threads-view__thread')).toHaveCount(2);
 
@@ -379,6 +383,40 @@ test.describe('navigasjonspanelet', () => {
     // aria-current, not colour, is what carries «you are here».
     await expect(panel.locator('[aria-current="page"]')).toHaveCount(1);
     await expect(panel.locator('[aria-current="page"]')).toHaveText('NKOM måloppnåelse');
+  });
+
+  test('en tråd fra lista åpner en hel samtale, med kildene bak svaret', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'tråder er gruppert');
+    // Punkt 16 på brukerreise-lista, målt av #4: radene var titler uten noe
+    // under seg, så elleve av tolv tråder åpnet en tom samtale. Nå er lista
+    // de scriptede samtalene, og dette er påstanden — en rad du klikker på er
+    // et spørsmål, et svar og kildene bak det.
+    await showThreads(page);
+
+    const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
+    await panel
+      .getByRole('link', { name: 'Regnskap og bevilgning i DSS sine årsrapporter' })
+      .click();
+    await expect(page).toHaveURL(/\/threads\/dss-regnskap$/);
+
+    const main = page.getByRole('main');
+    await expect(main.getByText('Hva rapporteres om regnskap', { exact: false })).toBeVisible();
+    await expect(
+      main.getByRole('heading', { name: 'Regnskap og bevilgning hos DSS' }),
+    ).toBeVisible();
+
+    // Kildene er det som skilte en scriptet samtale fra en tom tråd. Markøren
+    // åpner panelet og peker på et utdrag som faktisk er der.
+    await citation(page, 1).click();
+    await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
+    await expect(
+      page
+        .getByRole('complementary', { name: 'Kilder' })
+        .getByRole('heading', { level: 3 })
+        .first(),
+    ).toBeVisible();
   });
 
   /**
