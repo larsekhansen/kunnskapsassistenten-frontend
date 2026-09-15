@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { SourceDocument } from '../../model';
-import { DocumentsList } from './DocumentsList';
+import { KudosDocuments, OwnDocuments } from './DocumentsList';
 
 /**
  * Seven documents, as the `active` variant in Figma draws. The mock corpus
@@ -20,9 +20,9 @@ const documents: SourceDocument[] = Array.from({ length: 7 }, (_, index) => ({
 
 const titles = () => screen.getAllByRole('listitem').map((item) => item.textContent);
 
-describe('DocumentsList', () => {
+describe('KudosDocuments', () => {
   it('keeps the placeholder sentence when no answer has sources yet', () => {
-    render(<DocumentsList />);
+    render(<KudosDocuments />);
 
     expect(screen.getByText('Dokumentene som er relevante for søket ditt vises her.')).toBeTruthy();
     expect(screen.queryByRole('list', { name: 'Fra Kudos' })).toBeNull();
@@ -32,13 +32,13 @@ describe('DocumentsList', () => {
   it('says the same about an answer that had no sources', () => {
     // undefined and [] differ in the sources panel — «loading» against
     // «nothing behind this answer» — but here both mean nothing to list.
-    render(<DocumentsList documents={[]} />);
+    render(<KudosDocuments documents={[]} />);
 
     expect(screen.getByText('Dokumentene som er relevante for søket ditt vises her.')).toBeTruthy();
   });
 
   it('lists five of seven, and counts the rest', () => {
-    render(<DocumentsList documents={documents} />);
+    render(<KudosDocuments documents={documents} />);
 
     expect(screen.getAllByRole('listitem')).toHaveLength(5);
     expect(screen.getByText('Viser 5 av 7 dokumenter.')).toBeTruthy();
@@ -46,13 +46,13 @@ describe('DocumentsList', () => {
   });
 
   it('writes type, organisation and year under the title', () => {
-    render(<DocumentsList documents={documents} />);
+    render(<KudosDocuments documents={documents} />);
 
     expect(screen.getByText('Årsrapport · Nasjonal kommunikasjonsmyndighet · 2018')).toBeTruthy();
   });
 
   it('links each title to the document on Kudos', () => {
-    render(<DocumentsList documents={documents} />);
+    render(<KudosDocuments documents={documents} />);
 
     // A pattern, not the literal name: the accessible name drops the space
     // that separates the title from the sr-only warning.
@@ -66,7 +66,7 @@ describe('DocumentsList', () => {
     // Folder-based corpora come back with `url: null`. A dead link would be
     // worse than a plain title.
     const [first, ...rest] = documents;
-    render(<DocumentsList documents={[{ ...first, url: undefined }, ...rest]} />);
+    render(<KudosDocuments documents={[{ ...first, url: undefined }, ...rest]} />);
 
     expect(screen.getByText('Årsrapport Nasjonal kommunikasjonsmyndighet 2018')).toBeTruthy();
     expect(
@@ -75,7 +75,7 @@ describe('DocumentsList', () => {
   });
 
   it('shows the rest, drops the button, and leaves focus on the list', () => {
-    render(<DocumentsList documents={documents} />);
+    render(<KudosDocuments documents={documents} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Vis flere dokumenter' }));
 
@@ -89,7 +89,7 @@ describe('DocumentsList', () => {
   });
 
   it('lists everything and offers no button when there are five or fewer', () => {
-    render(<DocumentsList documents={documents.slice(0, 3)} />);
+    render(<KudosDocuments documents={documents.slice(0, 3)} />);
 
     expect(titles()).toHaveLength(3);
     expect(screen.queryByRole('button', { name: 'Vis flere dokumenter' })).toBeNull();
@@ -97,15 +97,28 @@ describe('DocumentsList', () => {
   });
 
   it('starts over at five when the next answer brings other documents', () => {
-    const { rerender } = render(<DocumentsList documents={documents} />);
+    const { rerender } = render(<KudosDocuments documents={documents} />);
     fireEvent.click(screen.getByRole('button', { name: 'Vis flere dokumenter' }));
     expect(screen.getAllByRole('listitem')).toHaveLength(7);
 
     // A new answer, a new array. An expanded list carried over from the previous
     // one would show seven rows the reader never asked to see.
-    rerender(<DocumentsList documents={documents.map((source) => ({ ...source }))} />);
+    rerender(<KudosDocuments documents={documents.map((source) => ({ ...source }))} />);
 
     expect(screen.getAllByRole('listitem')).toHaveLength(5);
     expect(screen.getByRole('button', { name: 'Vis flere dokumenter' })).toBeTruthy();
+  });
+});
+
+describe('OwnDocuments', () => {
+  it('is its own section, so the panel can put it last', () => {
+    // It used to share a heading with the Kudos list at the foot of the
+    // panel. Splitting them is what lets the Kudos list move above the facets
+    // without dragging an upload placeholder up there with it (brukerblikk
+    // runde 2, funn 4).
+    render(<OwnDocuments />);
+
+    expect(screen.getByRole('heading', { name: 'Dine dokumenter' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Fra Kudos' })).toBeNull();
   });
 });

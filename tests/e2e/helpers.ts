@@ -65,6 +65,22 @@ export async function chooseFacetValue(
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(page.getByText(/^1 av \d+ valgt$/).first()).toBeVisible();
+
+  /*
+   * Close the list before handing the page back.
+   *
+   * A multi-select keeps its list open after a pick — deliberately, so the
+   * next value is one keystroke away — and an open popover eats the first
+   * click that lands outside it, as light dismiss. A test that picks a value
+   * and then clicks «Tråder» therefore spends that click on closing the list
+   * and finds itself still in the filter view.
+   *
+   * Measured at 1280 × 720: first click 0 view switches, second click 1. It
+   * is not a defect in the panel, it is what a popover does, and every caller
+   * of this helper wants the field at rest afterwards rather than mid-pick.
+   */
+  await page.keyboard.press('Escape');
+  await expect(page.locator('u-datalist:not([hidden])')).toHaveCount(0);
 }
 
 export function composer(page: Page): Locator {

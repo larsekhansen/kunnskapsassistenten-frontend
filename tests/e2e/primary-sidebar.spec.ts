@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { covers, expectNoAxeViolations, setColorScheme } from './a11y';
 import {
+  ask,
   chooseFacetValue,
   expectEveryStepReachable,
   facetField,
@@ -91,6 +92,38 @@ test.describe('navigasjonspanelet', () => {
     await expect(field).toHaveValue('');
 
     await expectNoAxeViolations(page, 'filtreringen med et valg');
+  });
+
+  test('dokumentlista fra Kudos er synlig uten å rulle i et 900 px vindu', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'brukerblikk runde 2, funn 4: dokumentlista over skjermkanten');
+    await page.goto('/');
+    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+
+    const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
+    const scroller = panel.locator('.sidebar-content');
+    const firstRow = panel.locator('.documents-list__list li').first();
+    await expect(firstRow).toBeVisible();
+
+    // Nothing has scrolled to get here. Without this the test would pass on a
+    // panel that Playwright scrolled into view for us, which is the bug.
+    expect(await scroller.evaluate((element) => element.scrollTop), 'panelet er urullet').toBe(0);
+
+    const box = (await firstRow.boundingBox())!;
+    const windowHeight = page.viewportSize()!.height;
+    // The measurement in the review: the first row started at y = 818 in a
+    // 900 px window, under the corpus line and three untouched facet fields.
+    expect(
+      box.y + box.height,
+      `første dokumentrad slutter på ${Math.round(box.y + box.height)} i et ${windowHeight} px vindu`,
+    ).toBeLessThan(windowHeight);
+
+    // And the facets are still right there, full size: answer 2 put all
+    // filtering in this one panel, so moving the list up may not fold them.
+    for (const dimension of ['Dokumenttyper', 'Virksomheter', 'År']) {
+      await expect(facetField(page, dimension)).toBeVisible();
+    }
   });
 
   test('«Velg alle» og «Tøm» lar tastaturet bli i feltet', async ({ page }, testInfo) => {
