@@ -131,12 +131,6 @@ body {
    * not here, where it used to be.
    */
   container-type: inline-size;
-  /*
-   * Both sidebars are panels, and both say so with a surface. The sources
-   * panel had none and let its cards float straight on the page; findings 4
-   * and 15.
-   */
-  background: var(--ds-color-neutral-surface-default);
 }
 
 /*
@@ -198,6 +192,7 @@ body {
  */
 .primary-sidebar {
   flex: 0 0 var(--ka-primary-sidebar-width);
+  background: var(--ds-color-neutral-surface-default);
   border-inline-end: var(--ka-panel-border);
 }
 
@@ -212,6 +207,15 @@ body {
    */
   min-inline-size: var(--ka-secondary-sidebar-min-width);
   border-inline-start: var(--ka-panel-border);
+  /*
+   * No surface of its own while it is open, and that is Lars's call on
+   * 2026-09-16: the sources belong with the answer, so this column shares the
+   * answer column's ground and the border is what marks the edge. Finding 15
+   * asked whether the asymmetry was deliberate. It is.
+   *
+   * The cards inside are drawn by the sources view on that same ground.
+   */
+  background: none;
 }
 
 /*
@@ -233,9 +237,17 @@ body {
  * The logical properties are the vendor exception to the naming rule; see
  * CONTRIBUTING.
  */
+/*
+ * A rail keeps a surface whichever column it is, including the sources panel
+ * that has none while open. That is the point of the rail: a folded column
+ * has to read as a column, and on the page's own ground it read as a hole
+ * (Lars, 2026-09-15). Open, the sources panel is not folded away and has the
+ * answer beside it to belong to.
+ */
 .primary-sidebar[data-collapsed],
 .secondary-sidebar[data-collapsed] {
   align-items: center;
+  background: var(--ds-color-neutral-surface-default);
 }
 
 /*
