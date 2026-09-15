@@ -38,9 +38,19 @@ eier bare denne mappa.
 
 ## Sånn går en review
 
-1. **Hent branchen.** `git fetch origin && git checkout --detach <sha>`.
-   Detached, ikke `checkout <branch>`: eierens arbeidstre har branchen
-   utsjekket, og git nekter å ha den to steder.
+1. **Hent branchen, og slå `main` inn i den.**
+   `git fetch origin && git checkout --detach <sha>`, så
+   `git merge --no-edit origin/main`. Detached, ikke `checkout <branch>`:
+   eierens arbeidstre har branchen utsjekket, og git nekter å ha den to
+   steder.
+
+   **Sammenslåingen er det som merges, og den er det som skal måles.** På
+   travle dager grener fire arbeidere fra hver sin `main`. PR #37 var grønn
+   på sitt eget hode og slo samtidig ut filteret PR #38 hadde lagt inn to
+   timer før — det var usynlig på branchen og tydelig på sammenslåingen. Sjekk
+   alltid `git merge-tree --write-tree origin/main HEAD` først: en konflikt er
+   ofte funnet selv, ikke bare tekst som må ryddes.
+
 2. **Kjør alle fire portene** og skriv resultatet i rapporten, også når de er
    grønne:
    ```sh
@@ -66,6 +76,10 @@ eier bare denne mappa.
    «Til dirigenten» for det som er en avgjørelse og ikke en kodeendring.
 8. **Legg funnene som én samlet kommentar i PR-en.** Ikke som GitHub-review
    med approve eller request changes; det gjør Lars.
+
+   Maestri mister meldinger, så **PR-kommentaren er dommen**. Dirigenten får
+   én linje i tillegg, ikke i stedet.
+
 9. **Rapporter til dirigenten** med antall funn per alvor og om PR-en er klar
    for Lars.
 
@@ -204,6 +218,26 @@ avslutningskoden.
 - [ ] Fixtures bruker ekte tekst fra `design/omraader/september-2026/`, og
       hvert bevisst avvik fra Figma er dokumentert der fixturen står.
 - [ ] Felt designet trenger og backend ikke har er merket der de erklæres.
+
+## Feller i målingen selv
+
+Fire som kostet tid 15.09. En måling som lyver er verre enn ingen måling,
+fordi den blir stående i en rapport.
+
+- **`.last()` på en knapp som alt finnes.** «Vent til svar nummer to er
+  ferdig» skrevet som `getByRole('button', { name: 'Kopier svaret' }).last()`
+  returnerer med én gang: svar nummer én har den knappen fra før. Målingen
+  skjer da midt i strømmen, og du rapporterer at det andre svaret ikke har
+  kilder. Bruk `.nth(n - 1)` eller tell knappene.
+- **`[role="option"]` finnes i alle tre fasettlistene samtidig.** De to
+  lukkede er `display: none`, så `.first()` treffer noe usynlig. `:visible`,
+  eller filtrer på tekst.
+- **ArrowDown skriver den framhevede verdien inn i feltet.** Et tastetrykk
+  etterpå legger seg bakerst, og lista filtrerer på «AksjeNorgeNasjonal».
+  Skriv først, framhev etterpå.
+- **Markørene i et svar er ikke `<sup>` før kildene har kommet.** Å lete etter
+  `.markdown__citation` mens svaret strømmer finner ingenting, uansett hvor
+  mange `[n]` som står i teksten. Let i teksten, ikke i elementene.
 
 ## Verktøyet
 
