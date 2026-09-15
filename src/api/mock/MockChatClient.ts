@@ -411,20 +411,27 @@ export class MockChatClient implements ChatClient {
       };
     } catch {
       /*
-       * Stopped by the reader, and text had arrived. That half-answer stays
-       * on screen — answer 34 — so it is part of the conversation and is
-       * remembered as one.
+       * Stopped by the reader. The turn stays on screen — answer 34 — so it
+       * is part of the conversation and is remembered as one.
        *
-       * Stored as `complete` and not as `aborted`, deliberately: `useChat`
-       * settles a stopped answer as complete, so this is what the reader was
-       * looking at when they reloaded. Nothing arrived means nothing is
-       * stored: an answer with no content draws no card, and a stored empty
-       * one would draw a card that never existed.
+       * Remembered as `aborted`, which is what it is and what `useChat`
+       * settles it as. It used to be stored as `complete`, from a time when
+       * `useChat` settled it that way too; after #4's funn A it no longer
+       * did, and the note here went stale without anything failing. A half
+       * answer came back from a reload dressed as a finished one — «Kopier
+       * svaret», a closing question, and no way to run it again.
+       *
+       * Stored whatever phase it was stopped in, including before the first
+       * word. That is the same finding one step earlier: the card is what
+       * says the turn was stopped and offers «Generer på nytt», and it is
+       * drawn for an empty stopped turn too. Storing only the ones with text
+       * meant the reader who stopped during «Tenker …» came back from a
+       * reload to an empty thread, having watched a card a moment before.
        */
       // One turn, one time, the same rule the `done` path follows: made once
       // here and handed to both the store and the frame that ends the stream.
       const stoppedAt = new Date().toISOString();
-      if (signal?.aborted && written.length > 0) {
+      if (signal?.aborted) {
         recordMockTurn({
           question: params.query,
           answerId: nextMessageId(),
@@ -432,7 +439,7 @@ export class MockChatClient implements ChatClient {
             content: written,
             citations: [],
             createdAt: stoppedAt,
-            status: 'complete',
+            status: 'aborted',
           },
         });
       }

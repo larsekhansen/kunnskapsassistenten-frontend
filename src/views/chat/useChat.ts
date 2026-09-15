@@ -31,6 +31,29 @@ function nextId(prefix: string): string {
   return `${prefix}-${counter}`;
 }
 
+/** The most recent thing the reader asked, or undefined in an empty thread. */
+function lastQuestionIn(messages: Message[]): string | undefined {
+  return messages.findLast((message) => message.role === 'user')?.content;
+}
+
+/**
+ * The conversation without the turn «Generer på nytt» is about to replace.
+ *
+ * Only the last one, and only when it is an answer that did not make it. It
+ * used to be every failed or stopped answer in the thread, which was the same
+ * thing back when a thread could hold at most one: a stopped turn was not
+ * stored, so the only one that could exist was the live one. Now that a
+ * stopped turn survives a reload, an older one can be sitting further up —
+ * and running the newest question again is no reason to delete a turn the
+ * reader stopped last week.
+ */
+function withoutTurnBeingRetried(messages: Message[]): Message[] {
+  const last = messages.at(-1);
+  const replacing =
+    last?.role === 'assistant' && (last.status === 'error' || last.status === 'aborted');
+  return replacing ? messages.slice(0, -1) : messages;
+}
+
 export type UseChat = {
   messages: Message[];
   status: ChatStatus;
@@ -182,6 +205,21 @@ export function useChat(
   const turnRef = useRef(0);
   const conversationRef = useRef<string | undefined>(undefined);
   const lastQuestionRef = useRef<string | null>(null);
+
+  /*
+   * The conversation as it stands, for the handlers that need to read it
+   * without being rebuilt by it. `retry` is the one: it changes identity with
+   * its dependencies, and `messages` changes on every token, so depending on
+   * it directly would hand the composer a new callback per word.
+   *
+   * Written in an effect rather than during render. `retry` runs from a click,
+   * long after effects have settled, so it always reads the conversation that
+   * was on screen when the reader pressed the button.
+   */
+  const messagesRef = useRef(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Abort a turn still in flight when the view goes away, so the stream does
   // not keep setting state on an unmounted component.
@@ -482,22 +520,24 @@ export function useChat(
   const cancel = useCallback(() => abortRef.current?.abort(), []);
 
   const retry = useCallback(() => {
-    const question = lastQuestionRef.current;
+    /*
+     * The question to ask again. The ref holds it while the session that
+     * asked it is still open, and a restored conversation has no ref to hold
+     * anything: nothing was sent in this browser session, so it is null.
+     *
+     * That mattered the day a stopped turn started surviving a reload. The
+     * card came back with «Generer på nytt» on it, as it should — and the
+     * button did nothing at all, because this returned on the first line. The
+     * question is in the thread either way, which is where it is read from
+     * when the ref is empty.
+     */
+    const question = lastQuestionRef.current ?? lastQuestionIn(messagesRef.current);
     if (!question) return;
 
-    // Replace the answer that did not make it rather than stacking a second
-    // one under the same question. A failed turn and a stopped one are both
-    // replaced: neither is an answer the reader chose to keep.
     const answerId = nextId('assistant');
     setAppliedFilters((current) => ({ ...current, [answerId]: filters }));
     setMessages((current) => [
-      ...current.filter(
-        (message) =>
-          !(
-            message.role === 'assistant' &&
-            (message.status === 'error' || message.status === 'aborted')
-          ),
-      ),
+      ...withoutTurnBeingRetried(current),
       {
         id: answerId,
         role: 'assistant',
