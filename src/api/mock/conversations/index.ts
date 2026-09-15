@@ -1,9 +1,11 @@
-import type { Citation } from '../../../model';
 import { scriptedConversations } from './scripts';
 import type { ScriptedConversation } from './types';
 
 export type { ScriptedConversation } from './types';
 export { scriptedConversations } from './scripts';
+// The conversations as threads, and the `[n]` markers that belong to the same
+// job: turning a script into the messages a thread holds. See threads.ts.
+export { citationsFor, scriptedThreads } from './threads';
 
 /**
  * Loose enough to survive a user editing the suggestion before sending.
@@ -48,23 +50,4 @@ export function scriptedFor(question: string): ScriptedConversation | undefined 
     if (known.startsWith(asked) || asked.startsWith(known)) return conversation;
   }
   return undefined;
-}
-
-/**
- * The `[n]` markers in a conversation's answer, resolved.
- *
- * Derived from the excerpts rather than written out beside them, so a
- * renumbered excerpt cannot end up pointing at the wrong one. Excerpts the
- * answer never cited carry no number and are skipped.
- */
-export function citationsFor(conversation: ScriptedConversation): Citation[] {
-  return conversation.documents
-    .flatMap((document) => document.excerpts.map((excerpt) => ({ document, excerpt })))
-    .filter(({ excerpt }) => excerpt.citationNumber !== undefined)
-    .map(({ document, excerpt }) => ({
-      number: excerpt.citationNumber!,
-      excerptId: excerpt.id,
-      documentId: document.id,
-    }))
-    .sort((a, b) => a.number - b.number);
 }

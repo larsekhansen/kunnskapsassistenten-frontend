@@ -744,6 +744,23 @@ Mocken har elleve ferdige samtaler over korpuset, så det går an å se hele
 flyten uten backend: skjelett, tenkesteg, strømming, kilder og
 «Fremgangsmåte». `src/api/mock/conversations/scripts.ts`.
 
+**De er også trådene i lista.** `conversations/threads.ts` skriver hver samtale
+ut som en `ThreadDetail` — spørsmålet, svaret, kildene gruppert per dokument,
+`[n]`-ene løst opp mot dem, tenkestegene og «Fremgangsmåte» — så en rad du
+klikker på i trådlista åpner den samme samtalen som om du hadde spurt og
+ventet. Fram til 15.09 var lista tolv titler med én samtale under seg, så
+elleve av tolv tråder var tomme (punkt 16 på brukerreise-lista, målt av #4).
+
+Med ett unntak: **den som feiler blir ingen tråd.** `answer` er tom med vilje,
+fordi teksten leseren ser hører til i viewet (`errorText.ts`, slått opp på
+koden) og varselet drives av turen som skjer, ikke av en melding. Skrevet ned
+som tråd ville den blitt en tom boble uten noe som sa hva som gikk galt. Den
+nås som før, ved å stille spørsmålet.
+
+Tidspunktene er relative (`clock.ts`), spredt fra i dag til i fjor, så
+grupperingen i trådlista — «I dag», «Siste 7 dager», «Siste 30 dager», måned,
+år — fortsatt tegnes hel uansett når appen åpnes.
+
 **Tre av dem er kickstarterne på tomtilstanden, ord for ord.** Trykk et
 forslag og send, og du får svar. Det krevde ingen endring i chat-viewet:
 spørsmålene var allerede skrevet, så svarene er skrevet til dem.
@@ -759,7 +776,7 @@ stopper før spørsmålet, og verdt å kunne se på.
 | Digdir: tildelingsbrev mot årsrapport | Kickstarter 3. Sammenlikning, med tabell                         |
 | Institusjonsbarnevernet               | Ett dokument, og svaret sier at det er ett                       |
 | Digitalisering på tvers               | 12 utdrag fordelt på 6 dokumenter                                |
-| Klimagassutslipp                      | Feiler etter tenkestegene                                        |
+| Klimagassutslipp                      | Feiler etter tenkestegene. Den ene uten tråd i lista             |
 | Kunnskapsgrunnlag og samordning       | Lange nøkkelord i «Fremgangsmåte»                                |
 | Folkehelsetiltak 2026                 | Punktliste                                                       |
 | Isbjørn i norsk Arktis                | Ett dokument, fire utdrag                                        |

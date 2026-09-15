@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { corpusDocument } from '../corpus';
-import { citationsFor, scriptedConversations, scriptedFor } from './index';
+import { citationsFor, scriptedConversations, scriptedFor, scriptedThreads } from './index';
+import { threads } from '../fixtures';
 
 /**
  * The claim these tests exist to keep true: **every excerpt is a real quote
@@ -193,5 +194,65 @@ describe('scriptedFor', () => {
   it('svarer ingenting på et spørsmål som ikke er scriptet', () => {
     expect(scriptedFor('Hva er klokka?')).toBeUndefined();
     expect(scriptedFor('')).toBeUndefined();
+  });
+});
+
+/**
+ * The scripted conversations are also the threads in the list.
+ *
+ * Until 2026-09-15 the list was twelve titles with one conversation behind
+ * them, so a thread a reader opened was empty — punkt 16 på
+ * brukerreise-lista, målt av #4. These hold the mapping honest.
+ */
+describe('de scriptede samtalene som tråder', () => {
+  it('gir hver samtale en tråd, bortsett fra den som feiler', () => {
+    // Den som feiler har ikke noe svar å lagre: `answer` er tom med vilje,
+    // fordi teksten leseren ser hører til i viewet (errorText.ts). En tråd
+    // for den ville vært en tom boble uten noe som sa hva som gikk galt.
+    const failing = scriptedConversations.filter((conversation) => conversation.failure);
+    expect(failing).toHaveLength(1);
+    expect(scriptedThreads).toHaveLength(scriptedConversations.length - failing.length);
+    expect(scriptedThreads.map((thread) => thread.id)).not.toContain(failing[0]?.id);
+  });
+
+  it('gir hver tråd et spørsmål og et svar med det som ligger bak', () => {
+    for (const thread of scriptedThreads) {
+      const [question, answer] = thread.messages;
+
+      expect(question?.role, thread.title).toBe('user');
+      expect(question?.content.length, thread.title).toBeGreaterThan(0);
+
+      expect(answer?.role, thread.title).toBe('assistant');
+      expect(answer?.content.length, thread.title).toBeGreaterThan(0);
+      expect(answer?.thinkingSteps?.length, thread.title).toBeGreaterThan(0);
+      expect(answer?.retrieval, thread.title).toBeDefined();
+    }
+  });
+
+  it('gir hver tråd sin egen dag, så ingen faller utenfor lista', () => {
+    // `daysOld` i threads.ts er paret med samtalene etter posisjon. En samtale
+    // til uten en dag til ville fått `?? 0` og havnet i «I dag» uten at noen
+    // merket det.
+    const dates = scriptedThreads.map((thread) => thread.updatedAt);
+    expect(new Set(dates).size, 'to tråder med samme tidspunkt').toBe(dates.length);
+  });
+
+  it('sprer trådene over hele grupperingen, fra i dag til i fjor', () => {
+    // Grupperingen i views/threads/grouping.ts har fem bøtter. En liste der
+    // alt skjedde i dag ville stilltiende sluttet å tegne fire av dem.
+    const daysOld = scriptedThreads.map((thread) =>
+      Math.round((Date.now() - Date.parse(thread.updatedAt)) / 86_400_000),
+    );
+
+    expect(Math.min(...daysOld)).toBeLessThanOrEqual(1);
+    expect(Math.max(...daysOld)).toBeGreaterThan(300);
+  });
+
+  it('har ingen id som kolliderer med tråden som er skrevet for hånd', () => {
+    // `findThread` ser i de scriptede først, så en kollisjon ville skjult
+    // NKOM-tråden — den eneste med sidetall på utdragene sine.
+    const ids = threads.map((thread) => thread.id);
+    expect(new Set(ids).size, 'to tråder med samme id').toBe(ids.length);
+    expect(ids).toContain('nkom-maaloppnaaelse');
   });
 });
