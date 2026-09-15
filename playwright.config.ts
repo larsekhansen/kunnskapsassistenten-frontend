@@ -32,6 +32,23 @@ export default defineConfig({
   // what a shared one costs.
   outputDir: RUN_ARTIFACTS,
   fullyParallel: true,
+  /*
+   * Fire arbeidere lokalt, ikke halve maskinen.
+   *
+   * Playwright tar som standard halvparten av kjernene, altså åtte her — per
+   * suite. Fem agenter deler maskinen, og målt 15.09: én e2e-suite tok
+   * chromium-prosessene fra 9 til 17 og lasten fra 24,6 til 31,0, mens
+   * `npm test` samtidig startet 17 vitest-prosesser. Suitene ble ikke
+   * raskere av det; de ble røde. Fem samtidige suiter ga 24 falske røde i
+   * strømme-testene ved load 17, og enkelttester som er grønne alene har
+   * falt på tastetrykk sendt før appen rakk å tegne.
+   *
+   * `GITHUB_ACTIONS` og ikke `CI` er skillet, fordi `CI=true` er det vi selv
+   * setter lokalt (se regler.md): en `ubuntu-latest`-kjører har fire kjerner,
+   * der Playwright selv velger to, og fire ville vært en oppjustering av noe
+   * som ikke er problemet vårt. CI beholder sin egen standard.
+   */
+  workers: process.env.GITHUB_ACTIONS ? undefined : 4,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   reporter: [['list'], ['html', { outputFolder: `${ARTIFACTS}/report`, open: 'never' }]],
