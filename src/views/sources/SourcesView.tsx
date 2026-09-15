@@ -214,23 +214,27 @@ export function SourcesView({
   // a caller that sends no nonce, the nonce is what makes a second click on
   // the SAME marker count as a new request (answer 19), and the message id
   // changes when the reader clicks a marker in a different answer.
+  //
+  // `shownFor` is not part of the comparison; it is what the block records.
+  // It is the answer the citation was resolved against, and it is what makes
+  // the active marker stay behind when the reader steps to another answer:
+  // the highlight and the way back belong to the answer the reader was sent
+  // to, not to whichever answer happens to show an excerpt with that number.
+  // Recording it here rather than reading `activeCitationMessageId` later
+  // means it is right in both states the shell passes through — with the
+  // message id, and without it, where the marker is resolved against the
+  // answer on screen at the time.
   const [handled, setHandled] = useState<
-    { number?: number; nonce?: number; messageId?: string } | undefined
+    { number?: number; nonce?: number; messageId?: string; shownFor?: string } | undefined
   >(undefined);
   if (
     handled?.number !== activeCitationNumber ||
     handled?.nonce !== activeCitationNonce ||
     handled?.messageId !== activeCitationMessageId
   ) {
-    setHandled({
-      number: activeCitationNumber,
-      nonce: activeCitationNonce,
-      messageId: activeCitationMessageId,
-    });
-
     // The marker says which answer it sits in, so the panel switches to that
     // set before looking the excerpt up in it. Without the id — which is where
-    // the shell still is — the marker is resolved against whatever is on
+    // the chat view still is — the marker is resolved against whatever is on
     // screen, exactly as before.
     const citedIndex = answersOnScreen.findIndex(
       (answer) => answer.messageId === activeCitationMessageId,
@@ -240,6 +244,14 @@ export function SourcesView({
     }
 
     const citedAnswer = citedIndex >= 0 ? answersOnScreen[citedIndex] : activeAnswer;
+
+    setHandled({
+      number: activeCitationNumber,
+      nonce: activeCitationNonce,
+      messageId: activeCitationMessageId,
+      shownFor: activeCitationNumber === undefined ? undefined : citedAnswer?.messageId,
+    });
+
     const target = allExcerpts(citedAnswer?.documents ?? []).find(
       (excerpt) => excerpt.citationNumber === activeCitationNumber,
     );
@@ -367,6 +379,28 @@ export function SourcesView({
 
   const content = panelContentFor(answerList, activeAnswer);
 
+  /**
+   * The marker is active on the answer the reader was sent to, and nowhere
+   * else.
+   *
+   * Every answer numbers its excerpts from 1, so `[1]` exists in all of them.
+   * Comparing only the number meant that stepping from the cited answer to
+   * another one carried the blue band and «Tilbake til svaret» along to an
+   * excerpt nobody had been sent to, offering a way back from a place the
+   * reader never left (KA CC on PR #36).
+   */
+  // One string, said in two places: the visible row and the live region that
+  // announces it. Empty while there is only one answer, which is what keeps
+  // the region silent without taking it out of the document.
+  const answerLabel =
+    answersOnScreen.length > 1
+      ? `Kilder til svar ${activeIndex + 1} av ${answersOnScreen.length}`
+      : '';
+
+  const citationIsOnScreen =
+    handled?.shownFor !== undefined && handled.shownFor === activeAnswer?.messageId;
+  const activeNumberHere = citationIsOnScreen ? activeCitationNumber : undefined;
+
   return (
     <div className="sources-view">
       {/* The slot's accessible name already says «Kilder», and the design has
@@ -376,11 +410,29 @@ export function SourcesView({
         Kilder
       </Heading>
 
+      {/* Which answer is on screen, for a screen reader.
+
+          Mounted from the first render and never taken away, empty while there
+          is nothing to say. A live region has to exist BEFORE its content
+          changes; mounting it together with the text — which is what the
+          visible row does, since it appears with the second answer — means the
+          one announcement that matters is the one that is never made.
+
+          `<output>` is `role="status"`, the same element and the same reason as
+          the loading line in `SourcesPlaceholder`. The visible counter carries
+          the identical string and is `aria-hidden`, so nothing is said twice. */}
+      <output className="ds-sr-only">{answerLabel}</output>
+
       {/* Shown whenever the thread has more than one answer, including while
           the answer on screen has nothing to show: stepping back to the answer
           that DID have sources is the whole point of it then. */}
       {answersOnScreen.length > 1 && (
-        <AnswerSwitcher index={activeIndex} count={answersOnScreen.length} onStep={stepToAnswer} />
+        <AnswerSwitcher
+          label={answerLabel}
+          index={activeIndex}
+          count={answersOnScreen.length}
+          onStep={stepToAnswer}
+        />
       )}
 
       {/* No search field when there is nothing to search. It stays during
@@ -415,7 +467,7 @@ export function SourcesView({
                 onExcerptOpenChange={setExcerptOpen}
                 hits={hits}
                 currentHit={currentHit}
-                activeCitationNumber={activeCitationNumber}
+                activeCitationNumber={activeNumberHere}
                 onReturnToAnswer={returnToAnswer}
               />
             ))}

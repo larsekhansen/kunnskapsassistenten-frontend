@@ -100,11 +100,20 @@ function ClickableHarness({ answers }: { answers: readonly AnswerSources[] }) {
   );
 }
 
+/**
+ * The visible counter, which is `aria-hidden` and therefore has no role to
+ * query it by. Its spoken twin is the `role="status"` region, so a plain
+ * `getByText` would find both.
+ */
+function visibleCounter(): string | undefined {
+  return document.querySelector('.sources-answer-switcher__count')?.textContent ?? undefined;
+}
+
 describe('SourcesView, one answer at a time', () => {
   it('shows the newest answer and says which one it is', () => {
     render(<Harness answers={[firstAnswer, secondAnswer]} />);
 
-    expect(screen.getByText('Kilder til svar 2 av 2')).toBeTruthy();
+    expect(visibleCounter()).toBe('Kilder til svar 2 av 2');
     expect(screen.getByRole('heading', { name: 'Tildelingsbrev 2024' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Årsrapport 2021' })).toBeNull();
   });
@@ -112,7 +121,7 @@ describe('SourcesView, one answer at a time', () => {
   it('draws no switcher for a thread with one answer', () => {
     render(<Harness answers={[secondAnswer]} />);
 
-    expect(screen.queryByText(/Kilder til svar/)).toBeNull();
+    expect(visibleCounter()).toBeUndefined();
     expect(screen.queryByRole('button', { name: 'Forrige svar' })).toBeNull();
   });
 
@@ -121,7 +130,7 @@ describe('SourcesView, one answer at a time', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Forrige svar' }));
 
-    expect(screen.getByText('Kilder til svar 1 av 2')).toBeTruthy();
+    expect(visibleCounter()).toBe('Kilder til svar 1 av 2');
     expect(screen.getByRole('heading', { name: 'Årsrapport 2021' })).toBeTruthy();
   });
 
@@ -136,7 +145,7 @@ describe('SourcesView, one answer at a time', () => {
     // it once too often does not send focus to <body>.
     expect(previous.getAttribute('aria-disabled')).toBe('true');
     expect(previous.hasAttribute('disabled')).toBe(false);
-    expect(screen.getByText('Kilder til svar 1 av 2')).toBeTruthy();
+    expect(visibleCounter()).toBe('Kilder til svar 1 av 2');
   });
 
   it('opens the excerpt of the answer the marker sits in, not the newest', () => {
@@ -149,7 +158,7 @@ describe('SourcesView, one answer at a time', () => {
       />,
     );
 
-    expect(screen.getByText('Kilder til svar 1 av 2')).toBeTruthy();
+    expect(visibleCounter()).toBe('Kilder til svar 1 av 2');
     expect(screen.getByText('Sitat nummer 1 fra Årsrapport 2021.')).toBeTruthy();
     expect(screen.queryByText('Sitat nummer 1 fra Tildelingsbrev 2024.')).toBeNull();
   });
@@ -159,19 +168,19 @@ describe('SourcesView, one answer at a time', () => {
 
     rerender(<Harness answers={[firstAnswer, secondAnswer]} />);
 
-    expect(screen.getByText('Kilder til svar 2 av 2')).toBeTruthy();
+    expect(visibleCounter()).toBe('Kilder til svar 2 av 2');
   });
 
   it('follows a new answer even after the reader has stepped back', () => {
     const { rerender } = render(<Harness answers={[firstAnswer, secondAnswer]} />);
     fireEvent.click(screen.getByRole('button', { name: 'Forrige svar' }));
-    expect(screen.getByText('Kilder til svar 1 av 2')).toBeTruthy();
+    expect(visibleCounter()).toBe('Kilder til svar 1 av 2');
 
     rerender(
       <Harness answers={[firstAnswer, secondAnswer, { ...firstAnswer, messageId: 's3' }]} />,
     );
 
-    expect(screen.getByText('Kilder til svar 3 av 3')).toBeTruthy();
+    expect(visibleCounter()).toBe('Kilder til svar 3 av 3');
   });
 
   it('keeps the switcher when the answer on screen has no sources', () => {
@@ -186,6 +195,122 @@ describe('SourcesView, one answer at a time', () => {
     expect(screen.getByRole('button', { name: 'Forrige svar' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Forrige svar' }));
     expect(screen.getByRole('heading', { name: 'Årsrapport 2021' })).toBeTruthy();
+  });
+});
+
+describe('SourcesView, the active marker stays with its answer', () => {
+  /** `data-active` is the blue band; the excerpt the reader was sent to. */
+  function activeExcerptText(): string | undefined {
+    return document.querySelector('[data-active="true"]')?.textContent ?? undefined;
+  }
+
+  it('leaves the highlight behind when the reader steps to another answer', () => {
+    render(
+      <Harness
+        answers={[firstAnswer, secondAnswer]}
+        citation={{ number: 1, nonce: 1, messageId: 'svar-1' }}
+      />,
+    );
+
+    expect(activeExcerptText()).toContain('Sitat nummer 1 fra Årsrapport 2021.');
+
+    // Both answers have an excerpt 1. Comparing only the number used to carry
+    // the band — and «Tilbake til svaret» — along to an excerpt nobody had
+    // been sent to.
+    fireEvent.click(screen.getByRole('button', { name: 'Neste svar' }));
+
+    expect(visibleCounter()).toBe('Kilder til svar 2 av 2');
+    // A closed excerpt has its quote twice: in the preview and inside the
+    // collapsed Details. Both belong to the second answer, which is the point.
+    expect(screen.getAllByText('Sitat nummer 1 fra Tildelingsbrev 2024.').length).toBeGreaterThan(
+      0,
+    );
+    expect(activeExcerptText()).toBeUndefined();
+  });
+
+  it('offers no way back from the answer the reader stepped to', () => {
+    render(
+      <Harness
+        answers={[firstAnswer, secondAnswer]}
+        citation={{ number: 1, nonce: 1, messageId: 'svar-1' }}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Tilbake til svaret' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neste svar' }));
+
+    expect(screen.queryByRole('button', { name: 'Tilbake til svaret' })).toBeNull();
+  });
+
+  it('gives the highlight back when the reader steps home again', () => {
+    render(
+      <Harness
+        answers={[firstAnswer, secondAnswer]}
+        citation={{ number: 1, nonce: 1, messageId: 'svar-1' }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Neste svar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Forrige svar' }));
+
+    expect(activeExcerptText()).toContain('Sitat nummer 1 fra Årsrapport 2021.');
+    expect(screen.getByRole('button', { name: 'Tilbake til svaret' })).toBeTruthy();
+  });
+
+  it('stays behind even when nobody said which answer the marker was in', () => {
+    // The state between #39 and the chat view widening onSelectSource: several
+    // answers, no message id on the citation. The marker is resolved against
+    // the answer on screen, and the highlight has to stay with that answer all
+    // the same.
+    render(<Harness answers={[firstAnswer, secondAnswer]} citation={{ number: 1, nonce: 1 }} />);
+
+    expect(activeExcerptText()).toContain('Sitat nummer 1 fra Tildelingsbrev 2024.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Forrige svar' }));
+
+    expect(activeExcerptText()).toBeUndefined();
+  });
+});
+
+describe('SourcesView, the live region that says which answer', () => {
+  /** `<output>` is role=status, which is a polite live region. */
+  function liveRegion(): HTMLElement {
+    return screen.getByRole('status');
+  }
+
+  it('is in the document before there is anything to announce', () => {
+    // A live region mounted together with its text is not announced, and the
+    // second answer arriving is the one moment it matters (KA CC on PR #36).
+    render(<Harness answers={[firstAnswer]} />);
+
+    const region = liveRegion();
+    expect(region).toBeTruthy();
+    expect(region.textContent).toBe('');
+  });
+
+  it('is the same element once the second answer arrives', () => {
+    const { rerender } = render(<Harness answers={[firstAnswer]} />);
+    const before = liveRegion();
+
+    rerender(<Harness answers={[firstAnswer, secondAnswer]} />);
+
+    expect(liveRegion()).toBe(before);
+    expect(before.textContent).toBe('Kilder til svar 2 av 2');
+  });
+
+  it('says the same thing as the visible row, and only says it once', () => {
+    render(<Harness answers={[firstAnswer, secondAnswer]} />);
+
+    const visible = document.querySelector('.sources-answer-switcher__count') as HTMLElement;
+    expect(visible.getAttribute('aria-hidden')).toBe('true');
+    expect(liveRegion().textContent).toBe(visible.textContent);
+  });
+
+  it('follows the reader stepping between answers', () => {
+    render(<Harness answers={[firstAnswer, secondAnswer]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Forrige svar' }));
+
+    expect(liveRegion().textContent).toBe('Kilder til svar 1 av 2');
   });
 });
 
@@ -254,7 +379,7 @@ describe('SourcesView, the shell as it is today', () => {
     render(<SourcesView documents={firstAnswer.documents} />);
 
     expect(screen.getByRole('heading', { name: 'Årsrapport 2021' })).toBeTruthy();
-    expect(screen.queryByText(/Kilder til svar/)).toBeNull();
+    expect(visibleCounter()).toBeUndefined();
   });
 
   it('still reads an empty list as «nothing asked yet»', () => {

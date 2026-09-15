@@ -25,17 +25,17 @@ export type SourcesViewProps = Partial<SlotViewProps> & {
    * `undefined` means the mounter does not know yet, which is the loading
    * state. `[]` means the thread has no answers.
    *
-   * This is the shape `answerSourcesContext` grows into (rolle-5h). Until it
-   * does, the shell passes `documents` below and this stays undefined.
+   * `SourcesSlotView` passes this from `answerSourcesContext` (PR #39), and
+   * the chat view records one entry per answer (PR #42).
    */
   answers?: readonly AnswerSources[];
   /**
-   * The single set the shell holds today: the last answer's sources.
+   * The flat list: the newest answer's sources.
    *
-   * Transitional, and read only when `answers` is absent. It is normalised to
-   * a one-entry `answers` list at the top of the view, so there is one code
-   * path below that point. It goes away the day `answerSourcesContext` carries
-   * sources per message id, and nothing but the normaliser has to change.
+   * Read only when `answers` is absent, and normalised to a one-entry
+   * `answers` list at the top of the view, so there is one code path below
+   * that point. It goes away the day every caller records answers per message
+   * id, and nothing but the normaliser has to change.
    *
    * `undefined` means «still loading», `[]` means «no sources yet».
    */
@@ -44,10 +44,10 @@ export type SourcesViewProps = Partial<SlotViewProps> & {
    * Which answer the activated `[n]` marker sits in.
    *
    * Without it the panel cannot tell a marker in the first answer from one in
-   * the third, and switching sets is guesswork. The shell reads it from
-   * `useCitation()` once `ActiveCitation` carries a message id; until then it
-   * is undefined and the marker is resolved against the answer already on
-   * screen, which is what the panel did before.
+   * the third, and switching sets is guesswork. `SourcesSlotView` reads it
+   * from `useCitation()`; it is undefined until the chat view passes a message
+   * id to `showCitation`, and the marker is then resolved against the answer
+   * already on screen, which is what the panel did before.
    */
   activeCitationMessageId?: string;
 };
