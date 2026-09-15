@@ -1,9 +1,8 @@
 import { Button, Card, Details, Heading, Link, Paragraph, Tag } from '@digdir/designsystemet-react';
+import { HighlightedText, type SearchHit } from '../../components';
 import { BackIcon } from '../../components/icons';
 import { excerptDomId, relevanceLabels, type Excerpt } from '../../model';
-import { HighlightedText } from './HighlightedText';
 import { relevanceTagColor } from './relevance';
-import type { SearchHit } from './search';
 
 /** How much of the quote is shown before the user opens it. */
 const PREVIEW_LENGTH = 180;
@@ -168,7 +167,12 @@ export function SourceExcerpt({
         <Details.Content>
           {quoteHeading}
           <Paragraph data-size="sm" variant="long">
-            <HighlightedText text={text} hits={hits} currentHit={currentHit} />
+            <HighlightedText
+              text={text}
+              hits={hits}
+              currentHit={currentHit}
+              markClassName="sources-mark"
+            />
           </Paragraph>
 
           {/* `kudosUrl` is absent for corpora without public URLs — the model

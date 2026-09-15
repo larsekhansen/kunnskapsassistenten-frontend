@@ -190,10 +190,17 @@ test.describe('skallet', () => {
     expect(steps.length, 'Tab skal nå noe i det hele tatt').toBeGreaterThan(3);
     expectEveryStepReachable(steps, 'skallet');
 
-    // Reading order: the slots come in the order the shell renders them, and
-    // the first stop after the skip link is the primary sidebar's own button.
+    // Reading order: the skip links come first, then the slots in the order
+    // the shell renders them, so the first stop after them is the primary
+    // sidebar's own button.
+    //
+    // «Hopp til skrivefeltet» sits second on purpose. The compose field is at
+    // the bottom of the answer and was tab stop 22 — for the thing a reader
+    // does most often (reise 7 and 15, punkt 8 on the ranked list) — so it has
+    // to be reachable before the navigation panel, not after it.
     expect(steps[0]?.name).toBe('Hopp til hovedinnhold');
-    expect(steps[1]?.name).toBe('Skjul tråder og filter');
+    expect(steps[1]?.name).toBe('Hopp til skrivefeltet');
+    expect(steps[2]?.name).toBe('Skjul tråder og filter');
   });
 
   test('skjermbilder av rutene i lys og mørk modus', async ({ page }, testInfo) => {

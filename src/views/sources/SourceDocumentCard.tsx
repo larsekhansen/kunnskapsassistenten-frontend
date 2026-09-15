@@ -1,8 +1,8 @@
 import { Card, Heading, Link, Paragraph } from '@digdir/designsystemet-react';
+import { hitsFor, type SearchHit } from '../../components';
 import type { SourceDocument } from '../../model';
 import { SourceExcerpt } from './SourceExcerpt';
 import { documentDomId } from './ids';
-import { type SearchHit, hitsFor } from './search';
 
 type SourceDocumentCardProps = {
   /** Named `source`, not `document`: the DOM global is used in this view. */

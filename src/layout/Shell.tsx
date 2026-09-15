@@ -2,6 +2,7 @@ import { Badge, BadgePosition, Button, SkipLink, Tooltip } from '@digdir/designs
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
+import { COMPOSER_ID } from './ids';
 import { MainScrollContext } from './scrollContext';
 import { useAnswerSources } from './useAnswerSources';
 import { useNoAnswers } from './useNoAnswers';
@@ -53,6 +54,21 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
   return (
     <MainScrollContext value={mainScroll}>
       <SkipLink href="#main-content">Hopp til hovedinnhold</SkipLink>
+      {/*
+        The second skip link, and the one that earns its keep every turn.
+        «Hopp til hovedinnhold» lands at the top of the answer; the compose
+        field is at the BOTTOM of it, and reaching it by keyboard was tab stop
+        22 — for the thing a reader does more often than anything else. Reise
+        7 and 15 in design/brukerreiser-2026-09-15.md, punkt 8 on the ranked
+        list. #3 asked for it; #41 put the id where both sides can read it.
+
+        Not drawn when the route draws its own main: there is no conversation
+        on «Siden finnes ikke», so there is no field to jump to, and a skip
+        link to nothing is worse than no skip link. `COMPOSER_ID` comes from
+        ids.ts rather than from the chat view, so the shell never imports a
+        view to build its own chrome.
+      */}
+      {routeOwnsMain ? null : <SkipLink href={`#${COMPOSER_ID}`}>Hopp til skrivefeltet</SkipLink>}
 
       <div className="shell" style={layoutStyle(layout)}>
         <Sidebar slot="primary-sidebar" element="nav" />
