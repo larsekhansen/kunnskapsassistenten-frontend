@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { AnswerSourcesContext } from '../../layout/answerSourcesContext';
+import { AnswerSourcesContext, inertAnswerSources } from '../../layout/answerSourcesContext';
 import { FilterContext } from '../../layout/filterContext';
 import { emptyFilterSelection, type FilterFacet } from '../../model';
 import { FiltersView } from './FiltersView';
@@ -13,7 +13,7 @@ import { FiltersView } from './FiltersView';
 function renderView(facets?: FilterFacet[]) {
   return render(
     <FilterContext value={{ selection: emptyFilterSelection, setSelection: () => {} }}>
-      <AnswerSourcesContext value={{ documents: undefined, setDocuments: () => {} }}>
+      <AnswerSourcesContext value={inertAnswerSources}>
         <FiltersView siblingViews={['filters']} onShowView={() => {}} facets={facets} />
       </AnswerSourcesContext>
     </FilterContext>,

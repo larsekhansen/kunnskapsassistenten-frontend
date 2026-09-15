@@ -1,5 +1,10 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { emptyFilterSelection, type FilterSelection, type SourceDocument } from '../model';
+import {
+  emptyFilterSelection,
+  type AnswerSources,
+  type FilterSelection,
+  type SourceDocument,
+} from '../model';
 import { AnswerSourcesContext } from './answerSourcesContext';
 import { CitationContext, type ActiveCitation } from './citationContext';
 import { FilterContext } from './filterContext';
@@ -50,6 +55,14 @@ export function LayoutProvider({
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | undefined>(undefined);
   const [selection, setSelection] = useState<FilterSelection>(emptyFilterSelection);
   const [answerDocuments, setAnswerDocuments] = useState<SourceDocument[] | undefined>(undefined);
+  /**
+   * The sources of every answer in the thread, oldest first.
+   *
+   * Undefined until something is recorded: the sources panel reads undefined
+   * as «nothing is known» and an empty list as «no answers», and while the
+   * chat view still reports one flat list the honest answer is the first.
+   */
+  const [answers, setAnswers] = useState<AnswerSources[] | undefined>(undefined);
   /**
    * Has the user said, in so many words, that they do not want the sources
    * panel open?
@@ -181,6 +194,20 @@ export function LayoutProvider({
     [],
   );
 
+  /**
+   * Record one answer's sources. The newest wins its own slot; an answer that
+   * reports twice — sources arriving, then the status settling — replaces its
+   * earlier entry rather than appearing twice.
+   */
+  const setAnswerSources = useCallback((answer: AnswerSources) => {
+    setAnswers((current) => {
+      const rest = (current ?? []).filter((other) => other.messageId !== answer.messageId);
+      return [...rest, answer];
+    });
+  }, []);
+
+  const clearAnswerSources = useCallback(() => setAnswers(undefined), []);
+
   // Asking to see a citation opens the panel it lives in. Nothing is gained
   // by pointing at an excerpt behind a collapsed panel.
   //
@@ -188,8 +215,12 @@ export function LayoutProvider({
   // the navigation panel here too. A citation is a request to open a sidebar;
   // where the request came from changes nothing about whether it fits.
   const showCitation = useCallback(
-    (number: number) => {
-      setActiveCitation((current) => ({ number, nonce: (current?.nonce ?? 0) + 1 }));
+    (number: number, messageId?: string) => {
+      setActiveCitation((current) => ({
+        number,
+        nonce: (current?.nonce ?? 0) + 1,
+        ...(messageId === undefined ? {} : { messageId }),
+      }));
       // Asking to see a citation is asking for the panel, so it counts as the
       // user changing their mind about having closed it.
       setSourcesDismissed(false);
@@ -227,8 +258,16 @@ export function LayoutProvider({
   const filter = useMemo(() => ({ selection, setSelection }), [selection]);
 
   const answerSources = useMemo(
-    () => ({ documents: answerDocuments, setDocuments: setAnswerDocuments }),
-    [answerDocuments],
+    () => ({
+      answers,
+      setAnswerSources,
+      clearAnswerSources,
+      // `answers` wins the moment it has anything, so the two ways of
+      // reporting sources cannot disagree about which answer is newest.
+      documents: answers?.at(-1)?.documents ?? answerDocuments,
+      setDocuments: setAnswerDocuments,
+    }),
+    [answers, setAnswerSources, clearAnswerSources, answerDocuments],
   );
 
   return (

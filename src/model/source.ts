@@ -1,3 +1,4 @@
+import type { MessageStatus } from './message';
 /**
  * How relevant an excerpt is to the question. Three levels, because the
  * design draws three tags: «Mest relevant», «Relevant», «Minst relevant».
@@ -70,6 +71,33 @@ export interface SourceDocument {
   year?: number;
   excerpts: Excerpt[];
 }
+
+/**
+ * The sources behind ONE answer in a thread.
+ *
+ * A thread has several answers, and each numbers its excerpts from 1: `[2]`
+ * in the first answer and `[2]` in the second point at different excerpts in
+ * different documents. A single flat list — the newest answer's — made a
+ * marker in an older answer open the newer answer's excerpt with the same
+ * number. It looked right and was not. Found by #4 in
+ * design/brukerreiser-2026-09-15.md, punkt 5.
+ *
+ * `status` is the answer's own {@link MessageStatus} and not a second
+ * vocabulary for the same thing. It is here because an empty `documents`
+ * means four different things — the answer is still writing, it was stopped,
+ * it failed, or it genuinely cited nothing — and the panel has to say which.
+ *
+ * The type lives in the model rather than in either view because three
+ * parties need to agree on it: the chat view produces it, the shell carries
+ * it, and the sources view draws it.
+ */
+export type AnswerSources = {
+  /** The assistant message these sources belong to. */
+  messageId: string;
+  /** Grouped per document (answer 57). Empty until they arrive, or if none. */
+  documents: SourceDocument[];
+  status: MessageStatus;
+};
 
 /**
  * The DOM id of an excerpt in the sources panel.

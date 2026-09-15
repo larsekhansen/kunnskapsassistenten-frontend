@@ -49,10 +49,13 @@ describe('Markdown citations', () => {
   });
 
   it('leaves a marker with no excerpt as plain text', () => {
-    render(<Markdown citations={targets}>{'Udekket påstand [9].'}</Markdown>);
+    // Unchanged by default: an answer can carry a bracketed number that was
+    // never a citation, and a clarification does exactly that.
+    const { container } = render(<Markdown citations={targets}>{'Udekket påstand [9].'}</Markdown>);
 
     expect(screen.queryByRole('link')).toBeNull();
-    expect(screen.getByText(/Udekket påstand \[9\]\./)).toBeTruthy();
+    expect(container.textContent).toContain('Udekket påstand [9]');
+    expect(container.querySelector('sup[title]')).toBeNull();
   });
 
   it('keeps the text around and between several markers', () => {
@@ -78,5 +81,35 @@ describe('Markdown citations', () => {
     render(<Markdown citations={targets}>{'- punkt [1]'}</Markdown>);
     expect(screen.getByRole('listitem').textContent).toBe('punkt [1]');
     expect(screen.getByRole('link', { name: /Kilde 1/ })).toBeTruthy();
+  });
+});
+
+describe('markør uten kilde', () => {
+  it('blir tekst med en forklaring, ikke en lenke', () => {
+    // Et avbrutt svar har skrevet [3], men kildene kom aldri. En lenke til
+    // ingenting er verre enn ingen lenke.
+    const { container } = render(
+      <Markdown citations={[]} sourcesLost>
+        {'Et svar med [3] i seg.'}
+      </Markdown>,
+    );
+
+    expect(screen.queryByRole('link')).toBeNull();
+
+    const marker = container.querySelector('sup[title]');
+    expect(marker?.getAttribute('title')).toBe('Kilden kom ikke fram');
+    expect(marker?.textContent).toContain('[3]');
+    // `title` alene er bare for mus. Dette er for den som lytter.
+    expect(marker?.textContent?.toLowerCase()).toContain('kilden kom ikke fram');
+  });
+
+  it('lar teksten rundt stå urørt', () => {
+    const { container } = render(
+      <Markdown citations={[]} sourcesLost>
+        {'Før [3] etter.'}
+      </Markdown>,
+    );
+    expect(container.textContent).toContain('Før ');
+    expect(container.textContent).toContain(' etter.');
   });
 });
