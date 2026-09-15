@@ -89,11 +89,14 @@ test.describe('samtalen', () => {
 
     const url = page.url();
     const id = url.split('/').pop();
-    // Selve svarteksten, ikke hele meldinga: tenkepanelet sier «Tenkte i 2
-    // sekunder» live og «Tenkte i 4 sekunder» etter en reload, fordi det ene
-    // er målt klokketid og det andre er summen av stegenes egne tall. Det er
-    // verdt å vite, og det er ikke det denne testen handler om.
     const before = await page.locator('.ka-answer-card .markdown').innerText();
+    // Tenketiden måles én gang og følger turen. Den sa «2 sekunder» live og
+    // «4 sekunder» etter en reload, fordi det ene var klokketid og det andre
+    // summen av stegenes egne tall — to ærlige tall om en tur som ikke hadde
+    // endret seg (brukerblikk runde 2, funn 5).
+    const thoughtBefore = await page.locator('.ka-thinking__summary').innerText();
+    // Og kildene står i panelet før vi laster på nytt.
+    await expect(page.locator('.sources-documents > *')).toHaveCount(3);
 
     await page.reload();
 
@@ -101,8 +104,18 @@ test.describe('samtalen', () => {
     await expect(page.locator('.ka-message--assistant')).toHaveCount(1);
     await expect.poll(() => page.locator('.ka-answer-card .markdown').innerText()).toBe(before);
     await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible();
+    await expect(page.locator('.ka-thinking__summary')).toHaveText(thoughtBefore);
     // Kildene også: markørene peker fortsatt på utdrag som finnes.
     await expect(citation(page, 1)).toBeVisible();
+
+    /*
+     * Og sidepanelet har dem. Det er funn 1 i brukerblikk runde 2: svaret kom
+     * tilbake med sju markører som ekte lenker, og begge panelene sa likevel
+     * «Kildene vises her når du har stilt et spørsmål» til en leser som satt
+     * og så på et ferdig, sitert svar.
+     */
+    await expect(page.locator('.sources-documents > *')).toHaveCount(3);
+    await expect(page.getByText('Ingen kilder ennå')).toHaveCount(0);
 
     // Og nå står den i lista, merket som den åpne.
     await showThreads(page);
@@ -116,6 +129,28 @@ test.describe('samtalen', () => {
     await page.evaluate(() => sessionStorage.clear());
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Fant ikke tråden' })).toBeVisible();
+  });
+
+  test('en markør i et gjenopprettet svar åpner utdraget sitt', async ({ page }, testInfo) => {
+    covers(testInfo, 'kildene overlever en reload');
+
+    await page.goto('/');
+    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    /*
+     * Brukerblikk runde 2, funn 1: etter en reload sa begge sidepanelene
+     * «Kildene vises her når du har stilt et spørsmål» til en leser som satt
+     * og så på et ferdig, sitert svar, og et klikk på markøren gjorde
+     * ingenting. Egen test fordi klikket åpner kildepanelet, og i en smal nok
+     * flate lukker det navigasjonspanelet — som resten av reload-testen
+     * bruker.
+     */
+    await citation(page, 1).click();
+    await expect(page.locator('#excerpt-1')).toBeVisible();
   });
 
   test('en avklaring er et spørsmål tilbake, ikke et svar', async ({ page }, testInfo) => {

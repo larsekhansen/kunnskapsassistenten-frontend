@@ -156,9 +156,16 @@ export function Composer({
         {SHORTCUT_DESCRIPTION}
       </p>
 
+      {/*
+        The disclaimer first. Both sentences share the line, and the order
+        says which one matters: the design puts «Kunnskapsassistenten kan
+        gjøre feil» under the field in all four chatInput variants, and the
+        shortcut is a convenience that arrived later (brukerblikk runde 2,
+        funn 6). It had taken the front of the line.
+      */}
       <Paragraph className="ka-composer__disclaimer" data-size="sm">
-        <span className="ka-composer__shortcut">{shortcutHint()}</span>
         {DISCLAIMER}
+        <span className="ka-composer__shortcut">{shortcutHint()}</span>
       </Paragraph>
     </div>
   );

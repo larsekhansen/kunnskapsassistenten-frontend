@@ -1,5 +1,5 @@
 import { Details, Paragraph, Spinner } from '@digdir/designsystemet-react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { ThinkingStep } from '../../model';
 import { reportedDurationMs, thoughtForLabel } from './thinkingTime';
 
@@ -10,6 +10,12 @@ type ThinkingPanelProps = {
   steps: ThinkingStep[];
   /** `thinking` until the first token of the answer lands. */
   status: ThinkingStatus;
+  /**
+   * How long the thinking took, measured while it happened and carried on the
+   * message. Absent for a turn nobody watched, and the steps' own durations
+   * then stand in. See `Message.thoughtMs`.
+   */
+  thoughtMs?: number;
 };
 
 /**
@@ -41,33 +47,24 @@ type ThinkingPanelProps = {
  * waiting for; the one «Kunnskapsassistenten søker …» is said by the view's
  * own region, once, when the first step lands. See useChat.
  */
-export function ThinkingPanel({ steps, status }: ThinkingPanelProps) {
+export function ThinkingPanel({ steps, status, thoughtMs }: ThinkingPanelProps) {
   const thinking = status === 'thinking';
 
   const [chosen, setChosen] = useState<boolean | undefined>(undefined);
   const open = chosen ?? thinking;
 
-  // The clock runs from the first step to the first token. It is started and
-  // read in an effect because it measures wall time, which is not something a
-  // render may look at: two renders of the same state have to agree.
-  const startedAt = useRef<number | undefined>(undefined);
-  const [measuredMs, setMeasuredMs] = useState<number | undefined>(undefined);
-
-  useEffect(() => {
-    if (steps.length === 0) return;
-
-    if (thinking) {
-      startedAt.current ??= Date.now();
-      return;
-    }
-
-    // The answer has started. Freeze the clock the first time we see that,
-    // and only if we were here when it started.
-    if (startedAt.current !== undefined && measuredMs === undefined) {
-      setMeasuredMs(Date.now() - startedAt.current);
-    }
-  }, [thinking, steps.length, measuredMs]);
-
+  /*
+   * The number is read, not taken. This panel used to run the clock itself,
+   * from its first render with `thinking` to the render where that stopped —
+   * which meant the number lived in a component that only exists while the
+   * conversation is on screen. Reload it and the number was gone, and the sum
+   * of the steps' own `durationMs` answered instead: «Tenkte i 2 sekunder»
+   * became «Tenkte i 4 sekunder» for a turn that had not changed (brukerblikk
+   * runde 2, funn 5).
+   *
+   * So the measurement moved to where the two ends of the interval are — the
+   * stream — and travels with the message. See `useChat` and `Message`.
+   */
   if (steps.length === 0) return null;
 
   const lastIndex = steps.length - 1;
@@ -87,7 +84,7 @@ export function ThinkingPanel({ steps, status }: ThinkingPanelProps) {
               Tenker …
             </>
           ) : (
-            thoughtForLabel(measuredMs ?? reportedDurationMs(steps))
+            thoughtForLabel(thoughtMs ?? reportedDurationMs(steps))
           )}
         </span>
       </Details.Summary>

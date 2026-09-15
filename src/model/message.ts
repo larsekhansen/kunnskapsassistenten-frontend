@@ -46,5 +46,20 @@ export interface Message {
   retrieval?: RetrievalDetails;
   /** Progress from the agent, in arrival order. Shown while the answer builds. */
   thinkingSteps?: ThinkingStep[];
+  /**
+   * How long the agent thought, in milliseconds: from the first thinking step
+   * to the first word of the answer.
+   *
+   * Measured once, while it happened, and then carried with the turn — which
+   * is the point. «Tenkte i 2 sekunder» live became «Tenkte i 4 sekunder»
+   * after a reload, because the live number was the clock and the restored
+   * one was the sum of the steps' own `durationMs` (brukerblikk runde 2, funn
+   * 5). Two honest numbers for the same unchanged turn is one too many.
+   *
+   * Absent for a turn nobody watched — a fixture thread, an answer from a
+   * backend that does not report it — and the summary then falls back to the
+   * steps' own durations, or says «Tenkte» with no number at all.
+   */
+  thoughtMs?: number;
   status: MessageStatus;
 }

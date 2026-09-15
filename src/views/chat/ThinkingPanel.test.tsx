@@ -55,19 +55,28 @@ describe('ThinkingPanel', () => {
 
   it('folds away when the answer starts, and says how long it took', () => {
     const { rerender } = render(<ThinkingPanel status="thinking" steps={steps} />);
-    rerender(<ThinkingPanel status="done" steps={steps} />);
+    rerender(<ThinkingPanel status="done" steps={steps} thoughtMs={2400} />);
 
     expect(details().open).toBe(false);
-    // The clock ran from the first step to this render, which in a test is no
-    // time at all — and «0 sekunder» is not something to say.
-    expect(screen.getByText('Tenkte i 1 sekund')).toBeTruthy();
+    // The number the turn was measured at, not one this panel worked out: the
+    // same turn has to say the same thing after a reload (brukerblikk runde 2,
+    // funn 5).
+    expect(screen.getByText('Tenkte i 2 sekunder')).toBeTruthy();
     expect(screen.queryByText('Tenker …')).toBeNull();
     expect(document.querySelectorAll('[aria-current="step"]')).toHaveLength(0);
   });
 
+  it('prefers the measured time over what the steps reported', () => {
+    // The steps add up to 4010 ms; the clock said 2,4 seconds. The clock is
+    // the wait the reader sat through, and it is what was written down.
+    render(<ThinkingPanel status="done" steps={steps} thoughtMs={2400} />);
+
+    expect(screen.getByText('Tenkte i 2 sekunder')).toBeTruthy();
+  });
+
   it('falls back to what the steps reported for a turn nobody watched', () => {
-    // A conversation opened from the list: the steps are stored, the clock
-    // never ran here. 2410 + 1600 = 4010 ms.
+    // A fixture thread: the steps are stored, nobody ever timed the wait.
+    // 2410 + 1600 = 4010 ms.
     render(<ThinkingPanel status="done" steps={steps} />);
 
     expect(screen.getByText('Tenkte i 4 sekunder')).toBeTruthy();
