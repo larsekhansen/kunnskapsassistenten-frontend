@@ -314,6 +314,39 @@ dokumenter», og tooltipen sier det samme — `@digdir/designsystemet-web`
 skriver `data-tooltip` inn i `aria-label` på et element uten egen tekst, så to
 forskjellige strenger ville betydd at den ene stille overskrev den andre.
 
+### Panelhode og rulling
+
+**Plassen ruller ikke; innholdsregionen i den gjør det.** Veksleknappen ligger
+i et panelhode som blir stående. Uten det rullet knappen bort sammen med
+innholdet: klikk på en `[n]` og kildepanelet ruller nesten tusen piksler til
+utdraget, med «Skjul kilder» en skjerm over toppen av vinduet, så panelet står
+uten synlig måte å lukke seg på. Funn 2 i `docs/review/brukerblikk-2026-09-15.md`.
+
+`.sidebar-content` har `min-block-size: 0`. Det er ikke pynt: et fleksbarns
+automatiske minstemål er innholdet sitt, så uten det vokser regionen forbi
+plassen og panelet blir klippet ved vinduskanten uten noe å rulle i — funn 7,
+navigasjonspanelet kuttet midt i en setning.
+
+**Skillet mot sida bæres av kanten, ikke av flatene:** panel mot side er
+1,10:1 i lys og 1,11:1 i mørk, altså usynlig i begge. `--ds-color-neutral-border-default` mot
+sida er 3,95:1 og 4,23:1, over de 3:1 WCAG 1.4.11 ber om for en grense som
+betyr noe. `border-subtle`, som sto der før, er 1,73:1 og 2,04:1. Målt i bygget
+app 2026-09-15. Funn 4.
+
+**Kildepanelet har ingen egen flate når det er åpent** (Lars, 2026-09-15):
+kildene hører sammen med svaret, så kolonnen deler hovedkolonnens grunn og
+kanten markerer skillet. Funn 15 spurte om asymmetrien var med vilje. Den er
+det. Kollapset er det en rail, og da har det flate som den andre — en kolonne
+som er lagt sammen må leses som en kolonne.
+
+Et smalt panel får mindre luft: under 380 px blir `--ka-sidebar-padding-inline`
+20 px i stedet for 36, så kildepanelet på gulvet sitt (336) gir teksten plass i
+stedet for å brekke etter to ord. En container-spørring spør plassens egen
+bredde, og derfor ligger paddingen på regionene inni og ikke på plassen selv —
+et element kan ikke svare på en container-spørring om seg selv. Spørringen
+måler **innholdsboksen**, så navigasjonspanelet på 400 svarer 399: terskelen er
+380 og ikke 400 nettopp fordi 400 traff den bredeste kolonnen også.
+
 ### Garantien
 
 **Ingen vannrett rulling ved 1280 eller bredere, i alle tilstander.** Målt i

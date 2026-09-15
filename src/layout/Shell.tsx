@@ -295,29 +295,42 @@ function Sidebar({
         by whichever Designsystemet component happens to import it. Both
         strings are the same, so the two never disagree.
       */}
-      {state.collapsed ? (
-        /*
-          BadgePosition is rendered whether or not there is a badge, on
-          purpose. It is a `<span>` wrapper, and a wrapper appearing around the
-          button is a different element to React — the button would be
-          unmounted and replaced the moment an answer brought sources, with
-          the user's focus possibly on it. Rendering the wrapper always means
-          only the badge comes and goes, and the button beside it stays put.
+      {/*
+        The panel head does not scroll; the content under it does.
 
-          Tooltip has to sit INSIDE it, directly around the button: Tooltip
-          sets `data-tooltip` on its own child, and on the wrapper that would
-          put the tooltip and the accessible name on a span instead of on the
-          control.
-        */
-        <BadgePosition placement="top-right" overlap="rectangle">
-          {showBadge ? (
-            <Badge count={sourceCount} maxCount={99} data-size="sm" aria-hidden />
-          ) : null}
-          <Tooltip content={toggleName}>{toggleButton}</Tooltip>
-        </BadgePosition>
-      ) : (
-        toggleButton
-      )}
+        Without that, the toggle button rides the panel's own scrolling. Click
+        a `[n]` marker and the sources panel scrolls 987 px to the excerpt at
+        1440, taking «Skjul kilder» to y = −955 — a screen above the top of the
+        window — so the panel has no visible way to close itself and the user
+        has to scroll back up to find out where it went. The navigation panel
+        does the same at 991 px of content in a 900 px window. Finding 2 in
+        docs/review/brukerblikk-2026-09-15.md.
+      */}
+      <div className="sidebar-header">
+        {state.collapsed ? (
+          /*
+            BadgePosition is rendered whether or not there is a badge, on
+            purpose. It is a `<span>` wrapper, and a wrapper appearing around
+            the button is a different element to React — the button would be
+            unmounted and replaced the moment an answer brought sources, with
+            the user's focus possibly on it. Rendering the wrapper always means
+            only the badge comes and goes, and the button beside it stays put.
+
+            Tooltip has to sit INSIDE it, directly around the button: Tooltip
+            sets `data-tooltip` on its own child, and on the wrapper that would
+            put the tooltip and the accessible name on a span instead of on the
+            control.
+          */
+          <BadgePosition placement="top-right" overlap="rectangle">
+            {showBadge ? (
+              <Badge count={sourceCount} maxCount={99} data-size="sm" aria-hidden />
+            ) : null}
+            <Tooltip content={toggleName}>{toggleButton}</Tooltip>
+          </BadgePosition>
+        ) : (
+          toggleButton
+        )}
+      </div>
 
       <div id={contentId} ref={content} hidden={state.collapsed} className="sidebar-content">
         <ActiveView

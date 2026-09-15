@@ -35,6 +35,21 @@
   --ka-slot-gap: var(--ds-size-8); /* 32 px */
   --ka-sidebar-padding-inline: var(--ds-size-9); /* 36 px */
   --ka-rail-padding-inline: var(--ds-size-3); /* 12 px, the 24 in railWidth */
+
+  /*
+   * What separates a panel from the page, on the edge facing the answer
+   * column.
+   *
+   * `border-default` and not `border-subtle`, and the reason is measured
+   * rather than felt. The two surfaces barely differ: panel against page is
+   * 1.10:1 in light and 1.11:1 in dark, so the surfaces alone cannot carry
+   * the separation in either mode — dark just makes it obvious, which is what
+   * finding 4 caught. `border-subtle` against the page is 1.73:1 light and
+   * 2.04:1 dark, under the 3:1 WCAG 1.4.11 asks of a boundary that matters.
+   * `border-default` is 3.95:1 and 4.23:1. Measured in the built app,
+   * 2026-09-15, in both colour schemes.
+   */
+  --ka-panel-border: var(--ds-border-width-default) solid var(--ds-color-neutral-border-default);
 }
 
 html,
@@ -103,8 +118,59 @@ body {
   gap: var(--ds-size-4);
   align-items: start;
   padding-block: var(--ds-size-8);
+  /*
+   * The slot itself never scrolls — `.sidebar-content` below does. The head
+   * has to stay put, and a panel that scrolls as one takes its own toggle
+   * button off screen. Finding 2.
+   */
+  overflow: hidden;
+  /*
+   * So the panel's own width can be asked about. The padding below is the one
+   * thing that has to react to it, and an element cannot answer a container
+   * query about itself — which is why the padding sits on the children and
+   * not here, where it used to be.
+   */
+  container-type: inline-size;
+}
+
+/*
+ * The two regions inside a panel. They carry the inline padding, because the
+ * container query below has to be able to change it.
+ */
+.sidebar-header,
+.sidebar-content {
+  box-sizing: border-box;
+  inline-size: 100%;
   padding-inline: var(--ka-sidebar-padding-inline);
-  overflow-y: auto;
+}
+
+.sidebar-header {
+  flex: 0 0 auto;
+}
+
+/*
+ * A panel narrow enough that 36 px on each side is most of it.
+ *
+ * At 1440 with both sidebars open the sources panel is on its 336 px floor,
+ * and 72 px of padding left an excerpt 246 px to set text in — two or three
+ * words a line. 20 px gives it 278. Measured by #4 in PR #24.
+ *
+ * 380 and not 400, and that is a measurement rather than a margin of taste: a
+ * container query asks about the container's CONTENT box, so the 400 px
+ * navigation panel answers 399 — it spends a pixel on its own border — and
+ * `width < 400px` matched it too, handing the widest panel the narrow-panel
+ * padding. Measured 2026-09-15.
+ *
+ * Anything between the sources panel's 336 px floor and the navigation
+ * panel's 399 separates the two. 380 sits clear of both, and the sources
+ * panel at its preferred 432 is above it, so the narrower padding applies
+ * only while the panel is actually squeezed.
+ */
+@container (width < 380px) {
+  .sidebar-header,
+  .sidebar-content {
+    --ka-sidebar-padding-inline: var(--ds-size-5); /* 20 px */
+  }
 }
 
 /*
@@ -127,7 +193,7 @@ body {
 .primary-sidebar {
   flex: 0 0 var(--ka-primary-sidebar-width);
   background: var(--ds-color-neutral-surface-default);
-  border-inline-end: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+  border-inline-end: var(--ka-panel-border);
 }
 
 .secondary-sidebar {
@@ -140,6 +206,16 @@ body {
    * width when it is collapsed, and the model is what draws the number.
    */
   min-inline-size: var(--ka-secondary-sidebar-min-width);
+  border-inline-start: var(--ka-panel-border);
+  /*
+   * No surface of its own while it is open, and that is Lars's call on
+   * 2026-09-15: the sources belong with the answer, so this column shares the
+   * answer column's ground and the border is what marks the edge. Finding 15
+   * asked whether the asymmetry was deliberate. It is.
+   *
+   * The cards inside are drawn by the sources view on that same ground.
+   */
+  background: none;
 }
 
 /*
@@ -161,30 +237,37 @@ body {
  * The logical properties are the vendor exception to the naming rule; see
  * CONTRIBUTING.
  */
+/*
+ * A rail keeps a surface whichever column it is, including the sources panel
+ * that has none while open. That is the point of the rail: a folded column
+ * has to read as a column, and on the page's own ground it read as a hole
+ * (Lars, 2026-09-15). Open, the sources panel is not folded away and has the
+ * answer beside it to belong to.
+ */
 .primary-sidebar[data-collapsed],
 .secondary-sidebar[data-collapsed] {
   align-items: center;
-  padding-inline: var(--ka-rail-padding-inline);
   background: var(--ds-color-neutral-surface-default);
   /*
-   * `visible`, overriding the `overflow-y: auto` the open panel needs.
+   * `visible`, overriding the `overflow: hidden` the open panel needs to keep
+   * its scrolling inside `.sidebar-content`.
    *
-   * The collapsed content is `display: none`, so there is nothing left to
-   * scroll or to spill — but the badge on the toggle button is painted on a
-   * `::before` that sits on the button's corner and reaches past it. Clipping
-   * the rail would cut the count in half the day it needs two digits.
+   * A collapsed rail has nothing to scroll — its content is `display: none` —
+   * but the badge on the toggle button is painted on a `::before` that sits
+   * on the button's corner and reaches past it. Clipping the rail would cut
+   * the count in half the day it needs two digits.
    */
   overflow: visible;
 }
 
 /*
- * The border goes on the edge facing the answer column, which is the edge a
- * reader sees the rail against. The navigation panel already draws one when
- * it is open; the sources panel has none open and gets one only as a rail,
- * because open it sits on the tinted page by design.
+ * A rail is narrower than the container query's 400 px, so it would otherwise
+ * be handed the narrow-panel padding. It has its own, and it is the 24 in
+ * `railWidth`.
  */
-.secondary-sidebar[data-collapsed] {
-  border-inline-start: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+.primary-sidebar[data-collapsed] .sidebar-header,
+.secondary-sidebar[data-collapsed] .sidebar-header {
+  padding-inline: var(--ka-rail-padding-inline);
 }
 
 /*
@@ -202,6 +285,24 @@ body {
   gap: var(--ds-size-4);
   align-items: start;
   inline-size: 100%;
+  /*
+   * The scrolling region of the panel, and the only one.
+   *
+   * `min-block-size: 0` is not decoration: a flex child's automatic minimum
+   * is its content, so without it this box grows to fit and the panel is
+   * clipped at the window edge with nothing to scroll — which is finding 7,
+   * the navigation panel cut off mid-sentence at 991 px of content in a
+   * 900 px window.
+   */
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+  /*
+   * Room under the last item, so it does not sit against the panel's edge
+   * when scrolled to the bottom. The slot's own `padding-block` only covers
+   * the top now; the bottom belongs to whatever scrolls.
+   */
+  padding-block-end: var(--ds-size-8);
 }
 
 .sidebar-content[hidden] {
