@@ -26,6 +26,8 @@ eier bare denne mappa.
 | [`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md)                                           | E2E-spec for layoutbeslutningen for V1, og hullet i regnestykket ved 1280  |
 | [`feat-foundation-2026-09-14.md`](feat-foundation-2026-09-14.md)                               | PR #14, layout V1: garantien holder, men regel B mister tastaturet         |
 | [`brukerblikk-2026-09-15.md`](brukerblikk-2026-09-15.md)                                       | Brukerblikk: 17 ting som ser rart ut, ingen av dem fanget av axe eller e2e |
+| [`feat-foundation-2026-09-15-rail.md`](feat-foundation-2026-09-15-rail.md)                     | PR #20, railen på 67 px                                                    |
+| [`feat-chat-brukerblikk-2026-09-15.md`](feat-chat-brukerblikk-2026-09-15.md)                   | PR #23, brukerblikk-funn 5, 6, 9 og 10 i hovedkolonnen                     |
 
 ## Sånn går en review
 

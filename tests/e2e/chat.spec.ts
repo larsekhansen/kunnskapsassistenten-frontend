@@ -52,8 +52,14 @@ test.describe('hovedkolonnen', () => {
     await expect(page.getByRole('button', { name: 'Avbryt genereringen' })).toBeVisible();
     await expect(composer(page)).toHaveValue('');
 
-    // The question is in the list as the reader's own words.
-    await expect(page.getByText('Hvordan jobber Nkom med måloppnåelse?')).toBeVisible();
+    // The question is in the list as the reader's own words. Scoped to the
+    // user's own message rather than looked for anywhere on the page: since
+    // 2026-09-15 the thread heading is the same question with the sentence
+    // mark stripped, so an unscoped search matches this one only because of
+    // a "?" — which is a reason for a test to pass, not the reason it should.
+    await expect(
+      page.locator('.ka-message--user').getByText('Hvordan jobber Nkom med måloppnåelse?'),
+    ).toBeVisible();
 
     await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
       timeout: 30_000,
