@@ -29,6 +29,23 @@ export type ChatViewProps = {
   client?: ChatClient;
 };
 
+/**
+ * What the shell has been told about one answer, as one comparable string.
+ *
+ * The status and how many documents; nothing else changes what the sources
+ * panel draws, and everything else changes on every token.
+ *
+ * An answer whose sources have not arrived counts as zero and not as a state
+ * of its own, because zero is what the shell stores for it — `AnswerSources`
+ * carries an array and never `undefined`. Saying «venter» on this side of the
+ * comparison and reading `[]` on the other made the two never agree, so the
+ * view reported on every render, which re-rendered the shell, which ran the
+ * view again. The suite hung rather than failed.
+ */
+function sourcesSignature(documents: number, status: string): string {
+  return `${status}:${documents}`;
+}
+
 let fallbackClient: ChatClient | undefined;
 function defaultClient(): ChatClient {
   fallbackClient ??= createChatClient();
@@ -126,18 +143,36 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   // — it looked right and was not (#4, brukerreiser punkt 5). The status
   // travels with it, because an empty `documents` means four different
   // things and only the answer knows which.
-  const { setAnswerSources, clearAnswerSources, setDocuments } = useAnswerSources();
+  const {
+    answers: reported,
+    setAnswerSources,
+    clearAnswerSources,
+    setDocuments,
+  } = useAnswerSources();
 
   /*
-   * What has already been reported, by message id.
+   * What the shell is holding, against what this thread has to report.
+   *
+   * Compared against the shell's own state and not against a memo of what was
+   * sent, which is the fix for brukerblikk runde 2, funn 1: a reloaded
+   * conversation came back with its answer, its markers and its sources in
+   * `sessionStorage`, and both side panels still said «Kildene vises her når
+   * du har stilt et spørsmål». A `useRef` of what had already been sent
+   * cannot know that something emptied the shell afterwards — and several
+   * things may, since leaving a thread, a route with no conversation and this
+   * view's own unmount all clear it. Whatever the order was on the day, the
+   * view had said its piece once and would not say it again.
+   *
+   * Reading the shell instead makes that impossible to get wrong: whatever
+   * empties it, the next render sees the gap and fills it. Reporting changes
+   * `answers`, which runs this again, and the second pass finds nothing to do
+   * — so it settles rather than loops.
    *
    * `messages` changes on every token, and almost none of those changes say
    * anything about sources. The signature is the two things that do — the
    * answer's status, and whether its documents have arrived — so the shell is
    * told once per real change instead of once per word.
    */
-  const reported = useRef(new Map<string, string>());
-
   useEffect(() => {
     const answers = messages.filter((message) => message.role === 'assistant');
     const live = new Set(answers.map((message) => message.id));
@@ -150,9 +185,9 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
      * alternative is a sources panel waiting forever for an answer that is no
      * longer on screen.
      */
-    if ([...reported.current.keys()].some((id) => !live.has(id))) {
-      reported.current.clear();
+    if ((reported ?? []).some((answer) => !live.has(answer.messageId))) {
       clearAnswerSources();
+      return;
     }
 
     /*
@@ -169,9 +204,9 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
     }
 
     for (const message of answers) {
-      const signature = `${message.status}:${message.sources?.length ?? 'venter'}`;
-      if (reported.current.get(message.id) === signature) continue;
-      reported.current.set(message.id, signature);
+      const held = (reported ?? []).find((answer) => answer.messageId === message.id);
+      const signature = sourcesSignature(message.sources?.length ?? 0, message.status);
+      if (held && sourcesSignature(held.documents.length, held.status) === signature) continue;
 
       setAnswerSources({
         messageId: message.id,
@@ -179,11 +214,26 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         status: message.status,
       });
     }
-  }, [messages, setAnswerSources, clearAnswerSources, setDocuments]);
+  }, [messages, reported, setAnswerSources, clearAnswerSources, setDocuments]);
 
-  // Leaving the thread takes its sources with it. This view is keyed on the
-  // thread, so unmount is exactly that moment.
-  useEffect(() => () => clearAnswerSources(), [clearAnswerSources]);
+  /*
+   * Leaving the thread takes its sources with it. This view is keyed on the
+   * thread, so unmount is exactly that moment — and an empty dependency list
+   * is what makes «unmount» mean unmount.
+   *
+   * Through a ref, because the alternative is a trap. With
+   * `[clearAnswerSources]` the effect re-runs whenever that function changes
+   * identity, and re-running an effect means running its cleanup first: the
+   * sources would be wiped on an ordinary re-render rather than on the way
+   * out. The shell memoises the callback today, so nothing has gone wrong
+   * yet; measured here 2026-09-15 against a provider that does not, and it
+   * was an endless clear-and-report between the two effects.
+   */
+  const clearOnUnmount = useRef(clearAnswerSources);
+  useEffect(() => {
+    clearOnUnmount.current = clearAnswerSources;
+  }, [clearAnswerSources]);
+  useEffect(() => () => clearOnUnmount.current(), []);
 
   const hasAnswer = messages.some(
     (message) => message.role === 'assistant' && message.status === 'complete',
@@ -314,6 +364,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         <MessageList
           canScrollToBottom={!atBottom}
           filterSummary={filterSummary}
+          foundNothing={(messageId) => noHitsAnswers.has(messageId)}
           messages={messages}
           onRegenerate={() => {
             retry();

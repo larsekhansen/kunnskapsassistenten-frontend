@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useRef, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { AskParams, ChatClient } from '../../api';
 import { AnswerSourcesContext, inertAnswerSources } from '../../layout/answerSourcesContext';
@@ -19,6 +19,7 @@ import { ChatView } from './ChatView';
 import {
   CLARIFICATION_PLACEHOLDER,
   CLARIFICATION_TAG,
+  CLOSING_QUESTION,
   COMPOSE_PLACEHOLDER,
   FOLLOW_UP_QUESTIONS,
   NO_HITS_WHOLE_CORPUS,
@@ -317,6 +318,103 @@ describe('ChatView', () => {
     expect(last?.documents).toEqual([]);
   });
 
+  it('reports the sources again when something empties the shell', async () => {
+    /*
+     * Brukerblikk runde 2, funn 1: a reloaded conversation came back with its
+     * answer, its markers and its sources in `sessionStorage`, and both side
+     * panels still said «Kildene vises her når du har stilt et spørsmål».
+     *
+     * Several things clear the shell's sources — leaving a thread, a route
+     * with no conversation, this view's own unmount — and the view used to
+     * keep its own note of what it had already sent. That note cannot know
+     * the shell was emptied afterwards, so the answer was reported once and
+     * never again. Here the emptying is done on purpose, which is the one way
+     * to hold the rule whatever the order was on the day.
+     */
+    function StatefulShell({ children }: { children: ReactNode }) {
+      const [answers, setAnswers] = useState<AnswerSources[] | undefined>(undefined);
+      // Memoised the way `LayoutProvider` memoises them. Not a detail: with
+      // callbacks that change identity, the view's «clear on the way out»
+      // effect re-runs — and re-running runs its cleanup — so the two effects
+      // clear and report each other forever. Measured 2026-09-15.
+      const setAnswerSources = useCallback(
+        (answer: AnswerSources) =>
+          setAnswers((current) => [
+            ...(current ?? []).filter((other) => other.messageId !== answer.messageId),
+            answer,
+          ]),
+        [],
+      );
+      const clearAnswerSources = useCallback(() => setAnswers(undefined), []);
+      const value = useMemo(
+        () => ({ ...inertAnswerSources, answers, setAnswerSources, clearAnswerSources }),
+        [answers, setAnswerSources, clearAnswerSources],
+      );
+
+      return (
+        <Shell>
+          <AnswerSourcesContext value={value}>
+            {/* What the sources panel would be drawing, as one string. */}
+            <p data-testid="kilder">
+              {answers === undefined
+                ? 'ingenting kjent'
+                : `${answers.at(-1)?.documents.length ?? 0} dokumenter`}
+            </p>
+            <button onClick={() => setAnswers(undefined)} type="button">
+              Tøm kildene
+            </button>
+            {children}
+          </AnswerSourcesContext>
+        </Shell>
+      );
+    }
+
+    render(
+      <StatefulShell>
+        <ChatView client={clientYielding(sourcedAnswer)} />
+      </StatefulShell>,
+    );
+
+    ask('Hva sier rapporten?');
+    await waitFor(() => expect(screen.getByTestId('kilder').textContent).toBe('1 dokumenter'));
+
+    // Whatever emptied it, the next render has to fill it again.
+    fireEvent.click(screen.getByRole('button', { name: 'Tøm kildene' }));
+    await waitFor(() => expect(screen.getByTestId('kilder').textContent).toBe('1 dokumenter'));
+  });
+
+  it('drops the closing question under an answer that found nothing', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding([{ type: 'error', error: { code: 'no-hits' } }])} />
+      </Shell>,
+    );
+
+    ask('Hva sier dokumentene om romfart?');
+
+    await waitFor(() =>
+      expect(document.querySelector('.ka-messages')?.textContent).toContain(
+        NO_HITS_WHOLE_CORPUS.split('\n')[0],
+      ),
+    );
+
+    // «Er det noe mer jeg kan hjelpe deg med?» invites a follow-up to an
+    // answer that found nothing — the same thing the hidden suggestions would
+    // do, one line up (brukerblikk runde 2, funn 7).
+    expect(screen.queryByText(CLOSING_QUESTION)).toBeNull();
+  });
+
+  it('keeps the closing question under an ordinary answer', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    expect(await screen.findByText(CLOSING_QUESTION)).toBeTruthy();
+  });
+
   it('offers no follow-up suggestions under an answer that found nothing', async () => {
     render(
       <Shell>
@@ -576,8 +674,9 @@ describe('ChatView', () => {
     await screen.findByText(CLARIFICATION_TAG);
 
     // The agent searched before it asked back, and that is the same fact here
-    // as over an answer.
-    expect(screen.getByText('Tenkte i 2 sekunder')).toBeTruthy();
+    // as over an answer. The number is whatever the turn was measured at — an
+    // instant client is one second — so what is asserted is that it is said.
+    expect(screen.getByText(/^Tenkte i \d+ sekund(er)?$/u)).toBeTruthy();
   });
 
   it('puts the caret in the field on Ctrl+/ from anywhere on the page', async () => {
