@@ -31,6 +31,7 @@ eier bare denne mappa.
 | [`feat-thread-url-2026-09-15.md`](feat-thread-url-2026-09-15.md)                               | PR #25, tråd-URL og needs-clarification: plumbing uten kaller              |
 | [`feat-secondary-sidebar-2026-09-15.md`](feat-secondary-sidebar-2026-09-15.md)                 | PR #24, kildepanelet på 336 px: utdragsteksten fra 174 til 246 px          |
 | [`feat-sources-auto-open-2026-09-15.md`](feat-sources-auto-open-2026-09-15.md)                 | PR #30, auto-åpning med plass-regel, badge i navnet, settle() i axe        |
+| [`feat-panel-scroll-2026-09-15.md`](feat-panel-scroll-2026-09-15.md)                           | PR #31, sticky panelhode, kant over 3:1, kildepanelet på midtens grunn     |
 
 ## Sånn går en review
 
