@@ -17,12 +17,14 @@ import {
 } from '../../model';
 import { ChatView } from './ChatView';
 import {
+  ABORTED_BEFORE_ANSWER,
   CLARIFICATION_PLACEHOLDER,
   CLARIFICATION_TAG,
   CLOSING_QUESTION,
   COMPOSE_PLACEHOLDER,
   FOLLOW_UP_QUESTIONS,
   NO_HITS_WHOLE_CORPUS,
+  REGENERATE,
   SHORTCUT_DESCRIPTION,
   shortcutHint,
 } from './text';
@@ -642,7 +644,52 @@ describe('ChatView', () => {
     await waitFor(() => expect(asked).toEqual(['Hva sier rapporten?', 'Hva sier rapporten?']));
   });
 
-  it('takes focus back to the field when a failure arrives after a mouse click', async () => {
+  it('offers «Generer på nytt» for a turn stopped while it was still searching', async () => {
+    /*
+     * Nothing arrives until the reader stops it, and then the stop comes back
+     * as an `error` frame with code `aborted` — which is how both real
+     * clients report cancellation, so a caller has one code path for «the
+     * answer stopped» regardless of why.
+     */
+    const stoppable: ChatClient = {
+      async *ask({ signal }: AskParams): AsyncIterable<StreamEvent> {
+        await new Promise<void>((resolve) => {
+          if (signal?.aborted) resolve();
+          else signal?.addEventListener('abort', () => resolve(), { once: true });
+        });
+        yield { type: 'error', error: { code: 'aborted' } };
+      },
+      listThreads: async () => [],
+      getThread: async () => null,
+      listFacets: async () => [],
+    };
+
+    const reported: AnswerSources[] = [];
+    render(
+      <Shell onAnswerSources={(answerSources) => reported.push(answerSources)}>
+        <ChatView client={stoppable} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    fireEvent.click(await screen.findByRole('button', { name: 'Avbryt genereringen' }));
+
+    /*
+     * The turn used to vanish here — no card, no way onward, and a sources
+     * panel back to «du har ikke spurt om noe» for a reader who had just
+     * asked something. Stopping one word later left both (#4, funn A).
+     */
+    expect(await screen.findByRole('button', { name: REGENERATE })).toBeTruthy();
+    expect(screen.getByText(ABORTED_BEFORE_ANSWER)).toBeTruthy();
+
+    // And the panel is told what became of it, as it is for a turn stopped
+    // after the first word.
+    const last = reported.at(-1);
+    expect(last?.status).toBe('aborted');
+    expect(last?.documents).toEqual([]);
+  });
+
+  it('puts focus on «Prøv igjen» when a failure arrives after a mouse click', async () => {
     render(
       <Shell>
         <ChatView
@@ -653,14 +700,95 @@ describe('ChatView', () => {
       </Shell>,
     );
 
-    ask('Hva sier rapporten?');
-    // The click landed on the send button, which became the stop button and
-    // then vanished with the failure. A real browser leaves focus on body;
-    // so does this.
-    (document.activeElement as HTMLElement | null)?.blur();
+    /*
+     * The click landed on the send button, which became the stop button and,
+     * when the turn failed, the send button again — disabled, because the
+     * field is empty. Focus is still ON it at the moment the error lands and
+     * falls to `<body>` one frame later, which is why the rescue may not ask
+     * `document.activeElement` alone (#4, funn B; traced in the built app).
+     */
+    const send = screen.getByRole('button', { name: 'Send spørsmålet' });
+    fireEvent.change(field(), { target: { value: 'Hva sier rapporten?' } });
+    send.focus();
+    fireEvent.click(send);
 
-    await screen.findByRole('alert');
+    await screen.findByText('Svaret kom ikke fram');
+    // «Prøv igjen» is the one thing to do next, so that is where focus goes.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Prøv igjen' })),
+    );
+  });
+
+  it('leaves focus on the paperclip, which changed nothing', async () => {
+    render(
+      <Shell>
+        <ChatView
+          client={clientYielding([{ type: 'error', error: { code: 'model-unavailable' } }])}
+        />
+      </Shell>,
+    );
+
+    const send = screen.getByRole('button', { name: 'Send spørsmålet' });
+    fireEvent.change(field(), { target: { value: 'Hva sier rapporten?' } });
+    send.focus();
+    fireEvent.click(send);
+
+    // The reader moves to the paperclip while the answer is on its way. It is
+    // inert, it says «Vedlegg kommer», and nothing about it changes when the
+    // turn fails — so the rescue must leave it alone. The rescue is about the
+    // one control that changed meaning, not about the area it sits in
+    // (KA CC on #59).
+    // Found by position, not by name: the paperclip is named by
+    // Designsystemet's `data-tooltip`, and the custom element that turns that
+    // into an accessible name is never upgraded in jsdom. The e2e suite finds
+    // it by name, where the name exists.
+    const paperclip = document.querySelector<HTMLButtonElement>('.ka-composer__buttons button');
+    paperclip?.focus();
+
+    expect(paperclip?.getAttribute('aria-disabled')).toBe('true');
+
+    await screen.findByText('Assistenten svarte ikke');
+    expect(document.activeElement).toBe(paperclip);
+  });
+
+  it('falls back to the field when the failure offers no retry', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding([{ type: 'error', error: { code: 'unauthorized' } }])} />
+      </Shell>,
+    );
+
+    const send = screen.getByRole('button', { name: 'Send spørsmålet' });
+    fireEvent.change(field(), { target: { value: 'Hva sier rapporten?' } });
+    send.focus();
+    fireEvent.click(send);
+
+    await screen.findByText('Ingen tilgang');
+    // A rejected key has no button to press again, and the reader's way on is
+    // to write to someone.
+    expect(screen.queryByRole('button', { name: 'Prøv igjen' })).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(field()));
+  });
+
+  it('leaves the caret alone when the reader sent with Enter', async () => {
+    render(
+      <Shell>
+        <ChatView
+          client={clientYielding([{ type: 'error', error: { code: 'model-unavailable' } }])}
+        />
+      </Shell>,
+    );
+
+    fireEvent.change(field(), { target: { value: 'Hva sier rapporten?' } });
+    field().focus();
+    fireEvent.keyDown(field(), { key: 'Enter' });
+
+    // The failure really arrived: the alert region is mounted whether or not
+    // there is an error in it, so the heading is what proves the turn failed.
+    await screen.findByText('Assistenten svarte ikke');
+    // Enter leaves the caret in the field, and a reader who is typing must
+    // not have it taken away.
+    expect(document.activeElement).toBe(field());
   });
 
   it('keeps «Tenkte i N sekunder» over a clarification', async () => {

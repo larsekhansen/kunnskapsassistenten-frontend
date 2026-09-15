@@ -88,6 +88,45 @@ test.describe('feilmeldinger skiller tilfellene', () => {
     expect(landed, 'fokus skal ikke falle til body etter «Prøv igjen»').not.toBe('body');
   });
 
+  test('feilen tar over fokus fra knappen som forsvant', async ({ page }) => {
+    await page.goto('/');
+
+    /*
+     * Sendt med museklikk: fokus står på «Send spørsmålet», som blir «Avbryt
+     * genereringen» og så «Send spørsmålet» igjen — slått av, fordi feltet er
+     * tomt. Da faller fokus til body ett bilde etter at feilen kom (#4, funn
+     * B). «Prøv igjen» er det ene å gjøre videre, så det er dit det skal.
+     */
+    await composer(page).fill('simuler feil');
+    await page.getByRole('button', { name: 'Send spørsmålet' }).click();
+
+    const retry = page.getByRole('main').getByRole('alert').getByRole('button', {
+      name: 'Prøv igjen',
+    });
+    await expect(retry).toBeFocused();
+  });
+
+  test('uten «Prøv igjen» går fokus til skrivefeltet', async ({ page }) => {
+    await page.goto('/');
+
+    await composer(page).fill('simuler avvist nøkkel');
+    await page.getByRole('button', { name: 'Send spørsmålet' }).click();
+
+    // En avvist nøkkel har ingen knapp å trykke på igjen, og veien videre er
+    // å skrive til noen.
+    await expect(page.getByRole('main').getByRole('alert')).toContainText('Ingen tilgang');
+    await expect(composer(page)).toBeFocused();
+  });
+
+  test('med Enter blir skrivemerket stående i feltet', async ({ page }) => {
+    await askFor(page, 'simuler feil');
+
+    await expect(page.getByRole('main').getByRole('alert')).toContainText('Svaret kom ikke fram');
+    // Enter etterlater skrivemerket i feltet, og en leser som skriver skal
+    // ikke få det revet vekk.
+    await expect(composer(page)).toBeFocused();
+  });
+
   test('ingen treff er et svar, ikke en feil', async ({ page }) => {
     await askFor(page, 'simuler ingen treff');
 

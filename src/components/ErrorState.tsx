@@ -23,6 +23,16 @@ export type ErrorStateProps = {
    * announces nothing, so it is the fallback and not the goal.
    */
   focusAfterRetry?: RefObject<HTMLElement | null>;
+  /**
+   * The retry button itself, so a caller can put focus on it.
+   *
+   * The control a reader was holding can vanish under them when the error
+   * arrives — the stop button becomes the send button and is disabled a frame
+   * later — and this is what «Prøv igjen» is: the one thing to do next. Only
+   * the caller knows whether focus was lost, so the ref is handed out rather
+   * than the focusing being done here.
+   */
+  retryRef?: RefObject<HTMLButtonElement | null>;
 };
 
 /**
@@ -46,6 +56,7 @@ export function ErrorState({
   onRetry,
   retryLabel = 'Prøv igjen',
   focusAfterRetry,
+  retryRef,
 }: ErrorStateProps) {
   const region = useRef<HTMLDivElement>(null);
   // True only between a retry click that held focus and the error clearing.
@@ -89,7 +100,7 @@ export function ErrorState({
           ) : null}
           <Paragraph variant="long">{message}</Paragraph>
           {onRetry ? (
-            <Button variant="secondary" data-size="sm" onClick={handleRetry}>
+            <Button variant="secondary" data-size="sm" onClick={handleRetry} ref={retryRef}>
               {retryLabel}
             </Button>
           ) : null}

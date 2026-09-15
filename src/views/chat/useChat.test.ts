@@ -77,7 +77,7 @@ const assistantMessages = (messages: Message[]) =>
   messages.filter((message) => message.role === 'assistant');
 
 describe('useChat', () => {
-  it('drops an answer that was stopped before its first token', async () => {
+  it('keeps an answer that was stopped before its first token', async () => {
     const { client } = heldClient();
     const { result } = renderHook(() => useChat(client));
 
@@ -89,11 +89,32 @@ describe('useChat', () => {
 
     await waitFor(() => expect(result.current.status).toBe('idle'));
     expect(result.current.announcement).toBe('Genereringen ble avbrutt.');
-    // The question stays; the answer that never said anything does not. Kept,
-    // it would be an <li> whose only content is the hidden sender line
-    // «Kunnskapsassistenten svarte:».
+    /*
+     * The turn stays, marked as stopped. It used to be dropped, because an
+     * answer with no text draws no card — and then the reader who had pressed
+     * stop while «Tenker …» was running had no «Generer på nytt» and a
+     * sources panel saying they had not asked anything (#4, funn A). Stopping
+     * the same turn one word later left both.
+     */
+    const [answer] = assistantMessages(result.current.messages);
+    expect(answer.status).toBe('aborted');
+    expect(answer.content).toBe('');
+    expect(result.current.messages).toHaveLength(2);
+  });
+
+  it('still drops an answer whose turn failed before its first token', async () => {
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+
+    act(() => turns[0].emit({ type: 'error', error: { code: 'model-unavailable' } }));
+
+    // A failure has the alert to say what happened and to offer the way on,
+    // so an empty card above it would say nothing twice.
+    await waitFor(() => expect(result.current.status).toBe('error'));
     expect(assistantMessages(result.current.messages)).toHaveLength(0);
-    expect(result.current.messages).toHaveLength(1);
   });
 
   it('keeps a partial answer when the reader stops it mid-stream', async () => {

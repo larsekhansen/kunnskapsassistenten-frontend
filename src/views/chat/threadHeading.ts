@@ -29,7 +29,8 @@ import type { Message, Thread } from '../../model';
  *
  * The stand-in is a label rather than a sentence, so it loses the question
  * mark or full stop the question ended on, the way the titles it replaces are
- * written («NKOM måloppnåelse», «Om Stimulab»).
+ * written («Regnskap og bevilgning i DSS sine årsrapporter», «Digdir:
+ * tildelingsbrev mot årsrapport»).
  */
 export type ThreadHeading = {
   /** The `h2` text. */
