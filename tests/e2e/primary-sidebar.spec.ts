@@ -427,21 +427,23 @@ test.describe('navigasjonspanelet', () => {
    * reload. Mellom de to ligger den vanligste veien inn — du stiller et
    * spørsmål, tråden blir din, og du åpner lista for å se hvor du er.
    *
-   * Målt på `main` `2c7f250` og på sammenslåingen av #58: raden ligger der,
-   * først, med riktig `href`, og uten `aria-current`. Etter en reload er den
-   * merket. Tråd-URL-en settes med `replaceState`, som `NavLink` ikke ser, så
-   * lenka vet ikke at den peker på der leseren står (eier: #5).
+   * Var rød fra 15.09 til #63: raden lå der, først, med riktig `href` og uten
+   * `aria-current`, fordi tråd-URL-en settes med `replaceState`, som `NavLink`
+   * aldri ser. #63 flyttet spørsmålet dit svaret finnes — skallet vet hvilken
+   * samtale som er på skjermen uansett hvordan adressen kom dit — og testen
+   * ble grønn av den endringen og ikke av noe annet: målt rød på `main`
+   * `6272d14` og grønn på `e9dff1a`.
    *
    * For en skjermleser er en åpen tråd uten `aria-current` det samme som en
    * tråd som ikke er åpen.
    *
-   * **`fixme` til #5 har rettet tråd-URL-en.** Testen er skrevet ferdig og er
-   * rød på nøyaktig den påstanden den skal være rød på: raden finnes og ligger
-   * først, og mangler `aria-current`. Den står som `fixme` og ikke rød på
-   * `main`, fordi `main` skal være grønn. Fjern `fixme` i den PR-en som
-   * anmelder fiksen — anmelderen gjør det.
+   * Den dekker rekkefølgen «spør, så åpne lista». Den andre rekkefølgen —
+   * lista alt åpen når du spør — mangler fortsatt, men av en eldre grunn:
+   * `ThreadsView` henter trådene én gang ved montering, så den nye tråden er
+   * ikke i lista i det hele tatt (11 rader, målt på både `main` og #63). Den
+   * testen hører hjemme sammen med oppfriskningen.
    */
-  test.fixme('tråden du nettopp lagde er merket som den åpne, uten reload', async ({
+  test('tråden du nettopp lagde er merket som den åpne, uten reload', async ({
     page,
   }, testInfo) => {
     covers(testInfo, 'egen tråd merket som åpen uten reload');
