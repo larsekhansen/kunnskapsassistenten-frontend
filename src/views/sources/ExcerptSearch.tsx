@@ -51,6 +51,21 @@ export function ExcerptSearch({
   const fieldId = useId();
   const descriptionId = useId();
 
+  // The ends are ends: `stepHit` stops there, so the button that would do
+  // nothing says so rather than staying the same blue as the one that works
+  // (docs/review/brukerblikk-2026-09-15.md, funn 11).
+  //
+  // `aria-disabled` and not `disabled`, and that is the point of the pair
+  // rather than a detail: stepping is something the user does by pressing the
+  // same button over and over, and a `disabled` button drops focus to the body
+  // the moment it turns off — so reaching the last hit would take the keyboard
+  // out of the control the user was working in. `aria-disabled` keeps the tab
+  // stop, and Designsystemet already draws `[aria-disabled='true']` exactly
+  // like `:disabled` (button.css), so the two look the same. The click handler
+  // is what makes it inert, since the browser still delivers the event.
+  const atFirst = currentHitIndex === 0;
+  const atLast = currentHitIndex >= hitCount - 1;
+
   const typed = query.trim().length;
   const status =
     typed === 0
@@ -107,7 +122,8 @@ export function ExcerptSearch({
                 variant="tertiary"
                 data-size="sm"
                 aria-label="Forrige treff"
-                onClick={() => onStep(-1)}
+                aria-disabled={atFirst || undefined}
+                onClick={() => !atFirst && onStep(-1)}
               >
                 Forrige
               </Button>
@@ -116,7 +132,8 @@ export function ExcerptSearch({
                 variant="tertiary"
                 data-size="sm"
                 aria-label="Neste treff"
-                onClick={() => onStep(1)}
+                aria-disabled={atLast || undefined}
+                onClick={() => !atLast && onStep(1)}
               >
                 Neste
               </Button>
