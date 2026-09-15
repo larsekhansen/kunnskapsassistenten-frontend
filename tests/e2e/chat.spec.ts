@@ -192,6 +192,72 @@ test.describe('hovedkolonnen', () => {
     expect(landed, 'fokus skal ikke falle til body etter «Prøv igjen»').not.toBe('body');
   });
 
+  /**
+   * Skrivefeltet er tabstopp 22 av 38 på en trådside, for det leseren gjør
+   * oftest (reise 7 og 15).
+   *
+   * Den viktigste påstanden er den negative: **bare `/` skal ikke gjøre
+   * noe.** En snarvei på én tegntast er WCAG 2.1.4, nivå A, og må kunne slås
+   * av, remappes eller være bundet til en fokusert komponent. Modifikatoren
+   * er det som tar den ut av kriteriet, og den dagen noen «forenkler» den
+   * bort, skal denne testen si fra.
+   *
+   * Tegnet står aldri i DOM-en som én streng: hinten sier «Ctrl» eller «Cmd»
+   * etter hvilken maskin leseren sitter ved, så testen låser formen og ikke
+   * ordet.
+   */
+  test('Ctrl+/ flytter skrivemerket til feltet, og bare / gjør ingenting', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'snarvei til skrivefeltet');
+    await page.goto('/threads/nkom-maaloppnaaelse');
+
+    const field = composer(page);
+    await expect(field).toBeVisible();
+
+    async function focusSomethingElse() {
+      await page.getByRole('button', { name: 'Skjul tråder og filter' }).focus();
+    }
+
+    // Uten modifikator: ingenting.
+    await focusSomethingElse();
+    await page.keyboard.press('/');
+    await expect(field, 'en ren tegntast er ingen snarvei').not.toBeFocused();
+
+    // Med modifikator: treffer. Begge godtas overalt, så Control er nok her.
+    await page.keyboard.press('Control+/');
+    await expect(field).toBeFocused();
+
+    // Og tegnet havner ikke i feltet den nettopp flyttet til.
+    await expect(field).toHaveValue('');
+
+    // Shift slipper gjennom, fordi «/» ER Shift+7 på norsk tastatur. Uten
+    // dette ville snarveien aldri utløst på oppsettet appen er skrevet for.
+    await focusSomethingElse();
+    await page.keyboard.press('Control+Shift+/');
+    await expect(field, 'Shift+7 er norsk «/»').toBeFocused();
+
+    // Ctrl+Alt er AltGr på Windows og setter sammen tegn, ikke kommandoer.
+    await focusSomethingElse();
+    await page.keyboard.press('Control+Alt+/');
+    await expect(field, 'AltGr er ikke en kommando').not.toBeFocused();
+
+    // Og «/» skrives som et tegn i feltet, som alle andre tegn.
+    await field.click();
+    await page.keyboard.type('a/b');
+    await expect(field).toHaveValue('a/b');
+
+    // Snarveien står to steder: en synlig hint og en beskrivelse på feltet.
+    await expect(page.locator('.ka-composer__shortcut')).toHaveText(
+      /^Trykk (Ctrl|Cmd) \+ \/ for å hoppe hit$/,
+    );
+    const description = await field.evaluate((element) => {
+      const id = element.getAttribute('aria-describedby') ?? '';
+      return document.getElementById(id)?.textContent?.trim() ?? '';
+    });
+    expect(description, 'beskrivelsen skriver tasten med bokstaver').toContain('skråstrek');
+  });
+
   test('Tab gjennom hovedkolonnen i lys og mørk', async ({ page }, testInfo) => {
     covers(testInfo, 'tastatur: Tab gjennom viewet');
     await ask(page, 'Hva sier rapporten?');

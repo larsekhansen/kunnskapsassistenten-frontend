@@ -9,8 +9,12 @@ Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 `lang="nb"`. Hver testet tilstand kontrolleres med axe mot `wcag2a` og
 `wcag2aa`; et brudd feiler testen.
 
-**58 tester, alle grønne** mot `main` `b7981f3`. To av dem er nye
-(N6, under), og suiten er samtidig gjort stabil — se «Suiten løy» nedenfor.
+**86 tester, alle grønne** mot `main` `52d8069`. Fjorten av dem er nye i bølge
+3, skrevet mot det som ble merget 15.09: filteret som når spørringen,
+tidsstempel på trådradene, korpuslinja, «Generer på nytt», oppsamlingsruta,
+ukjent tråd, husket panel- og filtertilstand, samtalen som overlever en
+reload, snarveien til skrivefeltet, hopp-lenke nummer to, kilder per svar, og
+veien tilbake fra et utdrag til svaret.
 
 **Én kjøring per port om gangen.** `KA_E2E_PORT=4174` flytter den, og det
 trengs når suiten kjøres fra to arbeidstrær på denne maskinen samtidig.
@@ -29,44 +33,58 @@ slik de ble anmeldt.
 
 ## Dekket nå
 
-| Det brukeren gjør                                         | Spec                       |
-| --------------------------------------------------------- | -------------------------- |
-| Åpner `/` og `/threads/:id` med landemerker og én `h1`    | `shell.spec.ts`            |
-| Tabber til hopp-lenka og hopper                           | `shell.spec.ts`, to tester |
-| Skjuler og viser navigasjonspanelet                       | `shell.spec.ts`            |
-| Bytter fargemodus fra konsollen, uten reload              | `shell.spec.ts`            |
-| Møter filtreringen som førstegangsbruker                  | `primary-sidebar.spec.ts`  |
-| Velger en verdi og får en chip pluss «1 av 6 valgt»       | `primary-sidebar.spec.ts`  |
-| «Velg alle» og «Tøm» uten å miste tastaturet              | `primary-sidebar.spec.ts`  |
-| Veksler mellom filter og tråder                           | `primary-sidebar.spec.ts`  |
-| Ser trådene gruppert på tidsrom                           | `primary-sidebar.spec.ts`  |
-| Søker i tråder og får en treffteller                      | `primary-sidebar.spec.ts`  |
-| Åpner en tråd og ser den merket med `aria-current`        | `primary-sidebar.spec.ts`  |
-| Møter hilsenen og de tre kickstarterne                    | `chat.spec.ts`             |
-| Fyller feltet fra en kickstarter uten å sende             | `chat.spec.ts`             |
-| Stiller et spørsmål og får et strømmet svar med `[n]`     | `chat.spec.ts`             |
-| Avbryter, og beholder teksten som kom                     | `chat.spec.ts`             |
-| Kopierer svaret og får kvittering                         | `chat.spec.ts`             |
-| Trykker en oppfølgingschip                                | `chat.spec.ts`             |
-| Åpner kildepanelet med en markør                          | `sources.spec.ts`          |
-| Klikker `[n]` og havner i riktig utdrag, to ganger på rad | `sources.spec.ts`          |
-| Ser utdragene gruppert per dokument                       | `sources.spec.ts`          |
-| Hopper til et dokument fra snarveislista                  | `sources.spec.ts`          |
-| Søker i utdragene og stepper mellom treff                 | `sources.spec.ts`          |
-| Tabber gjennom hvert view i lys og mørk                   | alle fire spec-ene         |
-| Beholder filtervalget gjennom veksling filter ↔ tråder    | `primary-sidebar.spec.ts`  |
-| Beholder filtervalget gjennom et ruteskifte til en tråd   | `primary-sidebar.spec.ts`  |
-| Måler layouten på 1280, 1440 og 1536 i lys og mørk        | `layout.spec.ts`           |
-| Åpner og kollapser sidekolonnene i hver kombinasjon       | `layout.spec.ts`           |
+| Det brukeren gjør                                          | Spec                       |
+| ---------------------------------------------------------- | -------------------------- |
+| Åpner `/` og `/threads/:id` med landemerker og én `h1`     | `shell.spec.ts`            |
+| Tabber til hopp-lenka og hopper                            | `shell.spec.ts`, to tester |
+| Skjuler og viser navigasjonspanelet                        | `shell.spec.ts`            |
+| Bytter fargemodus fra konsollen, uten reload               | `shell.spec.ts`            |
+| Møter filtreringen som førstegangsbruker                   | `primary-sidebar.spec.ts`  |
+| Velger en verdi og får en chip pluss «1 av 6 valgt»        | `primary-sidebar.spec.ts`  |
+| «Velg alle» og «Tøm» uten å miste tastaturet               | `primary-sidebar.spec.ts`  |
+| Veksler mellom filter og tråder                            | `primary-sidebar.spec.ts`  |
+| Ser trådene gruppert på tidsrom                            | `primary-sidebar.spec.ts`  |
+| Søker i tråder og får en treffteller                       | `primary-sidebar.spec.ts`  |
+| Åpner en tråd og ser den merket med `aria-current`         | `primary-sidebar.spec.ts`  |
+| Møter hilsenen og de tre kickstarterne                     | `chat.spec.ts`             |
+| Fyller feltet fra en kickstarter uten å sende              | `chat.spec.ts`             |
+| Stiller et spørsmål og får et strømmet svar med `[n]`      | `chat.spec.ts`             |
+| Avbryter, og beholder teksten som kom                      | `chat.spec.ts`             |
+| Kopierer svaret og får kvittering                          | `chat.spec.ts`             |
+| Trykker en oppfølgingschip                                 | `chat.spec.ts`             |
+| Åpner kildepanelet med en markør                           | `sources.spec.ts`          |
+| Klikker `[n]` og havner i riktig utdrag, to ganger på rad  | `sources.spec.ts`          |
+| Ser utdragene gruppert per dokument                        | `sources.spec.ts`          |
+| Hopper til et dokument fra snarveislista                   | `sources.spec.ts`          |
+| Søker i utdragene og stepper mellom treff                  | `sources.spec.ts`          |
+| Tabber gjennom hvert view i lys og mørk                    | alle fire spec-ene         |
+| Beholder filtervalget gjennom veksling filter ↔ tråder     | `primary-sidebar.spec.ts`  |
+| Beholder filtervalget gjennom et ruteskifte til en tråd    | `primary-sidebar.spec.ts`  |
+| Måler layouten på 1280, 1440 og 1536 i lys og mørk         | `layout.spec.ts`           |
+| Åpner og kollapser sidekolonnene i hver kombinasjon        | `layout.spec.ts`           |
+| Velger et filter og ser det nå spørringen                  | `samtale.spec.ts`          |
+| Får «Generer på nytt» etter et avbrudd, og et helt svar    | `samtale.spec.ts`          |
+| Starter en samtale på `/` og finner den igjen etter reload | `samtale.spec.ts`          |
+| Skriver en adresse som ikke finnes                         | `shell.spec.ts`            |
+| Åpner en tråd-lenke som er blitt gammel                    | `shell.spec.ts`            |
+| Finner panelet og filteret slik hen forlot dem             | `shell.spec.ts`            |
+| Hopper til skrivefeltet med Ctrl+/                         | `chat.spec.ts`             |
+| Ser når hver tråd sist ble rørt                            | `primary-sidebar.spec.ts`  |
+| Ser hva korpuset dekker, i én linje                        | `primary-sidebar.spec.ts`  |
+| Går tilbake til svaret fra et utdrag, med Escape og knapp  | `sources.spec.ts`          |
 
 ## Merget, men ikke dekket
 
-| Sak                                           | Hvorfor ikke                                                                                                                                                                                                                                   |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Feiltilstanden i chatten                      | **Kan ikke nås fra det bygde appen.** `MockChatClient` har ingen måte å feile på, og forhåndsvisningsflata som har en, er dev-only og ligger ikke i `dist`. Trenger en utløser fra #5, for eksempel et spørsmål som alltid feiler i mock-modus |
-| Den ekte klienten                             | Testene kjører i mock-modus med vilje. Live krever nøkkel, en kjørende backend, og koster en agentkjøring per spørsmål. Proxyen er målt for hånd i `main-2026-09-11-pr8.md`                                                                    |
-| Lastetilstanden i kildepanelet                | Vises bare mens `documents` er `undefined`, og monteringen gir dem med én gang. Trenger enten en treg mock eller en egen rute                                                                                                                  |
-| Opplasting, «Vis flere dokumenter», topplinje | Ikke bygget. Se `skal-dette-implementeres.md`                                                                                                                                                                                                  |
+| Sak                                           | Hvorfor ikke                                                                                                                                                                |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Live-modus mot den ekte backenden             | Testene kjører i mock-modus med vilje. Se raden under                                                                                                                       |
+| Den ekte klienten                             | Testene kjører i mock-modus med vilje. Live krever nøkkel, en kjørende backend, og koster en agentkjøring per spørsmål. Proxyen er målt for hånd i `main-2026-09-11-pr8.md` |
+| Lastetilstanden i kildepanelet                | Vises bare mens `documents` er `undefined`, og monteringen gir dem med én gang. Trenger enten en treg mock eller en egen rute                                               |
+| Opplasting, «Vis flere dokumenter», topplinje | Ikke bygget. Se `skal-dette-implementeres.md`                                                                                                                               |
+
+Feiltilstanden i chatten står ikke lenger her: `MOCK_FAILURE_QUERY` («simuler
+feil») og `MOCK_CLARIFICATION_QUERY` («simuler avklaring») er utløsere i det
+bygde appet, og begge er dekket.
 
 ## Skjermbilder
 
@@ -74,7 +92,29 @@ slik de ble anmeldt.
 `design/skjermbilder-frontend/e2e/`. Ingen av dem er en assert. Gjennomgangen
 mot Figma står i [`visuell-2026-09-11.md`](visuell-2026-09-11.md).
 
+**Ett ord i bildene er plattformavhengig.** Hinten ved skrivefeltet sier
+«Trykk Cmd + / for å hoppe hit» når suiten kjøres på en Mac og «Ctrl» ellers
+(`shortcutHint()` i `src/views/chat/text.ts`). Bildene fra min maskin og fra
+CI er derfor ulike på akkurat det ordet, og det er ikke et avvik.
+Snarveistesten låser formen `/^Trykk (Ctrl|Cmd) \+ \/ …$/` og ikke ordet.
+
 ## Det som måtte måles før det kunne påstås
+
+**Kontrasten i en åpen fasettliste.** En påstand om 4,05:1 på option-teksten
+sto åpen i to dager. #2 og jeg målte den uavhengig — 14,11:1 i lys, 12,6:1 i
+mørk, over 275 options — men begge målingene leste `getComputedStyle`, og en
+framheving tegnet med et pseudoelement eller en `box-shadow` ville ingen av
+oss sett. Derfor er tilstanden nå en test: lista åpnet med tastaturet, en rad
+framhevet, axe på hele siden, i begge moduser. **Null brudd.** Posten er
+lukket som ikke reprodusert, og den kan ikke komme tilbake ubemerket.
+
+**Den samme samtalen sier to forskjellige tenketider.** Live står det «Tenkte
+i 2 sekunder», etter en reload «Tenkte i 4 sekunder» — målt 15.09 på samme
+svar. Det ene er klokketid mens svaret ble til, det andre er summen av
+stegenes egne `durationMs` slik de ble lagret. Ingen av dem er feil hver for
+seg, men en leser som laster på nytt ser et nytt tall på noe som ikke har
+endret seg. Testen for reload sammenligner derfor svarteksten og ikke hele
+meldinga. Til brukerblikk runde 2.
 
 **Hopp-lenka lander to forskjellige steder, og begge er riktige.**
 `#main-content` er en `<main>`, som ikke er fokuserbar i seg selv. På
