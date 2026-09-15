@@ -358,6 +358,53 @@ test.describe('samtalen', () => {
     await expectNoAxeViolations(page, 'avbrutt i tenkefasen');
   });
 
+  test('en stoppet tur overlever reload', async ({ page }, testInfo) => {
+    covers(testInfo, 'stoppet tur overlever reload');
+    await page.goto('/');
+
+    await composer(page).click();
+    await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
+    await page.keyboard.press('Enter');
+
+    // Stopp i tenkefasen, før det første ordet: det er turen som ikke ble
+    // lagret i det hele tatt.
+    await expect(page.getByText('Tenker …')).toBeVisible();
+    await page.getByRole('button', { name: 'Avbryt genereringen' }).click();
+    await expect(page.getByText('Du stoppet søket før svaret begynte.')).toBeVisible();
+
+    // Samtalen har fått en adresse, og det er den vi friskner opp.
+    await expect(page).toHaveURL(/\/threads\/[\w-]+$/);
+    await page.reload();
+
+    /*
+     * Hele poenget: ett spørsmål, ett kort, og veien videre står der.
+     *
+     * Mocken lagret bare turer det var kommet tekst i, så leseren som stoppet
+     * i tenkefasen kom tilbake til en tom tråd — etter å ha sett et kort med
+     * «Generer på nytt» på et øyeblikk før (KA CC på #71).
+     */
+    await expect(page.getByText('Hvordan jobber Nkom med måloppnåelse?')).toBeVisible();
+    await expect(page.locator('.ka-answer-card')).toHaveCount(1);
+    await expect(page.getByText('Du stoppet søket før svaret begynte.')).toBeVisible();
+    const again = page.getByRole('button', { name: 'Generer på nytt' });
+    await expect(again).toBeVisible();
+
+    // Et stoppet svar er ikke et ferdig et, heller ikke etter en reload.
+    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toHaveCount(0);
+
+    await expectNoAxeViolations(page, 'stoppet tur etter reload');
+
+    /*
+     * Og knappen virker. Den var død i en frisk økt: spørsmålet lå i en ref
+     * bare `send` fyller, og etter en reload har ingenting blitt sendt.
+     */
+    await again.click();
+    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('button', { name: 'Generer på nytt' })).toHaveCount(0);
+  });
+
   test('et avbrutt svar har en vei videre, og «Generer på nytt» går helt i mål', async ({
     page,
   }, testInfo) => {
