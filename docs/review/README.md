@@ -33,6 +33,7 @@ eier bare denne mappa.
 | [`feat-sources-auto-open-2026-09-15.md`](feat-sources-auto-open-2026-09-15.md)                 | PR #30, auto-åpning med plass-regel, badge i navnet, settle() i axe              |
 | [`feat-panel-scroll-2026-09-15.md`](feat-panel-scroll-2026-09-15.md)                           | PR #31, sticky panelhode, kant over 3:1, kildepanelet på midtens grunn           |
 | [`feat-primary-sidebar-2026-09-15.md`](feat-primary-sidebar-2026-09-15.md)                     | PR #19 og #22, dokumentlista og de seks brukerblikk-funnene i navigasjonspanelet |
+| [`feat-mock-corpus-2026-09-15.md`](feat-mock-corpus-2026-09-15.md)                             | PR #33, 938 Kudos-dokumenter i mock — og i live-bunten                           |
 
 ## Sånn går en review
 
