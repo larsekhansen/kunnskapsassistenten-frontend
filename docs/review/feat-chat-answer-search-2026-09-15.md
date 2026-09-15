@@ -8,22 +8,22 @@ konflikt igjen. Målt på den, 1440 × 900.
 
 ## Portene
 
-| Port               | Resultat                                  |
-| ------------------ | ----------------------------------------- |
-| `build` / `lint` / `format:check` / `tokens:verify` | grønne  |
-| `npm test`         | grønn, **452 i 43 filer**                 |
-| `npm run test:e2e` | grønn, **122 på 55,4 s**, 8 workers       |
+| Port                                                | Resultat                            |
+| --------------------------------------------------- | ----------------------------------- |
+| `build` / `lint` / `format:check` / `tokens:verify` | grønne                              |
+| `npm test`                                          | grønn, **452 i 43 filer**           |
+| `npm run test:e2e`                                  | grønn, **122 på 55,4 s**, 8 workers |
 
 ## Det jeg ba om før rebasen, etterprøvd
 
 `AnswerMessage.tsx` skulle bære tre ting videre fra fiksene som lå i
 `MessageList.tsx`. Alle tre er der:
 
-| Fra  | Hva                                              | Linje i `AnswerMessage.tsx` |
-| ---- | ------------------------------------------------ | --------------------------- |
-| #59  | `showCard = !empty \|\| streaming \|\| aborted`   | 92                          |
-| #59  | `{empty ? ABORTED_BEFORE_ANSWER : ABORTED_NOTE}` | 197                         |
-| #57  | `complete && !empty && !foundNothing`            | 201                         |
+| Fra | Hva                                              | Linje i `AnswerMessage.tsx` |
+| --- | ------------------------------------------------ | --------------------------- |
+| #59 | `showCard = !empty \|\| streaming \|\| aborted`  | 92                          |
+| #59 | `{empty ? ABORTED_BEFORE_ANSWER : ABORTED_NOTE}` | 197                         |
+| #57 | `complete && !empty && !foundNothing`            | 201                         |
 
 `foundNothing` er dessuten blitt en `boolean` i komponenten og regnes ut per
 melding-id på kallstedet (`foundNothing?.(message.id)`), som er den riktige
@@ -33,20 +33,20 @@ formen for en komponent som tegner én melding.
 
 Åpnet søket i NKOM-svaret og skrev «måloppnåelse»:
 
-| Det jeg prøvde                       | Det jeg fikk                                   |
-| ------------------------------------ | ---------------------------------------------- |
-| teller før åpning                    | finnes ikke                                    |
-| ved åpning                           | fokus i feltet, teller montert **tom**, `aria-live="polite"` |
-| stegning framover                    | 1 → 2 → 3 → 4 → 5 av 5                         |
-| stegning bakover                     | 4 → 3 → 2 → 1 av 5                             |
-| ved siste treff                      | «Neste» får `aria-disabled="true"`             |
-| ved første treff                     | «Forrige» får `aria-disabled="true"`           |
-| ekte `disabled`-attributt            | **0 knapper** — som det skal være              |
-| klikk på en `aria-disabled` «Neste»  | teller uendret, «5 av 5 treff»                 |
-| Tab fra feltet                       | Tøm → Forrige → Neste → Lukk → skrivefeltet    |
-| Escape                               | stripa lukkes, merkene fjernes, **fokus tilbake på «Søk i svaret»** |
-| lukkeknappen                         | samme                                          |
-| `data-current`                       | står på riktig merke etter stegningen          |
+| Det jeg prøvde                      | Det jeg fikk                                                        |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| teller før åpning                   | finnes ikke                                                         |
+| ved åpning                          | fokus i feltet, teller montert **tom**, `aria-live="polite"`        |
+| stegning framover                   | 1 → 2 → 3 → 4 → 5 av 5                                              |
+| stegning bakover                    | 4 → 3 → 2 → 1 av 5                                                  |
+| ved siste treff                     | «Neste» får `aria-disabled="true"`                                  |
+| ved første treff                    | «Forrige» får `aria-disabled="true"`                                |
+| ekte `disabled`-attributt           | **0 knapper** — som det skal være                                   |
+| klikk på en `aria-disabled` «Neste» | teller uendret, «5 av 5 treff»                                      |
+| Tab fra feltet                      | Tøm → Forrige → Neste → Lukk → skrivefeltet                         |
+| Escape                              | stripa lukkes, merkene fjernes, **fokus tilbake på «Søk i svaret»** |
+| lukkeknappen                        | samme                                                               |
+| `data-current`                      | står på riktig merke etter stegningen                               |
 
 Tre ting er verdt å fremheve fordi de er lette å gjøre feil:
 

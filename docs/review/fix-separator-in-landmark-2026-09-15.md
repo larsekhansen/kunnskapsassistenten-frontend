@@ -8,21 +8,21 @@ tre ganger, og lukker veien det kom inn.
 
 ## Portene
 
-| Port               | Resultat                                      |
-| ------------------ | --------------------------------------------- |
-| `build`            | grønn                                         |
-| `lint`             | grønn                                         |
-| `format:check`     | grønn                                         |
-| `tokens:verify`    | grønn                                         |
-| `npm test`         | grønn, **441 i 42 filer**                     |
+| Port               | Resultat                                       |
+| ------------------ | ---------------------------------------------- |
+| `build`            | grønn                                          |
+| `lint`             | grønn                                          |
+| `format:check`     | grønn                                          |
+| `tokens:verify`    | grønn                                          |
+| `npm test`         | grønn, **441 i 42 filer**                      |
 | `npm run test:e2e` | grønn, **118 på 50,8 s**, 8 workers, port 4173 |
 
 ## Det den retter
 
-| Rute, lys og mørk                | `main` `595568e` | sammenslåingen |
-| -------------------------------- | ---------------- | --------------- |
-| `/`                              | 1 brudd, `region` | **0**          |
-| `/threads/nkom-maaloppnaaelse`   | 1 brudd, `region` | **0**          |
+| Rute, lys og mørk              | `main` `595568e`  | sammenslåingen |
+| ------------------------------ | ----------------- | -------------- |
+| `/`                            | 1 brudd, `region` | **0**          |
+| `/threads/nkom-maaloppnaaelse` | 1 brudd, `region` | **0**          |
 
 Fire ruter, null brudd. Det er første gang i denne bølgen.
 
