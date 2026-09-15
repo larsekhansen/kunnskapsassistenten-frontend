@@ -86,8 +86,6 @@ src/
     matchMedia.ts             matchMedia for jsdom, med bredde testen kan sette
 ```
 
-Rutene er `/` for ny samtale og `/threads/:threadId` for én samtale.
-
 Mappene `src/api/`, `src/model/` og `src/components/` kommer med grunnmuren.
 `src/routes/` er rutesider som monterer views i plassene; `src/views/`
 (`threads/`, `filters/`, `chat/`, `sources/`) er selve viewene, og hver
@@ -294,6 +292,61 @@ Regelen tar et panel bort når det ikke er plass. Den gir ikke noe tilbake når
 vinduet vokser igjen: et panel som åpnet seg selv ville overstyrt et valg
 brukeren har tatt.
 
+### Kildepanelet åpner seg selv
+
+Når et svar kommer med kilder, åpner kildepanelet seg — **hvis det er plass**.
+Over brytepunktet er det alltid plass. Under det bare når navigasjonspanelet
+alt er kollapset: ellers ville regel B tatt navigasjonspanelet for å gi rom,
+og å ta et panel fra brukeren er noe de må be om, ikke noe et svar gjør.
+
+**Lukker brukeren panelet selv, åpner det seg ikke igjen i økta.** Bare en
+kollaps brukeren ba om teller. Regel B kollapser også dette panelet, og hadde
+det blitt husket som en preferanse, ville én endring av vindusbredden slått av
+kildepanelet for resten av økta. Åpner brukeren det igjen — med knappen eller
+ved å trykke på en `[n]` — er det siste de har sagt «vis meg», og regelen
+gjelder på nytt.
+
+Når panelet er en rail og svaret har kilder, står antallet som en `Badge` på
+knappen. Tallet må også stå i teksten: Designsystemet tegner det som
+`content: attr(data-count)` på et pseudoelement, som skjermlesere leser
+ustabilt eller ikke i det hele tatt. Knappen heter derfor «Vis kilder, 3
+dokumenter», og tooltipen sier det samme — `@digdir/designsystemet-web`
+skriver `data-tooltip` inn i `aria-label` på et element uten egen tekst, så to
+forskjellige strenger ville betydd at den ene stille overskrev den andre.
+
+### Panelhode og rulling
+
+**Plassen ruller ikke; innholdsregionen i den gjør det.** Veksleknappen ligger
+i et panelhode som blir stående. Uten det rullet knappen bort sammen med
+innholdet: klikk på en `[n]` og kildepanelet ruller nesten tusen piksler til
+utdraget, med «Skjul kilder» en skjerm over toppen av vinduet, så panelet står
+uten synlig måte å lukke seg på. Funn 2 i `docs/review/brukerblikk-2026-09-15.md`.
+
+`.sidebar-content` har `min-block-size: 0`. Det er ikke pynt: et fleksbarns
+automatiske minstemål er innholdet sitt, så uten det vokser regionen forbi
+plassen og panelet blir klippet ved vinduskanten uten noe å rulle i — funn 7,
+navigasjonspanelet kuttet midt i en setning.
+
+**Skillet mot sida bæres av kanten, ikke av flatene:** panel mot side er
+1,10:1 i lys og 1,11:1 i mørk, altså usynlig i begge. `--ds-color-neutral-border-default` mot
+sida er 3,95:1 og 4,23:1, over de 3:1 WCAG 1.4.11 ber om for en grense som
+betyr noe. `border-subtle`, som sto der før, er 1,73:1 og 2,04:1. Målt i bygget
+app 2026-09-15. Funn 4.
+
+**Kildepanelet har ingen egen flate når det er åpent** (Lars, 2026-09-15):
+kildene hører sammen med svaret, så kolonnen deler hovedkolonnens grunn og
+kanten markerer skillet. Funn 15 spurte om asymmetrien var med vilje. Den er
+det. Kollapset er det en rail, og da har det flate som den andre — en kolonne
+som er lagt sammen må leses som en kolonne.
+
+Et smalt panel får mindre luft: under 380 px blir `--ka-sidebar-padding-inline`
+20 px i stedet for 36, så kildepanelet på gulvet sitt (336) gir teksten plass i
+stedet for å brekke etter to ord. En container-spørring spør plassens egen
+bredde, og derfor ligger paddingen på regionene inni og ikke på plassen selv —
+et element kan ikke svare på en container-spørring om seg selv. Spørringen
+måler **innholdsboksen**, så navigasjonspanelet på 400 svarer 399: terskelen er
+380 og ikke 400 nettopp fordi 400 traff den bredeste kolonnen også.
+
 ### Garantien
 
 **Ingen vannrett rulling ved 1280 eller bredere, i alle tilstander.** Målt i
@@ -328,6 +381,51 @@ hører hjemme.
 - ~~React Router-versjonen.~~ **Avgjort 2026-09-11:** 8.3.1, pinnet uten
   caret, samme versjon som ki.norge.no og Designsystemets egen nettside. Se
   «React Router» under.
+
+## Tråder og adresser
+
+Rutene er `/` for ny samtale og `/threads/:threadId` for én samtale.
+
+**Første spørsmål fra `/` gir samtalen en adresse.** Viewet som eier
+skrivefeltet kaller `useThread().startThread(spørsmålet)`, og
+`ChatSlotView` lager tråden og bytter URL til `/threads/:id`. Uten det
+kopierer «Kopier lenke til tråden» forsiden (C16 i
+`design/funksjonssjekk-v1.md`).
+
+Byttet skjer med `history.replaceState`, **ikke** med ruteren. En ekte
+navigering ville byttet `key` på `ChatSlotView`, montert chatten på nytt og
+tatt svaret som strømmer med seg. Adressen er en lenke til senere, ikke en
+navigering: ingenting på skjermen skal flytte seg. Prisen er at React Router
+tror den står på `/` til neste ekte navigering — alle lenker i appen er
+absolutte, så ingenting løses opp mot den.
+
+**Tittelen er spørsmålet, til backend gir en ekte.** `Thread.title` er
+brukerens eget spørsmål, trimmet, og `titleFromQuestion` sier at det er et
+stedfortredertall. Trådlista bruker det som radtittel; samtalen skal **ikke**
+tegne det, for spørsmålet står allerede på skjermen som brukerens melding, og
+en overskrift som gjentar det satte samme setning på sida to ganger (målt av
+#3, 15.09). Flagget forsvinner av seg selv den dagen backend sender en tittel.
+
+En tråd laget i nettleseren finnes bare i den fana: backend har ikke noe
+tråd-API å lagre den i (gap 4 i `design/eksisterende/api-for-frontend.md`), så
+en ny fane på samme adresse finner den ikke.
+
+## Mock-modus: to spørsmål som gjør noe spesielt
+
+| Spørsmål            | Hva mocken gjør                                              |
+| ------------------- | ------------------------------------------------------------ |
+| `simuler feil`      | Feiler etter første tenkesteg, så feiltilstanden kan testes  |
+| `simuler avklaring` | Svarer med et spørsmål tilbake, status `needs-clarification` |
+
+Begge er eksakte treff på hele spørsmålet, ikke ord inni det: «hva er feil i
+rapporten» er et ekte spørsmål og skal få et ekte svar. De finnes fordi ingen
+av de to tilstandene ellers kan nås fra et bygget bygg, verken av en e2e-test
+eller av en designer, uten en backend som er nede eller en agent som spør
+tilbake.
+
+`needs-clarification` er en **ferdig** tur, ikke en feilet: innholdet er et
+ekte spørsmål til brukeren. Backend melder den i `_meta.status`, og
+`StreamEvent`s `done` bærer den videre som `outcome`.
 
 ## Mock-korpuset
 

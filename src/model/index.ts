@@ -15,4 +15,5 @@ export type { RetrievalDetails, ThinkingStep, ThinkingStepKind } from './retriev
 export type { CitationTarget, Excerpt, RelevanceLevel, SourceDocument } from './source';
 export { citationAccessibleName, citationTargets, excerptDomId, relevanceLabels } from './source';
 export type { ChatError, ChatErrorCode, StreamEvent } from './stream';
+export { threadFromQuestion } from './thread';
 export type { Thread, ThreadDetail } from './thread';

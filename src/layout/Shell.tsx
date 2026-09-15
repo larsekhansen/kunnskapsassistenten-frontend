@@ -1,8 +1,9 @@
-import { Button, SkipLink, Tooltip } from '@digdir/designsystemet-react';
+import { Badge, BadgePosition, Button, SkipLink, Tooltip } from '@digdir/designsystemet-react';
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
 import { MainScrollContext } from './scrollContext';
+import { useAnswerSources } from './useAnswerSources';
 import { useCitation } from './useCitation';
 import { useLayout } from './useLayout';
 import { viewComponents } from './viewComponents';
@@ -204,6 +205,34 @@ function Sidebar({
   // wording with it, rather than from a hardcoded string per slot.
   const toggleLabel = `${state.collapsed ? 'Vis' : 'Skjul'} ${(label ?? views[state.activeView].label).toLocaleLowerCase('nb-NO')}`;
 
+  /**
+   * How many documents the folded-away view is holding, for the badge.
+   *
+   * Keyed on the VIEW and not on the slot: the count belongs to the sources,
+   * so it follows them if they are ever moved to the other sidebar. A slot
+   * does not have sources; whatever sits in it might.
+   */
+  const { documents } = useAnswerSources();
+  const sourceCount = state.activeView === 'sources' ? (documents?.length ?? 0) : 0;
+  const showBadge = state.collapsed && sourceCount > 0;
+
+  /**
+   * «Vis kilder, 3 dokumenter».
+   *
+   * The number has to be in the text, because the badge cannot carry it:
+   * Designsystemet draws it as `content: attr(data-count)` on a pseudo
+   * element, which screen readers read unreliably or not at all. See
+   * design/designsystemet/komponenter/badge.md.
+   *
+   * One string for both the accessible name and the tooltip, which is not
+   * tidiness: @digdir/designsystemet-web writes `data-tooltip` into
+   * `aria-label` on an element with no text of its own, so a tooltip saying
+   * something shorter would quietly replace the name a moment after render.
+   */
+  const toggleName = showBadge
+    ? `${toggleLabel}, ${sourceCount} ${sourceCount === 1 ? 'dokument' : 'dokumenter'}`
+    : toggleLabel;
+
   /*
    * Collapsed, the slot is a rail barely wider than this button, so the label
    * cannot be drawn beside the icon and becomes the accessible name instead.
@@ -221,7 +250,7 @@ function Sidebar({
       data-color="neutral"
       data-size="sm"
       icon={state.collapsed || undefined}
-      aria-label={state.collapsed ? toggleLabel : undefined}
+      aria-label={state.collapsed ? toggleName : undefined}
       aria-expanded={!state.collapsed}
       aria-controls={contentId}
       onClick={() => toggleCollapsed(slot)}
@@ -249,13 +278,59 @@ function Sidebar({
       }}
     >
       {/*
-        The tooltip is for the eye only. Designsystemet's Tooltip renders no
-        box of its own: it sets `data-tooltip` on its child and the custom
-        element in @digdir/designsystemet-web draws it — and it contributes no
-        accessible name at all, which is why `aria-label` is on the button and
-        not left to this. See design/designsystemet/komponenter/tooltip.md.
+        Designsystemet's Tooltip renders no box of its own: it sets
+        `data-tooltip` on its child, and the custom element in
+        @digdir/designsystemet-web draws it. See
+        design/designsystemet/komponenter/tooltip.md.
+
+        That package ALSO reads `data-tooltip` into an accessible name — it
+        writes `aria-label` when the element has no text and `aria-description`
+        when it has (`tooltip.ts:83-84`), so a collapsed rail button would get
+        its name from the tooltip whether or not we set one.
+
+        The explicit `aria-label` on the button stays anyway, and not as belt
+        and braces: it is the name from first render, while the web package's
+        MutationObserver only gets there a tick later, and it is the name even
+        if that package never loads — it is an indirect dependency, pulled in
+        by whichever Designsystemet component happens to import it. Both
+        strings are the same, so the two never disagree.
       */}
-      {state.collapsed ? <Tooltip content={toggleLabel}>{toggleButton}</Tooltip> : toggleButton}
+      {/*
+        The panel head does not scroll; the content under it does.
+
+        Without that, the toggle button rides the panel's own scrolling. Click
+        a `[n]` marker and the sources panel scrolls 987 px to the excerpt at
+        1440, taking «Skjul kilder» to y = −955 — a screen above the top of the
+        window — so the panel has no visible way to close itself and the user
+        has to scroll back up to find out where it went. The navigation panel
+        does the same at 991 px of content in a 900 px window. Finding 2 in
+        docs/review/brukerblikk-2026-09-15.md.
+      */}
+      <div className="sidebar-header">
+        {state.collapsed ? (
+          /*
+            BadgePosition is rendered whether or not there is a badge, on
+            purpose. It is a `<span>` wrapper, and a wrapper appearing around
+            the button is a different element to React — the button would be
+            unmounted and replaced the moment an answer brought sources, with
+            the user's focus possibly on it. Rendering the wrapper always means
+            only the badge comes and goes, and the button beside it stays put.
+
+            Tooltip has to sit INSIDE it, directly around the button: Tooltip
+            sets `data-tooltip` on its own child, and on the wrapper that would
+            put the tooltip and the accessible name on a span instead of on the
+            control.
+          */
+          <BadgePosition placement="top-right" overlap="rectangle">
+            {showBadge ? (
+              <Badge count={sourceCount} maxCount={99} data-size="sm" aria-hidden />
+            ) : null}
+            <Tooltip content={toggleName}>{toggleButton}</Tooltip>
+          </BadgePosition>
+        ) : (
+          toggleButton
+        )}
+      </div>
 
       <div id={contentId} ref={content} hidden={state.collapsed} className="sidebar-content">
         <ActiveView

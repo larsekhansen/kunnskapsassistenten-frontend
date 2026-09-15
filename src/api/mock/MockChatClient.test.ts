@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StreamEvent } from '../../model';
-import { MockChatClient } from './MockChatClient';
+import { MOCK_CLARIFICATION_QUERY, MockChatClient } from './MockChatClient';
 import { mockAnswerMarkdown, nkomThinkingSteps } from './fixtures';
 
 /** No artificial delay: the test is about order and content, not timing. */
@@ -88,5 +88,33 @@ describe('MockChatClient reads', () => {
       'organisation',
       'year',
     ]);
+  });
+});
+
+describe('MockChatClient og avklaring', () => {
+  it('svarer med et spørsmål tilbake, og sier at det er det den gjør', async () => {
+    const events = await collect(client.ask({ query: MOCK_CLARIFICATION_QUERY }));
+    const last = events.at(-1);
+
+    expect(last).toMatchObject({ type: 'done', outcome: 'needs-clarification' });
+
+    // Ingen kilder: ingenting ble hentet. En avklaring med kilder bak seg
+    // ville vært noe helt annet enn en avklaring.
+    expect(events.map((event) => event.type)).not.toContain('sources');
+    expect(events.some((event) => event.type === 'token')).toBe(true);
+  });
+
+  it('bryr seg ikke om store bokstaver eller mellomrom rundt', async () => {
+    const events = await collect(client.ask({ query: '  Simuler Avklaring  ' }));
+    expect(events.at(-1)).toMatchObject({ outcome: 'needs-clarification' });
+  });
+
+  it('lar et vanlig spørsmål være uendret', async () => {
+    const events = await collect(client.ask({ query: 'Hva rapporterer Nkom?' }));
+
+    // Fraværende outcome betyr «complete». Et vanlig svar skal ikke begynne å
+    // bære feltet bare fordi feltet finnes.
+    expect(events.at(-1)).toMatchObject({ type: 'done' });
+    expect(events.at(-1)).not.toHaveProperty('outcome');
   });
 });

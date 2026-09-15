@@ -9,8 +9,14 @@ export type MessageRole = 'user' | 'assistant';
  * user pressing stop (answer 34), which is not a failure: the text that did
  * arrive stays on screen and stays readable. `error` means the turn failed;
  * `content` then holds whatever arrived before it did.
+ *
+ * `needs-clarification` is the agent answering that it cannot answer yet and
+ * asking back. It is a finished turn, not a failed one: the content is a real
+ * question to the user and has to read as one. The backend reports it in
+ * `_meta.status` alongside `complete` and `error`, see
+ * design/eksisterende/api-for-frontend.md.
  */
-export type MessageStatus = 'streaming' | 'complete' | 'aborted' | 'error';
+export type MessageStatus = 'streaming' | 'complete' | 'needs-clarification' | 'aborted' | 'error';
 
 /**
  * One turn in a thread.

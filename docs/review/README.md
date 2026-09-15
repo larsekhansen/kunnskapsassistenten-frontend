@@ -26,6 +26,12 @@ eier bare denne mappa.
 | [`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md)                                           | E2E-spec for layoutbeslutningen for V1, og hullet i regnestykket ved 1280  |
 | [`feat-foundation-2026-09-14.md`](feat-foundation-2026-09-14.md)                               | PR #14, layout V1: garantien holder, men regel B mister tastaturet         |
 | [`brukerblikk-2026-09-15.md`](brukerblikk-2026-09-15.md)                                       | Brukerblikk: 17 ting som ser rart ut, ingen av dem fanget av axe eller e2e |
+| [`feat-foundation-2026-09-15-rail.md`](feat-foundation-2026-09-15-rail.md)                     | PR #20, railen på 67 px                                                    |
+| [`feat-chat-brukerblikk-2026-09-15.md`](feat-chat-brukerblikk-2026-09-15.md)                   | PR #23, brukerblikk-funn 5, 6, 9 og 10 i hovedkolonnen                     |
+| [`feat-thread-url-2026-09-15.md`](feat-thread-url-2026-09-15.md)                               | PR #25, tråd-URL og needs-clarification: plumbing uten kaller              |
+| [`feat-secondary-sidebar-2026-09-15.md`](feat-secondary-sidebar-2026-09-15.md)                 | PR #24, kildepanelet på 336 px: utdragsteksten fra 174 til 246 px          |
+| [`feat-sources-auto-open-2026-09-15.md`](feat-sources-auto-open-2026-09-15.md)                 | PR #30, auto-åpning med plass-regel, badge i navnet, settle() i axe        |
+| [`feat-panel-scroll-2026-09-15.md`](feat-panel-scroll-2026-09-15.md)                           | PR #31, sticky panelhode, kant over 3:1, kildepanelet på midtens grunn     |
 
 ## Sånn går en review
 

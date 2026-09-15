@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatClient } from '../../api';
 import type { Message } from '../../model';
 import { announcedText } from './answerText';
+import { GENERIC_CHAT_ERROR, withoutRetryPrompt } from './errorText';
 
 /** Where the current turn is. Drives the skeleton, the stop button and the error. */
 export type ChatStatus = 'idle' | 'pending' | 'streaming' | 'error';
@@ -118,6 +119,12 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
       // reading it back out of state.
       let content = '';
 
+      // Said once per turn, when the first step lands. The steps arrive
+      // seconds apart and there can be a dozen of them; a polite region that
+      // spoke once per step would still be reading them out when the answer
+      // arrived. The panel itself is silent, see ThinkingPanel.
+      let saidSearching = false;
+
       try {
         for await (const event of client.ask({
           query: question,
@@ -144,6 +151,10 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
                 ...message,
                 thinkingSteps: [...(message.thinkingSteps ?? []), event.step],
               }));
+              if (!saidSearching && isCurrentTurn()) {
+                saidSearching = true;
+                setAnnouncement('Kunnskapsassistenten søker …');
+              }
               break;
 
             case 'sources':
@@ -175,7 +186,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
               }
               settleAnswer(answerId, 'error');
               if (isCurrentTurn()) {
-                setError(event.error.message);
+                setError(withoutRetryPrompt(event.error.message));
                 // The Alert has role="alert" and announces itself.
                 setAnnouncement('');
                 setStatus('error');
@@ -201,7 +212,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
         }
         settleAnswer(answerId, 'error');
         if (isCurrentTurn()) {
-          setError('Noe gikk galt da svaret skulle hentes. Prøv igjen.');
+          setError(GENERIC_CHAT_ERROR);
           setAnnouncement('');
           setStatus('error');
         }
