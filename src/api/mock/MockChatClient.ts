@@ -7,6 +7,7 @@ import {
   type ThreadDetail,
 } from '../../model';
 import { facetsFor } from './corpus/facets';
+import { citationsFor, scriptedFor } from './conversations';
 import { mockThreadDetail, mockThreadList, openMockThread, recordMockTurn } from './sessionThreads';
 import type { AskParams, ChatClient } from '../chatClient';
 import { citedNumbers, narrowToSelection, retrievalFor, withOnlyCitations } from './filtering';
@@ -239,50 +240,112 @@ export class MockChatClient implements ChatClient {
         return;
       }
 
-      // What the filter leaves to search in. The backend ignores the
-      // parameter today (API-bestilling A2), so this is the only place the
-      // control has an effect — and a filter with no effect is the thing
-      // reise 8 says a first-time user meets first. See filtering.ts.
-      const documents = narrowToSelection(nkomSources, params.filters);
+      /*
+       * A cached conversation, when the question is one of the eleven. Lars
+       * asked for «noen nye søk, cachede, så jeg kan teste selv»; see
+       * conversations/scripts.ts. Everything below it — steps, answer,
+       * sources, done — is the same sequence the default answer uses, so a
+       * scripted turn and an unscripted one are indistinguishable to a view.
+       */
+      const scripted = scriptedFor(params.query);
+
+      /*
+       * What the filter leaves to search in. The backend ignores the
+       * parameter today (API-bestilling A2), so this is the only place the
+       * control has an effect — and a filter with no effect is the thing
+       * reise 8 says a first-time user meets first. See filtering.ts.
+       *
+       * It narrows a scripted conversation the same way it narrows the
+       * default one. The filter belongs to the reader and not to the answer,
+       * and a control that quietly stops working on eleven of the questions is
+       * worse than one that never worked at all.
+       */
+      const documents = narrowToSelection(scripted?.documents ?? nkomSources, params.filters);
       const cited = citedNumbers(documents);
 
-      for (const step of nkomThinkingSteps) {
+      const steps = scripted?.thinkingSteps ?? nkomThinkingSteps;
+      for (const step of steps) {
         await wait(this.#delays.thinkingStepMs, signal);
         yield { type: 'thinking-step', step };
       }
 
+      // A question that fails does it after the thinking steps, the way the
+      // real one does: an answer was under way and then it was not.
+      if (scripted?.failure) {
+        await wait(this.#delays.firstTokenMs, signal);
+        yield { type: 'error', error: scripted.failure };
+        return;
+      }
+
       await wait(this.#delays.firstTokenMs, signal);
-      for (const text of tokenize(withOnlyCitations(mockAnswerMarkdown, cited))) {
+      for (const text of tokenize(
+        withOnlyCitations(scripted?.answer ?? mockAnswerMarkdown, cited),
+      )) {
         await wait(this.#delays.tokenMs, signal);
         written += text;
         yield { type: 'token', text };
       }
 
-      await wait(this.#delays.sourcesMs, signal);
-      yield {
-        type: 'sources',
-        documents,
-        citations: nkomCitations.filter((citation) => cited.has(citation.number)),
-        retrieval: retrievalFor(documents, nkomRetrieval),
-      };
+      // No sources event for a clarification: nothing was retrieved, and a
+      // question back with sources behind it would be a different thing.
+      //
+      // Asked of the script and not of `documents`: a conversation the filter
+      // has narrowed to nothing is an answer whose sources are all outside
+      // the selection, which is not the same thing as a question back.
+      if (scripted && scripted.documents.length === 0) {
+        const scriptedId = nextMessageId();
+        recordMockTurn({
+          question: params.query,
+          answerId: scriptedId,
+          answer: {
+            content: written,
+            citations: [],
+            thinkingSteps: steps,
+            status: scripted.outcome ?? 'complete',
+          },
+        });
+        yield {
+          type: 'done',
+          messageId: scriptedId,
+          conversationId: params.conversationId ?? 'conv-nkom-1',
+          ...(scripted.outcome ? { outcome: scripted.outcome } : {}),
+        };
+        return;
+      }
 
+      const citations = (scripted ? citationsFor(scripted) : nkomCitations).filter((citation) =>
+        cited.has(citation.number),
+      );
+      const retrieval = retrievalFor(documents, scripted?.retrieval ?? nkomRetrieval);
+
+      await wait(this.#delays.sourcesMs, signal);
+      yield { type: 'sources', documents, citations, retrieval };
+
+      /*
+       * Written down as the turn that was actually streamed, not as the
+       * default one. Named locals rather than the fixtures, because the two
+       * had drifted apart the moment a scripted or filtered answer existed: a
+       * reload would then have replaced a Bufdir answer's sources with NKOM's,
+       * and a filtered answer's with the whole unfiltered set.
+       */
       const messageId = nextMessageId();
       recordMockTurn({
         question: params.query,
         answerId: messageId,
         answer: {
           content: written,
-          citations: nkomCitations,
-          sources: nkomSources,
-          retrieval: nkomRetrieval,
-          thinkingSteps: nkomThinkingSteps,
-          status: 'complete',
+          citations,
+          sources: documents,
+          retrieval,
+          thinkingSteps: steps,
+          status: scripted?.outcome ?? 'complete',
         },
       });
       yield {
         type: 'done',
         messageId,
         conversationId: params.conversationId ?? 'conv-nkom-1',
+        ...(scripted?.outcome ? { outcome: scripted.outcome } : {}),
       };
     } catch {
       /*
