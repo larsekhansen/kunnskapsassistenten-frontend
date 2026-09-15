@@ -123,15 +123,33 @@ test.describe('hovedkolonnen', () => {
 
     const copy = page.getByRole('button', { name: 'Kopier svaret' });
     await copy.click();
-    await expect(receipt).toHaveText('Svaret er kopiert.');
+    // The receipt counts what went along, so «Svaret er kopiert» would not
+    // tell the reader that the sources did too.
+    await expect(receipt).toHaveText(/^Svaret og \d+ kilder? er kopiert\.$/);
     // Focus stays where the reader put it.
     await expect(copy).toBeFocused();
 
     const clipboard = await page.evaluate(() => navigator.clipboard.readText());
     expect(clipboard.length).toBeGreaterThan(0);
-    // The `[n]` markers are bookkeeping for a panel the clipboard cannot
-    // carry, so they are stripped.
-    expect(clipboard).not.toMatch(/\[\d+\]/);
+
+    // The markers stay, because the list they point at goes with them. An
+    // answer pasted into a submission without its provenance is the one thing
+    // KA is not for — reise 13, 14 and 20 in brukerreiser-2026-09-15.md.
+    expect(clipboard).toMatch(/\[1\]/);
+
+    // A reference list under the answer, one line per marker, in Norwegian
+    // APA-like form: «[1] Virksomhet (år). Tittel, s. X. URL». The corpus
+    // decides which parts exist, so only the shape is asserted here.
+    const [, references = ''] = clipboard.split(/\nKilder\n/);
+    const lines = references.split('\n').filter(Boolean);
+    expect(lines.length).toBeGreaterThan(0);
+    for (const [index, line] of lines.entries()) {
+      expect(line.startsWith(`[${index + 1}] `)).toBe(true);
+    }
+    // Every marker in the text is answered by a line in the list.
+    for (const marker of new Set(clipboard.split(/\nKilder\n/)[0]?.match(/\[\d+\]/g) ?? [])) {
+      expect(references).toContain(`${marker} `);
+    }
   });
 
   test('oppfølgingschipene sender med én gang', async ({ page }, testInfo) => {
