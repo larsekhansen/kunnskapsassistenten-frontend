@@ -362,7 +362,7 @@ export function useChat(
 
             case 'error':
               if (event.error.code === 'aborted') {
-                settleAnswer(answerId, 'aborted');
+                settleAnswer(answerId, 'aborted', event.createdAt);
                 if (isCurrentTurn()) {
                   setAnnouncement('Genereringen ble avbrutt.');
                   setStatus('idle');
@@ -393,7 +393,7 @@ export function useChat(
                   sources: [],
                   citations: [],
                 }));
-                settleAnswer(answerId, 'complete');
+                settleAnswer(answerId, 'complete', event.createdAt);
                 setNoHitsAnswers((current) => new Set(current).add(answerId));
                 if (isCurrentTurn()) {
                   setAnnouncement(NO_HITS_ANNOUNCEMENT);
@@ -402,7 +402,7 @@ export function useChat(
                 return;
               }
 
-              settleAnswer(answerId, 'error');
+              settleAnswer(answerId, 'error', event.createdAt);
               if (isCurrentTurn()) {
                 setError(event.error);
                 // The Alert has role="alert" and announces itself.

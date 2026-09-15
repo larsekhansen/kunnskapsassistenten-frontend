@@ -35,7 +35,11 @@ describe('MockChatClient og de simulerte feilene', () => {
       // Etter et tenkesteg, ikke med en gang: tilstanden viewene går gjennom
       // er «et svar var på vei, og så var det ikke det».
       expect(events[0]?.type, query).toBe('thinking-step');
-      expect(last, query).toEqual({ type: 'error', error: { code } });
+      // `createdAt` er når turen endte. Ramma bærer den fordi to av kodene
+      // ikke er feil — en stoppet tur og «ingen treff» blir begge til et svar
+      // leseren kan vise tilbake til. Se StreamEvent.
+      expect(last, query).toMatchObject({ type: 'error', error: { code } });
+      expect(Date.parse((last as { createdAt: string }).createdAt), query).not.toBeNaN();
     }
   });
 
@@ -94,7 +98,7 @@ describe('MockChatClient.ask', () => {
       controller.abort();
     }
 
-    expect(events.at(-1)).toEqual({
+    expect(events.at(-1)).toMatchObject({
       type: 'error',
       // No message: the text that goes on screen belongs to the code, and a
       // stopped answer never draws an alert anyway.

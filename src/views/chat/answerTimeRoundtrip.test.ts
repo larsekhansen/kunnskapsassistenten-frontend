@@ -108,4 +108,32 @@ describe('tidsstempelet på svaret overlever en oppfriskning', () => {
     const lagret = await client.getThread(nkom.id);
     expect(svaret(lagret!.messages)?.createdAt).toBe(paaSkjermen?.createdAt);
   });
+  it('gjelder også en tur leseren stoppet underveis', async () => {
+    /*
+     * En stoppet tur ender på `error`-ramma og ikke på `done`, og lageret
+     * skriver den ned som et ferdig svar — det er det leseren så da de
+     * oppfrisket. Så ramma bærer tida på samme måte, fra den samme kilden.
+     */
+    client.openThread(nkom);
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hvordan jobber Nkom med måloppnåelse?'));
+    // Vent til noe tekst har kommet: en tur stoppet før første ord lagres
+    // ikke, og da er det ingenting å sammenlikne.
+    await waitFor(
+      () => expect(svaret(result.current.messages)?.content.length).toBeGreaterThan(0),
+      {
+        timeout: 5000,
+      },
+    );
+
+    act(() => result.current.cancel());
+    await waitFor(() => expect(result.current.status).toBe('idle'), { timeout: 5000 });
+
+    const paaSkjermen = svaret(result.current.messages);
+    expect(paaSkjermen?.status).toBe('aborted');
+
+    const lagret = await client.getThread(nkom.id);
+    expect(svaret(lagret!.messages)?.createdAt).toBe(paaSkjermen?.createdAt);
+  });
 });

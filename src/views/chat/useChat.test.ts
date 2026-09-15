@@ -465,3 +465,97 @@ describe('useChat og tråden som kommer for sent', () => {
     ]);
   });
 });
+
+describe('useChat og tida ramma bærer', () => {
+  /*
+   * En tid ingen klokke kan finne på å produsere, så testen ikke kan bli
+   * grønn ved flaks. Det er nettopp flaksen som er faren her: lager og skjerm
+   * stempler millisekunder fra hverandre, så en test som bare sammenlikner to
+   * klokker er grønn med feilen på plass (målt).
+   */
+  const RAMMENS_TID = '2011-11-11T11:11:11.111Z';
+
+  const svaret = (messages: Message[]) =>
+    messages.filter((message) => message.role === 'assistant').at(-1);
+
+  it('tar tida fra done-ramma i stedet for sin egen klokke', async () => {
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    act(() => turns[0].emit({ type: 'token', text: 'Svaret.' }));
+    act(() =>
+      turns[0].emit({
+        type: 'done',
+        messageId: 'm1',
+        conversationId: 'c1',
+        createdAt: RAMMENS_TID,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    expect(svaret(result.current.messages)?.createdAt).toBe(RAMMENS_TID);
+  });
+
+  it('tar tida fra error-ramma når leseren stoppet turen', async () => {
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    act(() => turns[0].emit({ type: 'token', text: 'Måloppnåelse er ' }));
+    act(() =>
+      turns[0].emit({
+        type: 'error',
+        error: { code: 'aborted' },
+        createdAt: RAMMENS_TID,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    const answer = svaret(result.current.messages);
+    expect(answer?.status).toBe('aborted');
+    expect(answer?.createdAt).toBe(RAMMENS_TID);
+  });
+
+  it('tar tida fra error-ramma når søket ikke fant noe', async () => {
+    // `no-hits` er ikke en feil: det er et ferdig svar med tom kildeliste, og
+    // det tegnes med tidsstempel som et hvilket som helst annet svar.
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    act(() =>
+      turns[0].emit({
+        type: 'error',
+        error: { code: 'no-hits' },
+        createdAt: RAMMENS_TID,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    const answer = svaret(result.current.messages);
+    expect(answer?.status).toBe('complete');
+    expect(answer?.createdAt).toBe(RAMMENS_TID);
+  });
+
+  it('bruker sin egen klokke når ramma ikke bærer noen tid', async () => {
+    // En levende backend som ikke rapporterer feltet skal ikke gi et svar
+    // uten tid; da er klokka her det nærmeste som finnes.
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    const foer = Date.now();
+    act(() => turns[0].emit({ type: 'token', text: 'Svaret.' }));
+    act(() => turns[0].emit({ type: 'done', messageId: 'm1', conversationId: 'c1' }));
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    const satt = Date.parse(svaret(result.current.messages)!.createdAt);
+    expect(satt).toBeGreaterThanOrEqual(foer);
+    expect(satt).toBeLessThanOrEqual(Date.now());
+  });
+});

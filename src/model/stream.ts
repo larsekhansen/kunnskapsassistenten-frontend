@@ -112,4 +112,18 @@ export type StreamEvent =
        */
       outcome?: 'complete' | 'needs-clarification';
     }
-  | { type: 'error'; error: ChatError };
+  | {
+      type: 'error';
+      error: ChatError;
+      /**
+       * When the turn ended, ISO 8601. Same field and same reason as on
+       * `done`: one turn has one time, whichever frame ends it.
+       *
+       * It matters here because two of these codes are not failures. A
+       * stopped answer stays on screen and is written down, and `no-hits` is
+       * a finished answer with an empty source list — both settle as turns a
+       * reader can refer back to, so both need the time the turn ended rather
+       * than the time its placeholder was made.
+       */
+      createdAt?: string;
+    };

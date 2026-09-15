@@ -243,7 +243,7 @@ export class MockChatClient implements ChatClient {
         await wait(this.#delays.firstTokenMs, signal);
         // No `message`: the whole point is that the text comes from the code,
         // so a mock that wrote its own would be testing the mock's wording.
-        yield { type: 'error', error: { code: simulated } };
+        yield { type: 'error', error: { code: simulated }, createdAt: new Date().toISOString() };
         return;
       }
 
@@ -326,7 +326,7 @@ export class MockChatClient implements ChatClient {
       // real one does: an answer was under way and then it was not.
       if (scripted?.failure) {
         await wait(this.#delays.firstTokenMs, signal);
-        yield { type: 'error', error: scripted.failure };
+        yield { type: 'error', error: scripted.failure, createdAt: new Date().toISOString() };
         return;
       }
 
@@ -421,19 +421,17 @@ export class MockChatClient implements ChatClient {
        * stored: an answer with no content draws no card, and a stored empty
        * one would draw a card that never existed.
        */
+      // One turn, one time, the same rule the `done` path follows: made once
+      // here and handed to both the store and the frame that ends the stream.
+      const stoppedAt = new Date().toISOString();
       if (signal?.aborted && written.length > 0) {
         recordMockTurn({
           question: params.query,
           answerId: nextMessageId(),
-          // A stopped turn ends on the `error` frame, which carries no time,
-          // so this is the one path where the store and the screen stamp
-          // separately. They are the same instant — the moment stop was
-          // pressed — and `useChat` stamps its copy when it settles the turn,
-          // so the two agree to the second and differ only in milliseconds.
           answer: {
             content: written,
             citations: [],
-            createdAt: new Date().toISOString(),
+            createdAt: stoppedAt,
             status: 'complete',
           },
         });
@@ -441,6 +439,7 @@ export class MockChatClient implements ChatClient {
       yield {
         type: 'error',
         error: signal?.aborted ? { code: 'aborted' } : { code: 'unknown' },
+        createdAt: stoppedAt,
       };
     }
   }
