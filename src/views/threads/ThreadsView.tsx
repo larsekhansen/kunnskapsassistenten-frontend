@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, PanelHeader } from '../../components';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { Thread } from '../../model';
 import { groupThreads } from './grouping';
+import { threadTime } from './threadTime';
 import './threads.css';
 
 export type ThreadsViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> &
@@ -180,19 +181,41 @@ export function ThreadsView({
         <section key={group.id} className="threads-view__group">
           <PanelHeader title={group.title} level={3} size="2xs" />
           <ul className="threads-view__list">
-            {group.threads.map((thread) => (
-              <li key={thread.id}>
-                {/*
-                  NavLink sets aria-current="page" on the active route by
-                  itself, and that attribute — not the colour — is what makes
-                  the selected thread available to a screen reader. The style
-                  hangs off the same attribute so the two can never drift.
-                */}
-                <Link asChild data-size="sm" className="threads-view__thread">
-                  <NavLink to={`/threads/${thread.id}`}>{thread.title}</NavLink>
-                </Link>
-              </li>
-            ))}
+            {group.threads.map((thread) => {
+              const when = threadTime(thread.updatedAt);
+
+              return (
+                <li key={thread.id} className="threads-view__item">
+                  {/*
+                    NavLink sets aria-current="page" on the active route by
+                    itself, and that attribute — not the colour — is what makes
+                    the selected thread available to a screen reader. The style
+                    hangs off the same attribute so the two can never drift.
+                  */}
+                  <Link asChild data-size="sm" className="threads-view__thread">
+                    <NavLink to={`/threads/${thread.id}`}>{thread.title}</NavLink>
+                  </Link>
+                  {/*
+                    Beside the link and not inside it. Inside, the time would
+                    join the link's accessible name, and every row would be
+                    announced as «NKOM måloppnåelse 14:32» — a name that
+                    changes as the clock moves and that no one can use to ask
+                    for the row by voice. Out here it is read after the link,
+                    which is where it belongs: first what the thread is, then
+                    when it was.
+                  */}
+                  {when && (
+                    <time
+                      className="threads-view__time"
+                      dateTime={when.dateTime}
+                      title={when.title}
+                    >
+                      {when.text}
+                    </time>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       ))}

@@ -37,6 +37,14 @@
   inline-size: 100%;
 }
 
+/*
+ * The corpus line under «Filtrering». Muted, because it is context for the
+ * controls below rather than one of them.
+ */
+.filters-view__corpus {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
 .filters-view__loading {
   display: flex;
   flex-direction: column;
