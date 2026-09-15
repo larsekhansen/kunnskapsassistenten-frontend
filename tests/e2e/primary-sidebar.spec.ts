@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { covers, expectNoAxeViolations, setColorScheme } from './a11y';
 import {
   expectEveryStepReachable,
@@ -93,6 +93,98 @@ test.describe('navigasjonspanelet', () => {
 
     await page.keyboard.press('Enter');
     await expect(page.getByRole('button', { name: 'Tråder', exact: true })).toBeFocused();
+  });
+
+  /**
+   * N6 in `design/funksjonssjekk-v1.md`, which stood unverified: #2 saw it
+   * work in a browser on 2026-09-11 and the conductor's script could not
+   * settle it.
+   *
+   * What is at stake is an architecture claim, not a feature. The two views
+   * are modes of one slot, so switching UNMOUNTS the filter view completely —
+   * chips, counts and all. The selection survives only because it lives in
+   * `LayoutProvider` and not in the view, which is the same reason the chat
+   * view can read it (see filterContext.ts). A regression here would look
+   * like an ordinary refactor: move the state into `FiltersView` where it
+   * seems to belong, and nothing fails except this.
+   *
+   * Every read of the chips goes through `expect.poll`. Suggestion renders a
+   * chosen value a tick after Enter, so a plain read right after the keypress
+   * returns an empty list — which is how both of these first failed, against
+   * a product that was doing the right thing.
+   */
+  const chipTexts = (page: Page) =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('ds-suggestion')].flatMap((suggestion) =>
+        [...suggestion.querySelectorAll('data')].map((chip) => chip.textContent?.trim() ?? ''),
+      ),
+    );
+
+  /** Picks one value in a facet the way a keyboard user does, and waits for the chip. */
+  async function chooseFacetValue(page: Page, dimension: string, value: string): Promise<void> {
+    const field = facetField(page, dimension);
+    await field.click();
+    await page.keyboard.type(value);
+    // The list filters asynchronously; ArrowDown on a list that has not
+    // caught up lands on whatever option is still first.
+    await expect(page.locator('[role="option"]').filter({ hasText: value }).first()).toBeVisible();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => chipTexts(page)).toContain(value);
+  }
+
+  test('filtervalget overlever veksling til trådene og tilbake', async ({ page }, testInfo) => {
+    covers(testInfo, 'filtervalget overlever veksling (N6)');
+
+    // Two dimensions, not one: a selection kept per field and a selection
+    // kept for the panel as a whole fail differently, and one field cannot
+    // tell them apart.
+    await chooseFacetValue(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
+    await chooseFacetValue(page, 'Dokumenttyper', 'Årsrapport');
+
+    const before = (await chipTexts(page)).sort();
+
+    await showThreads(page);
+    // Gone from the DOM, not merely hidden. If the panel only hid the view,
+    // this test would pass while proving nothing.
+    await expect(facetField(page, 'Virksomheter')).toHaveCount(0);
+
+    await showFilters(page);
+
+    await expect
+      .poll(async () => (await chipTexts(page)).sort(), {
+        message: 'chipsene er de samme etter veksling',
+      })
+      .toEqual(before);
+
+    const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
+    await expect(panel.getByText('1 av 6 valgt').first()).toBeVisible();
+    // And the field is back to a resting state rather than holding the search
+    // text that produced the chip.
+    await expect(facetField(page, 'Virksomheter')).toHaveValue('');
+  });
+
+  test('filtervalget overlever at brukeren åpner en tråd og går tilbake', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'filtervalget overlever ruteskifte');
+
+    await chooseFacetValue(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
+
+    // A route change is the harder case and the one a user actually does:
+    // open a thread from the list, then go back to the filter. The provider
+    // sits above `Routes` in App.tsx, so the selection is expected to hold —
+    // this is the test that says so out loud.
+    await showThreads(page);
+    await page.getByRole('link', { name: 'NKOM måloppnåelse' }).click();
+    await expect(page).toHaveURL(/\/threads\/nkom-maaloppnaaelse$/);
+
+    await showFilters(page);
+    await expect
+      .poll(() => chipTexts(page), { message: 'valget overlevde ruta' })
+      .toContain('Nasjonal kommunikasjonsmyndighet');
+
+    await expectNoAxeViolations(page, 'filtreringen på en trådrute');
   });
 
   test('trådene er gruppert på tidsrom, nyeste først', async ({ page }, testInfo) => {
