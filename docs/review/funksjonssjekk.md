@@ -14,6 +14,13 @@ Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 
 **Én kjøring per port om gangen.** `KA_E2E_PORT=4174` flytter den, og det
 trengs når suiten kjøres fra to arbeidstrær på denne maskinen samtidig.
+Portfordelingen i natt: KA CC 4173, #2 4174, #3 4175, #4 4176, #5 4177.
+
+Suiten **gjenbruker aldri** en preview-server som alt står på porten. En
+server der tilhører noen andre, og å henge seg på den er hvordan en kjøring
+ender med å teste et `dist` den ikke bygde selv. Kollisjon feiler nå med
+portnummeret i meldinga, før første test, i stedet for å bli en spredning av
+røde tester lenger inne.
 
 De 22 testene for de tre viewene ble skrevet mot en lokal montering i
 arbeidstreet mens monterings-PR-en ble laget, og **de passerte uendret mot den
