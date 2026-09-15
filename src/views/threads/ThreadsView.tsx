@@ -1,13 +1,13 @@
 import { Button, Link, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink } from 'react-router';
-import { createChatClient } from '../../api';
 import { FilterIcon, NewThreadIcon } from '../../components/icons';
 import { EmptyState, ErrorState, PanelHeader, threadTime } from '../../components';
 import { useOpenThread } from '../../layout/useOpenThread';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { Thread } from '../../model';
 import { groupThreads } from './grouping';
+import { useThreadList } from './useThreadList';
 import './threads.css';
 
 export type ThreadsViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> &
@@ -23,7 +23,9 @@ export type ThreadsViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'
  *
  * The view fetches what it renders, so the shell mounts it without wiring.
  * Data comes from the ChatClient, which is the mock until the live client
- * exists.
+ * exists. `useThreadList` reads it again when the conversation on screen
+ * moves, so a thread the reader starts while the list is open appears in it
+ * without a detour through another view.
  */
 export function ThreadsView({
   siblingViews,
@@ -31,38 +33,13 @@ export function ThreadsView({
   switchedByUser = false,
   threads: given,
 }: ThreadsViewProps) {
-  const client = useMemo(() => createChatClient(), []);
   // Which conversation is on screen, whoever put it there. See
   // src/layout/openThreadContext.ts.
   const openThreadId = useOpenThread();
-  const [threads, setThreads] = useState<Thread[] | undefined>(given);
-  const [failed, setFailed] = useState(false);
-  const [attempt, setAttempt] = useState(0);
+  const { threads, failed, retry } = useThreadList(given);
   const [query, setQuery] = useState('');
   const searchStatusId = useId();
   const filterRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (given) return;
-
-    const abort = new AbortController();
-    client
-      .listThreads(abort.signal)
-      .then(setThreads)
-      .catch(() => {
-        if (!abort.signal.aborted) setFailed(true);
-      });
-
-    return () => abort.abort();
-  }, [client, given, attempt]);
-
-  // Clearing the error here rather than in the effect: the retry click is
-  // what changed, and setting state inside an effect starts another render.
-  const retry = useCallback(() => {
-    setThreads(undefined);
-    setFailed(false);
-    setAttempt((count) => count + 1);
-  }, []);
 
   /*
    * Focus after a switch from the filter view, which unmounted the button the
