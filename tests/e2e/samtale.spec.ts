@@ -293,6 +293,36 @@ test.describe('samtalen', () => {
    * Testen måler begge halvdelene: at veien videre finnes, og at den virker.
    * Det siste er det som betyr noe; en knapp som bare står der er ikke en vei.
    */
+  test('et svar stoppet i tenkefasen har også en vei videre', async ({ page }, testInfo) => {
+    covers(testInfo, 'avbrutt i tenkefasen: «Generer på nytt»');
+    await page.goto('/');
+
+    await composer(page).click();
+    await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
+    await page.keyboard.press('Enter');
+
+    // Stopp mens søket går, før det første ordet i svaret.
+    await expect(page.getByText('Tenker …')).toBeVisible();
+    await page.getByRole('button', { name: 'Avbryt genereringen' }).click();
+
+    /*
+     * Turen forsvant her (#4, funn A): ingen «Generer på nytt», og et
+     * kildepanel tilbake på «Kildene vises her når du har stilt et spørsmål»
+     * for en leser som nettopp hadde spurt om noe. Stoppet ett ord senere sto
+     * begge deler der.
+     */
+    await expect(page.getByText('Du stoppet søket før svaret begynte.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Generer på nytt' })).toBeVisible();
+
+    // Og panelet sier det samme som når svaret var kommet i gang.
+    const show = page.getByRole('button', { name: 'Vis kilder' });
+    if (await show.count()) await show.click();
+    await expect(page.getByText('Svaret ble avbrutt før kildene kom')).toBeVisible();
+    await expect(page.getByText('Ingen kilder ennå')).toHaveCount(0);
+
+    await expectNoAxeViolations(page, 'avbrutt i tenkefasen');
+  });
+
   test('et avbrutt svar har en vei videre, og «Generer på nytt» går helt i mål', async ({
     page,
   }, testInfo) => {

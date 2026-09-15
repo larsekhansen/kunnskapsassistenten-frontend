@@ -70,6 +70,9 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  // «Prøv igjen», so focus can be put on it when the error takes the control
+  // the reader was holding.
+  const retryRef = useRef<HTMLButtonElement>(null);
 
   // The main slot owns the scroll, and the shell hands it over. A view must
   // not go looking for it: the day chat is moved to another slot, a search up
@@ -275,17 +278,34 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
    * The same rescue, for the error that arrives on its own.
    *
    * The send button becomes the stop button while an answer is on its way,
-   * and the stop button is gone the moment the turn fails. A reader who
-   * clicked it is then standing on `<body>` — Enter keeps the caret in the
-   * field, a mouse click does not, and the difference was measured (reise 10
-   * and 15). Focus is only taken when nobody holds it, so a reader who has
-   * moved on keeps their place.
+   * and when the turn fails it becomes the send button again — disabled,
+   * because the field is empty. A reader who clicked it is still standing on
+   * it at this moment and lands on `<body>` one frame later, when the browser
+   * takes focus off a control that has just been switched off. Traced in the
+   * built app, 2026-09-15: «Avbryt genereringen» at 210 ms, «Send spørsmålet»
+   * with the alert already up at 5091 ms, `<body>` at 5107 ms.
+   *
+   * So «is focus lost» cannot be asked of `document.activeElement` alone —
+   * asked here it is still the button, and one frame later it is too late.
+   * A button inside the composer counts as lost too: it is the control that
+   * just changed meaning underneath the reader.
+   *
+   * Where focus goes is «Prøv igjen», which is the one thing to do next, and
+   * the compose field when the error offers no retry — a rejected key does
+   * not, and the reader's way on is to write to someone (#4, funn B).
+   *
+   * The compose field itself is left alone. Enter leaves the caret there, and
+   * a reader who is typing must not have it taken away.
    */
   useEffect(() => {
     if (status !== 'error') return;
-    if (document.activeElement === document.body || document.activeElement === null) {
-      fieldRef.current?.focus();
-    }
+
+    const active = document.activeElement;
+    const onComposerButton =
+      active instanceof HTMLButtonElement && (composerRef.current?.contains(active) ?? false);
+    if (active !== document.body && active !== null && !onComposerButton) return;
+
+    (retryRef.current ?? fieldRef.current)?.focus();
   }, [status]);
 
   return (
@@ -336,6 +356,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
       */}
       <ErrorState
         message={errorText?.message}
+        retryRef={retryRef}
         onRetry={
           errorText?.retryable
             ? () => {

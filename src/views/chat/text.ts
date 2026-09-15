@@ -49,6 +49,15 @@ export const FOLLOW_UP_QUESTIONS = [
 /** Under the text of an answer the reader stopped. */
 export const ABORTED_NOTE = 'Svaret ble avbrutt, så kildene bak det kom aldri fram.';
 
+/**
+ * The same, for a turn stopped while it was still searching.
+ *
+ * There is no answer to say anything about — «svaret ble avbrutt» would be
+ * about text that never existed — so it names what there was: a search, and a
+ * reader who stopped it (#4, funn A).
+ */
+export const ABORTED_BEFORE_ANSWER = 'Du stoppet søket før svaret begynte.';
+
 /** The only action on a stopped answer: ask the same question again. */
 export const REGENERATE = 'Generer på nytt';
 
