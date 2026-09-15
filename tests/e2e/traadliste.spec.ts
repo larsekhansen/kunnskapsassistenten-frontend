@@ -78,14 +78,20 @@ test.describe('trådlista mens en samtale pågår', () => {
     await expect(panel.locator('[aria-current="page"]')).toHaveCount(1);
 
     /*
-     * Under «I dag», and deliberately not «first in the list».
+     * Under «I dag», which is where a thread made a second ago belongs.
      *
-     * The list sorts on `updatedAt`, newest first, and the fixtures are
-     * stamped at 09:30 on the day they belong to — so between midnight and
-     * 09:30 a thread made right now is correctly sorted BELOW two fixture
-     * threads whose timestamp is later today. Asserting the top row would
-     * make this spec red for twelve hours a day over the fixture clock rather
-     * than over the product.
+     * Not «first in the list», and that is a division of labour rather than a
+     * hedge: the top row is asserted for the other order of events — ask,
+     * then open the list — in `primary-sidebar.spec.ts`. What is new here is
+     * that the row is in the list at all while the list was never closed.
+     *
+     * Both rest on the same property of the fixtures, and it was not there
+     * until #68: `daysAgo` places a fixture hour that has not struck yet
+     * proportionally in the part of today that has passed, so no fixture is
+     * ever dated later than now. Before that, a thread made at 00:10 sorted
+     * correctly under two fixtures stamped 09:30 the same day, and an
+     * assertion about the top row was red between midnight and 09:30 over the
+     * fixture clock rather than over the product.
      */
     await expect(group(page, 'I dag').locator(`a[href="/threads/${id}"]`)).toHaveCount(1);
 
