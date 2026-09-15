@@ -27,8 +27,18 @@ export interface ChatClient {
   /** Resolves to null when the thread does not exist. */
   getThread(threadId: string, signal?: AbortSignal): Promise<ThreadDetail | null>;
   /**
-   * The filter dropdowns with their values. Counts may be missing — see
+   * The filter dropdowns with their values.
+   *
+   * `selection` is what the user has already ticked, and the counts come back
+   * conditioned on it: pick an organisation and the years then say how many
+   * of THAT organisation's documents each year holds. A dimension never
+   * narrows its own counts, or every unticked value would drop to zero the
+   * moment the first one was ticked.
+   *
+   * Optional, and omitting it asks for the unconditioned counts. Mock mode
+   * computes all of this from the corpus. Live mode returns nothing at all:
+   * the backend filters by whole dataset and has no facet aggregation. See
    * `FacetValue.count` and API-bestilling A2.
    */
-  listFacets(signal?: AbortSignal): Promise<FilterFacet[]>;
+  listFacets(signal?: AbortSignal, selection?: FilterSelection): Promise<FilterFacet[]>;
 }

@@ -12,6 +12,11 @@ interface ImportMetaEnv {
    */
   readonly VITE_KA_TENANT?: string;
   readonly VITE_KA_DATASET_CONFIG_KEY?: string;
+  /**
+   * How fast mock mode answers: `fast`, `realistic` (default) or `slow`.
+   * See `mockSpeeds` in src/api/mock/MockChatClient.ts.
+   */
+  readonly VITE_MOCK_SPEED?: 'fast' | 'realistic' | 'slow';
 }
 
 interface ImportMeta {

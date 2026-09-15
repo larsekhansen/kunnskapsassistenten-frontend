@@ -427,6 +427,72 @@ tilbake.
 ekte spørsmål til brukeren. Backend melder den i `_meta.status`, og
 `StreamEvent`s `done` bærer den videre som `outcome`.
 
+## Mock-korpuset
+
+Mocken svarer fra et **ekte, fritt korpus**: 938 dokumenter fra
+[Kudos](https://kudos.dfo.no), DFØ sitt åpne dokumentarkiv. 259 virksomheter,
+årene 2020–2027, fem dokumenttyper.
+
+**Hva som er ekte og hva som er vårt.** Titler, dokumenttyper, virksomheter,
+år, sammendrag og lenker er hentet fra Kudos og er uendret. Svarene,
+tenkestegene og koblingen mellom utdrag og svar er skrevet av oss. Ingenting i
+korpuset er generert.
+
+### Hente det på nytt
+
+```sh
+node scripts/fetch-mock-corpus.mjs
+```
+
+Kjøres for hånd, aldri fra et bygg: resultatet er sjekket inn som
+`src/api/mock/corpus/kudos-korpus.json` (0,8 MB), så en klone bygger og tester
+uten nett. Skriptet bruker ett sekund per forespørsel og prøver to ganger til
+hvis forbindelsen ryker. Se diffen før du sjekker inn.
+
+To ting som formet skriptet, begge målt:
+
+- `type` er den **eneste** parameteren API-et godtar. År, sortering og
+  fritekst gir feil — men `type` filtrerer, så de fem typene hentes hver for
+  seg i stedet for å lese 1806 sider med alt.
+- **De fleste dokumentene i Kudos har ikke sammendrag.** Av 200 målte hadde
+  128 tomt `abstract`. Derfor leses 2500 dokumenter for å beholde 938.
+
+Året i korpuset er det dokumentet handler **om**, ikke året det ble publisert:
+en årsrapport for 2024 kommer ut i 2025, og et filter som la den under 2025
+ville svart på et annet spørsmål enn det som ble stilt.
+
+### Fasetter
+
+Tellerne i filteret regnes ut av korpuset, betinget av det som alt er valgt —
+det API-bestilling A2 ber backend om. Regelen som gjør tallene meningsfulle:
+**en dimensjon snevrer ikke inn sine egne tellere.** «Årsrapport (322)» må
+fortsette å si 322 etter at du huker den av, og «Evaluering (42)» må stå der
+ved siden av. Talte man dem under dokumenttype-filteret, ville hver uhuket
+type falt til null i det den første ble huket — som leses som «det finnes ikke
+noe annet», når sannheten er «du har ikke bedt om noe annet ennå».
+
+De andre dimensjonene snevrer inn. Huker du av «Helsedirektoratet», viser
+årene hvor mange av Helsedirektoratets dokumenter hvert år har.
+
+### Tempo
+
+`VITE_MOCK_SPEED` styrer hvor lang tid mocken bruker:
+
+| Verdi       | Tenkesteg | Første token | Per token | Til hva                   |
+| ----------- | --------- | ------------ | --------- | ------------------------- |
+| `fast`      | 0,5 s     | 0,3 s        | 18 ms     | e2e-suiten                |
+| `realistic` | 1,1 s     | 3,8 s        | 25 ms     | **standard**, å se på     |
+| `slow`      | 2,5 s     | 7 s          | 60 ms     | å se hardt på én tilstand |
+
+Standarden er den trege med vilje: en mock som svarer med én gang kan ikke
+vise skjelettet, tenkepanelet eller strømmingen, som er mesteparten av det det
+er å se på. Tallene er ikke plukket ut av lufta — én ekte spørring mot stacken
+tok 15,1 sekunder, målt 2026-09-11.
+
+`fast` er ikke null. Testen «avbryt stopper genereringen» trenger et svar som
+fortsatt er på vei når stoppknappen trykkes, og på null er alt over før testen
+rekker å trykke. En mock som strømmer momentant strømmer ikke.
+
 ## Ekte backend
 
 `VITE_API_MODE=live` bytter `createChatClient()` fra mock til `LiveChatClient`.
