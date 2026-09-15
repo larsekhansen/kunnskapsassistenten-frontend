@@ -2,6 +2,7 @@ import { Button, Card, Details, Heading, Link, Paragraph, Tag } from '@digdir/de
 import { HighlightedText, type SearchHit } from '../../components';
 import { BackIcon } from '../../components/icons';
 import { excerptDomId, relevanceLabels, type Excerpt } from '../../model';
+import { kudosLinkLabel } from './kudosLink';
 import { relevanceTagColor } from './relevance';
 
 /** How much of the quote is shown before the user opens it. */
@@ -176,10 +177,14 @@ export function SourceExcerpt({
           </Paragraph>
 
           {/* `kudosUrl` is absent for corpora without public URLs — the model
-              says so plainly, and a link to nothing is worse than no link. */}
+              says so plainly, and a link to nothing is worse than no link.
+
+              The label comes from the address, not from the page number:
+              Kudos's document page has no viewer and no page anchors, so only
+              a file URL with `#page=N` can open a page. See `kudosLink.ts`. */}
           {kudosUrl !== undefined && (
             <Link href={kudosUrl} target="_blank" rel="noreferrer" data-size="sm">
-              {page === undefined ? 'Les utdraget på Kudos' : `Les side ${page} på Kudos`}
+              {kudosLinkLabel(kudosUrl, page)}
               <span className="ds-sr-only"> (åpnes i ny fane)</span>
             </Link>
           )}
