@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
@@ -108,6 +108,30 @@ describe('en tråd som ikke finnes', () => {
     expect(screen.getByText('Ingen kilder ennå')).toBeDefined();
     expect(screen.queryByText('Henter kilder …')).toBeNull();
   });
+
+  it('tar bort hopp-lenka til skrivefeltet, som ikke finnes her', async () => {
+    openAt('/threads/finnes-ikke');
+    await screen.findByRole('heading', { level: 2, name: 'Fant ikke tråden' });
+
+    // Ruta er en helt vanlig /threads/:threadId og tegner hovedkolonnen på
+    // vanlig vis, så skallet kan ikke se dette selv. Tab Tab + Enter lot
+    // fokus stå på en lenke til et element som ikke var i dokumentet, målt av
+    // KA CC 15.09. Vilkåret er at det finnes et skrivefelt, ikke hvem som
+    // tegner hovedkolonnen.
+    //
+    // `waitFor` og ikke en rett sjekk: beskjeden og lenka kommer i hvert sitt
+    // commit. Viewet slutter å melde fra i samme render som det bytter
+    // innhold, og skallet tegner uten lenka i renderen etter — ett bilde, ikke
+    // et halvt sekund.
+    expect(document.getElementById(COMPOSER_ID)).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: 'Hopp til skrivefeltet' })).toBeNull(),
+    );
+
+    // Den første lenka gjelder fortsatt: hovedinnholdet finnes, det er
+    // beskjeden om at tråden ikke gjør det.
+    expect(screen.getByRole('link', { name: 'Hopp til hovedinnhold' })).toBeDefined();
+  });
 });
 
 describe('hopp-lenkene', () => {
@@ -124,6 +148,13 @@ describe('hopp-lenkene', () => {
     // src/layout/ids.ts i begge ender.
     const target = links[1]?.getAttribute('href')?.slice(1);
     expect(target).toBe(COMPOSER_ID);
+    expect(document.getElementById(COMPOSER_ID)).not.toBeNull();
+  });
+
+  it('står også på en tråd som finnes, etter at klienten har svart', async () => {
+    openAt('/threads/nkom-maaloppnaaelse');
+
+    expect(await screen.findByRole('link', { name: 'Hopp til skrivefeltet' })).toBeDefined();
     expect(document.getElementById(COMPOSER_ID)).not.toBeNull();
   });
 });
