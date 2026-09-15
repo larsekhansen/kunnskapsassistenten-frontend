@@ -8,6 +8,7 @@ import { useMainScroll } from '../../layout/useMainScroll';
 import type { ThreadDetail } from '../../model';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
+import { threadTitle } from './threadTitle';
 import { useAtBottom } from './useAtBottom';
 import { useChat } from './useChat';
 import { Welcome } from './Welcome';
@@ -37,6 +38,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
 
   const [draft, setDraft] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
   // The main slot owns the scroll, and the shell hands it over. A view must
@@ -44,6 +46,35 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   // the DOM finds the wrong element or nothing.
   const { ref: scrollRef, scrollToBottom } = useMainScroll();
   const atBottom = useAtBottom(scrollRef, rootRef);
+
+  /*
+   * The compose field is sticky and opaque, so anything the browser scrolls
+   * to can land underneath it — a citation link or an action button reached
+   * by Tab ends up behind the field, which is WCAG 2.4.11. `scroll-padding`
+   * tells the scroll container to stop that much short of the bottom.
+   *
+   * Measured rather than written down: the field grows with the question
+   * (`field-sizing: content`) and the follow-up chips come and go, so the
+   * height is not a number this view knows. The property is set on the
+   * container the shell owns, and cleared again when the chat leaves it.
+   */
+  useEffect(() => {
+    const area = composerRef.current;
+    const scroller = scrollRef.current;
+    // jsdom has no ResizeObserver; the padding is a scroll affordance, so a
+    // test environment without one loses nothing.
+    if (!area || !scroller || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      scroller.style.scrollPaddingBlockEnd = `${Math.round(area.offsetHeight)}px`;
+    });
+    observer.observe(area);
+
+    return () => {
+      observer.disconnect();
+      scroller.style.scrollPaddingBlockEnd = '';
+    };
+  }, [scrollRef]);
 
   // Activating a `[n]` marker is the shell's business: it opens the sources
   // panel and tells it which excerpt to show. Neither view knows the other.
@@ -74,6 +105,13 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
     (message) => message.role === 'assistant' && message.status === 'complete',
   );
 
+  /**
+   * The same head on both routes (brukerblikk 2026-09-15, finding 5). A
+   * thread opened from the list brings its title; a conversation started on
+   * `/` has none until the client names it, and then the question stands in.
+   */
+  const title = threadTitle(thread?.title, messages);
+
   function submit(question: string) {
     send(question);
     setDraft('');
@@ -94,9 +132,9 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
 
   return (
     <div className="ka-chat" ref={rootRef}>
-      {thread ? (
+      {title ? (
         <Heading data-size="lg" level={2}>
-          {thread.title}
+          {title}
         </Heading>
       ) : null}
 
@@ -142,6 +180,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         onChange={setDraft}
         onFollowUp={submit}
         onSubmit={() => submit(draft)}
+        ref={composerRef}
         showFollowUps={hasAnswer}
         status={status}
         value={draft}
