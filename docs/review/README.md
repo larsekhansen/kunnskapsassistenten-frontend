@@ -238,6 +238,18 @@ fordi den blir stående i en rapport.
 - **Markørene i et svar er ikke `<sup>` før kildene har kommet.** Å lete etter
   `.markdown__citation` mens svaret strømmer finner ingenting, uansett hvor
   mange `[n]` som står i teksten. Let i teksten, ikke i elementene.
+- **`aria-disabled` er «ikke enabled» for Playwright.** `isEnabled()` gir
+  `false`, og et vanlig `click()` på en slik knapp står og venter til det
+  tidsavbrytes med «element is not enabled» — selv om en ekte leser kan klikke
+  den, som er hele poenget med `aria-disabled`. Bruk
+  `toHaveAttribute('aria-disabled', 'true')`, ikke `toBeDisabled()`. Og
+  `click({ force: true })` er ikke svaret: den klikker på gamle koordinater, så
+  et element som ruller (en søkestripe som følger en myk rulling til treffet)
+  kan bomme, og du rapporterer et steg som slukt. Målt i #60.
+- **Les én gang, og du måler et øyeblikk, ikke en tilstand.** Etter en reload
+  bygges appen opp over noen hundre millisekunder, og et panel som er tomt ved
+  170 ms har innhold ved 490 ms. Prøv over tid før du skriver at noe «står»
+  tomt. Det kostet #3 fem forsøk på et funn som ikke fantes (#57).
 
 ## Verktøyet
 
