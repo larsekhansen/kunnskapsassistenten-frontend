@@ -196,6 +196,14 @@ export function useChat(
       // arrived. The panel itself is silent, see ThinkingPanel.
       let saidSearching = false;
 
+      /*
+       * When the thinking started, so how long it took can be written down
+       * rather than worked out afterwards (brukerblikk runde 2, funn 5). The
+       * stream is where the two ends of that interval actually are: the first
+       * step arriving, and the first word of the answer.
+       */
+      let thinkingStartedAt: number | undefined;
+
       try {
         for await (const event of client.ask({
           query: question,
@@ -210,8 +218,17 @@ export function useChat(
           switch (event.type) {
             case 'token': {
               setStatus('streaming');
+              const thoughtMs =
+                thinkingStartedAt === undefined ? undefined : Date.now() - thinkingStartedAt;
+              // Only the first token ends the thinking; the rest are the
+              // answer being written.
+              thinkingStartedAt = undefined;
               content += event.text;
-              patchAnswer(answerId, (message) => ({ ...message, content }));
+              patchAnswer(answerId, (message) => ({
+                ...message,
+                content,
+                ...(thoughtMs === undefined ? {} : { thoughtMs }),
+              }));
               // Blocks are separated by a blank line, so only a token with a
               // newline in it can have finished one. Everything else would be
               // half a sentence.
@@ -223,6 +240,7 @@ export function useChat(
             }
 
             case 'thinking-step':
+              thinkingStartedAt ??= Date.now();
               patchAnswer(answerId, (message) => ({
                 ...message,
                 thinkingSteps: [...(message.thinkingSteps ?? []), event.step],

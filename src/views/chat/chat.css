@@ -436,7 +436,7 @@
  * «Trykk / for å hoppe hit», on the same line as the disclaimer.
  *
  * Its own line would be a second sentence of grey text under a field that
- * already carries one; beside the disclaimer it is a footnote to a footnote,
+ * already carries one; after the disclaimer it is a footnote to a footnote,
  * which is the weight a keyboard shortcut deserves. The separator is drawn in
  * CSS so it is not read out as a word.
  */
@@ -444,7 +444,12 @@
   color: var(--ds-color-neutral-text-subtle);
 }
 
-.ka-composer__shortcut::after {
+/*
+ * The separator moved to the front with the hint itself: the disclaimer comes
+ * first now, and a dot trailing the last words on the line reads as a full
+ * stop that fell over (brukerblikk runde 2, funn 6).
+ */
+.ka-composer__shortcut::before {
   content: '·';
   margin-inline: var(--ds-size-1);
 }

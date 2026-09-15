@@ -218,6 +218,17 @@ export class MockChatClient implements ChatClient {
     // What has actually been said, so a turn the reader stopped can be
     // remembered as the half-answer it is rather than dropped.
     let written = '';
+    /*
+     * The clock over the thinking, so the turn written into `sessionStorage`
+     * carries the wait the reader actually sat through. Without it a reloaded
+     * conversation showed the sum of the steps' own `durationMs` instead —
+     * a different number for a turn that had not changed (brukerblikk runde
+     * 2, funn 5). The view measures the same interval off the stream; both
+     * are the same clock over the same two events.
+     */
+    let thinkingStartedAt: number | undefined;
+    const thoughtMs = () =>
+      thinkingStartedAt === undefined ? undefined : { thoughtMs: Date.now() - thinkingStartedAt };
     try {
       const simulated = MOCK_ERROR_QUERIES[params.query.trim().toLocaleLowerCase('nb-NO')];
       if (simulated) {
@@ -227,6 +238,7 @@ export class MockChatClient implements ChatClient {
         // The same holds for a search that came back empty — it searched
         // first, and the thinking panel is what says so.
         await wait(this.#delays.thinkingStepMs, signal);
+        thinkingStartedAt = Date.now();
         yield { type: 'thinking-step', step: nkomThinkingSteps[0]! };
         await wait(this.#delays.firstTokenMs, signal);
         // No `message`: the whole point is that the text comes from the code,
@@ -241,9 +253,11 @@ export class MockChatClient implements ChatClient {
         // `sources` event, because nothing was retrieved — a clarification
         // with sources behind it would be a different thing entirely.
         await wait(this.#delays.thinkingStepMs, signal);
+        thinkingStartedAt = Date.now();
         yield { type: 'thinking-step', step: nkomThinkingSteps[0]! };
 
         await wait(this.#delays.firstTokenMs, signal);
+        const clarificationThought = thoughtMs();
         for (const text of tokenize(clarificationMarkdown)) {
           await wait(this.#delays.tokenMs, signal);
           written += text;
@@ -256,7 +270,12 @@ export class MockChatClient implements ChatClient {
           answerId: clarificationId,
           // No sources, because nothing was retrieved. A clarification with
           // sources behind it would be a different thing entirely.
-          answer: { content: written, citations: [], status: 'needs-clarification' },
+          answer: {
+            content: written,
+            citations: [],
+            ...clarificationThought,
+            status: 'needs-clarification',
+          },
         });
         yield {
           type: 'done',
@@ -293,6 +312,7 @@ export class MockChatClient implements ChatClient {
       const steps = scripted?.thinkingSteps ?? nkomThinkingSteps;
       for (const step of steps) {
         await wait(this.#delays.thinkingStepMs, signal);
+        thinkingStartedAt ??= Date.now();
         yield { type: 'thinking-step', step };
       }
 
@@ -305,6 +325,7 @@ export class MockChatClient implements ChatClient {
       }
 
       await wait(this.#delays.firstTokenMs, signal);
+      const thought = thoughtMs();
       for (const text of tokenize(
         withOnlyCitations(scripted?.answer ?? mockAnswerMarkdown, cited),
       )) {
@@ -328,6 +349,7 @@ export class MockChatClient implements ChatClient {
             content: written,
             citations: [],
             thinkingSteps: steps,
+            ...thought,
             status: scripted.outcome ?? 'complete',
           },
         });
@@ -365,6 +387,7 @@ export class MockChatClient implements ChatClient {
           sources: documents,
           retrieval,
           thinkingSteps: steps,
+          ...thought,
           status: scripted?.outcome ?? 'complete',
         },
       });

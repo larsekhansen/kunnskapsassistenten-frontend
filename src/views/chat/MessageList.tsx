@@ -25,6 +25,14 @@ type MessageListProps = {
    * question was asked against the whole corpus.
    */
   filterSummary?: (messageId: string) => string | undefined;
+  /**
+   * Whether the search behind an answer came back empty, by message id.
+   *
+   * By id and not «the last one», because it is a fact about that answer: the
+   * notice it carries is the whole answer, and what a finished answer offers
+   * onward does not belong under it however many turns come after.
+   */
+  foundNothing?: (messageId: string) => boolean;
 };
 
 /**
@@ -84,6 +92,7 @@ export function MessageList({
   canScrollToBottom,
   onRegenerate,
   filterSummary,
+  foundNothing,
 }: MessageListProps) {
   return (
     <ol className="ka-messages">
@@ -114,7 +123,11 @@ export function MessageList({
             <li className="ka-message ka-message--assistant" key={message.id}>
               <span className="ds-sr-only">Kunnskapsassistenten spurte:</span>
               {message.thinkingSteps?.length ? (
-                <ThinkingPanel status="done" steps={message.thinkingSteps} />
+                <ThinkingPanel
+                  status="done"
+                  steps={message.thinkingSteps}
+                  thoughtMs={message.thoughtMs}
+                />
               ) : null}
               <Clarification question={message.content} />
             </li>
@@ -155,6 +168,7 @@ export function MessageList({
               <ThinkingPanel
                 status={streaming && empty ? 'thinking' : 'done'}
                 steps={message.thinkingSteps}
+                thoughtMs={message.thoughtMs}
               />
             ) : null}
 
@@ -210,7 +224,14 @@ export function MessageList({
                     </Paragraph>
                   ) : null}
 
-                  {complete && !empty ? (
+                  {/*
+                    Not under an answer that found nothing. The follow-up
+                    suggestions are already hidden there, with the reasoning
+                    that «Kan du utdype?» asks the assistant to say more about
+                    nothing; this says the same thing one line up, in words
+                    instead of buttons (brukerblikk runde 2, funn 7).
+                  */}
+                  {complete && !empty && !foundNothing?.(message.id) ? (
                     <Paragraph variant="long">{CLOSING_QUESTION}</Paragraph>
                   ) : null}
                 </Card.Block>
