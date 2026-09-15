@@ -22,9 +22,12 @@
  * What kind of thing a piece of indexed text came from.
  *
  * A hit carries it so the caller can tell «found in an excerpt» from «found in
- * the document body» without looking the id up again.
+ * the document body» without looking the id up again. `answer` is one block of
+ * a rendered answer in the main column — the chat searches a paragraph at a
+ * time, because that is the shape react-markdown hands it (brukerreiser punkt
+ * 13).
  */
-export type SearchableKind = 'excerpt' | 'document';
+export type SearchableKind = 'excerpt' | 'document' | 'answer';
 
 export type SearchableItem = {
   /** Same id as the thing the text came from, so a hit can be pointed at it. */

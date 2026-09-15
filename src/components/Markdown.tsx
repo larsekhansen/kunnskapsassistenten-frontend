@@ -3,6 +3,8 @@ import { Children, useMemo, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { CitationTarget } from '../model';
+import { HighlightedText } from './HighlightedText';
+import { MIN_QUERY_LENGTH, findHits } from './textSearch';
 
 /**
  * Renders an answer's markdown onto Designsystemet components.
@@ -50,6 +52,26 @@ export type MarkdownProps = {
   sourcesLost?: boolean;
   /** Called when the reader activates a marker, with its number. */
   onCitationActivate?: (citationNumber: number) => void;
+  /**
+   * Wraps every occurrence of this string in `<mark>`, one block at a time.
+   *
+   * Shorter than `MIN_QUERY_LENGTH` marks nothing, which is the same rule the
+   * sources panel searches by — there is one search mechanism, not two
+   * (answers 27 and 55).
+   *
+   * What is deliberately NOT here is which hit is the current one, or how
+   * many there are. Both are questions about reading order, and reading order
+   * is what the rendered document already knows: the `<mark>` elements come
+   * back from `querySelectorAll` in exactly that order. So the caller counts
+   * and steps through them in the DOM, and this component stays a pure
+   * function of its markdown. See `AnswerSearch` in the chat view.
+   */
+  searchQuery?: string;
+  /**
+   * Class on each `<mark>`, so the highlight sits on the caller's own
+   * surface. Left out, the browser's default yellow stands in.
+   */
+  markClassName?: string;
 };
 
 const CITATION_MARKER = /\[(\d+)\]/g;
@@ -161,14 +183,43 @@ function withCitations(
   });
 }
 
+/**
+ * The same children again, with search matches wrapped in `<mark>`.
+ *
+ * Runs after `withCitations` and over its output, so a `[n]` that has already
+ * become a link is left alone and only the prose around it is searched. The
+ * matching is `findHits`, the splitting is `HighlightedText`: the sources
+ * panel searches by the same two, and a second implementation of «what counts
+ * as a match» would drift from it within the week.
+ *
+ * One block at a time, because that is what react-markdown hands over. A
+ * query spanning a paragraph boundary finds nothing, which is also true of
+ * the browser's own find.
+ */
+function withHighlights(children: ReactNode, query: string, markClassName?: string): ReactNode {
+  if (query.trim().length < MIN_QUERY_LENGTH) return children;
+
+  return Children.map(children, (child) => {
+    if (typeof child !== 'string') return child;
+
+    const hits = findHits([{ id: 'block', kind: 'answer', text: child }], query);
+    if (hits.length === 0) return child;
+
+    return <HighlightedText text={child} hits={hits} markClassName={markClassName} />;
+  });
+}
+
 const sizeByDepth = ['md', 'sm', 'xs', '2xs', '2xs', '2xs'] as const;
 
-function headingComponents(startLevel: number): Partial<Components> {
+function headingComponents(
+  startLevel: number,
+  decorateHeading: (children: ReactNode) => ReactNode,
+): Partial<Components> {
   const entries = ([1, 2, 3, 4, 5, 6] as const).map((depth) => {
     const level = Math.min(startLevel + depth - 1, 6) as 1 | 2 | 3 | 4 | 5 | 6;
     const render = ({ children }: { children?: React.ReactNode }) => (
       <Heading level={level} data-size={sizeByDepth[depth - 1]}>
-        {children}
+        {decorateHeading(children)}
       </Heading>
     );
     return [`h${depth}`, render] as const;
@@ -182,25 +233,30 @@ export function Markdown({
   citations,
   onCitationActivate,
   sourcesLost,
+  searchQuery = '',
+  markClassName,
 }: MarkdownProps) {
   const targets = useMemo(
     () => new Map((citations ?? []).map((target) => [target.number, target])),
     [citations],
   );
 
-  const components = useMemo<Components>(
-    () => ({
-      ...headingComponents(startLevel),
-      p: ({ children: content }) => (
-        <Paragraph variant="long">
-          {withCitations(content, targets, onCitationActivate, sourcesLost)}
-        </Paragraph>
+  const components = useMemo<Components>(() => {
+    const decorate = (content: ReactNode) =>
+      withHighlights(
+        withCitations(content, targets, onCitationActivate, sourcesLost),
+        searchQuery,
+        markClassName,
+      );
+
+    return {
+      ...headingComponents(startLevel, (content) =>
+        withHighlights(content, searchQuery, markClassName),
       ),
+      p: ({ children: content }) => <Paragraph variant="long">{decorate(content)}</Paragraph>,
       ul: ({ children: content }) => <List.Unordered>{content}</List.Unordered>,
       ol: ({ children: content }) => <List.Ordered>{content}</List.Ordered>,
-      li: ({ children: content }) => (
-        <List.Item>{withCitations(content, targets, onCitationActivate, sourcesLost)}</List.Item>
-      ),
+      li: ({ children: content }) => <List.Item>{decorate(content)}</List.Item>,
       a: ({ children: content, href }) => <Link href={href}>{content}</Link>,
       // A wide table gets its own scroll box, and a scrollable box must be
       // reachable by keyboard and carry a name. Pattern from
@@ -220,18 +276,15 @@ export function Markdown({
       tfoot: ({ children: content }) => <Table.Foot>{content}</Table.Foot>,
       tr: ({ children: content }) => <Table.Row>{content}</Table.Row>,
       th: ({ children: content }) => <Table.HeaderCell>{content}</Table.HeaderCell>,
-      td: ({ children: content }) => (
-        <Table.Cell>{withCitations(content, targets, onCitationActivate, sourcesLost)}</Table.Cell>
-      ),
+      td: ({ children: content }) => <Table.Cell>{decorate(content)}</Table.Cell>,
       // Designsystemet styles none of these three. See global.css.
       pre: ({ children: content }) => <pre className="markdown__pre">{content}</pre>,
       code: ({ children: content }) => <code className="markdown__code">{content}</code>,
       blockquote: ({ children: content }) => (
         <blockquote className="markdown__quote">{content}</blockquote>
       ),
-    }),
-    [startLevel, targets, onCitationActivate, sourcesLost],
-  );
+    };
+  }, [startLevel, targets, onCitationActivate, sourcesLost, searchQuery, markClassName]);
 
   return (
     <div className="markdown">
