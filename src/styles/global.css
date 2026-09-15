@@ -166,7 +166,15 @@ body {
   align-items: center;
   padding-inline: var(--ka-rail-padding-inline);
   background: var(--ds-color-neutral-surface-default);
-  overflow: hidden;
+  /*
+   * `visible`, overriding the `overflow-y: auto` the open panel needs.
+   *
+   * The collapsed content is `display: none`, so there is nothing left to
+   * scroll or to spill — but the badge on the toggle button is painted on a
+   * `::before` that sits on the button's corner and reaches past it. Clipping
+   * the rail would cut the count in half the day it needs two digits.
+   */
+  overflow: visible;
 }
 
 /*
