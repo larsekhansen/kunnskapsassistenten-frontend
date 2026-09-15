@@ -1,8 +1,10 @@
-import { Button, Heading, Paragraph } from '@digdir/designsystemet-react';
+import { Button, Heading, Link, Paragraph } from '@digdir/designsystemet-react';
 import { useId, useState } from 'react';
 import { fixtures } from '../../../api/mock';
 import { SecondarySidebarIcon } from '../../../components/icons';
+import { excerptDomId, type SourceDocument } from '../../../model';
 import { SourcesView } from '../SourcesView';
+import type { AnswerSources } from '../types';
 import './preview.css';
 
 /**
@@ -18,13 +20,18 @@ import './preview.css';
  * shell will have — including the `[hidden]` behaviour the view has to
  * survive.
  */
-type PreviewState = 'ready' | 'loading' | 'empty' | 'uncited';
+type PreviewState =
+  'ready' | 'loading' | 'empty' | 'uncited' | 'flere-svar' | 'avbrutt' | 'feil' | 'avklaring';
 
 const STATE_LABELS: Record<PreviewState, string> = {
   ready: 'Med kilder',
   loading: 'Laster',
   empty: 'Tom',
   uncited: 'Utdrag uten nummer',
+  'flere-svar': 'To svar',
+  avbrutt: 'Avbrutt svar',
+  feil: 'Feilet svar',
+  avklaring: 'Avklaring',
 };
 
 /**
@@ -42,11 +49,59 @@ const uncitedSources = fixtures.nkomSources.map((source, index) =>
       },
 );
 
-function documentsFor(state: PreviewState) {
-  if (state === 'loading') return undefined;
-  if (state === 'empty') return [];
-  if (state === 'uncited') return uncitedSources;
-  return fixtures.nkomSources;
+/**
+ * Numbers the excerpts from 1, as an answer does.
+ *
+ * Every answer starts its own count, which is exactly why the panel cannot
+ * hold one flat list: two answers both have a `[1]`, and it points at
+ * different documents in each. The harness has to reproduce that or it cannot
+ * show the thing being fixed.
+ */
+function renumbered(sources: SourceDocument[]): SourceDocument[] {
+  let next = 1;
+  return sources.map((source) => ({
+    ...source,
+    excerpts: source.excerpts.map((excerpt) => ({ ...excerpt, citationNumber: next++ })),
+  }));
+}
+
+const answerOne: AnswerSources = {
+  messageId: 'svar-1',
+  status: 'complete',
+  documents: renumbered(fixtures.nkomSources.slice(0, 2)),
+};
+
+const answerTwo: AnswerSources = {
+  messageId: 'svar-2',
+  status: 'complete',
+  documents: renumbered([...fixtures.nkomSources.slice(2), fixtures.nkomSources[0]]),
+};
+
+function oneAnswer(documents: SourceDocument[]): readonly AnswerSources[] {
+  return [{ messageId: 'svar-1', status: 'complete', documents }];
+}
+
+function answersFor(state: PreviewState): readonly AnswerSources[] | undefined {
+  switch (state) {
+    case 'loading':
+      return [{ messageId: 'svar-1', status: 'streaming', documents: [] }];
+    case 'empty':
+      return [];
+    case 'uncited':
+      return oneAnswer(uncitedSources);
+    case 'flere-svar':
+      return [answerOne, answerTwo];
+    // The three answers that ended without sources. Each says something else,
+    // and none of them may say «når du har stilt et spørsmål».
+    case 'avbrutt':
+      return [answerOne, { messageId: 'svar-2', status: 'aborted', documents: [] }];
+    case 'feil':
+      return [answerOne, { messageId: 'svar-2', status: 'error', documents: [] }];
+    case 'avklaring':
+      return [{ messageId: 'svar-1', status: 'needs-clarification', documents: [] }];
+    default:
+      return oneAnswer(fixtures.nkomSources);
+  }
 }
 
 /**
@@ -56,7 +111,9 @@ function documentsFor(state: PreviewState) {
  * case where the view must NOT move focus: a citation that was already there
  * when the view mounted is not something the user just did.
  */
-function citationFromUrl(): { number: number; nonce: number } | undefined {
+type PreviewCitation = { number: number; nonce: number; messageId?: string };
+
+function citationFromUrl(): PreviewCitation | undefined {
   const value = Number(new URLSearchParams(window.location.search).get('kilde'));
   return Number.isInteger(value) && value > 0 ? { number: value, nonce: 0 } : undefined;
 }
@@ -74,12 +131,14 @@ export function PreviewPanel() {
   const [state, setState] = useState<PreviewState>('ready');
   const [width, setWidth] = useState<PreviewWidth>('wide');
   const [collapsed, setCollapsed] = useState(false);
-  const [citation, setCitation] = useState<{ number: number; nonce: number } | undefined>(
-    citationFromUrl,
-  );
+  const [citation, setCitation] = useState<PreviewCitation | undefined>(citationFromUrl);
   const contentId = useId();
 
-  const documents = documentsFor(state);
+  const answers = answersFor(state);
+
+  function showCitation(number: number, messageId: string) {
+    setCitation((previous) => ({ number, messageId, nonce: (previous?.nonce ?? 0) + 1 }));
+  }
 
   return (
     <div className="preview">
@@ -94,7 +153,14 @@ export function PreviewPanel() {
               key={value}
               variant={state === value ? 'primary' : 'secondary'}
               data-size="sm"
-              onClick={() => setState(value)}
+              onClick={() => {
+                // The citation goes with the thread it was clicked in. Left
+                // standing, it would arrive at the next fixture set as a
+                // citation «already set on mount» and send the panel to the
+                // answer it named — correct in the app, misleading here.
+                setState(value);
+                setCitation(undefined);
+              }}
             >
               {STATE_LABELS[value]}
             </Button>
@@ -115,29 +181,38 @@ export function PreviewPanel() {
         </div>
 
         <Paragraph data-size="sm">
-          Knappene under står for [n]-markørene i svaret. Det er dette hovedkolonnen sender inn.
-          Kollaps panelet først for å se at en markør åpner det igjen.
+          Markørene under er de samme lenkene svaret tegner, med samme href. Kollaps panelet først
+          for å se at en markør åpner det igjen. I «To svar» har begge svarene en [1], og de peker
+          på hvert sitt utdrag — det er saken. «Tilbake til svaret» og Escape i et åpnet utdrag
+          flytter fokus hit igjen.
         </Paragraph>
 
-        <div className="preview__controls">
-          {fixtures.nkomSources
-            .flatMap((source) => source.excerpts)
-            .map((excerpt) => (
-              <Button
-                key={excerpt.id}
-                variant="tertiary"
-                data-size="sm"
-                onClick={() =>
-                  setCitation((previous) => ({
-                    number: excerpt.citationNumber as number,
-                    nonce: (previous?.nonce ?? 0) + 1,
-                  }))
-                }
-              >
-                [{excerpt.citationNumber}]
-              </Button>
-            ))}
-        </div>
+        {(answers ?? []).map((answer, index) => (
+          <div className="preview__controls" key={answer.messageId}>
+            <Paragraph data-size="xs">Svar {index + 1}:</Paragraph>
+            {answer.documents.length === 0 ? (
+              <Paragraph data-size="xs">ingen markører ({answer.status})</Paragraph>
+            ) : (
+              answer.documents
+                .flatMap((source) => source.excerpts)
+                .map((excerpt) => (
+                  <Link
+                    key={excerpt.id}
+                    href={`#${excerptDomId(excerpt.citationNumber as number)}`}
+                    onClick={(event) => {
+                      // The same two lines the real marker has: the href is
+                      // what makes it a link, and following it is what must
+                      // not happen.
+                      event.preventDefault();
+                      showCitation(excerpt.citationNumber as number, answer.messageId);
+                    }}
+                  >
+                    [{excerpt.citationNumber}]
+                  </Link>
+                ))
+            )}
+          </div>
+        ))}
       </main>
 
       {/* The same shape as Shell.tsx: the slot owns the button, the content
@@ -157,11 +232,20 @@ export function PreviewPanel() {
 
         <div id={contentId} hidden={collapsed} className="preview__aside-content">
           <SourcesView
-            documents={documents}
+            /*
+              Remounts when the fixture set changes. Switching state here swaps
+              one thread for another, and the view remembers which answer the
+              reader stepped to — which is right in the app and misleading in a
+              harness, where the reader steps in one thread and reads the
+              result in a different one.
+            */
+            key={state}
+            answers={answers}
             collapsed={collapsed}
             onCollapsedChange={setCollapsed}
             activeCitationNumber={citation?.number}
             activeCitationNonce={citation?.nonce}
+            activeCitationMessageId={citation?.messageId}
           />
         </div>
       </aside>
