@@ -31,8 +31,11 @@ test.describe('navigasjonspanelet', () => {
       await expect(facetField(page, dimension)).toBeVisible();
     }
 
-    // Nothing selected is «no restriction», which is what «Alle valgt» says.
-    await expect(panel.getByText('Alle valgt').first()).toBeVisible();
+    // Nothing selected is «no restriction», and the description says that and
+    // not «Alle valgt» — an untouched field and one where every value has been
+    // picked used to read word for word the same (brukerblikk, funn 3).
+    await expect(panel.getByText('Ingen avgrensning').first()).toBeVisible();
+    await expect(panel.getByText('Alle 6 valgt')).toHaveCount(0);
 
     await expectNoAxeViolations(page, 'filtreringen');
   });
