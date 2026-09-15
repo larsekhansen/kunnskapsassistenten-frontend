@@ -40,7 +40,9 @@ function hitSummary({ hitCount, documentCount }: RetrievalDetails): string {
  *
  * Frontend placeholder in v1 (answer 11), open by default, because what makes
  * an answer checkable should not be behind a click. The keywords are plain
- * Tags: they are not clickable (answer 13).
+ * Tags: they are not clickable (answer 13). They wrap rather than run out
+ * through the side of the card, which is what `ka-tag--wrapping` is for —
+ * Tag is `width: max-content` with nothing stopping it.
  */
 export function RetrievalPanel({ retrieval }: RetrievalPanelProps) {
   return (
@@ -50,7 +52,7 @@ export function RetrievalPanel({ retrieval }: RetrievalPanelProps) {
         <span className="ka-retrieval__summary">
           <MagnifyingGlassIcon aria-hidden className="ka-retrieval__icon" />
           Fremgangsmåte{' '}
-          <Tag data-color="neutral" data-size="sm">
+          <Tag className="ka-tag--wrapping" data-color="neutral" data-size="sm">
             {hitSummary(retrieval)}
           </Tag>
         </span>
@@ -60,7 +62,7 @@ export function RetrievalPanel({ retrieval }: RetrievalPanelProps) {
         <ul className="ka-retrieval__keywords">
           {retrieval.keywords.map((keyword) => (
             <li key={keyword}>
-              <Tag data-color="neutral" data-size="sm">
+              <Tag className="ka-tag--wrapping" data-color="neutral" data-size="sm">
                 {keyword}
               </Tag>
             </li>

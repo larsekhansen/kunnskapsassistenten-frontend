@@ -143,6 +143,68 @@
   font-size: var(--ds-font-size-minus-1);
 }
 
+/* --------------------------------------------------------------- thinking */
+
+/*
+ * «Tenker …» over the answer card. Full width, so it reads as this turn's
+ * header rather than as a control floating beside it.
+ */
+.ka-thinking {
+  inline-size: 100%;
+}
+
+.ka-thinking__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-2);
+}
+
+.ka-thinking__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * One step, with a dot in the margin. The dot is hollow for a step that is
+ * over and filled for the one being worked on — a shape and not only a
+ * colour, because the marker is the only thing saying which step is current
+ * (WCAG 1.4.1). `aria-current` says the same to a screen reader.
+ */
+.ka-thinking__step {
+  position: relative;
+  padding-inline-start: var(--ds-size-5);
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+.ka-thinking__step::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  /* Centres the dot on the first line, whatever the size mode. */
+  inset-block-start: calc((1lh - var(--ds-size-2)) / 2);
+  block-size: var(--ds-size-2);
+  inline-size: var(--ds-size-2);
+  border: var(--ds-border-width-default) solid var(--ds-color-neutral-border-strong);
+  border-radius: var(--ds-border-radius-full);
+}
+
+.ka-thinking__step[data-ongoing] {
+  color: var(--ds-color-neutral-text-default);
+}
+
+.ka-thinking__step[data-ongoing]::before {
+  background: var(--ds-color-neutral-base-default);
+  border-color: var(--ds-color-neutral-base-default);
+}
+
+.ka-thinking__detail {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
 /* -------------------------------------------------------------- retrieval */
 
 .ka-retrieval__summary {
@@ -164,6 +226,40 @@
   margin-block-start: var(--ds-size-2);
   padding: 0;
   list-style: none;
+}
+
+/*
+ * A keyword the agent searched on can be a long phrase, and Tag is
+ * `width: max-content` with no upper bound — a long one grew straight out
+ * through the side of the card. Lars saw it 2026-09-15.
+ *
+ * The group already wraps between tags; this lets a single tag wrap inside
+ * itself as well. `anywhere` rather than `break-word` because the worst case
+ * is one unbroken string — a file name or an identifier — that is wider than
+ * the column on its own, and that has to break somewhere or it scrolls
+ * sideways again.
+ */
+.ka-tag--wrapping {
+  /*
+   * `width: max-content` is the one that has to go, and it is not obvious
+   * why: an element with a definite max-content width contributes its
+   * MAX-content size as its min-content size too, so the list item around it
+   * could never be asked to shrink, and a cap of 100% measured against that
+   * item is a cap against the tag's own width. `auto` first, then the cap
+   * means something.
+   *
+   * `flex-shrink` because a tag can itself be a flex item — the hit count
+   * sits in the summary row — and Designsystemet pins it at 0 there.
+   */
+  inline-size: auto;
+  max-inline-size: 100%;
+  flex-shrink: 1;
+  /* `word-break: break-word` is what Designsystemet ships. It breaks, but it
+     does not count towards min-content size, so it cannot get a tag through
+     a narrow column on its own. `anywhere` does both. */
+  word-break: normal;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 /* ---------------------------------------------------------------- actions */
@@ -332,6 +428,10 @@
 .ka-message[hidden],
 .ka-answer-skeleton[hidden],
 .ka-streaming-status[hidden],
+.ka-thinking[hidden],
+.ka-thinking__summary[hidden],
+.ka-thinking__steps[hidden],
+.ka-thinking__step[hidden],
 .ka-retrieval__summary[hidden],
 .ka-retrieval__keywords[hidden],
 .ka-answer-actions[hidden],

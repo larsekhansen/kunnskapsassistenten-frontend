@@ -119,6 +119,12 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
       // reading it back out of state.
       let content = '';
 
+      // Said once per turn, when the first step lands. The steps arrive
+      // seconds apart and there can be a dozen of them; a polite region that
+      // spoke once per step would still be reading them out when the answer
+      // arrived. The panel itself is silent, see ThinkingPanel.
+      let saidSearching = false;
+
       try {
         for await (const event of client.ask({
           query: question,
@@ -145,6 +151,10 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
                 ...message,
                 thinkingSteps: [...(message.thinkingSteps ?? []), event.step],
               }));
+              if (!saidSearching && isCurrentTurn()) {
+                saidSearching = true;
+                setAnnouncement('Kunnskapsassistenten søker …');
+              }
               break;
 
             case 'sources':
