@@ -6,7 +6,7 @@ import { AnswerActions } from './AnswerActions';
 import { Clarification } from './Clarification';
 import { RetrievalPanel } from './RetrievalPanel';
 import { ThinkingPanel } from './ThinkingPanel';
-import { ABORTED_NOTE, CLOSING_QUESTION, REGENERATE } from './text';
+import { ABORTED_BEFORE_ANSWER, ABORTED_NOTE, CLOSING_QUESTION, REGENERATE } from './text';
 
 type MessageListProps = {
   messages: Message[];
@@ -139,8 +139,10 @@ export function MessageList({
         const complete = message.status === 'complete';
         const empty = message.content.length === 0;
         // A failed turn with nothing in it gets no card: an empty bordered
-        // box above the error says nothing.
-        const showCard = !empty || streaming;
+        // box above the error says nothing. A stopped one gets one whatever
+        // phase it was stopped in — the card is what says it was stopped and
+        // offers to run it again (#4, funn A).
+        const showCard = !empty || streaming || aborted;
         const narrowedTo = filterSummary?.(message.id);
 
         return (
@@ -220,7 +222,7 @@ export function MessageList({
                   */}
                   {aborted ? (
                     <Paragraph className="ka-aborted-note" data-size="sm" variant="long">
-                      {ABORTED_NOTE}
+                      {empty ? ABORTED_BEFORE_ANSWER : ABORTED_NOTE}
                     </Paragraph>
                   ) : null}
 

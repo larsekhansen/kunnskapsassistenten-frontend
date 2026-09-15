@@ -142,16 +142,24 @@ export function useChat(
   /**
    * End a turn: mark the answer, or drop it if nothing ever arrived.
    *
-   * The list holds no answer without content unless it is still streaming.
-   * An answer stopped, failed or finished before its first token draws no
-   * card anyway, so leaving it in only leaves an `<li>` whose whole content
-   * is the hidden «Kunnskapsassistenten svarte:» — a screen reader hears an
-   * assistant that answered nothing.
+   * An answer that failed or finished before its first token draws no card,
+   * so leaving it in the list leaves an `<li>` whose whole content is the
+   * hidden «Kunnskapsassistenten svarte:» — a screen reader hears an
+   * assistant that answered nothing. The alert says what became of a failed
+   * turn, and carries the way onward.
+   *
+   * A stopped one is the exception, and it is the whole of #4's funn A: the
+   * reader pressed stop while «Tenker …» was still running, and the turn
+   * vanished — no «Generer på nytt», and a sources panel back to «Kildene
+   * vises her når du har stilt et spørsmål» for someone who had just asked
+   * something. Stopping the same answer one second later, after the first
+   * word, left both. So a stopped turn stays whatever phase it was in, and
+   * the card says it was stopped and offers to run it again.
    */
   const settleAnswer = useCallback((id: string, status: SettledStatus) => {
     setMessages((current) => {
       const answer = current.find((message) => message.id === id);
-      if (answer && answer.content.length === 0) {
+      if (answer && answer.content.length === 0 && status !== 'aborted') {
         return current.filter((message) => message.id !== id);
       }
       return current.map((message) => (message.id === id ? { ...message, status } : message));
