@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatClient } from '../../api';
-import type { Message } from '../../model';
+import {
+  emptyFilterSelection,
+  type FilterSelection,
+  type Message,
+  type MessageStatus,
+} from '../../model';
 import { announcedText } from './answerText';
 import { GENERIC_CHAT_ERROR, withoutRetryPrompt } from './errorText';
+import { CLARIFICATION_ANNOUNCEMENT } from './text';
 
 /** Where the current turn is. Drives the skeleton, the stop button and the error. */
 export type ChatStatus = 'idle' | 'pending' | 'streaming' | 'error';
+
+/** What an answer can be once the turn is over. */
+type SettledStatus = Extract<
+  MessageStatus,
+  'complete' | 'needs-clarification' | 'aborted' | 'error'
+>;
 
 let counter = 0;
 function nextId(prefix: string): string {
@@ -27,10 +39,23 @@ export type UseChat = {
    * read a ref during render to remember what it already said.
    */
   announcement: string;
+  /**
+   * The filter each answer was asked under, by message id.
+   *
+   * Kept beside the messages rather than on them: the answer says which
+   * documents it was narrowed to, and «which documents» is what the reader
+   * chose at the time, not what is selected now. A second question under a
+   * different filter must not rewrite the first answer's line.
+   */
+  appliedFilters: Record<string, FilterSelection>;
   send: (question: string) => void;
   /** Stop the generation and keep what has arrived (answer 34). */
   cancel: () => void;
-  /** Ask the last question again after an error. */
+  /**
+   * Ask the last question again, in place of the answer that did not make
+   * it. «Prøv igjen» after a failure and «Generer på nytt» after a stop are
+   * the same move: the question stands, the answer is replaced.
+   */
   retry: () => void;
 };
 
@@ -48,15 +73,23 @@ export type UseChat = {
  *
  * Cancelling is not an error. The client reports it as an `error` event with
  * code `aborted`, and here that means: keep the partial answer, mark it
- * complete, go back to idle. That is what a reader expects from a stop
+ * `aborted`, go back to idle. That is what a reader expects from a stop
  * button, and it is why the code checks the code rather than the event type.
+ * The status is kept apart from `complete` because a stopped answer is not a
+ * whole one — its sources never arrived, so it carries no action row of a
+ * finished answer and offers to run again instead.
  *
  * Only one turn counts at a time. A question asked mid-stream aborts the one
  * before it, and the old turn is then forbidden from touching status,
  * announcement or error — see `turnRef` in `run`.
  */
-export function useChat(client: ChatClient, initialMessages: Message[] = []): UseChat {
+export function useChat(
+  client: ChatClient,
+  initialMessages: Message[] = [],
+  filters: FilterSelection = emptyFilterSelection,
+): UseChat {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [appliedFilters, setAppliedFilters] = useState<Record<string, FilterSelection>>({});
   const [status, setStatus] = useState<ChatStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
@@ -85,7 +118,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
    * is the hidden «Kunnskapsassistenten svarte:» — a screen reader hears an
    * assistant that answered nothing.
    */
-  const settleAnswer = useCallback((id: string, status: 'complete' | 'error') => {
+  const settleAnswer = useCallback((id: string, status: SettledStatus) => {
     setMessages((current) => {
       const answer = current.find((message) => message.id === id);
       if (answer && answer.content.length === 0) {
@@ -129,6 +162,11 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
         for await (const event of client.ask({
           query: question,
           conversationId: conversationRef.current,
+          // The document filter is part of the question, not a view
+          // decoration. The backend ignores it today (API-bestilling A2) and
+          // it is sent regardless: that is the contract, and the day it is
+          // honoured nothing here has to change.
+          filters,
           signal: controller.signal,
         })) {
           switch (event.type) {
@@ -166,18 +204,22 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
               }));
               break;
 
-            case 'done':
+            case 'done': {
               conversationRef.current = event.conversationId;
-              settleAnswer(answerId, 'complete');
+              // `outcome` absent means the turn completed, which is what every
+              // answer was before the field existed. See model/stream.ts.
+              const clarifying = event.outcome === 'needs-clarification';
+              settleAnswer(answerId, clarifying ? 'needs-clarification' : 'complete');
               if (isCurrentTurn()) {
-                setAnnouncement('Svaret er ferdig.');
+                setAnnouncement(clarifying ? CLARIFICATION_ANNOUNCEMENT : 'Svaret er ferdig.');
                 setStatus('idle');
               }
               return;
+            }
 
             case 'error':
               if (event.error.code === 'aborted') {
-                settleAnswer(answerId, 'complete');
+                settleAnswer(answerId, 'aborted');
                 if (isCurrentTurn()) {
                   setAnnouncement('Genereringen ble avbrutt.');
                   setStatus('idle');
@@ -203,7 +245,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
         }
       } catch {
         if (controller.signal.aborted) {
-          settleAnswer(answerId, 'complete');
+          settleAnswer(answerId, 'aborted');
           if (isCurrentTurn()) {
             setAnnouncement('Genereringen ble avbrutt.');
             setStatus('idle');
@@ -220,7 +262,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
         if (abortRef.current === controller) abortRef.current = null;
       }
     },
-    [client, patchAnswer, settleAnswer],
+    [client, filters, patchAnswer, settleAnswer],
   );
 
   const send = useCallback(
@@ -233,6 +275,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
 
       const now = new Date().toISOString();
       const answerId = nextId('assistant');
+      setAppliedFilters((current) => ({ ...current, [answerId]: filters }));
       setMessages((current) => [
         ...current,
         {
@@ -255,7 +298,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
 
       void run(query, answerId);
     },
-    [run],
+    [filters, run],
   );
 
   const cancel = useCallback(() => abortRef.current?.abort(), []);
@@ -264,11 +307,19 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
     const question = lastQuestionRef.current;
     if (!question) return;
 
-    // Replace the failed answer rather than stacking a second one under the
-    // same question.
+    // Replace the answer that did not make it rather than stacking a second
+    // one under the same question. A failed turn and a stopped one are both
+    // replaced: neither is an answer the reader chose to keep.
     const answerId = nextId('assistant');
+    setAppliedFilters((current) => ({ ...current, [answerId]: filters }));
     setMessages((current) => [
-      ...current.filter((message) => !(message.role === 'assistant' && message.status === 'error')),
+      ...current.filter(
+        (message) =>
+          !(
+            message.role === 'assistant' &&
+            (message.status === 'error' || message.status === 'aborted')
+          ),
+      ),
       {
         id: answerId,
         role: 'assistant',
@@ -279,7 +330,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
       },
     ]);
     void run(question, answerId);
-  }, [run]);
+  }, [filters, run]);
 
-  return { messages, status, error, announcement, send, cancel, retry };
+  return { messages, status, error, announcement, appliedFilters, send, cancel, retry };
 }

@@ -1,16 +1,25 @@
-import { Card, Paragraph, Skeleton, Spinner } from '@digdir/designsystemet-react';
+import { Button, Card, Paragraph, Skeleton, Spinner } from '@digdir/designsystemet-react';
+import { ArrowsCirclepathIcon } from '@navikt/aksel-icons';
 import { Markdown } from '../../components';
 import { citationTargets, type Message } from '../../model';
 import { AnswerActions } from './AnswerActions';
+import { Clarification } from './Clarification';
 import { RetrievalPanel } from './RetrievalPanel';
 import { ThinkingPanel } from './ThinkingPanel';
-import { CLOSING_QUESTION } from './text';
+import { ABORTED_NOTE, CLOSING_QUESTION, REGENERATE } from './text';
 
 type MessageListProps = {
   messages: Message[];
   onSelectSource: (citationNumber: number) => void;
   onScrollToBottom: () => void;
   canScrollToBottom: boolean;
+  /** Ask the stopped question again, in place of the answer that was cut off. */
+  onRegenerate: () => void;
+  /**
+   * «Avgrenset til …» over an answer, by message id. Absent means the
+   * question was asked against the whole corpus.
+   */
+  filterSummary?: (messageId: string) => string | undefined;
 };
 
 /**
@@ -55,6 +64,10 @@ function AnswerSkeleton() {
  * 3, because it sits under the thread title, which is a level 2 under the
  * route's level 1.
  *
+ * An assistant turn that came back as `needs-clarification` is a question to
+ * the reader and not an answer, so the sender line says «spurte» and the card
+ * is `Clarification`.
+ *
  * «Tenker …» sits above the card and «Fremgangsmåte» inside it, and they do
  * not overlap: the first is what the agent did, step by step, the second is
  * what the search found. Neither repeats the other.
@@ -64,6 +77,8 @@ export function MessageList({
   onSelectSource,
   onScrollToBottom,
   canScrollToBottom,
+  onRegenerate,
+  filterSummary,
 }: MessageListProps) {
   return (
     <ol className="ka-messages">
@@ -81,15 +96,50 @@ export function MessageList({
           );
         }
 
+        // The agent asking back rather than answering. It is an assistant
+        // turn like any other, but nothing a finished answer carries applies
+        // to it, so it is drawn by its own component rather than by switching
+        // four things off in this one.
+        //
+        // «Tenkte i N sekunder» does apply, and stays: the agent searched
+        // before it asked back, and how long it spent is the same fact here
+        // as over an answer (the conductor, 2026-09-15).
+        if (message.status === 'needs-clarification') {
+          return (
+            <li className="ka-message ka-message--assistant" key={message.id}>
+              <span className="ds-sr-only">Kunnskapsassistenten spurte:</span>
+              {message.thinkingSteps?.length ? (
+                <ThinkingPanel status="done" steps={message.thinkingSteps} />
+              ) : null}
+              <Clarification question={message.content} />
+            </li>
+          );
+        }
+
         const streaming = message.status === 'streaming';
+        const aborted = message.status === 'aborted';
+        const complete = message.status === 'complete';
         const empty = message.content.length === 0;
         // A failed turn with nothing in it gets no card: an empty bordered
         // box above the error says nothing.
         const showCard = !empty || streaming;
+        const narrowedTo = filterSummary?.(message.id);
 
         return (
           <li className="ka-message ka-message--assistant" key={message.id}>
             <span className="ds-sr-only">Kunnskapsassistenten svarte:</span>
+
+            {/*
+              Which documents the question was asked against. Over the card
+              and not inside it, because it is a fact about the question and
+              not part of the answer — and not a Chip, because there is
+              nothing to click: the filter is changed where it was set.
+            */}
+            {narrowedTo ? (
+              <p className="ka-filter-summary">
+                <span className="ds-sr-only">Svaret er </span>Avgrenset til: {narrowedTo}
+              </p>
+            ) : null}
 
             {/*
               What the agent did before it started writing, above the answer
@@ -140,18 +190,51 @@ export function MessageList({
                     <RetrievalPanel retrieval={message.retrieval} />
                   ) : null}
 
-                  {message.status === 'complete' && !empty ? (
+                  {/*
+                    A stopped answer has no sources: they arrive in the last
+                    frame and that frame never came. Saying so is what keeps
+                    the `[n]` markers in the text from reading as a mistake.
+                  */}
+                  {aborted ? (
+                    <Paragraph className="ka-aborted-note" data-size="sm" variant="long">
+                      {ABORTED_NOTE}
+                    </Paragraph>
+                  ) : null}
+
+                  {complete && !empty ? (
                     <Paragraph variant="long">{CLOSING_QUESTION}</Paragraph>
                   ) : null}
                 </Card.Block>
 
-                {message.status === 'complete' && !empty ? (
+                {complete && !empty ? (
                   <Card.Block>
                     <AnswerActions
                       canScrollToBottom={canScrollToBottom}
                       content={message.content}
                       onScrollToBottom={onScrollToBottom}
+                      sources={message.sources}
                     />
+                  </Card.Block>
+                ) : null}
+
+                {/*
+                  Nothing to copy from half an answer, and no thread link
+                  worth sharing yet. What the reader wants is the answer they
+                  stopped, so the row is the one way onward.
+                */}
+                {aborted ? (
+                  <Card.Block>
+                    <div className="ka-answer-actions">
+                      <Button
+                        data-color="neutral"
+                        data-size="sm"
+                        onClick={onRegenerate}
+                        variant="tertiary"
+                      >
+                        <ArrowsCirclepathIcon aria-hidden />
+                        {REGENERATE}
+                      </Button>
+                    </div>
                   </Card.Block>
                 ) : null}
               </Card>

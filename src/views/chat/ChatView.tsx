@@ -1,13 +1,17 @@
 import { Heading } from '@digdir/designsystemet-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createChatClient, type ChatClient } from '../../api';
 import { ErrorState } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useCitation } from '../../layout/useCitation';
+import { useFilterSelection } from '../../layout/useFilterSelection';
 import { useMainScroll } from '../../layout/useMainScroll';
-import type { ThreadDetail } from '../../model';
+import { useThread } from '../../layout/useThread';
+import { isEmptySelection, type ThreadDetail } from '../../model';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
+import { filterSummaryText } from './filterSummary';
+import { CLARIFICATION_PLACEHOLDER } from './text';
 import { threadHeading } from './threadHeading';
 import { useAtBottom } from './useAtBottom';
 import { useChat } from './useChat';
@@ -31,9 +35,23 @@ function defaultClient(): ChatClient {
 
 function ChatSession({ userName, thread, client }: ChatViewProps) {
   const chatClient = useMemo(() => client ?? defaultClient(), [client]);
-  const { messages, status, error, announcement, send, cancel, retry } = useChat(
+
+  // The document filter is part of the question. The filter view writes it,
+  // the shell holds it, and this view sends it — the two views never meet.
+  const { selection } = useFilterSelection();
+
+  const { messages, status, error, announcement, appliedFilters, send, cancel, retry } = useChat(
     chatClient,
     thread?.messages ?? [],
+    selection,
+  );
+
+  const filterSummary = useCallback(
+    (messageId: string) => {
+      const applied = appliedFilters[messageId];
+      return applied && !isEmptySelection(applied) ? filterSummaryText(applied) : undefined;
+    },
+    [appliedFilters],
   );
 
   const [draft, setDraft] = useState('');
@@ -80,6 +98,12 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   // panel and tells it which excerpt to show. Neither view knows the other.
   const { showCitation } = useCitation();
 
+  // The shell gives the conversation an address the first time a question is
+  // asked here, so «Kopier lenke til tråden» has something to copy (C16).
+  // Once per question and a no-op after the first; the thread it returns is
+  // the shell's business, not this view's.
+  const { startThread } = useThread();
+
   // The sources go the same way, and for the same reason: the sources view
   // draws them, this view produces them, and the two may not import each
   // other. The last answer that carries sources is the one on screen; they
@@ -111,10 +135,45 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
    * `/` has none until the client names it, and then the question stands in.
    * See threadHeading.ts for why a stand-in is heard and not seen.
    */
-  const heading = threadHeading(thread?.title, messages);
+  const heading = threadHeading(thread, messages);
+
+  /**
+   * The agent asked back and is waiting: the last turn ended as
+   * `needs-clarification` and nothing has been sent since.
+   *
+   * The reader's next message is the answer to that question — an ordinary
+   * next turn in the same thread, sent the ordinary way. What changes is the
+   * field: it says what it wants, and the fixed follow-up suggestions step
+   * aside, because «Kan du utdype?» is not an answer to anything the agent
+   * asked.
+   */
+  const awaitingClarification =
+    messages.at(-1)?.role === 'assistant' && messages.at(-1)?.status === 'needs-clarification';
+
+  /*
+   * Focus follows the question, once per clarification.
+   *
+   * The reader has just been asked something, and the one place to answer it
+   * is the field. Focus is only taken from the composer itself or from
+   * nobody: the click or the Enter that sent the question left it there, and
+   * a reader who has moved on — into the answer above, into the sources —
+   * must not have the page pulled back under them.
+   */
+  const clarificationId = awaitingClarification ? messages.at(-1)?.id : undefined;
+  useEffect(() => {
+    if (!clarificationId) return;
+
+    const active = document.activeElement;
+    const inComposer = active instanceof Node && composerRef.current?.contains(active);
+    if (active === document.body || active === null || inComposer) fieldRef.current?.focus();
+  }, [clarificationId]);
 
   function submit(question: string) {
-    send(question);
+    const query = question.trim();
+    if (query.length === 0) return;
+
+    startThread(query);
+    send(query);
     setDraft('');
   }
 
@@ -130,6 +189,23 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   function focusField() {
     fieldRef.current?.focus();
   }
+
+  /*
+   * The same rescue, for the error that arrives on its own.
+   *
+   * The send button becomes the stop button while an answer is on its way,
+   * and the stop button is gone the moment the turn fails. A reader who
+   * clicked it is then standing on `<body>` — Enter keeps the caret in the
+   * field, a mouse click does not, and the difference was measured (reise 10
+   * and 15). Focus is only taken when nobody holds it, so a reader who has
+   * moved on keeps their place.
+   */
+  useEffect(() => {
+    if (status !== 'error') return;
+    if (document.activeElement === document.body || document.activeElement === null) {
+      fieldRef.current?.focus();
+    }
+  }, [status]);
 
   return (
     <div className="ka-chat" ref={rootRef}>
@@ -156,7 +232,12 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
       ) : (
         <MessageList
           canScrollToBottom={!atBottom}
+          filterSummary={filterSummary}
           messages={messages}
+          onRegenerate={() => {
+            retry();
+            focusField();
+          }}
           onScrollToBottom={() => scrollToBottom()}
           onSelectSource={showCitation}
         />
@@ -185,8 +266,9 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         onChange={setDraft}
         onFollowUp={submit}
         onSubmit={() => submit(draft)}
+        placeholder={awaitingClarification ? CLARIFICATION_PLACEHOLDER : undefined}
         ref={composerRef}
-        showFollowUps={hasAnswer}
+        showFollowUps={hasAnswer && !awaitingClarification}
         status={status}
         value={draft}
       />

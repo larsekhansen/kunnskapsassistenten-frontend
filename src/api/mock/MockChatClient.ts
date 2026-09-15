@@ -9,6 +9,7 @@ import {
 import { facetsFor } from './corpus/facets';
 import { citationsFor, scriptedFor } from './conversations';
 import type { AskParams, ChatClient } from '../chatClient';
+import { citedNumbers, narrowToSelection, retrievalFor, withOnlyCitations } from './filtering';
 import {
   findThread,
   mockAnswerMarkdown,
@@ -155,6 +156,9 @@ function tokenize(markdown: string): string[] {
  * thinking steps first and sources last, in the same order and shape the live
  * client will produce.
  *
+ * It honours the document filter, which the real backend does not yet. See
+ * filtering.ts for why that belongs here and not only in a test.
+ *
  * Cancellation surfaces as a final `error` event with code `aborted` rather
  * than a thrown exception, so a caller has one code path for «the answer
  * stopped» regardless of why.
@@ -215,6 +219,20 @@ export class MockChatClient implements ChatClient {
        */
       const scripted = scriptedFor(params.query);
 
+      /*
+       * What the filter leaves to search in. The backend ignores the
+       * parameter today (API-bestilling A2), so this is the only place the
+       * control has an effect — and a filter with no effect is the thing
+       * reise 8 says a first-time user meets first. See filtering.ts.
+       *
+       * It narrows a scripted conversation the same way it narrows the
+       * default one. The filter belongs to the reader and not to the answer,
+       * and a control that quietly stops working on ten of the questions is
+       * worse than one that never worked at all.
+       */
+      const documents = narrowToSelection(scripted?.documents ?? nkomSources, params.filters);
+      const cited = citedNumbers(documents);
+
       const steps = scripted?.thinkingSteps ?? nkomThinkingSteps;
       for (const step of steps) {
         await wait(this.#delays.thinkingStepMs, signal);
@@ -230,13 +248,19 @@ export class MockChatClient implements ChatClient {
       }
 
       await wait(this.#delays.firstTokenMs, signal);
-      for (const text of tokenize(scripted?.answer ?? mockAnswerMarkdown)) {
+      for (const text of tokenize(
+        withOnlyCitations(scripted?.answer ?? mockAnswerMarkdown, cited),
+      )) {
         await wait(this.#delays.tokenMs, signal);
         yield { type: 'token', text };
       }
 
       // No sources event for a clarification: nothing was retrieved, and a
       // question back with sources behind it would be a different thing.
+      //
+      // Asked of the script and not of `documents`: a conversation the filter
+      // has narrowed to nothing is an answer whose sources are all outside
+      // the selection, which is not the same thing as a question back.
       if (scripted && scripted.documents.length === 0) {
         yield {
           type: 'done',
@@ -250,9 +274,11 @@ export class MockChatClient implements ChatClient {
       await wait(this.#delays.sourcesMs, signal);
       yield {
         type: 'sources',
-        documents: scripted?.documents ?? nkomSources,
-        citations: scripted ? citationsFor(scripted) : nkomCitations,
-        retrieval: scripted?.retrieval ?? nkomRetrieval,
+        documents,
+        citations: (scripted ? citationsFor(scripted) : nkomCitations).filter((citation) =>
+          cited.has(citation.number),
+        ),
+        retrieval: retrievalFor(documents, scripted?.retrieval ?? nkomRetrieval),
       };
 
       yield {
