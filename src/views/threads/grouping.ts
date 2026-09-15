@@ -86,8 +86,18 @@ function bucketFor(date: Date, now: Date): { id: string; title: string } {
  * can never reappear once it has been passed.
  */
 export function groupThreads(threads: Thread[], now: Date = new Date()): ThreadGroup[] {
+  /*
+   * The id breaks a tie, and a tie is not hypothetical: the mock fixtures are
+   * stamped from the same clock, and a real backend can write two threads in
+   * the same millisecond. `Array.prototype.sort` is stable, so without a
+   * tiebreak the order is the order the caller happened to pass — which is
+   * one thing in the list and another after a refetch, and the list would
+   * swap two rows for no reason the reader can see.
+   */
   const newestFirst = [...threads].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    (a, b) =>
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime() ||
+      a.id.localeCompare(b.id, 'nb-NO'),
   );
 
   const groups: ThreadGroup[] = [];

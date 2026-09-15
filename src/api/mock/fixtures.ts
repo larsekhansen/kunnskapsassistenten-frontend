@@ -234,8 +234,15 @@ export const nkomThinkingSteps: ThinkingStep[] = [
 const nkomThread: Thread = {
   id: 'nkom-maaloppnaaelse',
   title: 'NKOM måloppnåelse',
-  createdAt: daysAgo(0, 8),
-  updatedAt: daysAgo(0, 9),
+  /*
+   * An hour later than a scripted conversation from the same day, which are
+   * asked at 8 and answered at 9 (conversations/threads.ts). Sharing those
+   * hours put this thread and «Regnskap og bevilgning i DSS» on the same
+   * instant, and two rows at the same instant have no order — the list would
+   * draw them either way round on different runs. Measured 2026-09-16.
+   */
+  createdAt: daysAgo(0, 9),
+  updatedAt: daysAgo(0, 10),
   conversationId: 'conv-nkom-1',
 };
 
@@ -264,7 +271,7 @@ const nkomMessages: Message[] = [
     id: 'msg-nkom-question',
     role: 'user',
     content: NKOM_QUESTION,
-    createdAt: daysAgo(0, 8),
+    createdAt: daysAgo(0, 9),
     citations: [],
     status: 'complete',
   },
@@ -272,7 +279,7 @@ const nkomMessages: Message[] = [
     id: 'msg-nkom-answer',
     role: 'assistant',
     content: NKOM_ANSWER,
-    createdAt: daysAgo(0, 9),
+    createdAt: daysAgo(0, 10),
     citations: nkomCitations,
     sources: nkomSources,
     retrieval: nkomRetrieval,

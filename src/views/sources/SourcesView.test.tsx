@@ -316,7 +316,8 @@ describe('SourcesView, the live region that says which answer', () => {
 
 describe('SourcesView, the panel head that stays put', () => {
   function head(): HTMLElement | null {
-    return document.querySelector('.sources-head');
+    // The shell's box, filled by this view through `ViewHead`.
+    return document.querySelector('.view-head');
   }
 
   it('holds the answer selector and the search, so one box can be pinned', () => {

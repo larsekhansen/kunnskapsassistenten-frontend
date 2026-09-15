@@ -5,6 +5,7 @@ import { BackIcon } from '../../components/icons';
 import { EmptyState, ErrorState, PanelHeader } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useFilterSelection } from '../../layout/useFilterSelection';
+import { ViewHead } from '../../layout/ViewHead';
 import type { SlotViewProps } from '../../layout/viewModel';
 import { emptyFilterSelection, isEmptySelection, type FilterFacet } from '../../model';
 import { KudosDocuments, OwnDocuments } from './DocumentsList';
@@ -150,38 +151,63 @@ export function FiltersView({
   return (
     <div className="filters-view" aria-busy={loading || undefined}>
       {/*
-        The way back to the thread list. The slot tells the view which other
-        views it holds, so the button appears only when there is somewhere to
-        go. A Button and not a Link: it changes what the panel shows, not the
-        address. See design/designsystemet/behov-til-komponent.md.
+        The top of the panel, pinned while the documents and the facets scroll
+        under it.
+
+        All three of these are in the head and not just the corpus line, and
+        that is the lesson from #55 rather than a preference. The «Tråder»
+        button is the first thing in the tab order here; left below a pinned
+        head it keeps that place, the browser scrolls it to the top of the
+        region when it takes focus, and it arrives underneath — clicks land on
+        the head and the focus ring is invisible. Anything the reader can
+        reach either goes IN the head or stays clear of it, and the way out of
+        this view is not something to make them scroll for.
+
+        The «Filtrering» heading comes with it because it names what the
+        button leads away from, and a heading that scrolled off while its own
+        controls stayed would read as a heading for the wrong thing.
+
+        The box is the shell's; see src/layout/viewHeadContext.ts.
       */}
-      {siblingViews.includes('threads') && (
-        <Button
-          ref={backRef}
-          variant="tertiary"
-          data-color="neutral"
-          onClick={() => onShowView('threads')}
-        >
-          <BackIcon aria-hidden="true" />
-          Tråder
-        </Button>
-      )}
+      <ViewHead>
+        {/*
+          The way back to the thread list. The slot tells the view which other
+          views it holds, so the button appears only when there is somewhere to
+          go. A Button and not a Link: it changes what the panel shows, not the
+          address. See design/designsystemet/behov-til-komponent.md.
+        */}
+        {siblingViews.includes('threads') && (
+          <Button
+            ref={backRef}
+            variant="tertiary"
+            data-color="neutral"
+            onClick={() => onShowView('threads')}
+          >
+            <BackIcon aria-hidden="true" />
+            Tråder
+          </Button>
+        )}
 
-      <PanelHeader title="Filtrering" size="sm" />
+        <PanelHeader title="Filtrering" size="sm" />
 
-      {/*
-        What the answers are actually built on. «Kudos» used to appear nowhere
-        the first-time user could see it, and nothing said how much there is or
-        which years it covers (brukerreiser, punkt 11).
+        {/*
+          What the answers are actually built on. «Kudos» used to appear nowhere
+          the first-time user could see it, and nothing said how much there is or
+          which years it covers (brukerreiser, punkt 11).
 
-        Read off the UNCONDITIONAL facets — see `corpus` above — so it follows
-        the corpus rather than the user's own narrowing, and it says
-        «Dokumenter fra Kudos» on its own while they load and in live mode,
-        where there is no facet aggregation to read.
-      */}
-      <Paragraph data-size="xs" className="filters-view__corpus">
-        {corpusSummary(corpus)}
-      </Paragraph>
+          Read off the UNCONDITIONAL facets — see `corpus` above — so it follows
+          the corpus rather than the user's own narrowing, and it says
+          «Dokumenter fra Kudos» on its own while they load and in live mode,
+          where there is no facet aggregation to read.
+
+          Pinned, because it is the sentence that says what the facets below
+          are narrowing: scrolled away, «3 av 6 valgt» is three of six of
+          nothing in particular (brukerblikk runde 2, funn 4).
+        */}
+        <Paragraph data-size="xs" className="filters-view__corpus">
+          {corpusSummary(corpus)}
+        </Paragraph>
+      </ViewHead>
 
       {/*
         The documents the answer builds on, directly under the corpus line and

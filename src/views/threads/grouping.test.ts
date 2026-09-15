@@ -81,6 +81,33 @@ describe('groupThreads', () => {
     expect(groups.map((group) => group.title)).toEqual(['I dag']);
   });
 
+  it('gir to tråder på samme millisekund en bestemt rekkefølge', () => {
+    /*
+     * `Array.prototype.sort` is stable, so equal timestamps come out in the
+     * order they went in — and that order is whatever the caller happened to
+     * build, which changes between a first load and a refetch. Two rows
+     * swapping places for no visible reason is what the id tiebreak prevents.
+     * The mock fixtures stamp from one clock, and a backend can write two
+     * threads in the same millisecond.
+     */
+    const same = new Date(NOW);
+    const ids = ['bravo', 'alfa', 'charlie'];
+
+    const forwards = groupThreads(
+      ids.map((id) => thread(id, same)),
+      NOW,
+    );
+    const backwards = groupThreads(
+      [...ids].reverse().map((id) => thread(id, same)),
+      NOW,
+    );
+
+    expect(forwards[0].threads.map((entry) => entry.id)).toEqual(['alfa', 'bravo', 'charlie']);
+    expect(backwards[0].threads.map((entry) => entry.id)).toEqual(
+      forwards[0].threads.map((entry) => entry.id),
+    );
+  });
+
   it('returns nothing for an empty list', () => {
     expect(groupThreads([], NOW)).toEqual([]);
   });

@@ -266,6 +266,15 @@ describe('de scriptede samtalene som tråder', () => {
     expect(Math.max(...days)).toBeGreaterThan(300);
   });
 
+  it('gir hver tråd i lista sitt eget tidspunkt, også den håndskrevne', () => {
+    // The test above covers the scripted ones against each other. This one is
+    // about the list the reader actually sees: NKOM and «Regnskap og
+    // bevilgning i DSS» were both stamped `daysAgo(0, 9)`, so two rows shared
+    // an instant and had no order between them. Measured 2026-09-16.
+    const times = threads.map((thread) => thread.updatedAt);
+    expect(new Set(times).size, 'to tråder på samme millisekund').toBe(times.length);
+  });
+
   it('har ingen id som kolliderer med tråden som er skrevet for hånd', () => {
     // `findThread` ser i de scriptede først, så en kollisjon ville skjult
     // NKOM-tråden — den eneste med sidetall på utdragene sine.
