@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   bothSidebarsMinViewport,
   defaultLayout,
+  railWidth,
   layoutStyle,
   narrowViewportQuery,
   otherSidebar,
@@ -45,7 +46,7 @@ describe('withViewMoved', () => {
 
 describe('layoutStyle', () => {
   it('reports the collapsed width for a collapsed slot', () => {
-    expect(layoutStyle(defaultLayout)['--ka-secondary-sidebar-width']).toBe('198px');
+    expect(layoutStyle(defaultLayout)['--ka-secondary-sidebar-width']).toBe(`${railWidth}px`);
 
     const open = withCollapsed(defaultLayout, 'secondary-sidebar', false);
     expect(layoutStyle(open)['--ka-secondary-sidebar-width']).toBe('432px');
@@ -57,18 +58,23 @@ describe('layoutStyle', () => {
 
     // Collapsed, the floor is the collapsed width: there is one button left
     // in the panel and it is not something to squeeze.
-    expect(layoutStyle(defaultLayout)['--ka-secondary-sidebar-min-width']).toBe('198px');
+    expect(layoutStyle(defaultLayout)['--ka-secondary-sidebar-min-width']).toBe(`${railWidth}px`);
+  });
+
+  it('collapses both sidebars to the same rail', () => {
+    // Two rails of different widths would read as a mistake rather than as a
+    // pair, so the derivation in `railWidth` has to hold for both slots.
+    const collapsed = withCollapsed(defaultLayout, 'primary-sidebar', true);
+    const style = layoutStyle(collapsed);
+
+    expect(style['--ka-primary-sidebar-width']).toBe(`${railWidth}px`);
+    expect(style['--ka-secondary-sidebar-width']).toBe(`${railWidth}px`);
+    expect(railWidth).toBe(67);
   });
 
   it('gives the navigation panel no floor, because it never gives way', () => {
     expect(layoutStyle(defaultLayout)['--ka-primary-sidebar-min-width']).toBeUndefined();
-
-    // 400 open, 236 collapsed: «Vis tråder og filter» is a 195.78 px button,
-    // the slot keeps 36 px against the edge of the window and spends 1 px on
-    // its own border. tests/e2e/layout.spec.ts measures the label itself.
     expect(layoutStyle(defaultLayout)['--ka-primary-sidebar-width']).toBe('400px');
-    const collapsed = withCollapsed(defaultLayout, 'primary-sidebar', true);
-    expect(layoutStyle(collapsed)['--ka-primary-sidebar-width']).toBe('236px');
   });
 
   it('gives the flexible slot bounds rather than a width', () => {
@@ -77,12 +83,11 @@ describe('layoutStyle', () => {
     expect(style['--ka-main-width']).toBeUndefined();
   });
 
-  it('lowers the answer column floor when nothing stands beside it', () => {
-    // 640 exists so the sources can be read next to the answer. With the
-    // sources panel collapsed there is nothing next to it, and 618 is what
-    // 1280 leaves once the navigation panel and the collapsed sources panel
-    // have taken theirs. Decision 2026-09-14.
-    expect(layoutStyle(defaultLayout)['--ka-main-min-width']).toBe('618px');
+  it('holds the answer column floor at 640 in every state', () => {
+    // It had a second, lower floor of 618 for one state that did not fit at
+    // 1280. The rail took that state's shortfall away, so the floor is one
+    // number again. Decision 2026-09-15.
+    expect(layoutStyle(defaultLayout)['--ka-main-min-width']).toBe('640px');
 
     const open = withCollapsed(defaultLayout, 'secondary-sidebar', false);
     expect(layoutStyle(open)['--ka-main-min-width']).toBe('640px');

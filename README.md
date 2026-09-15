@@ -212,35 +212,44 @@ Praktisk betyr det:
 
 ## Layout og brytepunkter
 
-Avgjort 2026-09-14, se `design/visjon-og-beslutninger.md`. Appen har **ett**
-brytepunkt, og det er regnet ut, ikke valgt.
+Avgjort 2026-09-14, endret 2026-09-15. Se `design/visjon-og-beslutninger.md`.
+Appen har **ett** brytepunkt, og det er regnet ut, ikke valgt.
 
 ### Bredder
 
 | Plass               | Åpen           | Kollapset | Gir etter?                |
 | ------------------- | -------------- | --------- | ------------------------- |
-| `primary-sidebar`   | 400            | 236       | nei                       |
-| `main`              | 640–800        | —         | ja, først, ned til gulvet |
-| `secondary-sidebar` | 432, minst 336 | 198       | ja, deretter, ned til 336 |
+| `primary-sidebar`   | 400            | 67        | nei                       |
+| `main`              | 640–800        | —         | ja, først, ned til 640    |
+| `secondary-sidebar` | 432, minst 336 | 67        | ja, deretter, ned til 336 |
 
-Hovedkolonnen har **to gulv**, avgjort 2026-09-14: **640** når kildepanelet er
-åpent, **618** når det er kollapset. Grunnen til 640 (svar 46, 49 og 59) er at
-kildene skal kunne leses _ved siden av_ svaret; er panelet kollapset, står det
-ingenting ved siden av. 618 er utledet, ikke valgt:
-1280 − 400 − 32 − 32 − 198, altså det som er igjen til svaret på 1280 med
-navigasjonspanelet åpent og kildepanelet kollapset. `layoutStyle()` vet om
-kildepanelet er kollapset og skriver `--ka-main-min-width` deretter.
-
-Mellom plassene er det 32 px (`--ds-size-8`). Tallene er **yttermål**, padding
-medregnet, fordi sidepanelene er `border-box`. Det var de ikke før: med
-`content-box` ble de 36 px paddingen på hver side lagt utenpå, og hvert tall i
-modellen var 72 px kortere enn det tegnet. Et kildepanel oppgitt til 198 px
-kollapset målte 270. Målt, ikke resonnert fram.
+Tallene er **yttermål**, padding medregnet, fordi sidepanelene er `border-box`.
+Det var de ikke før: med `content-box` ble de 36 px paddingen på hver side lagt
+utenpå, og hvert tall i modellen var 72 px kortere enn det tegnet. Målt, ikke
+resonnert fram.
 
 Navigasjonspanelets 400 er de 328 Lars satte (svar 59b) pluss paddingen, og
-400 er også det malen tegner panelet som. De 236 kollapset er knappen «Vis
-tråder og filter» på 195,78 px, pluss 36 px padding mot vinduskanten og 1 px
-for panelets egen kant. Utledningen står i `src/layout/viewModel.ts`.
+400 er også det malen tegner panelet som.
+
+### Kollapset sidekolonne er en rail
+
+En kollapset sidekolonne er **67 px**, med panelflate og kantlinje, og holder
+bare veksleknappen sin. Knappen er ikon-eneste; teksten lever videre som
+`aria-label` og som tooltip, så en skjermleserbruker hører «Vis kilder» i begge
+tilstander.
+
+Utledet, ikke valgt: 42 px ikonknapp + 12 px padding på hver side + 1 px for
+railens egen kant. `railWidth` i `src/layout/viewModel.ts` skriver ut summen.
+
+**En rail ligger inntil hovedkolonnen — gapet er 0.** De 32 px
+(`--ds-size-8`) gjelder mellom et _åpent_ panel og hovedkolonnen. Derfor er
+gapet en `margin` på panelet og ikke `gap` på rada: `gap` sier det samme om
+alle par, og en rail skal ligge klemt inntil.
+
+Det var 236 og 198 fram til 2026-09-15, brede nok til å tegne hver sin etikett
+på én linje. Lars så det i mørk modus: 236 px tom flate med én knapp øverst
+leses som et hull, ikke som en kolonne som er lagt sammen. Poenget med å
+kollapse et panel er å gi plassen tilbake.
 
 ### Rekkefølgen når plassen blir knapp
 
@@ -266,9 +275,10 @@ de tre plassene trenger når ingen har noe å gi:
 400 + 32 + 640 + 32 + 336 = 1440
 ```
 
-640 og ikke de 618 hovedkolonnen kan falle til: dette er bredden der begge
-sidekolonnene er åpne, og det lavere gulvet gjelder bare med kildepanelet
-kollapset.
+Begge sidekolonner **åpne** er den eneste tilstanden dette handler om, så
+begge gapene er ekte her og railen kommer ikke inn i regnestykket. Railen er
+det som får alle de andre tilstandene til å gå opp ved 1280; den bredeste er nå
+navigasjonspanelet åpent med kildepanelet som rail, 400 + 32 + 640 + 67 = 1139.
 
 Konstanten heter `bothSidebarsMinViewport` i `src/layout/viewModel.ts` og er
 **regnet ut** av breddene, ikke skrevet ned, så den flytter seg om en bredde
@@ -289,18 +299,22 @@ brukeren har tatt.
 **Ingen vannrett rulling ved 1280 eller bredere, i alle tilstander.** Målt i
 bygget app, headless, lys og mørk modus:
 
-| Bredde | Tilstand                          | Nav | Hoved | Kilder | Sum  |
-| ------ | --------------------------------- | --- | ----- | ------ | ---- |
-| 1536   | alt åpent                         | 400 | 640   | 432    | 1536 |
-| 1440   | begge sidekolonner åpne           | 400 | 640   | 336    | 1440 |
-| 1440   | nav åpent, kildepanelet kollapset | 400 | 778   | 198    | 1440 |
-| 1280   | nav åpent, kildepanelet kollapset | 400 | 618   | 198    | 1280 |
-| 1280   | kildepanelet åpent, nav kollapset | 236 | 640   | 340    | 1280 |
-| 1280   | begge kollapset                   | 236 | 782   | 198    | 1280 |
+| Bredde | Tilstand                   | Nav | Hoved | Kilder |
+| ------ | -------------------------- | --- | ----- | ------ |
+| 1536   | alt åpent                  | 400 | 640   | 432    |
+| 1440   | begge sidekolonner åpne    | 400 | 640   | 336    |
+| 1440   | nav åpent, kilder som rail | 400 | 800   | 67     |
+| 1280   | nav åpent, kilder som rail | 400 | 781   | 67     |
+| 1280   | kilder åpne, nav som rail  | 67  | 749   | 432    |
+| 1280   | begge som rail             | 67  | 800   | 67     |
 
-Den fjerde rada er **tilstanden appen åpner i**, og den er grunnen til at
-hovedkolonnen har to gulv: med ett gulv på 640 trengte den 1302 og rullet
-22 px vannrett ved 1280.
+Fjerde rad er **tilstanden appen åpner i**. Den trengte 1302 px før railen og
+rullet 22 px vannrett ved 1280; nå trenger den 1139.
+
+Radene går ikke alltid opp i vindusbredden, og det er riktig: når
+hovedkolonnen treffer taket sitt på 800, fordeler `margin-inline: auto` resten
+på hver side av den. Railene blir stående i vinduskanten, som er der en rail
+hører hjemme.
 
 ## Åpne punkter
 

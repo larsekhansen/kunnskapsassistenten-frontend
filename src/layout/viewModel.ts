@@ -77,29 +77,11 @@ export type SlotSizing =
    */
   | { mode: 'shrinkable'; width: number; minWidth: number; collapsedWidth: number }
   /** Takes what is left, between bounds. The answer column, and only it. */
-  | {
-      mode: 'flexible';
-      /**
-       * The floor while the sources panel is open beside it. The reason for
-       * the floor is that the sources have to be readable NEXT TO the answer
-       * (answers 46, 49 and 59), so it is the state with something next to it
-       * that the number was chosen for.
-       */
-      minWidth: number;
-      /**
-       * The floor when the secondary sidebar is collapsed, and there is
-       * nothing beside the answer for the wider floor to be about.
-       */
-      minWidthAlone: number;
-      maxWidth: number;
-    };
+  | { mode: 'flexible'; minWidth: number; maxWidth: number };
 
 /**
  * The narrowest a slot can be drawn while open, which is what the breakpoint
  * below is summed from. A slot that does not give reports the width it keeps.
- *
- * For the answer column this is `minWidth`, the floor that applies with the
- * sources panel open — which is the state `bothSidebarsMinViewport` is about.
  */
 export function slotFloor(sizing: SlotSizing): number {
   return sizing.mode === 'fixed' ? sizing.width : sizing.minWidth;
@@ -177,6 +159,37 @@ export type Layout = {
 };
 
 /**
+ * How wide a collapsed sidebar is: a rail holding its toggle button, and
+ * nothing else.
+ *
+ * Decided 2026-09-15, after Lars looked at the collapsed navigation panel in
+ * dark mode and said the hidden column did not read as hidden. It was 236 px
+ * of empty surface with one button at the top, and the point of collapsing a
+ * panel is to give the space back.
+ *
+ * Derived from the button, the way 198 and 236 were derived from theirs:
+ *
+ *   42  the toggle button once it is icon-only. Designsystemet draws a
+ *       `data-size="sm"` Button with `icon` as a 42 px square — that is
+ *       `min-inline-size: 42px`, border included. Measured in the built app,
+ *       2026-09-15, not taken from the token scale.
+ *   +24 `--ds-size-3` on each side, so the button sits clear of both edges.
+ *   + 1 the rail's own border against the answer column. `box-sizing:
+ *       border-box` takes it out of the content box, and forgetting that term
+ *       is exactly what made 232 draw a two-line label on 2026-09-14.
+ *   = 67
+ *
+ * The same number for both sidebars, which needs the border on both: the
+ * navigation panel already had one, the sources panel gets one when it is a
+ * rail. Two rails of different widths would read as a mistake rather than as
+ * a pair.
+ *
+ * The CSS that draws this is in global.css and has to agree; the numbers live
+ * here and tests/e2e/layout.spec.ts measures what is actually drawn.
+ */
+export const railWidth = 67;
+
+/**
  * The default layout, which is what the design shows today.
  *
  * The secondary sidebar starts collapsed and opens once the conversation has
@@ -200,66 +213,26 @@ export const defaultLayout: Layout = {
       // 2026-09-11 (answer 59b) plus the 36 px padding on each side, and 400
       // is also what the page template draws the navigation panel at.
       //
-      // The collapsed width is not drawn anywhere either, so it is derived
-      // the same way the sources panel's 198 is: the button this slot
-      // collapses to, plus everything the slot spends before reaching it.
-      // Measured 2026-09-14 in the built app with Inter loaded.
-      //
-      //   195.78  the «Vis tråder og filter» button at its natural width:
-      //           150.77 text + 21 icon + 7 gap + 28 padding + 2 border.
-      //           The label on the OPEN panel reads «Skjul tråder og filter»
-      //           and needs 208.77, but that is not the state being sized.
-      //   + 36    the padding a collapsed slot keeps against the edge of the
-      //           window; it carries none against the answer column.
-      //   + 1     `border-inline-end`, which `box-sizing: border-box` takes
-      //           out of the content box. The sources panel has no border and
-      //           this term is why the two slots do not share an answer.
-      //   = 232.78, so 233 is the floor and 236 is the number.
-      //
-      // 236 rather than 233 because 233 clears the text by 0.22 px, which is
-      // not clearance: a fallback font before Inter lands, a later Inter, or
-      // a reader's own minimum font size all move the label further than that.
-      // 236 leaves 3.2 px, sits on Designsystemet's 4 px step, and stays
-      // under the 240 px ceiling the 1280 guarantee sets — at 1280 with this
-      // panel collapsed and the sources panel open, the sources panel gets
-      // 1280 − 236 − 32 − 640 − 32 = 340, still above its 336 floor.
-      //
-      // The decision of 2026-09-14 says 232, from 196 + 36. 196 was the
-      // content width measured on 2026-09-11, and the two terms it leaves out
-      // are the border and the fraction. 232 draws the label on two lines,
-      // which is the one thing the number was chosen to prevent; 236 is the
-      // same derivation with every term in it.
-      //
-      // It was 198 before, borrowed from the sources panel so the two would
-      // collapse to the same width. That symmetry cost the label three lines,
-      // and a panel narrower than the only control it holds is not symmetry
-      // worth having.
-      sizing: { mode: 'fixed', width: 400, collapsedWidth: 236 },
+      // Collapsed, this slot is a rail; see `railWidth`. It was 236 until
+      // 2026-09-15, wide enough to draw «Vis tråder og filter» on one line,
+      // which turned out to be the wrong thing to be wide enough for.
+      sizing: { mode: 'fixed', width: 400, collapsedWidth: railWidth },
     },
     main: {
       slot: 'main',
       views: ['chat'],
       activeView: 'chat',
       collapsed: false,
-      // Two floors, because the floor has a reason and the reason is not
-      // always in play. Decision 2026-09-14, the addendum to the layout brief.
+      // 640 is a hard floor, not a preference: the sources must be readable
+      // beside the answer (answers 46, 49 and 59).
       //
-      //   640  with the sources panel open. Not a preference: the sources
-      //        must be readable BESIDE the answer (answers 46, 49 and 59).
-      //   618  with the sources panel collapsed, where nothing stands beside
-      //        the answer for the 640 to be about. Derived, not picked:
-      //        1280 − 400 − 32 − 32 − 198, which is what is left for the
-      //        answer at 1280 with the navigation panel open and the sources
-      //        panel collapsed — the state the app opens in.
-      //
-      // Without the second floor that state needed 1302 and the page scrolled
-      // sideways at 1280 by 22 px. The three other terms in it cannot give:
-      // the navigation panel holds its width by decision, and the collapsed
-      // sources panel its 198 by the page template.
-      //
-      // `bothSidebarsMinViewport` is summed from 640, the floor that applies
-      // when both sidebars are open, which is the state it is about.
-      sizing: { mode: 'flexible', minWidth: 640, minWidthAlone: 618, maxWidth: 800 },
+      // It briefly had a second, lower floor of 618, for the one state that
+      // did not fit at 1280 — navigation panel open, sources panel collapsed,
+      // 400 + 32 + 640 + 32 + 198 = 1302. The rail removed the reason: that
+      // state is now 400 + 32 + 640 + 64 = 1136, so the floor holds
+      // everywhere and there is nothing left to make an exception for.
+      // Decision 2026-09-15.
+      sizing: { mode: 'flexible', minWidth: 640, maxWidth: 800 },
     },
     'secondary-sidebar': {
       slot: 'secondary-sidebar',
@@ -268,7 +241,9 @@ export const defaultLayout: Layout = {
       views: ['sources'],
       activeView: 'sources',
       collapsed: true,
-      // 198 collapsed comes from the page template.
+      // Collapsed, this slot is a rail; see `railWidth`. The page template
+      // draws it at 198, wide enough for «Vis kilder» on one line, and that
+      // is what 2026-09-15 replaced.
       //
       // The open width is a range, not a number, and that is the decision of
       // 2026-09-14 (option A): this is the one slot that gives way when the
@@ -295,7 +270,7 @@ export const defaultLayout: Layout = {
       // design/omraader/september-2026/brukes-ikke/, it disagrees with the
       // `right-sidebar` organism it instantiates, and it sums to 1471 inside
       // its own 1440 px frame.
-      sizing: { mode: 'shrinkable', width: 432, minWidth: 336, collapsedWidth: 198 },
+      sizing: { mode: 'shrinkable', width: 432, minWidth: 336, collapsedWidth: railWidth },
     },
   },
 };
@@ -304,7 +279,12 @@ export const defaultLayout: Layout = {
 export const slotOrder: Slot[] = ['primary-sidebar', 'main', 'secondary-sidebar'];
 
 /**
- * The gap between two slots, in CSS pixels.
+ * The gap between an OPEN panel and the answer column, in CSS pixels.
+ *
+ * Only between open panels. A collapsed sidebar is a rail and sits flush
+ * against the answer column, with no gap at all (decision 2026-09-15): a
+ * rail already reads as an edge, and 32 px of tinted page beside a 67 px
+ * rail reads as the hole Lars saw rather than as a collapsed column.
  *
  * It mirrors `--ka-slot-gap` in src/styles/global.css, which is
  * `var(--ds-size-8)` — 32 px. The number has to exist twice because the
@@ -326,6 +306,11 @@ export const slotGap = 32;
  *
  * That it lands on 1440, the width every frame in design/omraader/ is drawn
  * at, is a coincidence worth noticing and not the reason for the number.
+ *
+ * Both sidebars OPEN is the only state this is about, so both gaps are real
+ * here and the rail does not come into it. The rail is what makes every
+ * OTHER state fit at 1280 — the widest is now the navigation panel open with
+ * the sources panel railed, 400 + 32 + 640 + 67 = 1139.
  *
  * Below it, LayoutProvider keeps one sidebar open at a time — decision
  * 2026-09-14, option B. It is summed from `defaultLayout` rather than written
@@ -497,16 +482,7 @@ export function layoutStyle(layout: Layout): Record<string, string> {
     const sizing = state.sizing;
 
     if (sizing.mode === 'flexible') {
-      // Named slot, deliberately, and it is a limitation rather than a
-      // design. The question the floor asks is whether anything is drawn
-      // BESIDE the answer column, and in this layout the secondary sidebar is
-      // the one slot that can be. It does not follow the sources view: move
-      // sources into the primary sidebar and this still asks about the
-      // secondary slot, which is then the wrong question. The day layouts can
-      // really be rearranged, this has to ask about the neighbour instead of
-      // about a slot by name.
-      const alone = layout.slots['secondary-sidebar'].collapsed;
-      style[`--ka-${slot}-min-width`] = `${alone ? sizing.minWidthAlone : sizing.minWidth}px`;
+      style[`--ka-${slot}-min-width`] = `${sizing.minWidth}px`;
       style[`--ka-${slot}-max-width`] = `${sizing.maxWidth}px`;
       continue;
     }
