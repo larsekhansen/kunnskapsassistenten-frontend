@@ -238,16 +238,25 @@ test.describe('hovedkolonnen', () => {
     // Og tegnet havner ikke i feltet den nettopp flyttet til.
     await expect(field).toHaveValue('');
 
-    // Shift slipper gjennom, fordi «/» ER Shift+7 på norsk tastatur. Uten
-    // dette ville snarveien aldri utløst på oppsettet appen er skrevet for.
-    await focusSomethingElse();
-    await page.keyboard.press('Control+Shift+/');
-    await expect(field, 'Shift+7 er norsk «/»').toBeFocused();
-
-    // Ctrl+Alt er AltGr på Windows og setter sammen tegn, ikke kommandoer.
-    await focusSomethingElse();
-    await page.keyboard.press('Control+Alt+/');
-    await expect(field, 'AltGr er ikke en kommando').not.toBeFocused();
+    /*
+     * Shift og Alt måles IKKE her, men i `ChatView.test.tsx`.
+     *
+     * Hvilke modifikatorer som utløser snarveien er et spørsmål om
+     * `event.key`, `ctrlKey`, `shiftKey` og `altKey` — og Playwright oversetter
+     * `Control+Shift+/` gjennom tastaturoppsettet maskinen kjører med. På
+     * norsk layout er «/» Shift+7, så Shift holdes og `key` er fortsatt «/»;
+     * på US-layout, som CI kjører, er Shift+«/» derimot `?`, og da gjør appen
+     * riktig ingenting. Testen påsto altså noe layout-spesifikt som om det var
+     * universelt, og CI ble rød på det tre ganger 15.09 — på tre forskjellige
+     * grener, i to forskjellige påstander, fordi et `Control+Alt+/` også
+     * etterlot tastaturtilstand som slukte den neste skrivingen.
+     *
+     * Unit-testene setter hendelsen direkte og er derfor uavhengige av
+     * oppsettet: «answers to Ctrl+Shift+/», «... Cmd+/ as well», «does nothing
+     * on a bare «/»» og «leaves Ctrl+Alt+/ alone». Det er riktig sted for det.
+     * Her måles det som er layout-uavhengig: at snarveien virker i den ekte
+     * appen, og at «/» ellers er et vanlig tegn.
+     */
 
     // Og «/» skrives som et tegn i feltet, som alle andre tegn.
     await field.click();
