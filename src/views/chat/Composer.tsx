@@ -5,8 +5,11 @@ import { COMPOSE_PLACEHOLDER, DISCLAIMER, FOLLOW_UP_QUESTIONS } from './text';
 import type { ChatStatus } from './useChat';
 
 type ComposerProps = {
-  /** The sticky area around the field, for a caller that has to measure or
-   * ask where focus is. */
+  /**
+   * The sticky area around the field. The chat view measures it, to keep that
+   * much of the scroll container free at the bottom, and asks it where focus
+   * is before moving the caret into the field.
+   */
   ref?: Ref<HTMLDivElement>;
   /** So a kickstarter can put the caret in the field after filling it. */
   fieldRef?: RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
@@ -43,6 +46,12 @@ type ComposerProps = {
  * The icons carry no size of their own. `Button` already sizes what it holds
  * (`--ds-icon-size`), and a size written here would be a raw length that does
  * not follow the size mode.
+ *
+ * The stop button carries the word «Avbryt» next to its icon. A bare square
+ * is not obviously «stopp» to anyone looking at the screen, however good its
+ * `aria-label` is (brukerblikk 2026-09-15, finding 10). The label stays
+ * longer than the visible text — it says which generation is being stopped —
+ * and starts with the same word, which is what WCAG 2.5.3 asks for.
  *
  * Attachments are in scope (answer 53) but there is no upload endpoint
  * (API-bestilling A3), so the paperclip is inert. It keeps its focus and says
@@ -99,8 +108,9 @@ export function Composer({
           </Button>
 
           {busy ? (
-            <Button aria-label="Avbryt genereringen" icon onClick={onCancel} variant="secondary">
+            <Button aria-label="Avbryt genereringen" onClick={onCancel} variant="secondary">
               <StopIcon aria-hidden />
+              Avbryt
             </Button>
           ) : (
             <Button

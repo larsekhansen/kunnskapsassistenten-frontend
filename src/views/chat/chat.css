@@ -229,6 +229,28 @@
   background: var(--ds-color-neutral-background-tinted);
 }
 
+/*
+ * The seam between the answer and the field.
+ *
+ * Without it the card's white surface stops dead where the field begins,
+ * mid-sentence and sometimes just under a heading, and that reads as «the
+ * card is cut off» rather than «there is more further down» (brukerblikk
+ * 2026-09-15, finding 6). The ground fades in over the last few lines
+ * instead, so the text dissolves into the field.
+ *
+ * It sits above the sticky box and moves with it, and takes no pointer
+ * events: the answer under the fade is still text you can select.
+ */
+.ka-composer-area::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 100%;
+  block-size: var(--ds-size-6);
+  background: linear-gradient(to top, var(--ds-color-neutral-background-tinted), transparent);
+  pointer-events: none;
+}
+
 .ka-composer {
   display: flex;
   flex-direction: column;

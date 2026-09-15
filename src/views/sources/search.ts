@@ -83,10 +83,19 @@ export function hitsFor(hits: SearchHit[], itemId: string): SearchHit[] {
   return hits.filter((hit) => hit.itemId === itemId);
 }
 
-/** Wrap around in both directions, so previous from the first goes to the last. */
+/**
+ * Move one hit, and stop at the ends.
+ *
+ * It used to wrap, and wrapping is what made «Forrige» look usable on hit 1 of
+ * 8 (docs/review/brukerblikk-2026-09-15.md, funn 11): the button was the same
+ * blue as «Neste» and said nothing about where it would land. The review left
+ * the choice open — disable it, or say that it goes round — and the decision
+ * was to disable. So the ends are ends here too, and the buttons that call
+ * this are `aria-disabled` when they would be no-ops.
+ */
 export function stepHit(total: number, current: number, step: 1 | -1): number {
   if (total === 0) return 0;
-  return (current + step + total) % total;
+  return Math.min(Math.max(current + step, 0), total - 1);
 }
 
 /** A run of text, either plain or part of a match. */

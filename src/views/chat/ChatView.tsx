@@ -10,6 +10,7 @@ import type { ThreadDetail } from '../../model';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { CLARIFICATION_PLACEHOLDER } from './text';
+import { threadHeading } from './threadHeading';
 import { useAtBottom } from './useAtBottom';
 import { useChat } from './useChat';
 import { Welcome } from './Welcome';
@@ -48,6 +49,35 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   const { ref: scrollRef, scrollToBottom } = useMainScroll();
   const atBottom = useAtBottom(scrollRef, rootRef);
 
+  /*
+   * The compose field is sticky and opaque, so anything the browser scrolls
+   * to can land underneath it — a citation link or an action button reached
+   * by Tab ends up behind the field, which is WCAG 2.4.11. `scroll-padding`
+   * tells the scroll container to stop that much short of the bottom.
+   *
+   * Measured rather than written down: the field grows with the question
+   * (`field-sizing: content`) and the follow-up chips come and go, so the
+   * height is not a number this view knows. The property is set on the
+   * container the shell owns, and cleared again when the chat leaves it.
+   */
+  useEffect(() => {
+    const area = composerRef.current;
+    const scroller = scrollRef.current;
+    // jsdom has no ResizeObserver; the padding is a scroll affordance, so a
+    // test environment without one loses nothing.
+    if (!area || !scroller || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      scroller.style.scrollPaddingBlockEnd = `${Math.round(area.offsetHeight)}px`;
+    });
+    observer.observe(area);
+
+    return () => {
+      observer.disconnect();
+      scroller.style.scrollPaddingBlockEnd = '';
+    };
+  }, [scrollRef]);
+
   // Activating a `[n]` marker is the shell's business: it opens the sources
   // panel and tells it which excerpt to show. Neither view knows the other.
   const { showCitation } = useCitation();
@@ -82,6 +112,14 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   const hasAnswer = messages.some(
     (message) => message.role === 'assistant' && message.status === 'complete',
   );
+
+  /**
+   * The same head on both routes (brukerblikk 2026-09-15, finding 5). A
+   * thread opened from the list brings its title; a conversation started on
+   * `/` has none until the client names it, and then the question stands in.
+   * See threadHeading.ts for why a stand-in is heard and not seen.
+   */
+  const heading = threadHeading(thread?.title, messages);
 
   /**
    * The agent asked back and is waiting: the last turn ended as
@@ -138,9 +176,13 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
 
   return (
     <div className="ka-chat" ref={rootRef}>
-      {thread ? (
-        <Heading data-size="lg" level={2}>
-          {thread.title}
+      {heading ? (
+        <Heading
+          className={heading.repeatsQuestion ? 'ds-sr-only' : undefined}
+          data-size="lg"
+          level={2}
+        >
+          {heading.title}
         </Heading>
       ) : null}
 

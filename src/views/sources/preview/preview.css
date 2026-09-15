@@ -27,13 +27,22 @@
 }
 
 /*
- * The open width is the layout's, settled at 432 px by the foundation. The
- * harness stands in for the slot, so it mirrors what the shell does with
- * --ka-secondary-sidebar-width rather than inventing a width of its own.
+ * The open widths are the layout's, and there are two of them: the slot
+ * prefers 432 px and shrinks to 336 when the window runs short
+ * (src/layout/viewModel.ts). The harness stands in for the slot, so it mirrors
+ * what the shell does with --ka-secondary-sidebar-width rather than inventing
+ * a width of its own — and it has to mirror the box model too.
+ *
+ * `border-box`, like .secondary-sidebar in global.css. It said `content-box`,
+ * and that put the padding on top: the panel drew 504 px and the view inside
+ * it 432, where the shell draws 432 and 360. The harness was showing a panel
+ * 72 px wider than the product, which is the one thing it may not do — 336 is
+ * the width the excerpt cards are hard to fit in, and at 432-plus-padding the
+ * compact layout could not be seen at all.
  */
 .preview__aside {
   flex: 0 0 auto;
-  box-sizing: content-box;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-4);
@@ -43,6 +52,13 @@
   padding-inline: var(--ds-size-9);
   overflow-y: auto;
   background: var(--ds-color-neutral-background-default);
+}
+
+/* The narrow end of the slot's range: 336 px at 1440, where the panel gets the
+   compact card layout. 21rem and 27rem are the layout's numbers, not tokens;
+   none of the slot widths sit on Designsystemet's scale. */
+.preview__aside[data-width='narrow'] {
+  inline-size: 21rem;
 }
 
 /* Same pair as .sidebar-content in the shell: author CSS outside layers beats

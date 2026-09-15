@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatClient } from '../../api';
 import type { Message, MessageStatus } from '../../model';
 import { announcedText } from './answerText';
+import { GENERIC_CHAT_ERROR, withoutRetryPrompt } from './errorText';
 import { CLARIFICATION_ANNOUNCEMENT } from './text';
 
 /** Where the current turn is. Drives the skeleton, the stop button and the error. */
@@ -183,7 +184,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
               }
               settleAnswer(answerId, 'error');
               if (isCurrentTurn()) {
-                setError(event.error.message);
+                setError(withoutRetryPrompt(event.error.message));
                 // The Alert has role="alert" and announces itself.
                 setAnnouncement('');
                 setStatus('error');
@@ -209,7 +210,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
         }
         settleAnswer(answerId, 'error');
         if (isCurrentTurn()) {
-          setError('Noe gikk galt da svaret skulle hentes. Prøv igjen.');
+          setError(GENERIC_CHAT_ERROR);
           setAnnouncement('');
           setStatus('error');
         }
