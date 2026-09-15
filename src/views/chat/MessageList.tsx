@@ -10,7 +10,12 @@ import { ABORTED_NOTE, CLOSING_QUESTION, REGENERATE } from './text';
 
 type MessageListProps = {
   messages: Message[];
-  onSelectSource: (citationNumber: number) => void;
+  /**
+   * A `[n]` marker was activated. The message id goes with the number: each
+   * answer numbers its excerpts from 1, so the number alone does not say
+   * which excerpt (#4, brukerreiser punkt 5).
+   */
+  onSelectSource: (citationNumber: number, messageId: string) => void;
   onScrollToBottom: () => void;
   canScrollToBottom: boolean;
   /** Ask the stopped question again, in place of the answer that was cut off. */
@@ -170,7 +175,11 @@ export function MessageList({
                   {empty ? null : (
                     <Markdown
                       citations={citationTargets(message.sources ?? [])}
-                      onCitationActivate={onSelectSource}
+                      onCitationActivate={(number) => onSelectSource(number, message.id)}
+                      // A stopped answer wrote its markers; the excerpts were
+                      // still on their way. Then `[3]` is drawn as text that
+                      // says why, not as a link to nothing.
+                      sourcesLost={aborted}
                       startLevel={3}
                     >
                       {message.content}
