@@ -72,8 +72,13 @@ test.describe('skallet', () => {
     // for the weaker promise it can keep.
     await page.goto(ROUTES.thread.path);
 
-    await page.keyboard.press('Tab');
+    // Vent på lenka før tastetrykket. Et Tab som lander før den er tegnet går
+    // til noe annet, og testen blir rød uten at noe er galt — målt under
+    // anmeldelsen av #59, sammen med søsteren på linje 126.
     const skipLink = page.getByRole('link', { name: 'Hopp til hovedinnhold' });
+    await expect(skipLink).toBeAttached();
+
+    await page.keyboard.press('Tab');
     await expect(skipLink).toBeFocused();
 
     // Designsystemet's SkipLink is only visible while it has focus, which is

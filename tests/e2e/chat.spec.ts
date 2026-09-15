@@ -223,6 +223,13 @@ test.describe('hovedkolonnen', () => {
     await focusSomethingElse();
     await page.keyboard.press('/');
     await expect(field, 'en ren tegntast er ingen snarvei').not.toBeFocused();
+    /*
+     * Og feltet er tomt FØR snarveien prøves. Uten denne sto påstanden om tom
+     * verdi først etter at fokus var flyttet, og en «/» som ble behandlet sent
+     * kunne rekke å havne i feltet — rødt på `toHaveValue`, med snarveien som
+     * den mistenkte. Her sier testen hvilket av de to tastetrykkene som lekket.
+     */
+    await expect(field, 'tegnet skal ikke ha havnet noe sted').toHaveValue('');
 
     // Med modifikator: treffer. Begge godtas overalt, så Control er nok her.
     await page.keyboard.press('Control+/');
