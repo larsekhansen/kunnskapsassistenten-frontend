@@ -49,6 +49,30 @@
   display: none;
 }
 
+/* Which answer's sources are on screen */
+
+/*
+ * Laid out like the hit counter below it, on purpose: they are the same kind
+ * of row — a status on the left, previous and next on the right — and two
+ * rows that do the same thing should not look like two different ideas.
+ */
+.sources-answer-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-size-2);
+}
+
+.sources-answer-switcher__count {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+.sources-answer-switcher__steps {
+  display: flex;
+  gap: var(--ds-size-1);
+}
+
 /* Search */
 
 .sources-search__form {
@@ -163,6 +187,19 @@
   flex-direction: column;
   gap: var(--ds-size-1);
   color: var(--ds-color-neutral-text-subtle);
+}
+
+/*
+ * «Tilbake til svaret», last in the open quote.
+ *
+ * A block box that shrinks to its content, so it starts on a line of its own
+ * instead of running on after the Kudos link, and still keeps the start edge
+ * the rest of the quote has.
+ */
+.source-excerpt__back {
+  display: flex;
+  inline-size: fit-content;
+  margin-block-start: var(--ds-size-2);
 }
 
 /* The excerpt a [n] marker in the answer points at. A band along the inline

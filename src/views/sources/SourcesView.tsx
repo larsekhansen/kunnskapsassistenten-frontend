@@ -2,13 +2,15 @@ import { Heading } from '@digdir/designsystemet-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyState } from '../../components';
 import { excerptDomId, type Excerpt, type SourceDocument } from '../../model';
+import { AnswerSwitcher } from './AnswerSwitcher';
 import { ExcerptSearch } from './ExcerptSearch';
 import { SourceDocumentCard } from './SourceDocumentCard';
 import { SourcesOverview } from './SourcesOverview';
 import { SourcesPlaceholder } from './SourcesPlaceholder';
+import { NO_ANSWER_YET, emptyStateFor, type SourcesEmptyState } from './emptyStates';
 import { documentDomId } from './ids';
 import { type SearchHit, buildSearchIndex, findHits, stepHit } from './search';
-import type { SourcesViewProps } from './types';
+import type { AnswerSources, SourcesViewProps } from './types';
 import './sources.css';
 
 /**
@@ -26,12 +28,19 @@ import './sources.css';
  * `preventScroll` keeps the browser's own focus scroll from cutting the
  * smooth scroll short.
  */
+function reducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function scrollElementIntoView(element: HTMLElement) {
+  element.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+}
+
 function scrollTo(domId: string): HTMLElement | null {
   const element = document.getElementById(domId);
   if (element === null) return null;
 
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  element.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+  scrollElementIntoView(element);
   return element;
 }
 
@@ -54,6 +63,81 @@ function excerptOfHit(sources: SourceDocument[], hit: SearchHit | undefined): Ex
   return allExcerpts(sources).find((excerpt) => excerpt.id === hit.itemId);
 }
 
+/** Stands in for a message id while the shell still holds one flat list. */
+const LEGACY_ANSWER_ID = 'siste-svar';
+
+/**
+ * The `[n]` marker that sent the reader here, so Escape and «Tilbake til
+ * svaret» can put focus back on it.
+ *
+ * The marker has no id and this view may not give it one — it is drawn in the
+ * main column, which another worker owns — so the element is found rather than
+ * addressed. Two ways, in order:
+ *
+ *   1. The marker the reader just activated still has focus. That is the right
+ *      one when the same number is written twice in an answer, which the
+ *      sample answer does.
+ *   2. Otherwise, any marker pointing at this excerpt. Safari does not focus a
+ *      link on click unless full keyboard access is on, so step 1 finds
+ *      `<body>` there, and a way back to roughly the right place beats none.
+ *
+ * The `href` is checked in both, because focus could be sitting on something
+ * else entirely — a shortcut in the list, the «Neste» button — and returning
+ * to that would be worse than doing nothing.
+ */
+function markerFor(citationNumber: number): HTMLElement | null {
+  const href = `#${excerptDomId(citationNumber)}`;
+  const focused = document.activeElement;
+
+  if (focused instanceof HTMLElement && focused.getAttribute('href') === href) return focused;
+
+  return document.querySelector<HTMLElement>(`a[href="${href}"]`);
+}
+
+/**
+ * One answer's worth of sources, whichever prop carried it.
+ *
+ * `answers` is the shape the panel wants and the shell does not hold yet
+ * (rolle-5h). `documents` is the one flat list it does hold. Normalising here
+ * means everything below this function sees one thing, and the day the shell
+ * sends `answers` the only change is that this branch stops being taken.
+ *
+ * `[]` and `undefined` are kept apart on both paths, because they are
+ * different answers: undefined is «nothing is known yet», `[]` is «nothing has
+ * been asked».
+ */
+function normaliseAnswers(
+  answers: readonly AnswerSources[] | undefined,
+  documents: SourceDocument[] | undefined,
+): readonly AnswerSources[] | undefined {
+  if (answers !== undefined) return answers;
+  if (documents === undefined) return undefined;
+  if (documents.length === 0) return [];
+  return [{ messageId: LEGACY_ANSWER_ID, documents, status: 'complete' }];
+}
+
+/** What the body of the panel shows, once the four states are told apart. */
+type PanelContent =
+  { kind: 'loading' } | { kind: 'empty'; state: SourcesEmptyState } | { kind: 'sources' };
+
+/**
+ * The four states, in one place and in order.
+ *
+ * Early returns rather than nested conditions in the JSX, because the last two
+ * depend on having ruled out the first two — `emptyStateFor` does not take
+ * `streaming`, and the compiler is what holds that.
+ */
+function panelContentFor(
+  answers: readonly AnswerSources[] | undefined,
+  active: AnswerSources | undefined,
+): PanelContent {
+  if (answers === undefined) return { kind: 'loading' };
+  if (active === undefined) return { kind: 'empty', state: NO_ANSWER_YET };
+  if (active.status === 'streaming') return { kind: 'loading' };
+  if (active.documents.length === 0) return { kind: 'empty', state: emptyStateFor(active.status) };
+  return { kind: 'sources' };
+}
+
 /**
  * The sources view: the content of the secondary sidebar (answer 49).
  *
@@ -62,31 +146,61 @@ function excerptOfHit(sources: SourceDocument[], hit: SearchHit | undefined): Ex
  * here. What is here is the search, the shortcut list, and one card per
  * document with the excerpts grouped under it (answer 57).
  *
- * Three states, not two:
+ * **One answer at a time.** A thread has several answers and each numbers its
+ * excerpts from 1, so a single flat list made `[2]` in the first answer open
+ * the second answer's excerpt 2 — right-looking and wrong (brukerreiser punkt
+ * 5). The panel shows the newest answer by default, follows a new one when it
+ * arrives, and switches when a marker in an older answer is activated.
+ * `AnswerSwitcher` says which one is on screen, because otherwise two sets are
+ * indistinguishable.
  *
- *   documents === undefined   loading, `excerpts-placeholder` from Figma
- *   documents.length === 0    no answer yet, an empty state (answer 36)
- *   otherwise                 the sources
+ * Four states, not two:
+ *
+ *   answers === undefined      loading, `excerpts-placeholder` from Figma
+ *   answers.length === 0       nothing asked yet, an empty state (answer 36)
+ *   answer with no documents   what became of it, per status (`emptyStates.ts`)
+ *   otherwise                  the sources
  *
  * Figma only draws the skeleton version, but skeletons promise content that is
  * on its way. Before the first question nothing is on its way, and `Skeleton`
- * is `aria-hidden`, so that state has to be said in words instead.
+ * is `aria-hidden`, so those states have to be said in words instead.
  *
  * The tools menu and notes land in this same slot later, as views beside this
  * one (answers 22 and 52). Nothing here assumes it is alone in the slot.
  */
 export function SourcesView({
+  answers,
   documents,
   collapsed = false,
   onCollapsedChange,
   activeCitationNumber,
   activeCitationNonce,
+  activeCitationMessageId,
 }: SourcesViewProps) {
   const [query, setQuery] = useState('');
   const [currentHitIndex, setCurrentHitIndex] = useState(0);
   const [openExcerptIds, setOpenExcerptIds] = useState<ReadonlySet<string>>(new Set());
 
-  const documentList = useMemo(() => documents ?? [], [documents]);
+  const answerList = useMemo(() => normaliseAnswers(answers, documents), [answers, documents]);
+  const answersOnScreen = useMemo(() => answerList ?? [], [answerList]);
+  const newestMessageId = answersOnScreen.at(-1)?.messageId;
+
+  // Which answer the reader stepped or was sent to. `undefined` means «the
+  // newest», which is what it goes back to whenever a new answer arrives: a
+  // fresh answer is a fresh event, the panel opens itself for it (PR #30), and
+  // showing an older set beside it would be the same lie in reverse.
+  const [chosenMessageId, setChosenMessageId] = useState<string | undefined>(undefined);
+  const [followedMessageId, setFollowedMessageId] = useState(newestMessageId);
+  if (followedMessageId !== newestMessageId) {
+    setFollowedMessageId(newestMessageId);
+    setChosenMessageId(undefined);
+  }
+
+  const chosenIndex = answersOnScreen.findIndex((answer) => answer.messageId === chosenMessageId);
+  const activeIndex = chosenIndex >= 0 ? chosenIndex : answersOnScreen.length - 1;
+  const activeAnswer = answersOnScreen[activeIndex];
+
+  const documentList = useMemo(() => activeAnswer?.documents ?? [], [activeAnswer]);
   const searchIndex = useMemo(() => buildSearchIndex(documentList), [documentList]);
   const hits = useMemo(() => findHits(searchIndex, query), [searchIndex, query]);
   const currentHit = hits[currentHitIndex];
@@ -96,16 +210,37 @@ export function SourcesView({
   // React's documented way to adjust state when a prop changes. The scroll is
   // a separate effect, because it has to happen after the layout.
   //
-  // Both halves are compared, not just the nonce: the number alone covers a
-  // caller that sends no nonce, and the nonce is what makes a second click on
-  // the SAME marker count as a new request (answer 19).
-  const [handled, setHandled] = useState<{ number?: number; nonce?: number } | undefined>(
-    undefined,
-  );
-  if (handled?.number !== activeCitationNumber || handled?.nonce !== activeCitationNonce) {
-    setHandled({ number: activeCitationNumber, nonce: activeCitationNonce });
+  // All three parts are compared, not just the nonce: the number alone covers
+  // a caller that sends no nonce, the nonce is what makes a second click on
+  // the SAME marker count as a new request (answer 19), and the message id
+  // changes when the reader clicks a marker in a different answer.
+  const [handled, setHandled] = useState<
+    { number?: number; nonce?: number; messageId?: string } | undefined
+  >(undefined);
+  if (
+    handled?.number !== activeCitationNumber ||
+    handled?.nonce !== activeCitationNonce ||
+    handled?.messageId !== activeCitationMessageId
+  ) {
+    setHandled({
+      number: activeCitationNumber,
+      nonce: activeCitationNonce,
+      messageId: activeCitationMessageId,
+    });
 
-    const target = allExcerpts(documentList).find(
+    // The marker says which answer it sits in, so the panel switches to that
+    // set before looking the excerpt up in it. Without the id — which is where
+    // the shell still is — the marker is resolved against whatever is on
+    // screen, exactly as before.
+    const citedIndex = answersOnScreen.findIndex(
+      (answer) => answer.messageId === activeCitationMessageId,
+    );
+    if (citedIndex >= 0 && citedIndex !== activeIndex) {
+      setChosenMessageId(activeCitationMessageId);
+    }
+
+    const citedAnswer = citedIndex >= 0 ? answersOnScreen[citedIndex] : activeAnswer;
+    const target = allExcerpts(citedAnswer?.documents ?? []).find(
       (excerpt) => excerpt.citationNumber === activeCitationNumber,
     );
 
@@ -130,12 +265,18 @@ export function SourcesView({
     nonce: activeCitationNonce,
   });
 
+  // Where «Tilbake til svaret» and Escape go. Captured when the citation
+  // arrives, because that is the one moment the marker still has focus.
+  const returnTarget = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     const previous = revealedCitation.current;
     revealedCitation.current = { number: activeCitationNumber, nonce: activeCitationNonce };
 
     if (activeCitationNumber === undefined) return;
     if (previous.number === activeCitationNumber && previous.nonce === activeCitationNonce) return;
+
+    returnTarget.current = markerFor(activeCitationNumber);
 
     // Two frames: one for the excerpt to open, one in case the panel had to be
     // un-collapsed, since the shell only removes `hidden` on its own render.
@@ -144,6 +285,21 @@ export function SourcesView({
     );
   }, [activeCitationNumber, activeCitationNonce]);
 
+  /**
+   * Back to the marker the reader came from.
+   *
+   * `isConnected` because the answer can be replaced under the panel — a new
+   * question, a different thread — and focusing a detached element silently
+   * drops focus to `<body>`, which is the bug this whole control exists to fix.
+   */
+  function returnToAnswer() {
+    const marker = returnTarget.current;
+    if (marker === null || !marker.isConnected) return;
+
+    scrollElementIntoView(marker);
+    marker.focus({ preventScroll: true });
+  }
+
   function setExcerptOpen(excerptId: string, open: boolean) {
     setOpenExcerptIds((previous) => {
       const next = new Set(previous);
@@ -151,6 +307,21 @@ export function SourcesView({
       else next.delete(excerptId);
       return next;
     });
+  }
+
+  /**
+   * Stepping to another answer resets the search: the query was aimed at the
+   * excerpts that were on screen, and a hit counter counting a set the reader
+   * can no longer see is worse than an empty field.
+   */
+  function stepToAnswer(step: 1 | -1) {
+    const next = activeIndex + step;
+    const answer = answersOnScreen[next];
+    if (answer === undefined) return;
+
+    setChosenMessageId(answer.messageId);
+    setQuery('');
+    setCurrentHitIndex(0);
   }
 
   /**
@@ -194,6 +365,8 @@ export function SourcesView({
     }
   }
 
+  const content = panelContentFor(answerList, activeAnswer);
+
   return (
     <div className="sources-view">
       {/* The slot's accessible name already says «Kilder», and the design has
@@ -203,9 +376,16 @@ export function SourcesView({
         Kilder
       </Heading>
 
+      {/* Shown whenever the thread has more than one answer, including while
+          the answer on screen has nothing to show: stepping back to the answer
+          that DID have sources is the whole point of it then. */}
+      {answersOnScreen.length > 1 && (
+        <AnswerSwitcher index={activeIndex} count={answersOnScreen.length} onStep={stepToAnswer} />
+      )}
+
       {/* No search field when there is nothing to search. It stays during
           loading, so the layout does not shift when the sources arrive. */}
-      {(documents === undefined || documentList.length > 0) && (
+      {content.kind !== 'empty' && (
         <ExcerptSearch
           query={query}
           onQueryChange={changeQuery}
@@ -215,13 +395,10 @@ export function SourcesView({
         />
       )}
 
-      {documents === undefined ? (
+      {content.kind === 'loading' ? (
         <SourcesPlaceholder />
-      ) : documentList.length === 0 ? (
-        <EmptyState
-          title="Ingen kilder ennå"
-          description="Kildene vises her når du har stilt et spørsmål. Hvert utdrag er et sitat fra et dokument på Kudos, med samme nummer som markøren i svaret."
-        />
+      ) : content.kind === 'empty' ? (
+        <EmptyState title={content.state.title} description={content.state.description} />
       ) : (
         <>
           <SourcesOverview
@@ -239,6 +416,7 @@ export function SourcesView({
                 hits={hits}
                 currentHit={currentHit}
                 activeCitationNumber={activeCitationNumber}
+                onReturnToAnswer={returnToAnswer}
               />
             ))}
           </div>

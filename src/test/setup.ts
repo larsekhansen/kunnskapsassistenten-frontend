@@ -20,6 +20,18 @@ if (typeof globalThis.CSS === 'undefined') {
 }
 
 /**
+ * jsdom runs no animations and has no Web Animations API, so
+ * `document.getAnimations` is missing. Designsystemet's `Skeleton` calls it on
+ * mount to line its shimmer up with the others, and throws before a test that
+ * renders a loading state reaches its first assertion.
+ *
+ * An empty list is the truthful answer here: nothing IS animating.
+ */
+if (typeof document.getAnimations !== 'function') {
+  document.getAnimations = () => [];
+}
+
+/**
  * Testing Library normally registers its own afterEach, but only when vitest
  * runs with globals. This project imports describe/it/expect explicitly, so
  * the cleanup is registered here instead — without it the DOM from one test
