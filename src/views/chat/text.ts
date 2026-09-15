@@ -83,17 +83,28 @@ export const CLARIFICATION_COPIED = 'Spørsmålet er kopiert.';
 /*
  * The keyboard shortcut to the compose field (reise 7 and 15). The field is
  * tab stop 22 of 38 on a thread page, for the thing a reader does most often.
+ *
+ * Ctrl and not the bare key: a single character key shortcut is WCAG 2.1.4,
+ * level A, and this one could not be switched off. See useComposerShortcut.ts.
  */
 
-/** A small hint by the field, for anyone looking at the screen. */
-export const SHORTCUT_HINT = 'Trykk / for å hoppe hit';
+/**
+ * A small hint by the field, for anyone looking at the screen.
+ *
+ * It names Ctrl on every platform, because Ctrl+/ works on every platform —
+ * Cmd is the extra one a Mac gets, not a different shortcut. Naming the one
+ * that is always true beats detecting the operating system to say the same
+ * thing twice.
+ */
+export const SHORTCUT_HINT = 'Trykk Ctrl + / for å hoppe hit';
 
 /**
  * The same thing for a screen reader, on the field itself.
  *
- * Spelled out rather than shown as the character: «/» read aloud is
+ * The key is spelled out rather than shown as the character: «/» read aloud is
  * «skråstrek» in some voices and silence in others, and a shortcut nobody can
- * hear the name of is not a shortcut.
+ * hear the name of is not a shortcut. Both modifiers are named here, where
+ * there is room for it.
  */
 export const SHORTCUT_DESCRIPTION =
-  'Trykk skråstrek for å flytte skrivemerket hit fra hvor som helst på siden.';
+  'Trykk Ctrl og skråstrek, eller Cmd og skråstrek, for å flytte skrivemerket hit fra hvor som helst på siden.';
