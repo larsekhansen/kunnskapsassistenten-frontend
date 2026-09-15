@@ -20,6 +20,24 @@
   /* 48 px between the blocks of the panel, as in the `kilder` frame. */
   gap: var(--ds-size-12);
   inline-size: 100%;
+  /*
+   * The panel is what the cards inside it answer to, not the window.
+   *
+   * The slot is 432 px wide when there is room and shrinks to 336 when there
+   * is not, and the view can be moved to another slot entirely (answer 48), so
+   * a viewport media query would be asking the wrong question in both
+   * directions. `container-type: inline-size` costs nothing here: the width
+   * comes from the slot, never from the content.
+   */
+  container: sources / inline-size;
+  /*
+   * «Kommunikasjonsmyndighet» is 276 px wide in the document heading and the
+   * block it sits in is 262, so the title was cut off mid-word by the card's
+   * own `overflow: clip`. Measured on 1440. `break-word` rather than
+   * `anywhere`: it only breaks a word that cannot fit on a line of its own,
+   * and it leaves the min-content width alone.
+   */
+  overflow-wrap: break-word;
 }
 
 /*
@@ -92,6 +110,15 @@
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-1);
+  /*
+   * Document titles are where the long compound nouns are, and a Norwegian
+   * one does not fit on a line of a narrow panel: «kommunikasjonsmyndighet»
+   * alone is 276 px. `break-word` above keeps it inside the card whatever
+   * happens; this asks the browser to break it where Norwegian breaks
+   * instead, and the page says `lang="nb"` so it can. It is advice, not a
+   * rule — a build without the dictionary simply falls back to `break-word`.
+   */
+  hyphens: auto;
   /* The title bar is light blue in Figma without the colour being explained
      (dokument.md says so plainly). Kept as brand3, which is where that blue
      lives in the theme, and paired with brand3 text so it survives dark mode. */
@@ -143,6 +170,121 @@
 .source-excerpt[data-active='true'] {
   background: var(--ds-color-accent-surface-tinted);
   box-shadow: inset var(--ds-size-1) 0 0 0 var(--ds-color-accent-base-default);
+}
+
+/*
+ * ── Compact: a panel too narrow to nest boxes in ──────────────────────────
+ *
+ * At 1440 the slot is 336 px, the panel keeps 36 px of padding on each side,
+ * and what is left goes into a card, a card block and Designsystemet's own
+ * indent under a `summary`. Measured before this rule: 336 → 264 → 262 → 214
+ * → 174 px of quote, thirty lines of two or three words
+ * (docs/review/brukerblikk-2026-09-15.md, funn 1). The width is right; it was
+ * the boxes inside it that did not fit.
+ *
+ * So the layers come off rather than the panel growing: the card keeps its
+ * border and its blocks, but the padding drops to the small step, the indent
+ * under the summary goes, and the summary itself shrinks from a 56 px row to a
+ * 40 px control at the block's own edge. 174 → 246 px of quote, 30 lines → 20.
+ *
+ * 320 px is the view's own width, which is the slot minus its padding — a
+ * panel of about 392. It sits between the two widths this slot actually has,
+ * 264 and 360, so the roomy layout is what a 432 px panel gets and this is
+ * what a 336 px one gets.
+ */
+@container sources (inline-size < 320px) {
+  /*
+   * One value for every block in the card, set on the card's own variable so
+   * the title, the excerpts and the foot stay in step: 12 px over and under,
+   * 8 px at the sides.
+   */
+  .source-document {
+    --dsc-card-padding: var(--ds-size-3) var(--ds-size-2);
+  }
+
+  /*
+   * The head becomes a row that wraps: the number and the tag first, then the
+   * toggle beside them if it fits and under them if it does not.
+   *
+   * A closed `Details` is nothing but its summary, so it CAN sit on the head's
+   * line — that is the one line of Figma's excerpt answer 38 could not draw,
+   * since `Details.Summary` is a full-width row. At 336 px it does not fit,
+   * and that is measured rather than guessed: the line needs 258 px for
+   * «Relevant», 291 for «Mest relevant» and 295 for «Minst relevant», against
+   * the 246 px the block has. So the toggle takes the line below, at the same
+   * edge. `flex-wrap` is what makes that the same rule as fitting it in: give
+   * the panel more width and the three close up onto one line by themselves.
+   *
+   * Open, the toggle takes a full row whatever the width, because the quote
+   * below it is what the width is for.
+   */
+  .source-excerpt {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--ds-size-2);
+  }
+
+  .source-excerpt__head {
+    /* The tag follows the number instead of sitting at the far edge; the
+       toggle is what holds that edge now. */
+    flex: 0 1 auto;
+    justify-content: start;
+  }
+
+  .source-excerpt__details {
+    flex: 0 0 auto;
+    margin-inline-start: auto;
+    /* 40 px rather than 56: a summary that is mostly empty space is a row
+       this panel cannot afford. Still well past the 24 px WCAG 2.5.8 asks. */
+    --dsc-details-size: var(--ds-size-10);
+    --dsc-details-padding: var(--ds-size-2);
+    /*
+     * The white box on the tinted block was the card-in-card the eye actually
+     * saw. Same surface as the block it sits in, and no rules of its own; the
+     * hover surface stays, because the summary is still a control.
+     */
+    --dsc-details-background: var(--ds-color-neutral-background-tinted);
+    --dsc-details-summary-background: var(--ds-color-neutral-background-tinted);
+    --dsc-details-summary-background--open: var(--ds-color-neutral-background-tinted);
+    --dsc-details-summary-background--hover: var(--ds-color-neutral-surface-hover);
+    border-block-width: 0;
+  }
+
+  .source-excerpt__details[open] {
+    flex-basis: 100%;
+  }
+
+  /* The toggle keeps the same edge open and closed, so pressing it twice does
+     not move it out from under the pointer. */
+  .source-excerpt__details > summary {
+    justify-content: end;
+  }
+
+  /*
+   * Designsystemet indents everything under a summary by 20 px on each side
+   * and spaces it by 20 above and below. Both are the second half of the
+   * card-in-card: the panel's own 36 px gutter is the gutter, and this one
+   * only takes width off the quote. Designsystemet writes these in `:where()`,
+   * so a plain class selector is enough to replace them.
+   */
+  .source-excerpt__details > :not(summary, u-summary) {
+    margin-inline: 0;
+  }
+
+  .source-excerpt__details > :not(summary, u-summary):nth-child(2) {
+    margin-block-start: var(--ds-size-2);
+  }
+
+  .source-excerpt__details > :not(summary, u-summary):last-child {
+    margin-block-end: var(--ds-size-2);
+  }
+
+  /* Both sit under the head line, across the whole block. */
+  .source-excerpt__preview,
+  .source-excerpt__uncited {
+    flex-basis: 100%;
+  }
 }
 
 /* Search matches */

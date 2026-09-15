@@ -75,10 +75,11 @@ describe('hitsFor', () => {
 });
 
 describe('stepHit', () => {
-  it('wraps around in both directions', () => {
-    expect(stepHit(3, 2, 1)).toBe(0);
-    expect(stepHit(3, 0, -1)).toBe(2);
+  it('stops at both ends rather than wrapping', () => {
+    expect(stepHit(3, 2, 1)).toBe(2);
+    expect(stepHit(3, 0, -1)).toBe(0);
     expect(stepHit(3, 0, 1)).toBe(1);
+    expect(stepHit(3, 2, -1)).toBe(1);
   });
 
   it('stays at zero when there is nothing to step through', () => {
