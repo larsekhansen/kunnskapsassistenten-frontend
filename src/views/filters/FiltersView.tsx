@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createChatClient } from '../../api';
 import { BackIcon } from '../../components/icons';
 import { EmptyState, ErrorState, PanelHeader } from '../../components';
+import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useFilterSelection } from '../../layout/useFilterSelection';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { FilterFacet } from '../../model';
@@ -26,6 +27,10 @@ export type FiltersViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'
  * The selection is not kept here. The chat view has to ask its question
  * against the same narrowing, and two views may not import each other, so the
  * shell holds it — see src/layout/filterContext.ts.
+ *
+ * The documents under «Fra Kudos» come the same way, from the same shell: they
+ * are the sources behind the answer on screen, which the chat view produces
+ * and the sources panel also draws. See src/layout/answerSourcesContext.ts.
  */
 export function FiltersView({
   siblingViews,
@@ -35,6 +40,7 @@ export function FiltersView({
 }: FiltersViewProps) {
   const client = useMemo(() => createChatClient(), []);
   const { selection, setSelection } = useFilterSelection();
+  const { documents } = useAnswerSources();
   const [facets, setFacets] = useState<FilterFacet[] | undefined>(given);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -139,7 +145,7 @@ export function FiltersView({
         />
       ))}
 
-      <DocumentsList />
+      <DocumentsList documents={documents} />
     </div>
   );
 }

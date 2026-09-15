@@ -83,6 +83,22 @@
   gap: var(--ds-size-2);
 }
 
+/*
+ * The Kudos list. Designsystemet draws the list itself — markers, indent,
+ * line height — so the only rule needed here is the block margin, which would
+ * otherwise be added on top of the flex gap the section already owns.
+ */
+.documents-list__list {
+  margin-block: 0;
+}
+
+/* «Viser 5 av 7 dokumenter.» and the type · virksomhet · år line under each
+   title: both are about the row, not the row itself. */
+.documents-list__count,
+.documents-list__about {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
 .documents-list__heading-row {
   display: flex;
   align-items: center;
