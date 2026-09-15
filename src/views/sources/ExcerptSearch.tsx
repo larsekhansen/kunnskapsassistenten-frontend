@@ -1,6 +1,6 @@
 import { Button, Label, Paragraph, Search } from '@digdir/designsystemet-react';
 import { useId } from 'react';
-import { MIN_QUERY_LENGTH } from './search';
+import { MIN_QUERY_LENGTH } from '../../components';
 
 /**
  * The Kudos disclaimer.

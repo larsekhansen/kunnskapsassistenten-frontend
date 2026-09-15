@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
+import { COMPOSER_ID } from './layout/ids';
 
 /**
  * The routes, and what an address that leads nowhere draws.
@@ -61,6 +62,15 @@ describe('en adresse som ikke finnes', () => {
     expect(screen.queryByRole('textbox', { name: 'Spørsmål til Kunnskapsassistenten' })).toBeNull();
   });
 
+  it('har ingen hopp-lenke til et skrivefelt som ikke finnes', () => {
+    openAt('/tull');
+
+    // «Hopp til hovedinnhold» virker her, og er det 2.4.1 ber om. En andre
+    // lenke til et felt sida ikke har ville vært en blindvei.
+    expect(screen.getByRole('link', { name: 'Hopp til hovedinnhold' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Hopp til skrivefeltet' })).toBeNull();
+  });
+
   it('har fortsatt sidens nivå 1', () => {
     openAt('/tull');
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Kunnskapsassistenten');
@@ -97,5 +107,23 @@ describe('en tråd som ikke finnes', () => {
 
     expect(screen.getByText('Ingen kilder ennå')).toBeDefined();
     expect(screen.queryByText('Henter kilder …')).toBeNull();
+  });
+});
+
+describe('hopp-lenkene', () => {
+  it('gir en vei rett til skrivefeltet, og lenka peker på feltet som finnes', () => {
+    openAt('/');
+
+    const links = screen.getAllByRole('link', { name: /^Hopp til/ });
+    expect(links.map((link) => link.textContent)).toEqual([
+      'Hopp til hovedinnhold',
+      'Hopp til skrivefeltet',
+    ]);
+
+    // Målet må finnes, ellers er lenka en blindvei. Id-en kommer fra
+    // src/layout/ids.ts i begge ender.
+    const target = links[1]?.getAttribute('href')?.slice(1);
+    expect(target).toBe(COMPOSER_ID);
+    expect(document.getElementById(COMPOSER_ID)).not.toBeNull();
   });
 });
