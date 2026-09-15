@@ -72,8 +72,13 @@ test.describe('skallet', () => {
     // for the weaker promise it can keep.
     await page.goto(ROUTES.thread.path);
 
-    await page.keyboard.press('Tab');
+    // Vent på lenka før tastetrykket. Et Tab som lander før den er tegnet går
+    // til noe annet, og testen blir rød uten at noe er galt — målt under
+    // anmeldelsen av #59, sammen med søsteren på linje 126.
     const skipLink = page.getByRole('link', { name: 'Hopp til hovedinnhold' });
+    await expect(skipLink).toBeAttached();
+
+    await page.keyboard.press('Tab');
     await expect(skipLink).toBeFocused();
 
     // Designsystemet's SkipLink is only visible while it has focus, which is
@@ -127,9 +132,17 @@ test.describe('skallet', () => {
     covers(testInfo, 'hopp-lenke til skrivefeltet');
     await page.goto(ROUTES.thread.path);
 
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
+    /*
+     * Vent på lenka før tastetrykkene. Uten dette kan første Tab lande før
+     * den andre hopp-lenka er tegnet, og testen blir rød uten at noe er galt:
+     * én rød av 116 i anmeldelsen av #59, grønn alene tre ganger etterpå, ved
+     * load average 9,4.
+     */
     const second = page.getByRole('link', { name: 'Hopp til skrivefeltet' });
+    await expect(second).toBeAttached();
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
     await expect(second).toBeFocused();
 
     await page.keyboard.press('Enter');
@@ -302,6 +315,15 @@ test.describe('skallet', () => {
   }, testInfo) => {
     covers(testInfo, 'tastatur: Tab gjennom viewet, synlig fokus og rekkefølge');
     await page.goto(ROUTES.thread.path);
+
+    /*
+     * Vent på den andre hopp-lenka før vandringen. Den tegnes bare når det
+     * finnes et skrivefelt å hoppe til, så en vandring som starter før
+     * skrivefeltet er der finner «Skjul tråder og filter» som steg 2 og blir
+     * rød på rekkefølgen — målt i full suite 15.09, grønn alene rett etterpå.
+     * Fjerde tilfelle av samme race i denne fila og i chat.spec.ts.
+     */
+    await expect(page.getByRole('link', { name: 'Hopp til skrivefeltet' })).toBeAttached();
 
     const steps = await walkWithTab(page);
 

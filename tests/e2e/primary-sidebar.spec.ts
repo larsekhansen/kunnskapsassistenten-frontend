@@ -420,6 +420,53 @@ test.describe('navigasjonspanelet', () => {
   });
 
   /**
+   * Den samme påstanden om en tråd leseren nettopp lagde.
+   *
+   * Tilstanden ingen hadde målt: testen over åpner en tråd som alt lå i lista,
+   * og reload-testen i `samtale.spec.ts` sjekker `aria-current` **etter** en
+   * reload. Mellom de to ligger den vanligste veien inn — du stiller et
+   * spørsmål, tråden blir din, og du åpner lista for å se hvor du er.
+   *
+   * Målt på `main` `2c7f250` og på sammenslåingen av #58: raden ligger der,
+   * først, med riktig `href`, og uten `aria-current`. Etter en reload er den
+   * merket. Tråd-URL-en settes med `replaceState`, som `NavLink` ikke ser, så
+   * lenka vet ikke at den peker på der leseren står (eier: #5).
+   *
+   * For en skjermleser er en åpen tråd uten `aria-current` det samme som en
+   * tråd som ikke er åpen.
+   *
+   * **`fixme` til #5 har rettet tråd-URL-en.** Testen er skrevet ferdig og er
+   * rød på nøyaktig den påstanden den skal være rød på: raden finnes og ligger
+   * først, og mangler `aria-current`. Den står som `fixme` og ikke rød på
+   * `main`, fordi `main` skal være grønn. Fjern `fixme` i den PR-en som
+   * anmelder fiksen — anmelderen gjør det.
+   */
+  test.fixme('tråden du nettopp lagde er merket som den åpne, uten reload', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'egen tråd merket som åpen uten reload');
+    await page.goto('/');
+    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+    await expect(page).toHaveURL(/\/threads\/[\w-]+$/);
+    const id = page.url().split('/').pop();
+
+    await showThreads(page);
+    const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
+
+    // Raden finnes og ligger først — det er ikke det som mangler.
+    const row = panel.locator(`a[href="/threads/${id}"]`);
+    await expect(row).toHaveCount(1);
+    await expect(panel.locator('a[href^="/threads/"]').first()).toHaveAttribute(
+      'href',
+      `/threads/${id}`,
+    );
+
+    // Dette er påstanden: den er merket som den åpne, nå, ikke etter en reload.
+    await expect(row).toHaveAttribute('aria-current', 'page');
+    await expect(panel.locator('[aria-current="page"]')).toHaveCount(1);
+  });
+
+  /**
    * Den ene tilstanden ingen hadde målt.
    *
    * En påstand om 4,05:1 på option-teksten sto åpen i to dager. Både #2 og

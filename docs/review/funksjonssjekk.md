@@ -14,7 +14,7 @@ i kommentarene, og suiten kjørte i 1280 × 720: `devices['Desktop Chrome']` i
 `projects` bærer sin egen viewport, og en prosjekt-`use` slås over den øverste.
 Funnet av #2 i PR #55. Se «Suiten løy» nedenfor.
 
-**111 tester, alle grønne** mot `main` `2f2e97e`, og grønne i **1440 × 900**,
+**111 tester, alle grønne** mot `main` `3c0b8bd`, og grønne i **1440 × 900**,
 som er første gang det er målt der. Åtte av dem kom med #49 i
 `feilmeldinger.spec.ts` og er #3 sine; fjorten er bølge 3, skrevet mot det som
 ble merget 15.09: filteret som når spørringen,
