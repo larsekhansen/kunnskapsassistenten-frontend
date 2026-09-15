@@ -316,6 +316,15 @@ test.describe('skallet', () => {
     covers(testInfo, 'tastatur: Tab gjennom viewet, synlig fokus og rekkefølge');
     await page.goto(ROUTES.thread.path);
 
+    /*
+     * Vent på den andre hopp-lenka før vandringen. Den tegnes bare når det
+     * finnes et skrivefelt å hoppe til, så en vandring som starter før
+     * skrivefeltet er der finner «Skjul tråder og filter» som steg 2 og blir
+     * rød på rekkefølgen — målt i full suite 15.09, grønn alene rett etterpå.
+     * Fjerde tilfelle av samme race i denne fila og i chat.spec.ts.
+     */
+    await expect(page.getByRole('link', { name: 'Hopp til skrivefeltet' })).toBeAttached();
+
     const steps = await walkWithTab(page);
 
     expect(steps.length, 'Tab skal nå noe i det hele tatt').toBeGreaterThan(3);
