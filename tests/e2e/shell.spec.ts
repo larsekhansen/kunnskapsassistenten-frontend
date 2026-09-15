@@ -127,9 +127,17 @@ test.describe('skallet', () => {
     covers(testInfo, 'hopp-lenke til skrivefeltet');
     await page.goto(ROUTES.thread.path);
 
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
+    /*
+     * Vent på lenka før tastetrykkene. Uten dette kan første Tab lande før
+     * den andre hopp-lenka er tegnet, og testen blir rød uten at noe er galt:
+     * én rød av 116 i anmeldelsen av #59, grønn alene tre ganger etterpå, ved
+     * load average 9,4.
+     */
     const second = page.getByRole('link', { name: 'Hopp til skrivefeltet' });
+    await expect(second).toBeAttached();
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
     await expect(second).toBeFocused();
 
     await page.keyboard.press('Enter');
