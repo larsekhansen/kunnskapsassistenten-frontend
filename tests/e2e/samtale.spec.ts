@@ -283,9 +283,11 @@ test.describe('samtalen', () => {
    * kjeden følge med, ikke bare kildelista: linja over svaret, markørene inne
    * i teksten, tellingen i «Fremgangsmåte» og kortene i kildepanelet.
    *
-   * Fikstureringen gjør regnestykket etterprøvbart: tre årsrapporter fra
-   * Nkom, 2021, 2022 og 2023, med utdrag [1][2] i 2022, [3][4] i 2023 og [5]
-   * i 2021. Velger leseren 2023, står [3] og [4] igjen — og bare de.
+   * Fikstureringen gjør regnestykket etterprøvbart: de to Nkom-dokumentene
+   * korpuset faktisk har — årsrapporten for 2025 med utdrag [1][2] og
+   * tildelingsbrevet for 2026 med [3][4] — og en instruks fra 2024 med [5],
+   * som ikke ligger i Kudos. Velger leseren 2026, står [3] og [4] igjen — og
+   * bare de.
    */
   test('filteret når spørringen: 2 treff i 1 dokument, og markørene følger med', async ({
     page,
@@ -293,11 +295,11 @@ test.describe('samtalen', () => {
     covers(testInfo, 'filter → spørring');
     await page.goto('/');
 
-    await chooseFacetValue(page, 'År', '2023');
+    await chooseFacetValue(page, 'År', '2026');
     await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
     // Svaret sier selv hva det ble spurt mot.
-    await expect(page.getByText(/Avgrenset til: 2023/)).toBeVisible();
+    await expect(page.getByText(/Avgrenset til: 2026/)).toBeVisible();
 
     // «Fremgangsmåte» teller det som faktisk overlevde, ikke det korpuset har.
     await expect(page.getByText('2 treff i 1 dokument')).toBeVisible();
@@ -306,7 +308,7 @@ test.describe('samtalen', () => {
     // er borte fra teksten. En død [1] ville sagt «frontenden er i stykker»
     // i stedet for «det dokumentet er utenfor utvalget ditt».
     const answer = (await page.locator('.ka-answer-card').first().innerText()).replace(/\s+/g, ' ');
-    expect(answer, 'markøren inn i 2023-rapporten står').toContain('[3]');
+    expect(answer, 'markøren inn i tildelingsbrevet står').toContain('[3]');
     expect(answer).toContain('[4]');
     for (const gone of ['[1]', '[2]', '[5]']) {
       expect(answer, `${gone} peker på et dokument utenfor utvalget`).not.toContain(gone);
@@ -315,7 +317,7 @@ test.describe('samtalen', () => {
     // Og kildepanelet viser ett kort, ikke tre.
     await openSources(page, 3);
     await expect(page.locator('.source-document')).toHaveCount(1);
-    await expect(page.locator('.source-document__subtitle')).toHaveText(/2023$/);
+    await expect(page.locator('.source-document__subtitle')).toHaveText(/2026$/);
 
     await expectNoAxeViolations(page, 'et svar med filteret på');
   });

@@ -9,7 +9,9 @@ describe('buildSearchIndex', () => {
 
     expect(index).toHaveLength(5);
     expect(index.every((item) => item.kind === 'excerpt')).toBe(true);
-    expect(index[0]!.id).toBe('chunk-2022-04');
+    // `sourceFrom` numbers an excerpt within its corpus document, so the id
+    // is the document's own uuid and the excerpt's place in it.
+    expect(index[0]!.id).toBe('a1c6feb9-3a47-4889-b049-92adae575b9f-1');
   });
 
   /**
@@ -20,7 +22,7 @@ describe('buildSearchIndex', () => {
    */
   it('gives hits in reading order across the documents', () => {
     const index = buildSearchIndex(nkomSources);
-    const hits = findHits(index, 'risiko');
+    const hits = findHits(index, 'rapport');
     const order = index.map((item) => item.id);
 
     expect(hits.length).toBeGreaterThan(1);
@@ -30,9 +32,16 @@ describe('buildSearchIndex', () => {
 
   it('lets a hit be traced back to the excerpt it came from', () => {
     const index = buildSearchIndex(nkomSources);
-    const hits = findHits(index, 'risiko');
+    const hits = findHits(index, 'rapport');
 
-    expect(hitsFor(hits, 'chunk-2022-04').every((hit) => hit.itemId === 'chunk-2022-04')).toBe(
+    /*
+     * `every` on an empty list is true, so this passed without finding
+     * anything: «risiko» stopped being in the fixture and nothing said so.
+     * The count is what makes the rest of the assertion mean something.
+     */
+    const traced = hitsFor(hits, 'a1c6feb9-3a47-4889-b049-92adae575b9f-1');
+    expect(traced.length).toBeGreaterThan(0);
+    expect(traced.every((hit) => hit.itemId === 'a1c6feb9-3a47-4889-b049-92adae575b9f-1')).toBe(
       true,
     );
     expect(hitsFor(hits, 'finnes-ikke')).toEqual([]);
