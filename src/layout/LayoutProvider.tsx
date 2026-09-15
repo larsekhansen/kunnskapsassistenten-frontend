@@ -13,6 +13,7 @@ import {
   readStoredFilter,
   readStoredLayout,
   withStoredCollapse,
+  withStoredWidths,
   writeStoredFilter,
   writeStoredLayout,
 } from './persistence';
@@ -68,7 +69,7 @@ export function LayoutProvider({
    */
   const [restored] = useState(() => (initialLayout ? undefined : readStoredLayout()));
   const [layout, setLayout] = useState(() =>
-    withStoredCollapse(initialLayout ?? defaultLayout, restored),
+    withStoredWidths(withStoredCollapse(initialLayout ?? defaultLayout, restored), restored),
   );
   const narrow = useNarrowViewport();
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | undefined>(undefined);

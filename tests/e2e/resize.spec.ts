@@ -1,0 +1,364 @@
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
+
+/**
+ * The edges between the panels, which the reader can move.
+ *
+ * Lars's vision asks for columns that can be resized in the GUI, and punkt 24
+ * of the brukerreise list calls it essential: the answer and the source it
+ * rests on have to be readable side by side, and 640 px of answer beside
+ * 336 px of excerpt is not always the split a reader wants.
+ *
+ * What is measured here is the product's promise rather than the
+ * implementation: the panel is DRAWN at the width the separator reports, the
+ * keyboard reaches everywhere the pointer does (WCAG 2.5.7), the choice
+ * survives a reload, and nothing the reader can drag produces a horizontal
+ * scrollbar at the three widths the product is used at.
+ *
+ * The numbers are the decision's, written out rather than imported, for the
+ * same reason as in layout.spec.ts: a test that imports the number it checks
+ * agrees with the code even when the code and the decision do not.
+ */
+const NAV_DEFAULT = 400;
+const NAV_MAX = 480;
+const SOURCES_DEFAULT = 432;
+const SOURCES_FLOOR = 336;
+const SOURCES_MAX = 560;
+
+/** Arrow keys move the edge this far; Shift makes it a stride. */
+const STEP = 16;
+const STRIDE = 64;
+
+/** 1536 has room to move an edge; 1440 and 1280 are the other two states. */
+const ROOMY = 1536;
+const HEIGHT = 900;
+
+const WIDTHS = [1280, 1440, 1536];
+
+function separator(page: Page, panel: 'tråder og filter' | 'kilder'): Locator {
+  return page.getByRole('separator', { name: `Endre bredde på ${panel}` });
+}
+
+function panelWidth(page: Page, selector: string): Promise<number> {
+  return page.evaluate(
+    (css) => Math.round(document.querySelector(css)!.getBoundingClientRect().width),
+    selector,
+  );
+}
+
+/**
+ * The drawn width, polled.
+ *
+ * Polled and not read once, because two of the things that change it —
+ * resizing the window, and the layout rule that collapses a sidebar — reach
+ * the page as an event React answers on its next render. A single read is a
+ * race, and it is the flaky kind: it passes on a fast machine.
+ */
+async function expectPanelWidth(page: Page, selector: string, expected: number, where: string) {
+  await expect
+    .poll(() => panelWidth(page, selector), { message: `bredden på ${where}` })
+    .toBe(expected);
+}
+
+/**
+ * Tab until the separator has focus.
+ *
+ * `focus()` would be quicker and would prove less: Chromium only paints
+ * `:focus-visible` when the focus came from the keyboard, so a programmatic
+ * focus shows no ring — and the ring is what this is about. It also measures
+ * the thing WCAG 2.1.1 actually asks: that the edge can be REACHED from the
+ * keyboard, not only used once it has focus.
+ */
+async function tabTo(page: Page, handle: Locator, limit = 60): Promise<void> {
+  for (let step = 0; step < limit; step += 1) {
+    await page.keyboard.press('Tab');
+    if (await handle.evaluate((element) => element === document.activeElement)) return;
+  }
+  throw new Error('skillet ble aldri nådd med Tab');
+}
+
+/** Opens the sources panel the way a user does, with its own button. */
+async function showSources(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Vis kilder' }).click();
+  await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
+}
+
+/** Drags an edge by `by` CSS pixels along the row. */
+async function drag(page: Page, handle: Locator, by: number): Promise<void> {
+  const box = (await handle.boundingBox())!;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width / 2, y);
+  await page.mouse.down();
+  // Two moves, not one: a single jump from press to release is a gesture no
+  // hand makes, and it would pass over an implementation that only listens
+  // while the pointer is already moving.
+  await page.mouse.move(box.x + box.width / 2 + by / 2, y);
+  await page.mouse.move(box.x + box.width / 2 + by, y);
+  await page.mouse.up();
+}
+
+test.describe('panelbredder', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: ROOMY, height: HEIGHT });
+  });
+
+  test('musa drar navigasjonspanelet bredere, og panelet tegnes der', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'panelbredde: dra med mus');
+    await page.goto('/');
+
+    const handle = separator(page, 'tråder og filter');
+    expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT);
+
+    await drag(page, handle, 60);
+
+    // The drawn width is the assertion, not the stored one: a model that
+    // moved while the panel stood still is the bug this is here to catch.
+    await expectPanelWidth(
+      page,
+      '.primary-sidebar',
+      NAV_DEFAULT + 60,
+      'navigasjonspanelet etter dragingen',
+    );
+    await expect(handle).toHaveAttribute('aria-valuenow', String(NAV_DEFAULT + 60));
+  });
+
+  test('musa drar kildepanelet, som ligger på den andre sida av hovedkolonnen', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'panelbredde: dra med mus');
+    await page.goto('/');
+    await showSources(page);
+
+    const handle = separator(page, 'kilder');
+    expect(await panelWidth(page, '.secondary-sidebar')).toBe(SOURCES_DEFAULT);
+
+    // Toward the inline end, which for this panel means narrower: the edge
+    // follows the hand, and the panel is on the other side of the edge.
+    await drag(page, handle, 40);
+
+    expect(await panelWidth(page, '.secondary-sidebar')).toBe(SOURCES_DEFAULT - 40);
+  });
+
+  test('piltastene gjør det samme som musa, 16 px og 64 med Shift', async ({ page }, testInfo) => {
+    covers(testInfo, 'panelbredde: tastatur er likeverdig');
+    await page.goto('/');
+
+    const handle = separator(page, 'tråder og filter');
+    await handle.focus();
+    await expect(handle).toBeFocused();
+
+    await page.keyboard.press('ArrowRight');
+    expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT + STEP);
+
+    await page.keyboard.press('Shift+ArrowRight');
+    expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT + STEP + STRIDE);
+
+    await page.keyboard.press('Shift+ArrowLeft');
+    await page.keyboard.press('ArrowLeft');
+    expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT);
+  });
+
+  test('Home og End går til det smaleste og det bredeste panelet kan være', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'panelbredde: tastatur er likeverdig');
+    await page.goto('/');
+    await showSources(page);
+
+    const handle = separator(page, 'kilder');
+    await handle.focus();
+
+    await page.keyboard.press('Home');
+    expect(await panelWidth(page, '.secondary-sidebar')).toBe(SOURCES_FLOOR);
+
+    await page.keyboard.press('End');
+    // 1536 − 400 (navigasjonspanelet) − 64 (to gap) − 640 (gulvet til
+    // hovedkolonnen) = 432, som er under taket på 560. Det trangeste av de to
+    // vinner, og det er vinduet.
+    await expectPanelWidth(page, '.secondary-sidebar', SOURCES_DEFAULT, 'kildepanelet på End');
+    expect(Number(await handle.getAttribute('aria-valuenow'))).toBeLessThanOrEqual(SOURCES_MAX);
+  });
+
+  test('Enter og dobbeltklikk setter bredden tilbake til standard', async ({ page }, testInfo) => {
+    covers(testInfo, 'panelbredde: tilbakestilling');
+    await page.goto('/');
+
+    const handle = separator(page, 'tråder og filter');
+    await handle.focus();
+    await page.keyboard.press('Shift+ArrowRight');
+    expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT + STRIDE);
+
+    await page.keyboard.press('Enter');
+    expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT);
+
+    await drag(page, handle, 50);
+    expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT + 50);
+
+    await handle.dblclick();
+    expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT);
+  });
+
+  test('bredden overlever at sida lastes på nytt, og tilbakestilling glemmer den', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'panelbredde: huskes i ka.layout.v1');
+    await page.goto('/');
+
+    const handle = separator(page, 'tråder og filter');
+    await handle.focus();
+    await page.keyboard.press('Shift+ArrowRight');
+    expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT + STRIDE);
+
+    await page.reload();
+    expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT + STRIDE);
+
+    // Tilbakestilling fjerner den lagrede bredden, den skriver ikke standarden
+    // ned en gang til.
+    await separator(page, 'tråder og filter').focus();
+    await page.keyboard.press('Enter');
+    const stored = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('ka.layout.v1') ?? '{}'),
+    );
+    expect(stored.widths).toEqual({});
+
+    await page.reload();
+    expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT);
+  });
+
+  test('taket er vinduets, ikke bare modellens', async ({ page }, testInfo) => {
+    covers(testInfo, 'panelbredde: grensene holder');
+    await page.setViewportSize({ width: 1920, height: HEIGHT });
+    await page.goto('/');
+
+    const handle = separator(page, 'tråder og filter');
+    await handle.focus();
+    await page.keyboard.press('End');
+
+    // 1920 har rikelig plass, så modellens tak på 480 er det trangeste.
+    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'navigasjonspanelet ved 1920');
+
+    // Ved 1440 med begge sidekolonner åpne står alt på gulvet sitt, og da er
+    // det ingenting å dra i. Den lagrede 480-en står igjen i modellen og skal
+    // verken tegnes eller meldes.
+    await showSources(page);
+    await page.setViewportSize({ width: 1440, height: HEIGHT });
+
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, 'navigasjonspanelet ved 1440');
+    await expectPanelWidth(page, '.secondary-sidebar', SOURCES_FLOOR, 'kildepanelet ved 1440');
+    // aria-valuenow er det eneste som sier hvor kanten står til en som ikke
+    // ser den. En verdi på 480 over et panel som tegnes på 400 er en løgn
+    // fortalt til nettopp den leseren.
+    await expect(separator(page, 'tråder og filter')).toHaveAttribute(
+      'aria-valuenow',
+      String(NAV_DEFAULT),
+    );
+  });
+
+  test('en kollapset sidekolonne har ingen skille å dra i', async ({ page }, testInfo) => {
+    covers(testInfo, 'panelbredde: ett skille per åpen sidekolonne');
+    await page.goto('/');
+
+    // Kildepanelet er kollapset som standard: en rail er én knapp bred og har
+    // ingen bredde å endre, så et tab-stopp der er et tab-stopp i veien.
+    await expect(separator(page, 'kilder')).toHaveCount(0);
+    await expect(separator(page, 'tråder og filter')).toHaveCount(1);
+
+    await page.getByRole('button', { name: 'Skjul tråder og filter' }).click();
+    await expect(separator(page, 'tråder og filter')).toHaveCount(0);
+  });
+
+  for (const width of WIDTHS) {
+    test(`ingen vannrett rulling ved ${width} uansett hva brukeren har dratt`, async ({
+      page,
+    }, testInfo) => {
+      covers(testInfo, 'panelbredde: ingen vannrett rulling');
+      await page.setViewportSize({ width, height: HEIGHT });
+      await page.goto('/');
+
+      // Begge ytterpunkter, og med kildepanelet både åpent og kollapset: det
+      // er kombinasjonen av en dratt kolonne og en kolonne som åpner seg som
+      // er den trange.
+      //
+      // Hvilke skiller som finnes, avhenger av tilstanden — under 1440 er
+      // bare én sidekolonne åpen om gangen, så navigasjonspanelets skille er
+      // borte når kildepanelet åpnes. Derfor dras de som er der, ikke et
+      // skille testen har bestemt seg for på forhånd.
+      for (const sources of ['collapsed', 'open'] as const) {
+        if (sources === 'open') await showSources(page);
+
+        for (const key of ['End', 'Home'] as const) {
+          const handles = page.getByRole('separator');
+          const count = await handles.count();
+          expect(count, `skiller ved ${width}, ${sources}`).toBeGreaterThan(0);
+
+          for (let index = 0; index < count; index += 1) {
+            await handles.nth(index).focus();
+            await page.keyboard.press(key);
+          }
+
+          await expect
+            .poll(
+              () =>
+                page.evaluate(() => ({
+                  document: document.documentElement.scrollWidth,
+                  window: window.innerWidth,
+                  client: document.documentElement.clientWidth,
+                })),
+              { message: `plassen ved ${width}, ${sources}, ${key}` },
+            )
+            .toEqual({ document: width, window: width, client: width });
+        }
+      }
+    });
+  }
+
+  test('skillet har navn, fokusring og null axe-brudd i lys og mørk', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'panelbredde: tilgjengelig i begge moduser');
+    await page.goto('/');
+    await showSources(page);
+
+    for (const scheme of ['light', 'dark'] as const) {
+      await setColorScheme(page, scheme);
+
+      const handle = separator(page, 'tråder og filter');
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+      await tabTo(page, handle);
+
+      // Fokusringen er Designsystemets, gjennom `ds-focus`. Uten den er
+      // skillet et tastaturstopp ingen ser hvor er (WCAG 2.4.7).
+      const ring = await handle.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { outline: style.outlineStyle, shadow: style.boxShadow };
+      });
+      expect(ring.outline, `fokusring i ${scheme}`).not.toBe('none');
+      expect(ring.shadow, `fokusring i ${scheme}`).not.toBe('none');
+
+      // Gripeflata, pekeren og fingeren. `touch-action: none` er det ene som
+      // kan ryke uten at noe annet merker det: uten den tar nettleseren
+      // bevegelsen som en rulling, og kanten står stille på berøring mens
+      // musa fortsatt virker.
+      const grip = await handle.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          width: Math.round(element.getBoundingClientRect().width),
+          cursor: style.cursor,
+          touchAction: style.touchAction,
+        };
+      });
+      expect(grip, `gripeflata i ${scheme}`).toEqual({
+        width: 8,
+        cursor: 'col-resize',
+        touchAction: 'none',
+      });
+
+      await expectNoAxeViolations(page, `skillene i ${scheme === 'light' ? 'lys' : 'mørk'} modus`);
+    }
+
+    await setColorScheme(page, 'light');
+    await saveScreenshot(page, 'panelbredde-skille-lys');
+  });
+});
