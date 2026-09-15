@@ -91,6 +91,99 @@ test.describe('kildepanelet', () => {
     await expect(excerpt).toBeFocused();
   });
 
+  /**
+   * Punkt 4 i brukerblikket: å komme TIL et utdrag er ett klikk, å komme
+   * tilbake var åtte Shift+Tab som endte på oppfølgingschipene, og Escape
+   * gjorde ingenting.
+   *
+   * To veier, fordi de leses av to slags lesere: Escape for den som kan den,
+   * og en synlig kontroll sist i sitatet for alle andre. Begge måles på hvor
+   * fokus havner — ikke på at knappen finnes, for en knapp som ikke flytter
+   * fokus er ingen vei tilbake.
+   */
+  test('utdraget markøren sendte deg til har to veier tilbake til svaret', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'vei tilbake fra utdrag til svar');
+
+    await openSources(page, 2);
+    const excerpt = page.locator('#excerpt-2');
+    await expect(excerpt).toBeFocused();
+
+    // Escape, fra inne i utdraget.
+    await page.keyboard.press('Escape');
+    await expect(citation(page, 2), 'Escape setter fokus på markøren').toBeFocused();
+
+    // Og knappen, som er der for den som ikke vet om Escape.
+    await citation(page, 2).click();
+    await expect(excerpt).toBeFocused();
+    const back = excerpt.getByRole('button', { name: 'Tilbake til svaret' });
+    await expect(back).toBeVisible();
+    await back.click();
+    await expect(citation(page, 2), '«Tilbake til svaret» setter fokus på markøren').toBeFocused();
+
+    // Et utdrag ingen ble sendt til, har ingen vei tilbake: en kontroll som
+    // fører til et sted du aldri kom fra gjør ingenting.
+    const other = page.locator('#excerpt-1');
+    await other.locator('summary').click();
+    await expect(other.getByRole('button', { name: 'Tilbake til svaret' })).toHaveCount(0);
+
+    await expectNoAxeViolations(page, 'et åpnet utdrag med vei tilbake');
+  });
+
+  /**
+   * Punkt 5: hvert svar nummererer utdragene sine fra 1, så `[2]` i første
+   * svar og `[2]` i andre peker på hver sin ting. Ett flatt kildesett gjorde
+   * at markøren i det eldste svaret åpnet det nyeste svarets utdrag to — det
+   * så riktig ut og var det ikke.
+   *
+   * Kjeden er tre PR-er lang og testes her fra enden: #36 bygde panelet, #39
+   * la røret gjennom skallet, #42 kalte det fra chat-viewet og #44 sørget for
+   * at båndet blir igjen i svaret det hører til. Det er den siste biten som
+   * er lettest å miste igjen, så den måles eksplisitt.
+   */
+  test('to svar har hvert sitt kildesett, og markøren blir i sitt', async ({ page }, testInfo) => {
+    covers(testInfo, 'kilder per svar');
+
+    // `beforeEach` har stilt ett spørsmål; dette er det andre, i samme samtale.
+    await ask(page, 'Hva mer sier rapporten?');
+    await expect(page.locator('.ka-message--assistant')).toHaveCount(2);
+
+    // Markøren i det FØRSTE svaret, ikke det nyeste.
+    await page
+      .locator('.ka-message--assistant')
+      .first()
+      .locator('a[href="#excerpt-1"]')
+      .first()
+      .click();
+    await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
+
+    const teller = page.locator('.sources-answer-switcher__count');
+    await expect(teller, 'panelet sier hvilket svar kildene hører til').toHaveText(
+      'Kilder til svar 1 av 2',
+    );
+    await expect(page.locator('#excerpt-1')).toBeFocused();
+    await expect(page.locator('.source-excerpt[data-active="true"]')).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Tilbake til svaret' })).toHaveCount(1);
+
+    // Steg til det andre svaret: båndet og veien tilbake hører til svaret
+    // leseren ble sendt til, og blir igjen der.
+    await page.getByRole('button', { name: 'Neste svar' }).click();
+    await expect(teller).toHaveText('Kilder til svar 2 av 2');
+    await expect(
+      page.locator('.source-excerpt[data-active="true"]'),
+      'ingen ble sendt til dette settet',
+    ).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Tilbake til svaret' })).toHaveCount(0);
+
+    // Og tilbake igjen: leseren BLE sendt dit, så begge deler kommer tilbake.
+    await page.getByRole('button', { name: 'Forrige svar' }).click();
+    await expect(teller).toHaveText('Kilder til svar 1 av 2');
+    await expect(page.locator('.source-excerpt[data-active="true"]')).toHaveCount(1);
+
+    await expectNoAxeViolations(page, 'kildepanelet med to svar');
+  });
+
   test('utdragene er gruppert per dokument og nummerert mot markørene', async ({
     page,
   }, testInfo) => {

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
-import { expectEveryStepReachable, walkWithTab } from './helpers';
+import { chooseFacetValue, expectEveryStepReachable, walkWithTab } from './helpers';
 
 /**
  * The shell: the three slots, the routes, the skip link and dark mode.
@@ -115,6 +115,27 @@ test.describe('skallet', () => {
     expect(inNav, 'hoppet skal ikke lande i navigasjonspanelet').toBe(false);
   });
 
+  /**
+   * Hopp-lenke nummer to. «Hopp til hovedinnhold» lander øverst i svaret;
+   * skrivefeltet står nederst i det og var tabbstopp 22 — for den handlingen
+   * en leser gjør oftest (reise 7 og 15, punkt 8 på lista).
+   *
+   * Rekkefølgen er låst i Tab-gjennomgangen under. Dette er den andre
+   * halvdelen: at lenka faktisk gjør det den heter.
+   */
+  test('hopp-lenke nummer to setter skrivemerket i feltet', async ({ page }, testInfo) => {
+    covers(testInfo, 'hopp-lenke til skrivefeltet');
+    await page.goto(ROUTES.thread.path);
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    const second = page.getByRole('link', { name: 'Hopp til skrivefeltet' });
+    await expect(second).toBeFocused();
+
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.ka-composer__field textarea')).toBeFocused();
+  });
+
   test('panelene kan skjules og vises igjen, og knappen sier hvilken tilstand den er i', async ({
     page,
   }, testInfo) => {
@@ -146,6 +167,89 @@ test.describe('skallet', () => {
     );
 
     await expectNoAxeViolations(page, 'skallet etter skjul og vis');
+  });
+
+  /**
+   * Reise 14: `/tull` ga en HELT tom side — ingen `main`, ingen overskrift,
+   * ingen hopp-lenke — fordi `Routes` tegner null når ingenting treffer.
+   *
+   * Sidekolonnene blir stående med vilje: trådlista og filteret er veien til
+   * noe som finnes. Det som ikke skal stå der er en fungerende samtale under
+   * ordene «siden finnes ikke».
+   */
+  test('en adresse som ikke finnes er en side, ikke et tomrom', async ({ page }, testInfo) => {
+    covers(testInfo, 'oppsamlingsrute: /tull');
+    await page.goto('/tull');
+
+    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+    await expect(page.getByRole('heading', { name: 'Siden finnes ikke' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Gå til forsiden' })).toBeVisible();
+
+    // Ikke en samtale: skrivefeltet hører til forsida, ikke til denne.
+    await expect(page.locator('.ka-composer__field textarea')).toHaveCount(0);
+    // Men veien videre står der.
+    await expect(page.getByRole('navigation', { name: 'Tråder og filter' })).toBeVisible();
+
+    await expectNoAxeViolations(page, 'oppsamlingsruta');
+
+    await page.getByRole('link', { name: 'Gå til forsiden' }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator('.ka-composer__field textarea')).toBeVisible();
+  });
+
+  /**
+   * En delt lenke som er blitt gammel tegnet før en fersk, fungerende
+   * forside under en adresse som navnga en samtale. Leseren fikk vite
+   * ingenting.
+   */
+  test('en tråd som ikke finnes sier det, i stedet for å se ut som en ny samtale', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'ukjent tråd-id');
+    await page.goto('/threads/finnes-ikke-her');
+
+    await expect(page.getByRole('heading', { name: 'Fant ikke tråden' })).toBeVisible();
+    await expect(page.locator('.ka-composer__field textarea')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Gå til forsiden' })).toBeVisible();
+
+    await expectNoAxeViolations(page, 'ukjent tråd');
+  });
+
+  /**
+   * Reise 16, punkt 9: å legge sammen et panel, hake av tre filtre og trykke
+   * F5 satte alt tilbake til `defaultLayout`.
+   *
+   * To ting måles hver for seg, fordi de ligger i hver sin nøkkel og ryker av
+   * hver sin grunn: `ka.layout.v1` er formet av plassene, `ka.filter.v1` av
+   * korpuset.
+   */
+  test('panelet og filtervalget står slik leseren forlot dem etter en reload', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'husket tilstand over reload');
+    await page.goto(ROUTES.newConversation.path);
+
+    // Filteret først, mens panelet ennå er åpent.
+    await chooseFacetValue(page, 'Dokumenttyper', 'Årsrapport');
+    await page.getByRole('button', { name: 'Skjul tråder og filter' }).click();
+    await expect(page.getByRole('button', { name: 'Vis tråder og filter' })).toBeVisible();
+
+    await page.reload();
+
+    // Panelet er fortsatt sammenlagt …
+    await expect(page.getByRole('button', { name: 'Vis tråder og filter' })).toBeVisible();
+
+    // … og valget er der når leseren åpner det igjen.
+    await page.getByRole('button', { name: 'Vis tråder og filter' }).click();
+    await expect(page.getByText(/^1 av \d+ valgt$/).first()).toBeVisible();
+
+    // Og ingenting av dette overlever at leseren tømmer lageret sitt: det er
+    // en bekvemmelighet, ikke en tilstand appen er avhengig av.
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Skjul tråder og filter' })).toBeVisible();
+    await expect(page.getByText(/^1 av \d+ valgt$/)).toHaveCount(0);
   });
 
   test('mørk modus byttes uten at sida lastes på nytt', async ({ page }, testInfo) => {

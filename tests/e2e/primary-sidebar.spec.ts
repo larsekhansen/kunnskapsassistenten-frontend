@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { covers, expectNoAxeViolations, setColorScheme } from './a11y';
 import {
+  chooseFacetValue,
   expectEveryStepReachable,
   facetField,
   showFilters,
@@ -146,16 +147,17 @@ test.describe('navigasjonspanelet', () => {
       ),
     );
 
-  /** Picks one value in a facet the way a keyboard user does, and waits for the chip. */
-  async function chooseFacetValue(page: Page, dimension: string, value: string): Promise<void> {
-    const field = facetField(page, dimension);
-    await field.click();
-    await page.keyboard.type(value);
-    // The list filters asynchronously; ArrowDown on a list that has not
-    // caught up lands on whatever option is still first.
-    await expect(page.locator('[role="option"]').filter({ hasText: value }).first()).toBeVisible();
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
+  /**
+   * Picks a value and waits for the chip in that field.
+   *
+   * The interaction itself is `chooseFacetValue` in helpers, shared with the
+   * other specs; the extra wait here is what these tests need and the shared
+   * one cannot give — «1 av N valgt» says a value was picked, the chip says
+   * WHICH field picked it, and that distinction is the point of the two tests
+   * below.
+   */
+  async function pickAndSeeChip(page: Page, dimension: string, value: string): Promise<void> {
+    await chooseFacetValue(page, dimension, value);
     await expect.poll(() => chipTexts(page)).toContain(value);
   }
 
@@ -165,8 +167,8 @@ test.describe('navigasjonspanelet', () => {
     // Two dimensions, not one: a selection kept per field and a selection
     // kept for the panel as a whole fail differently, and one field cannot
     // tell them apart.
-    await chooseFacetValue(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
-    await chooseFacetValue(page, 'Dokumenttyper', 'Årsrapport');
+    await pickAndSeeChip(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
+    await pickAndSeeChip(page, 'Dokumenttyper', 'Årsrapport');
 
     const before = (await chipTexts(page)).sort();
 
@@ -195,7 +197,7 @@ test.describe('navigasjonspanelet', () => {
   }, testInfo) => {
     covers(testInfo, 'filtervalget overlever ruteskifte');
 
-    await chooseFacetValue(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
+    await pickAndSeeChip(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
 
     // A route change is the harder case and the one a user actually does:
     // open a thread from the list, then go back to the filter. The provider
@@ -229,6 +231,80 @@ test.describe('navigasjonspanelet', () => {
     expect(await groups.count()).toBeGreaterThan(3);
 
     await expectNoAxeViolations(page, 'trådlista');
+  });
+
+  /**
+   * Punkt 3 i brukerblikket: «den jeg kjørte før møtet på tirsdag» var
+   * ubesvarlig i en liste der det eneste på skjermen var en tittel.
+   *
+   * Den viktigste påstanden her er ikke at klokka vises, men at den står
+   * UTENFOR lenka. Inni ville tida blitt en del av lenkens tilgjengelige
+   * navn, og hver rad ville hett «NKOM måloppnåelse 14:32» — et navn som
+   * endrer seg mens du ser på det, og som ingen kan be om med stemmen.
+   */
+  test('hver trådrad sier når den sist ble rørt, uten å bli hetende det', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'tidsstempel på trådradene');
+    await showThreads(page);
+
+    const rows = page.locator('.threads-view__item');
+    await expect(rows.first()).toBeVisible();
+    const count = await rows.count();
+    expect(count, 'lista har rader å se på').toBeGreaterThan(0);
+
+    for (let index = 0; index < count; index += 1) {
+      const row = rows.nth(index);
+      const time = row.locator('time');
+      await expect(time, `rad ${index} har et tidsstempel`).toHaveCount(1);
+
+      const { dateTime, title, text, insideLink } = await time.evaluate((element) => ({
+        dateTime: element.getAttribute('datetime') ?? '',
+        title: element.getAttribute('title') ?? '',
+        text: element.textContent?.trim() ?? '',
+        insideLink: element.closest('a') !== null,
+      }));
+
+      expect(insideLink, `rad ${index}: tida står utenfor lenka`).toBe(false);
+      expect(Number.isNaN(Date.parse(dateTime)), `rad ${index}: datetime er lesbar`).toBe(false);
+      expect(title.length, `rad ${index}: title har hele datoen`).toBeGreaterThan(text.length);
+      // Kort, fordi den leses ved siden av en gruppeoverskrift som alt sier
+      // omtrent når. «onsdag» er det lengste formatet.
+      expect(text.length, `rad ${index}: teksten er kort`).toBeLessThanOrEqual(12);
+    }
+
+    // Og navnet på lenka er tittelen, ikke tittelen pluss et klokkeslett.
+    const firstLink = page.locator('.threads-view__item a').first();
+    const name = (await firstLink.textContent())?.trim() ?? '';
+    const firstTime = (await rows.first().locator('time').textContent())?.trim() ?? '';
+    expect(name, 'lenkens navn bærer ikke tidsstempelet').not.toContain(firstTime);
+  });
+
+  /**
+   * Punkt 11: ordet «Kudos» sto ingen steder en førstegangsbruker kunne se
+   * det, og ingenting sa hvor mye det er eller hvilke år det dekker.
+   *
+   * Den andre halvdelen av testen er regelen som er lett å miste: linja
+   * beskriver KORPUSET, ikke utsnittet. Huker leseren av en verdi, skal den
+   * stå helt stille — ellers påstår den at arkivet krympet fordi noen trykket
+   * på en boks.
+   */
+  test('filterpanelet sier hvor svarene kommer fra, og linja står stille', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'korpuslinja under «Filtrering»');
+
+    const corpus = page.locator('.filters-view__corpus');
+    await expect(corpus).toBeVisible();
+    await expect(corpus).toHaveText(/^Dokumenter fra Kudos/);
+    // Tall og årsspenn, hentet fra fasettene og ikke skrevet inn: at det står
+    // et antall og et spenn er påstanden, ikke hvilke.
+    await expect(corpus).toHaveText(/\d[\d\s\u00a0]* dokumenter/);
+    await expect(corpus).toHaveText(/\d{4}(–\d{4})?$/);
+
+    const before = await corpus.textContent();
+    await pickAndSeeChip(page, 'Dokumenttyper', 'Årsrapport');
+    await expect(corpus, 'korpuslinja følger korpuset, ikke utvalget').toHaveText(before ?? '');
   });
 
   test('søk i tråder filtrerer lista og sier hvor mange treff', async ({ page }, testInfo) => {
@@ -271,6 +347,53 @@ test.describe('navigasjonspanelet', () => {
     await expect(panel.locator('[aria-current="page"]')).toHaveCount(1);
     await expect(panel.locator('[aria-current="page"]')).toHaveText('NKOM måloppnåelse');
   });
+
+  /**
+   * Den ene tilstanden ingen hadde målt.
+   *
+   * En påstand om 4,05:1 på option-teksten sto åpen i to dager. Både #2 og
+   * jeg målte den uavhengig og fant 14,11:1 i lys og 12,6:1 i mørk over 275
+   * options — men begge målingene leste `getComputedStyle`, og en framheving
+   * tegnet med et pseudoelement eller en `box-shadow` ville ingen av oss sett.
+   * axe ser den.
+   *
+   * Så: lista åpen, en rad framhevet med tastaturet, axe på hele siden, i
+   * begge moduser. Det er tilstanden en tastaturbruker faktisk står i.
+   */
+  for (const mode of ['light', 'dark'] as const) {
+    test(`en åpen fasettliste med framhevet rad er kontrastsjekket i ${mode}`, async ({
+      page,
+    }, testInfo) => {
+      covers(testInfo, 'kontrast i åpen fasettliste');
+      await setColorScheme(page, mode);
+
+      const field = facetField(page, 'Virksomheter');
+      await field.click();
+      // ArrowDown åpner lista og framhever første rad. Designsystemets
+      // Suggestion holder fokus på inputen og peker med
+      // `aria-activedescendant`, så framhevingen er en tilstand på raden og
+      // ikke en fokusring.
+      await page.keyboard.press('ArrowDown');
+      // `:visible`, fordi alle tre listene har options i DOM-en hele tiden og
+      // bare den åpne er synlig.
+      await expect(page.locator('[role="option"]:visible').first()).toBeVisible();
+
+      await expectNoAxeViolations(page, `åpen fasettliste med framhevet rad i ${mode}`);
+
+      // Og en liste som er filtrert av det leseren har skrevet, i et annet
+      // felt: rekkefølgen er skriv først, framhev etterpå, fordi ArrowDown
+      // skriver den framhevede verdien inn i feltet og et tastetrykk etter
+      // den ville lagt seg bakerst.
+      const typed = facetField(page, 'Dokumenttyper');
+      await typed.click();
+      await page.keyboard.type('Årsrapport');
+      await expect(
+        page.locator('[role="option"]').filter({ hasText: 'Årsrapport' }).first(),
+      ).toBeVisible();
+      await page.keyboard.press('ArrowDown');
+      await expectNoAxeViolations(page, `filtrert fasettliste med framhevet rad i ${mode}`);
+    });
+  }
 
   test('Tab gjennom begge visningene: navn og synlig fokusring hele veien', async ({
     page,

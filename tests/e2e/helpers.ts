@@ -43,6 +43,30 @@ export function facetField(page: Page, label: string): Locator {
     );
 }
 
+/**
+ * Picks one value in a facet field, the way a reader does.
+ *
+ * Typing and then ArrowDown, not clicking the option: the list filters
+ * asynchronously, and ArrowDown on a list that has not caught up lands on
+ * whatever option is still first. Waiting for the option to be visible is
+ * what makes the keypress land on the right one.
+ *
+ * It lived in `primary-sidebar.spec.ts` until three specs needed it.
+ */
+export async function chooseFacetValue(
+  page: Page,
+  dimension: string,
+  value: string,
+): Promise<void> {
+  const field = facetField(page, dimension);
+  await field.click();
+  await page.keyboard.type(value);
+  await expect(page.locator('[role="option"]').filter({ hasText: value }).first()).toBeVisible();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(page.getByText(/^1 av \d+ valgt$/).first()).toBeVisible();
+}
+
 export function composer(page: Page): Locator {
   return page.locator('.ka-composer__field textarea');
 }

@@ -1,6 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations } from './a11y';
-import { ask, composer, facetField, showThreads } from './helpers';
+import {
+  ask,
+  chooseFacetValue,
+  citation,
+  composer,
+  facetField,
+  openSources,
+  showThreads,
+} from './helpers';
 
 /**
  * What a conversation does beyond the answer itself: getting an address,
@@ -47,18 +55,67 @@ test.describe('samtalen', () => {
       })
       .toBe(url);
 
-    // What the address does NOT do yet, pinned so the day it changes is
-    // noticed: the thread is minted in the browser because the backend has no
-    // thread API (gap 4 in design/eksisterende/api-for-frontend.md), so it
-    // exists only in this tab. It is not in the thread list, and the copied
-    // link opens an empty front page for anyone who follows it — including
-    // the reader after a reload. See docs/review/e2e-runde2-2026-09-15.md.
+    // Hva lista IKKE gjør, festet med vilje: den hentes én gang når panelet
+    // monteres, så en tråd som blir til etterpå dukker ikke opp av seg selv.
+    // Den ER lagret — testen under viser at den står der etter en reload — så
+    // det som mangler er en oppfriskning, ikke en lagring.
+    //
+    // Og tråden finnes bare i denne fanen: backend har ingen tråd-API
+    // (gap 4 i design/eksisterende/api-for-frontend.md), så den kopierte
+    // lenka fører ingen steder for andre enn leseren selv.
     await showThreads(page);
     const id = url.split('/').pop();
     await expect(
       page.locator(`nav a[href="/threads/${id}"]`),
-      'kjent begrensning: en nettleser-mintet tråd er ikke i lista',
+      'kjent begrensning: trådlista friskes ikke opp når en tråd blir til',
     ).toHaveCount(0);
+  });
+
+  /**
+   * Reise 12 og 14, punkt 16 på lista — den verste turen i appen: still et
+   * spørsmål på `/`, få en adresse, last på nytt, og samtalen er borte mens
+   * adressen fortsatt ser ut som den betyr noe.
+   *
+   * Mocken husker nå turen i `sessionStorage`, fordi backend ikke kan (A6).
+   * Det er en stedfortreder for en server, ikke et arkiv: det lever så lenge
+   * fanen gjør, og testen sier begge deler.
+   */
+  test('en samtale startet på forsida overlever en reload', async ({ page }, testInfo) => {
+    covers(testInfo, 'mocken husker samtalen over reload');
+
+    await page.goto('/');
+    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+    await expect(page).toHaveURL(/\/threads\/[\w-]+$/);
+
+    const url = page.url();
+    const id = url.split('/').pop();
+    // Selve svarteksten, ikke hele meldinga: tenkepanelet sier «Tenkte i 2
+    // sekunder» live og «Tenkte i 4 sekunder» etter en reload, fordi det ene
+    // er målt klokketid og det andre er summen av stegenes egne tall. Det er
+    // verdt å vite, og det er ikke det denne testen handler om.
+    const before = await page.locator('.ka-answer-card .markdown').innerText();
+
+    await page.reload();
+
+    // Samtalen er tilbake, med svaret og kildene sine.
+    await expect(page.locator('.ka-message--assistant')).toHaveCount(1);
+    await expect.poll(() => page.locator('.ka-answer-card .markdown').innerText()).toBe(before);
+    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible();
+    // Kildene også: markørene peker fortsatt på utdrag som finnes.
+    await expect(citation(page, 1)).toBeVisible();
+
+    // Og nå står den i lista, merket som den åpne.
+    await showThreads(page);
+    const row = page.locator(`nav a[href="/threads/${id}"]`);
+    await expect(row).toHaveCount(1);
+    await expect(row).toHaveAttribute('aria-current', 'page');
+
+    // Men bare i denne fanen. Tømmes lageret, er den borte igjen — det er
+    // det `sessionStorage` betyr, og det er den ærlige levetiden for noe som
+    // finnes fordi den ekte lagringen mangler.
+    await page.evaluate(() => sessionStorage.clear());
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Fant ikke tråden' })).toBeVisible();
   });
 
   test('en avklaring er et spørsmål tilbake, ikke et svar', async ({ page }, testInfo) => {
@@ -183,6 +240,96 @@ test.describe('samtalen', () => {
    * exists, and the one line that joins them is missing. See
    * `docs/review/e2e-runde2-2026-09-15.md`.
    */
+  /**
+   * Reise 8: det første en ny bruker møter er en kontroll uten effekt.
+   *
+   * Backend filtrerer ikke på dokumenter ennå (API-bestilling A2), så mocken
+   * er det eneste stedet valget kan få en virkning å se på — og da må hele
+   * kjeden følge med, ikke bare kildelista: linja over svaret, markørene inne
+   * i teksten, tellingen i «Fremgangsmåte» og kortene i kildepanelet.
+   *
+   * Fikstureringen gjør regnestykket etterprøvbart: tre årsrapporter fra
+   * Nkom, 2021, 2022 og 2023, med utdrag [1][2] i 2022, [3][4] i 2023 og [5]
+   * i 2021. Velger leseren 2023, står [3] og [4] igjen — og bare de.
+   */
+  test('filteret når spørringen: 2 treff i 1 dokument, og markørene følger med', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'filter → spørring');
+    await page.goto('/');
+
+    await chooseFacetValue(page, 'År', '2023');
+    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+
+    // Svaret sier selv hva det ble spurt mot.
+    await expect(page.getByText(/Avgrenset til: 2023/)).toBeVisible();
+
+    // «Fremgangsmåte» teller det som faktisk overlevde, ikke det korpuset har.
+    await expect(page.getByText('2 treff i 1 dokument')).toBeVisible();
+
+    // Markørene: de to som peker inn i 2023-rapporten står, og de tre andre
+    // er borte fra teksten. En død [1] ville sagt «frontenden er i stykker»
+    // i stedet for «det dokumentet er utenfor utvalget ditt».
+    const answer = (await page.locator('.ka-answer-card').first().innerText()).replace(/\s+/g, ' ');
+    expect(answer, 'markøren inn i 2023-rapporten står').toContain('[3]');
+    expect(answer).toContain('[4]');
+    for (const gone of ['[1]', '[2]', '[5]']) {
+      expect(answer, `${gone} peker på et dokument utenfor utvalget`).not.toContain(gone);
+    }
+
+    // Og kildepanelet viser ett kort, ikke tre.
+    await openSources(page, 3);
+    await expect(page.locator('.source-document')).toHaveCount(1);
+    await expect(page.locator('.source-document__subtitle')).toHaveText(/2023$/);
+
+    await expectNoAxeViolations(page, 'et svar med filteret på');
+  });
+
+  /**
+   * Punkt 10 i brukerblikket: et avbrutt svar var en blindvei. Kopier-knappen
+   * og trådlenka forsvinner — det er riktig, det er ingenting å kopiere — men
+   * det som sto igjen var ingenting i det hele tatt.
+   *
+   * Testen måler begge halvdelene: at veien videre finnes, og at den virker.
+   * Det siste er det som betyr noe; en knapp som bare står der er ikke en vei.
+   */
+  test('et avbrutt svar har en vei videre, og «Generer på nytt» går helt i mål', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'avbrutt svar: «Generer på nytt»');
+    await page.goto('/');
+
+    await composer(page).click();
+    await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
+    await page.keyboard.press('Enter');
+
+    const stop = page.getByRole('button', { name: 'Avbryt genereringen' });
+    await expect(stop).toBeVisible();
+    // Vent til det står tekst der, så «avbrutt» betyr avbrutt midt i noe.
+    await expect(page.locator('.ka-answer-card')).toBeVisible();
+    await page.waitForTimeout(2500);
+    await stop.click();
+
+    // Halve svaret står igjen, og det sier hvorfor kildene aldri kom.
+    await expect(
+      page.getByText('Svaret ble avbrutt, så kildene bak det kom aldri fram.'),
+    ).toBeVisible();
+    const again = page.getByRole('button', { name: 'Generer på nytt' });
+    await expect(again).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toHaveCount(0);
+
+    await expectNoAxeViolations(page, 'et avbrutt svar');
+
+    await again.click();
+
+    // Og det nye svaret er et helt svar: kopier-knappen er tilbake, og
+    // kildene med den.
+    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('button', { name: 'Generer på nytt' })).toHaveCount(0);
+  });
+
   test('å velge en virksomhet endrer tellerne på år, men ikke på seg selv', async ({
     page,
   }, testInfo) => {
