@@ -1,0 +1,174 @@
+import { describe, expect, it } from 'vitest';
+import { corpusDocument } from '../corpus';
+import { citationsFor, scriptedConversations, scriptedFor } from './index';
+
+/**
+ * The claim these tests exist to keep true: **every excerpt is a real quote
+ * from a real document.**
+ *
+ * The answers and the thinking steps are ours and cannot be checked by a
+ * machine. The excerpts can, and they are the part a user reads as «this is
+ * what the document says». A paraphrase that drifted into one of them would
+ * be the mock telling a lie about a document anybody can open.
+ */
+describe('scriptede samtaler', () => {
+  it('har ti eller flere, som oppdraget ber om', () => {
+    expect(scriptedConversations.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('siterer ordrett fra sammendraget i korpuset', () => {
+    for (const conversation of scriptedConversations) {
+      for (const document of conversation.documents) {
+        const source = corpusDocument(document.id);
+        expect(source, `${conversation.id}: ukjent dokument ${document.id}`).toBeDefined();
+
+        for (const excerpt of document.excerpts) {
+          expect(
+            source!.summary.includes(excerpt.text),
+            `${conversation.id}: utdraget står ikke i sammendraget til «${source!.title}»:\n  ${excerpt.text}`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('henter tittel, type, virksomhet, år og lenke fra korpuset', () => {
+    for (const conversation of scriptedConversations) {
+      for (const document of conversation.documents) {
+        const source = corpusDocument(document.id)!;
+        expect(document.title).toBe(source.title);
+        expect(document.documentType).toBe(source.type);
+        expect(document.organisation).toBe(source.organisation);
+        expect(document.year).toBe(source.year);
+        expect(document.url).toBe(source.url);
+      }
+    }
+  });
+
+  it('lar «Les dokumentet på Kudos» virke for hvert utdrag', () => {
+    for (const conversation of scriptedConversations) {
+      for (const document of conversation.documents) {
+        for (const excerpt of document.excerpts) {
+          expect(excerpt.kudosUrl).toMatch(/^https:\/\/kudos\.dfo\.no\/dokument\//);
+        }
+      }
+    }
+  });
+
+  it('har markører i svaret som peker på utdrag som finnes', () => {
+    for (const conversation of scriptedConversations) {
+      const numbers = new Set(
+        conversation.documents.flatMap((document) =>
+          document.excerpts
+            .map((excerpt) => excerpt.citationNumber)
+            .filter((n): n is number => n !== undefined),
+        ),
+      );
+
+      const inAnswer = [...conversation.answer.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]));
+      for (const n of inAnswer) {
+        expect(numbers.has(n), `${conversation.id}: svaret siterer [${n}], som ikke finnes`).toBe(
+          true,
+        );
+      }
+
+      // And the other way: a numbered excerpt nobody cites is a number that
+      // leads nowhere. Uncited excerpts are fine, but they carry no number.
+      for (const n of numbers) {
+        expect(inAnswer.includes(n), `${conversation.id}: utdrag [${n}] siteres aldri`).toBe(true);
+      }
+    }
+  });
+
+  it('nummererer markørene sammenhengende fra 1', () => {
+    for (const conversation of scriptedConversations) {
+      const numbers = citationsFor(conversation).map((citation) => citation.number);
+      expect(numbers, `${conversation.id}`).toEqual(
+        Array.from({ length: numbers.length }, (_, index) => index + 1),
+      );
+    }
+  });
+
+  it('dekker tilfellene oppdraget krever', () => {
+    const withOutcome = scriptedConversations.filter((c) => c.outcome === 'needs-clarification');
+    expect(withOutcome, 'én med avklaring').toHaveLength(1);
+
+    const failing = scriptedConversations.filter((c) => c.failure);
+    expect(failing.length, 'én som feiler').toBeGreaterThanOrEqual(1);
+
+    const single = scriptedConversations.filter((c) => c.documents.length === 1);
+    expect(single.length, 'én med bare ett dokument').toBeGreaterThanOrEqual(1);
+
+    const wide = scriptedConversations.filter(
+      (c) =>
+        c.documents.length >= 6 &&
+        c.documents.reduce((total, d) => total + d.excerpts.length, 0) >= 12,
+    );
+    expect(wide.length, 'én med 12+ utdrag på tvers av 6 dokumenter').toBeGreaterThanOrEqual(1);
+
+    const comparison = scriptedConversations.filter((c) => {
+      const types = new Set(c.documents.map((d) => d.documentType));
+      return types.has('Tildelingsbrev') && types.has('Årsrapport');
+    });
+    expect(
+      comparison.length,
+      'én som sammenlikner tildelingsbrev og årsrapport',
+    ).toBeGreaterThanOrEqual(1);
+
+    const longKeywords = scriptedConversations.filter((c) =>
+      c.retrieval.keywords.some((keyword) => keyword.length > 30),
+    );
+    expect(longKeywords.length, 'én med lange nøkkelord').toBeGreaterThanOrEqual(1);
+
+    const withTable = scriptedConversations.filter((c) => c.answer.includes('| --- |'));
+    expect(withTable.length, 'én med tabell').toBeGreaterThanOrEqual(1);
+  });
+
+  it('har tre til seks tenkesteg per samtale, på norsk og i jeg-form', () => {
+    for (const conversation of scriptedConversations) {
+      expect(conversation.thinkingSteps.length, conversation.id).toBeGreaterThanOrEqual(2);
+      expect(conversation.thinkingSteps.length, conversation.id).toBeLessThanOrEqual(6);
+      for (const step of conversation.thinkingSteps) {
+        expect(step.label, `${conversation.id}/${step.id}`).toMatch(
+          /^Jeg |^Årene |^Målene |^Bare /,
+        );
+      }
+    }
+  });
+
+  it('teller flere treff enn siterte utdrag, som et ekte søk gjør', () => {
+    for (const conversation of scriptedConversations) {
+      const excerpts = conversation.documents.reduce((n, d) => n + d.excerpts.length, 0);
+      expect(
+        conversation.retrieval.hitCount,
+        `${conversation.id}: «n treff» skal være minst antall utdrag`,
+      ).toBeGreaterThanOrEqual(excerpts);
+      expect(conversation.retrieval.documentCount).toBe(conversation.documents.length);
+    }
+  });
+});
+
+describe('scriptedFor', () => {
+  it('finner samtalen for spørsmålet', () => {
+    const first = scriptedConversations[0]!;
+    expect(scriptedFor(first.question)?.id).toBe(first.id);
+  });
+
+  it('bryr seg ikke om tegnsetting eller store bokstaver', () => {
+    const first = scriptedConversations[0]!;
+    expect(scriptedFor(first.question.toLocaleUpperCase('nb-NO'))?.id).toBe(first.id);
+    expect(scriptedFor(first.question.replace(/[?,]/g, ''))?.id).toBe(first.id);
+  });
+
+  it('finner samtalen når brukeren har kuttet slutten av forslaget', () => {
+    // Kickstarterne fyller feltet uten å sende (svar 40), så spørsmålet som
+    // kommer er ofte redigert.
+    const first = scriptedConversations[0]!;
+    expect(scriptedFor(first.question.slice(0, 40))?.id).toBe(first.id);
+  });
+
+  it('svarer ingenting på et spørsmål som ikke er scriptet', () => {
+    expect(scriptedFor('Hva er klokka?')).toBeUndefined();
+    expect(scriptedFor('')).toBeUndefined();
+  });
+});

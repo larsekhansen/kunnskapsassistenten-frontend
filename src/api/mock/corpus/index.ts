@@ -36,7 +36,22 @@ type Corpus = {
 
 const loaded = corpus as Corpus;
 
-export const corpusDocuments: CorpusDocument[] = loaded.documents;
+/**
+ * Summaries with their whitespace tidied, and nothing else changed.
+ *
+ * Kudos publishes them with newlines and long runs of spaces in the middle of
+ * sentences — the API returns the abstract as it sits in their database. The
+ * words are untouched; only the gaps between them are collapsed, so a quote
+ * taken from a summary matches the summary it was taken from.
+ *
+ * It happens here rather than in the fetch script so the committed JSON stays
+ * exactly what Kudos served. What we display is our business; what we fetched
+ * is the record.
+ */
+export const corpusDocuments: CorpusDocument[] = loaded.documents.map((document) => ({
+  ...document,
+  summary: document.summary.replace(/\s+/g, ' ').trim(),
+}));
 
 /** Where the corpus came from and when, for the README and for the console. */
 export const corpusSource = { source: loaded.source, fetched: loaded.fetched };

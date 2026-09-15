@@ -7,6 +7,7 @@ import {
   type ThreadDetail,
 } from '../../model';
 import { facetsFor } from './corpus/facets';
+import { citationsFor, scriptedFor } from './conversations';
 import type { AskParams, ChatClient } from '../chatClient';
 import {
   findThread,
@@ -205,29 +206,60 @@ export class MockChatClient implements ChatClient {
         return;
       }
 
-      for (const step of nkomThinkingSteps) {
+      /*
+       * A cached conversation, when the question is one of the ten. Lars
+       * asked for «noen nye søk, cachede, så jeg kan teste selv»; see
+       * conversations/scripts.ts. Everything below it — steps, answer,
+       * sources, done — is the same sequence the default answer uses, so a
+       * scripted turn and an unscripted one are indistinguishable to a view.
+       */
+      const scripted = scriptedFor(params.query);
+
+      const steps = scripted?.thinkingSteps ?? nkomThinkingSteps;
+      for (const step of steps) {
         await wait(this.#delays.thinkingStepMs, signal);
         yield { type: 'thinking-step', step };
       }
 
+      // A question that fails does it after the thinking steps, the way the
+      // real one does: an answer was under way and then it was not.
+      if (scripted?.failure) {
+        await wait(this.#delays.firstTokenMs, signal);
+        yield { type: 'error', error: scripted.failure };
+        return;
+      }
+
       await wait(this.#delays.firstTokenMs, signal);
-      for (const text of tokenize(mockAnswerMarkdown)) {
+      for (const text of tokenize(scripted?.answer ?? mockAnswerMarkdown)) {
         await wait(this.#delays.tokenMs, signal);
         yield { type: 'token', text };
+      }
+
+      // No sources event for a clarification: nothing was retrieved, and a
+      // question back with sources behind it would be a different thing.
+      if (scripted && scripted.documents.length === 0) {
+        yield {
+          type: 'done',
+          messageId: `msg-${Date.now()}`,
+          conversationId: params.conversationId ?? 'conv-nkom-1',
+          ...(scripted.outcome ? { outcome: scripted.outcome } : {}),
+        };
+        return;
       }
 
       await wait(this.#delays.sourcesMs, signal);
       yield {
         type: 'sources',
-        documents: nkomSources,
-        citations: nkomCitations,
-        retrieval: nkomRetrieval,
+        documents: scripted?.documents ?? nkomSources,
+        citations: scripted ? citationsFor(scripted) : nkomCitations,
+        retrieval: scripted?.retrieval ?? nkomRetrieval,
       };
 
       yield {
         type: 'done',
         messageId: `msg-${Date.now()}`,
         conversationId: params.conversationId ?? 'conv-nkom-1',
+        ...(scripted?.outcome ? { outcome: scripted.outcome } : {}),
       };
     } catch {
       yield {
