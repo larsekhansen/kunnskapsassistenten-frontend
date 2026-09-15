@@ -86,8 +86,6 @@ src/
     matchMedia.ts             matchMedia for jsdom, med bredde testen kan sette
 ```
 
-Rutene er `/` for ny samtale og `/threads/:threadId` for én samtale.
-
 Mappene `src/api/`, `src/model/` og `src/components/` kommer med grunnmuren.
 `src/routes/` er rutesider som monterer views i plassene; `src/views/`
 (`threads/`, `filters/`, `chat/`, `sources/`) er selve viewene, og hver
@@ -328,6 +326,51 @@ hører hjemme.
 - ~~React Router-versjonen.~~ **Avgjort 2026-09-11:** 8.3.1, pinnet uten
   caret, samme versjon som ki.norge.no og Designsystemets egen nettside. Se
   «React Router» under.
+
+## Tråder og adresser
+
+Rutene er `/` for ny samtale og `/threads/:threadId` for én samtale.
+
+**Første spørsmål fra `/` gir samtalen en adresse.** Viewet som eier
+skrivefeltet kaller `useThread().startThread(spørsmålet)`, og
+`ChatSlotView` lager tråden og bytter URL til `/threads/:id`. Uten det
+kopierer «Kopier lenke til tråden» forsiden (C16 i
+`design/funksjonssjekk-v1.md`).
+
+Byttet skjer med `history.replaceState`, **ikke** med ruteren. En ekte
+navigering ville byttet `key` på `ChatSlotView`, montert chatten på nytt og
+tatt svaret som strømmer med seg. Adressen er en lenke til senere, ikke en
+navigering: ingenting på skjermen skal flytte seg. Prisen er at React Router
+tror den står på `/` til neste ekte navigering — alle lenker i appen er
+absolutte, så ingenting løses opp mot den.
+
+**Tittelen er spørsmålet, til backend gir en ekte.** `Thread.title` er
+brukerens eget spørsmål, trimmet, og `titleFromQuestion` sier at det er et
+stedfortredertall. Trådlista bruker det som radtittel; samtalen skal **ikke**
+tegne det, for spørsmålet står allerede på skjermen som brukerens melding, og
+en overskrift som gjentar det satte samme setning på sida to ganger (målt av
+#3, 15.09). Flagget forsvinner av seg selv den dagen backend sender en tittel.
+
+En tråd laget i nettleseren finnes bare i den fana: backend har ikke noe
+tråd-API å lagre den i (gap 4 i `design/eksisterende/api-for-frontend.md`), så
+en ny fane på samme adresse finner den ikke.
+
+## Mock-modus: to spørsmål som gjør noe spesielt
+
+| Spørsmål            | Hva mocken gjør                                              |
+| ------------------- | ------------------------------------------------------------ |
+| `simuler feil`      | Feiler etter første tenkesteg, så feiltilstanden kan testes  |
+| `simuler avklaring` | Svarer med et spørsmål tilbake, status `needs-clarification` |
+
+Begge er eksakte treff på hele spørsmålet, ikke ord inni det: «hva er feil i
+rapporten» er et ekte spørsmål og skal få et ekte svar. De finnes fordi ingen
+av de to tilstandene ellers kan nås fra et bygget bygg, verken av en e2e-test
+eller av en designer, uten en backend som er nede eller en agent som spør
+tilbake.
+
+`needs-clarification` er en **ferdig** tur, ikke en feilet: innholdet er et
+ekte spørsmål til brukeren. Backend melder den i `_meta.status`, og
+`StreamEvent`s `done` bærer den videre som `outcome`.
 
 ## Ekte backend
 

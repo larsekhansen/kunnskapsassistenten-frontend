@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { StreamEvent } from '../../model';
 import { LiveChatClient } from './LiveChatClient';
 
 /**
@@ -63,5 +64,63 @@ describe('LiveChatClient og datasettvalg', () => {
     const body = await askAndReadBody(client, fetchMock);
 
     expect(body.params.arguments).toEqual({ query: 'Hva rapporterer Nkom?' });
+  });
+});
+
+/**
+ * A finished answer as the server sends it: one SSE frame carrying the
+ * `tools/call` result. `_meta.status` is the field under test.
+ */
+function finalFrame(meta: Record<string, unknown>): Response {
+  const body = {
+    result: {
+      content: [{ type: 'text', text: 'Svar.' }],
+      structuredContent: { chunks: [] },
+      _meta: meta,
+    },
+  };
+  return new Response(`data: ${JSON.stringify(body)}\n\n`, {
+    status: 200,
+    headers: { 'Content-Type': 'text/event-stream' },
+  });
+}
+
+async function askWith(meta: Record<string, unknown>): Promise<StreamEvent[]> {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => finalFrame(meta)),
+  );
+  const events: StreamEvent[] = [];
+  for await (const event of new LiveChatClient().ask({ query: 'Hva rapporterer Nkom?' })) {
+    events.push(event);
+  }
+  return events;
+}
+
+describe('LiveChatClient og needs-clarification', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('leser statusen agenten sender i _meta', async () => {
+    const events = await askWith({ conversation_id: 'c1', status: 'needs-clarification' });
+
+    expect(events.at(-1)).toMatchObject({
+      type: 'done',
+      conversationId: 'c1',
+      outcome: 'needs-clarification',
+    });
+  });
+
+  it('lar et vanlig svar være uten outcome', async () => {
+    // Fraværende betyr «complete». Et svar som alltid bar feltet ville tvunget
+    // hver leser til å håndtere det.
+    const events = await askWith({ conversation_id: 'c1', status: 'complete' });
+
+    expect(events.at(-1)).toMatchObject({ type: 'done' });
+    expect(events.at(-1)).not.toHaveProperty('outcome');
+  });
+
+  it('finner seg i at feltet mangler helt', async () => {
+    const events = await askWith({ conversation_id: 'c1' });
+    expect(events.at(-1)).not.toHaveProperty('outcome');
   });
 });

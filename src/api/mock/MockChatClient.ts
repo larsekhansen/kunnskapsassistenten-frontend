@@ -46,6 +46,25 @@ export const defaultMockDelays: MockDelays = {
  */
 export const MOCK_FAILURE_QUERY = 'simuler feil';
 
+/**
+ * Ask this and the mock answers with a question back instead of an answer.
+ *
+ * Same reasoning as the failure query: `needs-clarification` is a real state
+ * the backend reports in `_meta.status`, and without a way in from a built app
+ * neither an end-to-end test nor a designer could ever see what it looks like.
+ * The text is what that state IS — a question to the user — so it carries no
+ * sources and no citations, and nothing here pretends otherwise.
+ */
+export const MOCK_CLARIFICATION_QUERY = 'simuler avklaring';
+
+const clarificationMarkdown = [
+  'Jeg trenger litt mer for å svare godt på dette.',
+  '',
+  'Mener du måloppnåelsen slik den er rapportert i årsrapportene, eller slik',
+  'den er satt opp som mål i tildelingsbrevene? De to henger sammen, men',
+  'tallene står forskjellige steder.',
+].join('\n');
+
 /** Resolves after `ms`, or rejects with the abort reason if the signal fires. */
 function wait(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -104,6 +123,29 @@ export class MockChatClient implements ChatClient {
         yield {
           type: 'error',
           error: { code: 'unknown', message: 'Noe gikk galt. Prøv igjen.' },
+        };
+        return;
+      }
+
+      if (params.query.trim().toLocaleLowerCase('nb-NO') === MOCK_CLARIFICATION_QUERY) {
+        // One thinking step and then the question back: the agent looked at
+        // what was asked and decided it could not search on it yet. No
+        // `sources` event, because nothing was retrieved — a clarification
+        // with sources behind it would be a different thing entirely.
+        await wait(this.#delays.thinkingStepMs, signal);
+        yield { type: 'thinking-step', step: nkomThinkingSteps[0]! };
+
+        await wait(this.#delays.firstTokenMs, signal);
+        for (const text of tokenize(clarificationMarkdown)) {
+          await wait(this.#delays.tokenMs, signal);
+          yield { type: 'token', text };
+        }
+
+        yield {
+          type: 'done',
+          messageId: `msg-${Date.now()}`,
+          conversationId: params.conversationId ?? 'conv-nkom-1',
+          outcome: 'needs-clarification',
         };
         return;
       }
