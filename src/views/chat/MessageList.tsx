@@ -4,6 +4,7 @@ import { citationTargets, type Message } from '../../model';
 import { AnswerActions } from './AnswerActions';
 import { Clarification } from './Clarification';
 import { RetrievalPanel } from './RetrievalPanel';
+import { ThinkingPanel } from './ThinkingPanel';
 import { CLOSING_QUESTION } from './text';
 
 type MessageListProps = {
@@ -58,6 +59,10 @@ function AnswerSkeleton() {
  * An assistant turn that came back as `needs-clarification` is a question to
  * the reader and not an answer, so the sender line says «spurte» and the card
  * is `Clarification`.
+ *
+ * «Tenker …» sits above the card and «Fremgangsmåte» inside it, and they do
+ * not overlap: the first is what the agent did, step by step, the second is
+ * what the search found. Neither repeats the other.
  */
 export function MessageList({
   messages,
@@ -103,6 +108,18 @@ export function MessageList({
         return (
           <li className="ka-message ka-message--assistant" key={message.id}>
             <span className="ds-sr-only">Kunnskapsassistenten svarte:</span>
+
+            {/*
+              What the agent did before it started writing, above the answer
+              and before it in the tab order. It is the same turn, so it is
+              not a message of its own; it is the header of this one.
+            */}
+            {message.thinkingSteps?.length ? (
+              <ThinkingPanel
+                status={streaming && empty ? 'thinking' : 'done'}
+                steps={message.thinkingSteps}
+              />
+            ) : null}
 
             {/*
               The answer sits in a card, as the design draws it. `data-color`

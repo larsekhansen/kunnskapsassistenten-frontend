@@ -202,4 +202,31 @@ describe('useChat', () => {
     expect(assistantMessages(result.current.messages)[0]?.status).toBe('complete');
     expect(result.current.announcement).toBe('Svaret er ferdig.');
   });
+
+  it('says it is searching once, however many steps arrive', async () => {
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+
+    act(() =>
+      turns[0].emit({
+        type: 'thinking-step',
+        step: { id: 's1', kind: 'reasoning', label: 'Jeg deler spørsmålet i to.' },
+      }),
+    );
+    await waitFor(() => expect(result.current.announcement).toBe('Kunnskapsassistenten søker …'));
+
+    // A dozen more steps must not turn the polite region into a reading of
+    // every step; it is still the same sentence when the answer starts.
+    act(() =>
+      turns[0].emit({
+        type: 'thinking-step',
+        step: { id: 's2', kind: 'search', label: 'Jeg søker i årsrapportene.' },
+      }),
+    );
+    await waitFor(() => expect(result.current.messages.at(-1)?.thinkingSteps).toHaveLength(2));
+    expect(result.current.announcement).toBe('Kunnskapsassistenten søker …');
+  });
 });

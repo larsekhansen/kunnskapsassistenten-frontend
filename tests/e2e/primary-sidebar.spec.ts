@@ -14,6 +14,17 @@ import {
  * Two views in one slot, and the panel switches between them. A first-time
  * user meets the filter (answer 1), so that is where every test starts.
  */
+/**
+ * «1 av N valgt», whatever N happens to be.
+ *
+ * It said «1 av 6 valgt» while the facets were six hand-written values. They
+ * are now counted from the real Kudos corpus, where «Virksomheter» has 259 —
+ * and it will be a different number the next time the corpus is fetched. What
+ * this test is about is that picking one value shows one as picked, and that
+ * does not depend on how large the corpus is.
+ */
+const SELECTED_ONE = /^1 av \d+ valgt$/;
+
 test.describe('navigasjonspanelet', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -40,16 +51,20 @@ test.describe('navigasjonspanelet', () => {
   test('et valg blir en chip i feltet, og tellingen følger med', async ({ page }, testInfo) => {
     covers(testInfo, 'filtre kan velges og gir chips');
 
+    // The whole name, not a prefix. `ArrowDown` + `Enter` takes the first
+    // match, and «Nasjonal» matched six organisations in the real corpus —
+    // the first of them «Nasjonalarkivet», which is not the one this test
+    // then looks for. Typed in full there is one match and it is that one.
     const field = facetField(page, 'Virksomheter');
     await field.click();
-    await page.keyboard.type('Nasjonal');
+    await page.keyboard.type('Nasjonal kommunikasjonsmyndighet');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
 
     // The chip lives in the Suggestion's shadow root, so it is read through
     // the accessible name rather than a CSS selector.
     await expect(
-      page.getByRole('navigation', { name: 'Tråder og filter' }).getByText('1 av 6 valgt'),
+      page.getByRole('navigation', { name: 'Tråder og filter' }).getByText(SELECTED_ONE),
     ).toBeVisible();
 
     const chips = await page.evaluate(() => {
@@ -158,7 +173,7 @@ test.describe('navigasjonspanelet', () => {
       .toEqual(before);
 
     const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
-    await expect(panel.getByText('1 av 6 valgt').first()).toBeVisible();
+    await expect(panel.getByText(SELECTED_ONE).first()).toBeVisible();
     // And the field is back to a resting state rather than holding the search
     // text that produced the chip.
     await expect(facetField(page, 'Virksomheter')).toHaveValue('');
