@@ -44,6 +44,33 @@ export function facetField(page: Page, label: string): Locator {
 }
 
 /**
+ * One option in ONE facet field's list.
+ *
+ * Scoped to the field, and that is the whole point. All three facet lists are
+ * in the DOM at once — measured 2026-09-16: 275 options, every one of them
+ * inside a `ds-suggestion` — and the two closed ones are hidden rather than
+ * absent. A page-wide `[role="option"]` filtered on text therefore matches
+ * across fields, and `.first()` takes whichever comes first in the DOM.
+ *
+ * «2026» is the case that showed it: it matches «2026 (180)» in År and
+ * «Regelrådet (avviklet 2026) (3)» in Virksomheter, and the hidden one is
+ * first. The wait then sat on an element that would never become visible, and
+ * the test hung rather than failed. Found by #5 in #75, who worked around it
+ * by using 2025 — this is the fix that lets 2026 be used again.
+ *
+ * The same trap is written up in `docs/review/README.md` under the pitfalls,
+ * which is where I had put the warning and not the guard.
+ */
+export function facetOption(page: Page, dimension: string, value: string): Locator {
+  return page
+    .locator(
+      `xpath=//label[normalize-space(text())="${dimension}"]/ancestor::ds-field//*[@role="option"]`,
+    )
+    .filter({ hasText: value })
+    .first();
+}
+
+/**
  * Picks one value in a facet field, the way a reader does.
  *
  * Typing and then ArrowDown, not clicking the option: the list filters
@@ -61,7 +88,7 @@ export async function chooseFacetValue(
   const field = facetField(page, dimension);
   await field.click();
   await page.keyboard.type(value);
-  await expect(page.locator('[role="option"]').filter({ hasText: value }).first()).toBeVisible();
+  await expect(facetOption(page, dimension, value)).toBeVisible();
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(page.getByText(/^1 av \d+ valgt$/).first()).toBeVisible();
