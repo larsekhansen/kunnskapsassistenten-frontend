@@ -1,13 +1,21 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { AnswerSourcesContext } from '../../layout/answerSourcesContext';
 import { FilterContext } from '../../layout/filterContext';
 import { emptyFilterSelection, type FilterFacet } from '../../model';
 import { FiltersView } from './FiltersView';
 
+/**
+ * The view reads two pieces of shell state, so both contexts are mounted the
+ * way LayoutProvider mounts them. No documents: the document list is its own
+ * test, and this one is about the facets.
+ */
 function renderView(facets?: FilterFacet[]) {
   return render(
     <FilterContext value={{ selection: emptyFilterSelection, setSelection: () => {} }}>
-      <FiltersView siblingViews={['filters']} onShowView={() => {}} facets={facets} />
+      <AnswerSourcesContext value={{ documents: undefined, setDocuments: () => {} }}>
+        <FiltersView siblingViews={['filters']} onShowView={() => {}} facets={facets} />
+      </AnswerSourcesContext>
     </FilterContext>,
   );
 }
