@@ -282,4 +282,59 @@ describe('AnswerTime', () => {
       at(2026, 8, 11, 9, 12),
     ]);
   });
+  it('stempler ikke et svar som fortsatt strømmer', () => {
+    /*
+     * Tida på svaret er «da svaret var ferdig», og et svar som strømmer er
+     * ikke ferdig. Å vise et tidspunkt mens teksten fortsatt kommer ville
+     * dessuten vært et stempel som flyttet seg når turen landet.
+     */
+    const underveis: Message = {
+      id: 'a1',
+      role: 'assistant',
+      content: 'Nkom måler ',
+      createdAt: at(2026, 8, 15, 14, 32),
+      citations: [],
+      status: 'streaming',
+    };
+
+    const { container } = render(
+      <ol>
+        <AnswerMessage
+          canScrollToBottom={false}
+          message={underveis}
+          onRegenerate={() => {}}
+          onScrollToBottom={() => {}}
+          onSelectSource={() => {}}
+        />
+      </ol>,
+    );
+
+    expect(container.querySelectorAll('time')).toHaveLength(0);
+  });
+
+  it('stempler ikke et svar som ennå ikke har skrevet et ord', () => {
+    // Samme sak, en fase tidligere: skjelettet står der, og ingen tid.
+    const tomt: Message = {
+      id: 'a1',
+      role: 'assistant',
+      content: '',
+      createdAt: at(2026, 8, 15, 14, 32),
+      citations: [],
+      status: 'streaming',
+    };
+
+    const { container } = render(
+      <ol>
+        <AnswerMessage
+          canScrollToBottom={false}
+          message={tomt}
+          onRegenerate={() => {}}
+          onScrollToBottom={() => {}}
+          onSelectSource={() => {}}
+        />
+      </ol>,
+    );
+
+    expect(container.querySelectorAll('time')).toHaveLength(0);
+  });
 });

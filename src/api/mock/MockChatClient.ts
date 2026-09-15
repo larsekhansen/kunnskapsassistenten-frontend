@@ -265,6 +265,10 @@ export class MockChatClient implements ChatClient {
         }
 
         const clarificationId = nextMessageId();
+        // One turn, one time. Made here and handed to both the store and the
+        // `done` frame, so the answer says the same thing before and after a
+        // reload. See `StreamEvent`'s `done`.
+        const clarificationAt = new Date().toISOString();
         recordMockTurn({
           question: params.query,
           answerId: clarificationId,
@@ -273,6 +277,7 @@ export class MockChatClient implements ChatClient {
           answer: {
             content: written,
             citations: [],
+            createdAt: clarificationAt,
             ...clarificationThought,
             status: 'needs-clarification',
           },
@@ -281,6 +286,7 @@ export class MockChatClient implements ChatClient {
           type: 'done',
           messageId: clarificationId,
           conversationId: params.conversationId ?? 'conv-nkom-1',
+          createdAt: clarificationAt,
           outcome: 'needs-clarification',
         };
         return;
@@ -342,12 +348,14 @@ export class MockChatClient implements ChatClient {
       // the selection, which is not the same thing as a question back.
       if (scripted && scripted.documents.length === 0) {
         const scriptedId = nextMessageId();
+        const scriptedAt = new Date().toISOString();
         recordMockTurn({
           question: params.query,
           answerId: scriptedId,
           answer: {
             content: written,
             citations: [],
+            createdAt: scriptedAt,
             thinkingSteps: steps,
             ...thought,
             status: scripted.outcome ?? 'complete',
@@ -357,6 +365,7 @@ export class MockChatClient implements ChatClient {
           type: 'done',
           messageId: scriptedId,
           conversationId: params.conversationId ?? 'conv-nkom-1',
+          createdAt: scriptedAt,
           ...(scripted.outcome ? { outcome: scripted.outcome } : {}),
         };
         return;
@@ -378,12 +387,14 @@ export class MockChatClient implements ChatClient {
        * and a filtered answer's with the whole unfiltered set.
        */
       const messageId = nextMessageId();
+      const answeredAt = new Date().toISOString();
       recordMockTurn({
         question: params.query,
         answerId: messageId,
         answer: {
           content: written,
           citations,
+          createdAt: answeredAt,
           sources: documents,
           retrieval,
           thinkingSteps: steps,
@@ -395,6 +406,7 @@ export class MockChatClient implements ChatClient {
         type: 'done',
         messageId,
         conversationId: params.conversationId ?? 'conv-nkom-1',
+        createdAt: answeredAt,
         ...(scripted?.outcome ? { outcome: scripted.outcome } : {}),
       };
     } catch {
@@ -413,7 +425,17 @@ export class MockChatClient implements ChatClient {
         recordMockTurn({
           question: params.query,
           answerId: nextMessageId(),
-          answer: { content: written, citations: [], status: 'complete' },
+          // A stopped turn ends on the `error` frame, which carries no time,
+          // so this is the one path where the store and the screen stamp
+          // separately. They are the same instant — the moment stop was
+          // pressed — and `useChat` stamps its copy when it settles the turn,
+          // so the two agree to the second and differ only in milliseconds.
+          answer: {
+            content: written,
+            citations: [],
+            createdAt: new Date().toISOString(),
+            status: 'complete',
+          },
         });
       }
       yield {

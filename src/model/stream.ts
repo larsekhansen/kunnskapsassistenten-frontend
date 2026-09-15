@@ -87,6 +87,21 @@ export type StreamEvent =
       messageId: string;
       conversationId: string;
       /**
+       * When the answer was finished, ISO 8601.
+       *
+       * One turn has one time, and this frame is where it is decided: the
+       * answer is done at this moment, and both the message on screen and
+       * whatever writes the turn down have to say the same thing. Stamping it
+       * separately in each place is how «14:32» on screen became «14:32:15»
+       * after a reload — two clocks, fifteen seconds apart, for one answer
+       * that had not changed (KA CC on #71).
+       *
+       * Optional, because a backend that does not report it is not broken; a
+       * client that does not get one falls back to its own clock, which is
+       * the same instant give or take the trip home.
+       */
+      createdAt?: string;
+      /**
        * How the agent says the turn ended, from `_meta.status` in the final
        * frame. Absent means `complete`, which is what every answer up to now
        * has been and what a client that ignores this field keeps getting.

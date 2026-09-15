@@ -210,13 +210,34 @@ export function useChat(
    * word, left both. So a stopped turn stays whatever phase it was in, and
    * the card says it was stopped and offers to run it again.
    */
-  const settleAnswer = useCallback((id: string, status: SettledStatus) => {
+  const settleAnswer = useCallback((id: string, status: SettledStatus, createdAt?: string) => {
+    /*
+     * The answer is stamped here and not when its placeholder was made,
+     * because the time on an answer means «when the answer was finished»
+     * — that is what a reader refers back to, and it is what the turn is
+     * written down with.
+     *
+     * Stamping it at both ends is what made one answer carry two times:
+     * the placeholder was made when the question was sent and the stored
+     * copy when the turn was recorded, a whole answer apart. «14:32» on
+     * screen, «14:32:15» after a reload (KA CC on #71). Nothing draws the
+     * time until the turn settles, so moving it costs nothing on screen.
+     *
+     * The `done` frame's own time wins when there is one, so the message
+     * and the stored turn are the same string and not merely the same
+     * second. A stream that ends any other way — stopped, failed, or with
+     * no `done` at all — has no time to be given, and the local clock is
+     * that same instant give or take the trip home.
+     */
+    const settledAt = createdAt ?? new Date().toISOString();
     setMessages((current) => {
       const answer = current.find((message) => message.id === id);
       if (answer && answer.content.length === 0 && status !== 'aborted') {
         return current.filter((message) => message.id !== id);
       }
-      return current.map((message) => (message.id === id ? { ...message, status } : message));
+      return current.map((message) =>
+        message.id === id ? { ...message, createdAt: settledAt, status } : message,
+      );
     });
   }, []);
 
@@ -327,7 +348,11 @@ export function useChat(
               // `outcome` absent means the turn completed, which is what every
               // answer was before the field existed. See model/stream.ts.
               const clarifying = event.outcome === 'needs-clarification';
-              settleAnswer(answerId, clarifying ? 'needs-clarification' : 'complete');
+              settleAnswer(
+                answerId,
+                clarifying ? 'needs-clarification' : 'complete',
+                event.createdAt,
+              );
               if (isCurrentTurn()) {
                 setAnnouncement(clarifying ? CLARIFICATION_ANNOUNCEMENT : 'Svaret er ferdig.');
                 setStatus('idle');
