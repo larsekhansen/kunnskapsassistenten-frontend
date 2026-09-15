@@ -61,8 +61,18 @@ function citationFromUrl(): { number: number; nonce: number } | undefined {
   return Number.isInteger(value) && value > 0 ? { number: value, nonce: 0 } : undefined;
 }
 
+/**
+ * The two widths the slot actually has, as `viewModel.ts` declares them: 432
+ * preferred, 336 when the window is short of room. They are two layouts and
+ * not one stretched, so both have to be reviewable by hand.
+ */
+const WIDTH_LABELS = { wide: '432 px', narrow: '336 px' } as const;
+
+type PreviewWidth = keyof typeof WIDTH_LABELS;
+
 export function PreviewPanel() {
   const [state, setState] = useState<PreviewState>('ready');
+  const [width, setWidth] = useState<PreviewWidth>('wide');
   const [collapsed, setCollapsed] = useState(false);
   const [citation, setCitation] = useState<{ number: number; nonce: number } | undefined>(
     citationFromUrl,
@@ -87,6 +97,19 @@ export function PreviewPanel() {
               onClick={() => setState(value)}
             >
               {STATE_LABELS[value]}
+            </Button>
+          ))}
+        </div>
+
+        <div className="preview__controls">
+          {(Object.keys(WIDTH_LABELS) as PreviewWidth[]).map((value) => (
+            <Button
+              key={value}
+              variant={width === value ? 'primary' : 'secondary'}
+              data-size="sm"
+              onClick={() => setWidth(value)}
+            >
+              Panelet på {WIDTH_LABELS[value]}
             </Button>
           ))}
         </div>
@@ -119,7 +142,7 @@ export function PreviewPanel() {
 
       {/* The same shape as Shell.tsx: the slot owns the button, the content
           stays mounted and is hidden with `hidden`. */}
-      <aside aria-label="Kilder" className="preview__aside">
+      <aside aria-label="Kilder" className="preview__aside" data-width={width}>
         <Button
           variant="tertiary"
           data-color="neutral"

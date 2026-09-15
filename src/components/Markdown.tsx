@@ -72,7 +72,23 @@ function withCitations(
             href={`#${target.targetId}`}
             aria-label={target.label}
             title={target.label}
-            onClick={() => onActivate?.(number)}
+            /*
+              `preventDefault`, because the href must not be followed.
+              `onActivate` already opens the sources panel and moves focus to
+              the excerpt, so the browser's own fragment jump adds nothing —
+              and once the conversation has an address it costs everything:
+              the marker then resolves to `/threads/:id#excerpt-n`, which is a
+              real navigation, and the chat slot remounts with the whole
+              conversation inside it. Measured by #3 against PR #25: 5 e2e red.
+
+              The href stays. It is what makes this a link for a screen
+              reader, for «open in new tab» and for copying the address of an
+              excerpt, and none of those go through this handler.
+            */
+            onClick={(event) => {
+              event.preventDefault();
+              onActivate?.(number);
+            }}
           >
             {match[0]}
           </Link>

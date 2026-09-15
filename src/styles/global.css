@@ -248,6 +248,16 @@ body {
 .secondary-sidebar[data-collapsed] {
   align-items: center;
   background: var(--ds-color-neutral-surface-default);
+  /*
+   * `visible`, overriding the `overflow: hidden` the open panel needs to keep
+   * its scrolling inside `.sidebar-content`.
+   *
+   * A collapsed rail has nothing to scroll — its content is `display: none` —
+   * but the badge on the toggle button is painted on a `::before` that sits
+   * on the button's corner and reaches past it. Clipping the rail would cut
+   * the count in half the day it needs two digits.
+   */
+  overflow: visible;
 }
 
 /*

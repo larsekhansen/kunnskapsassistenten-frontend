@@ -53,6 +53,17 @@ const NAV_OPEN = 400;
  * wide enough to draw its own label on one line. The labels are gone from the
  * rail; they are the button's accessible name and its tooltip now.
  */
+/**
+ * The sources toggle, whichever way round it is. The trailing `(,|$)` is not
+ * loose matching: collapsed with sources behind it the button is named «Vis
+ * kilder, 3 dokumenter», because the Badge draws its count on a pseudo
+ * element that screen readers do not read, so the number has to be in the
+ * name (rolle-5e punkt 3). Anchored to `$` this matched nothing at all.
+ *
+ * The navigation toggle carries no count and stays anchored.
+ */
+const SOURCES_TOGGLE = /^(Vis|Skjul) kilder(,|$)/;
+
 const RAIL = 67;
 const NAV_COLLAPSED = RAIL;
 const MAIN_FLOOR = 640;
@@ -139,7 +150,7 @@ function statesAt(width: number): LayoutState[] {
 async function setSidebars(page: Page, state: LayoutState): Promise<void> {
   const toggles = {
     nav: page.getByRole('button', { name: /^(Vis|Skjul) tråder og filter$/ }),
-    sources: page.getByRole('button', { name: /^(Vis|Skjul) kilder$/ }),
+    sources: page.getByRole('button', { name: SOURCES_TOGGLE }),
   };
 
   const set = async (slot: 'nav' | 'sources', wanted: SlotState) => {
@@ -436,7 +447,7 @@ test.describe('layouten', () => {
       // The sources panel is the one that gives way, so it is the one that
       // collapses. The navigation panel keeps what the user put there.
       await expect(
-        page.getByRole('button', { name: /^(Vis|Skjul) kilder$/ }),
+        page.getByRole('button', { name: SOURCES_TOGGLE }),
         'kildepanelet er det som gir etter',
       ).toHaveAttribute('aria-expanded', 'false');
       await expect(
@@ -513,7 +524,7 @@ test.describe('layouten', () => {
       expect(stood, 'kildepanelet har noe fokuserbart å stå i').toBe(true);
 
       await page.setViewportSize({ width: BOTH_SIDEBARS_MIN_VIEWPORT - 1, height: HEIGHT });
-      await expect(page.getByRole('button', { name: /^(Vis|Skjul) kilder$/ })).toHaveAttribute(
+      await expect(page.getByRole('button', { name: SOURCES_TOGGLE })).toHaveAttribute(
         'aria-expanded',
         'false',
       );

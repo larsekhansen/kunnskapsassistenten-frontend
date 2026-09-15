@@ -35,5 +35,19 @@ export type StreamEvent =
       citations: Citation[];
       retrieval: RetrievalDetails;
     }
-  | { type: 'done'; messageId: string; conversationId: string }
+  | {
+      type: 'done';
+      messageId: string;
+      conversationId: string;
+      /**
+       * How the agent says the turn ended, from `_meta.status` in the final
+       * frame. Absent means `complete`, which is what every answer up to now
+       * has been and what a client that ignores this field keeps getting.
+       *
+       * The backend's third value, `error`, is not here: an answer that
+       * failed already arrives as an `error` event, and having two ways to
+       * say the same thing would leave a reader wondering which one wins.
+       */
+      outcome?: 'complete' | 'needs-clarification';
+    }
   | { type: 'error'; error: ChatError };
