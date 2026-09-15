@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetViewport, setViewportWidth } from '../test/matchMedia';
 import { LayoutProvider } from './LayoutProvider';
@@ -107,5 +108,46 @@ describe('når kanten står på grensa', () => {
 
     expect(narrower('tråder og filter').getAttribute('aria-disabled')).toBe('true');
     expect(wider('tråder og filter').getAttribute('aria-disabled')).toBe('true');
+  });
+});
+
+describe('de to stillhetene er ikke den samme', () => {
+  it('beholder tabbstoppet når kanten bare står på gulvet akkurat nå', () => {
+    // 1920: panelet står på 400, som er gulvet, men taket er 480. «Smalere»
+    // sier fra at den ikke kan gå lenger — og blir stående i tab-rekkefølgen,
+    // for ett trykk på «bredere» gjør den nyttig igjen, og et tabbstopp som
+    // forsvinner under fingeren tar leseren ut av kontrollen de jobbet i.
+    open('primary-sidebar');
+
+    expect(narrower('tråder og filter').getAttribute('aria-disabled')).toBe('true');
+    expect(narrower('tråder og filter').getAttribute('tabindex')).toBe('0');
+
+    fireEvent.click(wider('tråder og filter'));
+    expect(narrower('tråder og filter').getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('går ut av tab-rekkefølgen når vinduet aldri kan gi noe', () => {
+    // 1440: ingen av knappene kan gjøre noe herfra, uansett hva leseren
+    // trykker på. Fire tomme tabbstopp på den bredden alle Figma-rammene er
+    // tegnet i. Samme `fixed` som skillet forlater tab-rekkefølgen på.
+    open('primary-sidebar', { width: 1440 });
+
+    for (const button of [narrower('tråder og filter'), wider('tråder og filter')]) {
+      expect(button.getAttribute('tabindex')).toBe('-1');
+      // Fortsatt aria-disabled: en skjermleser navigerer ikke etter
+      // tab-rekkefølgen, og den som når knappen en annen vei skal få vite at
+      // den ikke gjør noe.
+      expect(button.getAttribute('aria-disabled')).toBe('true');
+    }
+  });
+
+  it('kommer tilbake i tab-rekkefølgen når vinduet igjen har plass', () => {
+    open('primary-sidebar', { width: 1440 });
+    expect(wider('tråder og filter').getAttribute('tabindex')).toBe('-1');
+
+    act(() => setViewportWidth(1920));
+
+    expect(wider('tråder og filter').getAttribute('tabindex')).toBe('0');
+    expect(wider('tråder og filter').getAttribute('aria-disabled')).toBeNull();
   });
 });

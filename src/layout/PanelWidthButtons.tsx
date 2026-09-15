@@ -25,7 +25,7 @@ import { useLayout } from './useLayout';
  */
 export function PanelWidthButtons({ slot }: { slot: SidebarSlot }) {
   const { layout } = useLayout();
-  const { range, width, direction, step } = usePanelWidth(slot);
+  const { range, width, direction, fixed, step } = usePanelWidth(slot);
 
   /*
    * «Gjør tråder og filter smalere», not «Smalere»: two panels can be open at
@@ -50,12 +50,14 @@ export function PanelWidthButtons({ slot }: { slot: SidebarSlot }) {
     <div className="panel-width-buttons">
       <WidthButton
         atLimit={width <= range.min}
+        dead={fixed}
         icon={<NarrowerIcon aria-hidden />}
         name={`Gjør ${label} smalere`}
         onPress={() => step(-1)}
       />
       <WidthButton
         atLimit={width >= range.max}
+        dead={fixed}
         icon={<WiderIcon aria-hidden />}
         name={`Gjør ${label} bredere`}
         onPress={() => step(1)}
@@ -66,11 +68,18 @@ export function PanelWidthButtons({ slot }: { slot: SidebarSlot }) {
 
 function WidthButton({
   atLimit,
+  dead,
   icon,
   name,
   onPress,
 }: {
+  /** At the end of its travel right now. Says so, keeps its tab stop. */
   atLimit: boolean;
+  /**
+   * There is no travel at all in this window, so the button can never do
+   * anything from here. Then it leaves the tab order as well.
+   */
+  dead: boolean;
   icon: ReactNode;
   name: string;
   onPress: () => void;
@@ -102,6 +111,17 @@ function WidthButton({
         onClick={() => {
           if (!atLimit) onPress();
         }}
+        /*
+          Two different silences, and only one of them is permanent.
+          `atLimit` is where the edge happens to stand — press the other
+          button once and this one works again, so it keeps its tab stop and
+          the reader keeps their place. `dead` is the window: at 1440 the
+          three slots are at their floors and their sum is the window, so
+          neither button can ever do anything from here, and four tab stops
+          that cannot is four tab stops in the way. Same `fixed` the separator
+          leaves the tab order on. KA CC, reviewing PR #50.
+        */
+        tabIndex={dead ? -1 : 0}
         variant="tertiary"
       >
         {icon}

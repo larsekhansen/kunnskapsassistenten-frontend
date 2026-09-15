@@ -181,8 +181,11 @@ test.describe('panelbredder', () => {
     await page.setViewportSize({ width: 1920, height: HEIGHT });
     await page.goto('/');
 
-    // Gulvet er der panelet står, så «smalere» er av fra første render.
+    // Gulvet er der panelet står, så «smalere» er av fra første render — men
+    // den blir stående i tab-rekkefølgen, for ett trykk på «bredere» gjør
+    // den nyttig igjen.
     await expect(narrower(page, 'tråder og filter')).toHaveAttribute('aria-disabled', 'true');
+    await expect(narrower(page, 'tråder og filter')).toHaveAttribute('tabindex', '0');
 
     for (let press = 0; press < 5; press += 1) await wider(page, 'tråder og filter').click();
     await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter fem klikk');
@@ -230,16 +233,20 @@ test.describe('panelbredder', () => {
       await expect(handle).toHaveAttribute('aria-disabled', 'true');
 
       // Og knappene sier det samme: det er vinduet som er fullt, ikke
-      // panelet som står på sitt eget tak.
-      await expect(wider(page, panel)).toHaveAttribute('aria-disabled', 'true');
-      await expect(narrower(page, panel)).toHaveAttribute('aria-disabled', 'true');
+      // panelet som står på sitt eget tak. De går ut av tab-rekkefølgen med
+      // skillet, siden ingen av dem kan gjøre noe herfra uansett hvilken av
+      // dem leseren trykker på.
+      for (const button of [wider(page, panel), narrower(page, panel)]) {
+        await expect(button).toHaveAttribute('aria-disabled', 'true');
+        await expect(button).toHaveAttribute('tabindex', '-1');
+      }
     }
 
-    // Ingen av dem dukker opp i en Tab-vandring.
+    // Ingen av de seks dukker opp i en Tab-vandring.
     const steps = await walkWithTab(page);
     expect(
-      steps.filter((step) => step.name.startsWith('Endre bredde på')),
-      'skillene skal ikke være tabbstopp når de ikke kan flytte seg',
+      steps.filter((step) => /^(Endre bredde på|Gjør )/.test(step.name)),
+      'breddekontrollene skal ikke være tabbstopp når de ikke kan gjøre noe',
     ).toEqual([]);
   });
 
