@@ -136,6 +136,13 @@ export function AnswerMessage({
         <ThinkingPanel
           status={streaming && empty ? 'thinking' : 'done'}
           steps={message.thinkingSteps}
+          // The measured wait, and not the sum of what the steps reported.
+          // The stream writes it down while it happens (`useChat`), and it
+          // has to be handed over or the panel falls back to the sum — which
+          // is «Tenkte i 2 sekunder» live and «Tenkte i 4 sekunder» after a
+          // reload, for a turn that has not changed. See `Message.thoughtMs`.
+          // The clarification path already passed it; this one did not.
+          thoughtMs={message.thoughtMs}
         />
       ) : null}
 
