@@ -230,8 +230,14 @@ fordi den blir stående i en rapport.
   skjer da midt i strømmen, og du rapporterer at det andre svaret ikke har
   kilder. Bruk `.nth(n - 1)` eller tell knappene.
 - **`[role="option"]` finnes i alle tre fasettlistene samtidig.** De to
-  lukkede er `display: none`, så `.first()` treffer noe usynlig. `:visible`,
-  eller filtrer på tekst.
+  lukkede er `display: none`, så `.first()` treffer noe usynlig. Å filtrere på
+  tekst er **ikke nok**: «2026» treffer både «2026 (180)» i År og «Regelrådet
+  (avviklet 2026) (3)» i Virksomheter, og den skjulte kommer først i DOM-en —
+  da venter testen på noe som aldri blir synlig, og henger i stedet for å
+  feile. Scope til feltet, slik `facetOption()` i `tests/e2e/helpers.ts` gjør.
+  Målt 2026-09-16: 275 options i DOM samtidig, alle inne i en `ds-suggestion`.
+  Denne fella sto beskrevet her mens hjelperen min gikk rett i den — en
+  advarsel er ikke en sperre.
 - **ArrowDown skriver den framhevede verdien inn i feltet.** Et tastetrykk
   etterpå legger seg bakerst, og lista filtrerer på «AksjeNorgeNasjonal».
   Skriv først, framhev etterpå.
