@@ -20,6 +20,7 @@ export type {
   SourceDocument,
 } from './source';
 export { citationAccessibleName, citationTargets, excerptDomId, relevanceLabels } from './source';
+export { chatErrorCode } from './stream';
 export type { ChatError, ChatErrorCode, StreamEvent } from './stream';
 export { threadFromQuestion } from './thread';
 export type { Thread, ThreadDetail } from './thread';

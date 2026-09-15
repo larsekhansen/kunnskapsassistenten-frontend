@@ -26,7 +26,7 @@ const failingClient: ChatClient = {
     await new Promise((resolve) => setTimeout(resolve, 600));
     yield {
       type: 'error',
-      error: { code: 'agent', message: 'Assistenten svarte ikke. Prøv igjen om litt.' },
+      error: { code: 'model-unavailable' },
     };
   },
   listThreads: async (): Promise<Thread[]> => [],

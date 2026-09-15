@@ -1,3 +1,4 @@
+import { chatErrorCode } from '../../model';
 import type { ChatError, FilterFacet, StreamEvent, Thread, ThreadDetail } from '../../model';
 import type { AskParams, ChatClient } from '../chatClient';
 import {
@@ -26,16 +27,30 @@ export type LiveChatClientOptions = {
   datasetConfigKey?: string;
 };
 
-/** The server answers two ways, and the question they answer is not the same. */
+/**
+ * What an HTTP status says about the turn, and what it does not.
+ *
+ * Only what the status actually establishes. A 5xx means the backend broke;
+ * it does not say whether the language model was down or the search was, and
+ * the two want opposite things from the reader — so it is `unknown` and says
+ * so, rather than guessing at a code the reader would act on
+ * (API-bestilling A16 asks the backend for the missing half).
+ *
+ * The status number stays in the text: it is the one thing anyone debugging
+ * this from a screenshot has to go on.
+ */
 function errorFromStatus(status: number): ChatError {
   switch (status) {
     case 401:
     case 403:
-      return { code: 'unauthorized', message: 'Ikke tilgang til Kunnskapsassistenten.' };
+      return { code: 'unauthorized' };
+    case 408:
+    case 504:
+      return { code: 'timeout' };
     case 429:
-      return { code: 'rate-limited', message: 'For mange spørsmål på kort tid. Vent litt.' };
+      return { code: 'rate-limited' };
     default:
-      return { code: 'agent', message: `Kunnskapsassistenten svarte med feil (${status}).` };
+      return { code: 'unknown', message: `Kunnskapsassistenten svarte med feil (${status}).` };
   }
 }
 
@@ -108,8 +123,12 @@ export class LiveChatClient implements ChatClient {
       yield {
         type: 'error',
         error: params.signal?.aborted
-          ? { code: 'aborted', message: 'Svaret ble avbrutt.' }
-          : { code: 'network', message: 'Fikk ikke kontakt med Kunnskapsassistenten.' },
+          ? { code: 'aborted' }
+          : // A fetch that never came back says the browser could not reach
+            // the proxy. Whether the corpus behind it is up is not something
+            // this can know, so the code stays `unknown` and the sentence
+            // says the one thing that was observed.
+            { code: 'unknown', message: 'Fikk ikke kontakt med tjenesten.' },
       };
       return;
     }
@@ -119,7 +138,7 @@ export class LiveChatClient implements ChatClient {
       return;
     }
     if (!response.body) {
-      yield { type: 'error', error: { code: 'network', message: 'Tomt svar fra tjeneren.' } };
+      yield { type: 'error', error: { code: 'unknown', message: 'Tomt svar fra tjeneren.' } };
       return;
     }
 
@@ -141,8 +160,8 @@ export class LiveChatClient implements ChatClient {
       yield {
         type: 'error',
         error: params.signal?.aborted
-          ? { code: 'aborted', message: 'Svaret ble avbrutt.' }
-          : { code: 'network', message: 'Forbindelsen brøt sammen mens svaret kom.' },
+          ? { code: 'aborted' }
+          : { code: 'unknown', message: 'Forbindelsen brøt sammen mens svaret kom.' },
       };
     } finally {
       await reader.cancel().catch(() => {});
@@ -171,6 +190,11 @@ export class LiveChatClient implements ChatClient {
   }
 }
 
+/** The answer text in the final frame, if it carried one. */
+function finalAnswerText(content: { type?: string; text?: string }[] | undefined): string {
+  return content?.find((block) => block.type === 'text')?.text ?? '';
+}
+
 /** Turns one decoded SSE payload into zero or more of our events. */
 function* readFrame(
   data: string,
@@ -184,9 +208,15 @@ function* readFrame(
       isError?: boolean;
       content?: { type?: string; text?: string }[];
       structuredContent?: { chunks?: unknown[]; conversation_id?: string };
-      _meta?: { conversation_id?: string; status?: string };
+      _meta?: { conversation_id?: string; status?: string; error_code?: string };
     };
-    error?: { message?: string };
+    /**
+     * `data.code` is API-bestilling A16: a small documented set of codes, so
+     * «modellen svarer ikke» and «korpuset er nede» can be told apart. Not
+     * sent yet, and read as `unknown` until it is — including any code this
+     * frontend has not heard of.
+     */
+    error?: { message?: string; data?: { code?: string } };
   };
 
   try {
@@ -199,7 +229,10 @@ function* readFrame(
   if (message.error) {
     yield {
       type: 'error',
-      error: { code: 'agent', message: message.error.message ?? 'Ukjent feil fra tjeneren.' },
+      error: {
+        code: chatErrorCode(message.error.data?.code),
+        message: message.error.message ?? 'Ukjent feil fra tjeneren.',
+      },
     };
     return;
   }
@@ -214,9 +247,19 @@ function* readFrame(
 
   // A tool that ran and failed is 200 with isError: true. An answer that says
   // the evidence was thin is isError: false and a perfectly good answer.
+  //
+  // The agent says it failed, not which half of it did — so `unknown` unless
+  // `_meta.error_code` is there to say (A16), and its own text stands as the
+  // first sentence either way.
   if (result.isError) {
     const text = result.content?.find((block) => block.type === 'text')?.text;
-    yield { type: 'error', error: { code: 'agent', message: text ?? 'Spørringen feilet.' } };
+    yield {
+      type: 'error',
+      error: {
+        code: chatErrorCode(result._meta?.error_code),
+        message: text ?? 'Spørringen feilet.',
+      },
+    };
     return;
   }
 
@@ -232,9 +275,23 @@ function* readFrame(
   // The final frame carries the whole answer. Against this agent that is the
   // only place it appears, because the deltas were all reasoning — so emit it
   // unless the stream already delivered the text, which would double it.
-  if (state.answerText === '') {
-    const text = result.content?.find((block) => block.type === 'text')?.text;
-    if (text) yield { type: 'token', text };
+  const finalText = state.answerText === '' ? finalAnswerText(result.content) : state.answerText;
+
+  /*
+   * Nothing found and nothing said. The agent searched, came back with no
+   * chunks and wrote no answer — which is not a failure, it is an answer with
+   * an empty source list, and the chat draws it as one (A16 asks the backend
+   * to report it that way too). Told apart from a failure by both halves
+   * being empty: an answer that cites nothing is still an answer, and a
+   * `sources` frame with no documents is what the panel needs to say so.
+   */
+  if (documents.length === 0 && finalText === '') {
+    yield { type: 'error', error: { code: 'no-hits' } };
+    return;
+  }
+
+  if (state.answerText === '' && finalText !== '') {
+    yield { type: 'token', text: finalText };
   }
 
   yield {

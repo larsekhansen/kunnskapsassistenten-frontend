@@ -10,6 +10,7 @@ import { useThread } from '../../layout/useThread';
 import { isEmptySelection, type ThreadDetail } from '../../model';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
+import { chatErrorText } from './errorText';
 import { filterSummaryText } from './filterSummary';
 import { CLARIFICATION_PLACEHOLDER } from './text';
 import { threadHeading } from './threadHeading';
@@ -41,11 +42,21 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   // the shell holds it, and this view sends it — the two views never meet.
   const { selection } = useFilterSelection();
 
-  const { messages, status, error, announcement, appliedFilters, send, cancel, retry } = useChat(
-    chatClient,
-    thread?.messages ?? [],
-    selection,
-  );
+  const {
+    messages,
+    status,
+    error,
+    announcement,
+    appliedFilters,
+    noHitsAnswers,
+    send,
+    cancel,
+    retry,
+  } = useChat(chatClient, thread?.messages ?? [], selection);
+
+  // What the alert says, per case. Undefined while the turn is fine, which is
+  // what keeps the region mounted and empty.
+  const errorText = error ? chatErrorText(error) : undefined;
 
   const filterSummary = useCallback(
     (messageId: string) => {
@@ -179,6 +190,23 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   );
 
   /**
+   * The turn on screen searched and found nothing.
+   *
+   * The fixed suggestions do not apply under one: «Kan du utdype?» asks the
+   * assistant to say more about nothing, and «Identifiser utfordringer» is a
+   * question about documents that were never found. The advice the answer
+   * already carries — loosen the filter, ask in other words — is the way on
+   * from here, and three buttons that lead back to the same nothing are in
+   * its way (the conductor, 2026-09-15).
+   *
+   * Read off the last message and not off the thread: an earlier answer that
+   * did find something is still worth following up, right up until this one
+   * replaced it as the turn the suggestions would act on.
+   */
+  const lastMessage = messages.at(-1);
+  const foundNothing = lastMessage !== undefined && noHitsAnswers.has(lastMessage.id);
+
+  /**
    * The same head on both routes (brukerblikk 2026-09-15, finding 5). A
    * thread opened from the list brings its title; a conversation started on
    * `/` has none until the client names it, and then the question stands in.
@@ -300,14 +328,23 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         Mounted whether or not there is an error: an alert region only
         announces content that appears inside a region already in the page.
         See src/components/ErrorState.tsx.
+
+        Heading, text and whether there is a button at all come from the code
+        (errorText.ts). A rejected key gets no «Prøv igjen»: the same question
+        with the same key fails the same way, and a button that cannot work
+        sends the reader round the loop instead of towards whoever can fix it.
       */}
       <ErrorState
-        message={error ?? undefined}
-        onRetry={() => {
-          retry();
-          focusField();
-        }}
-        title="Svaret kom ikke fram"
+        message={errorText?.message}
+        onRetry={
+          errorText?.retryable
+            ? () => {
+                retry();
+                focusField();
+              }
+            : undefined
+        }
+        title={errorText?.title}
       />
 
       <Composer
@@ -321,7 +358,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         onSubmit={() => submit(draft)}
         placeholder={awaitingClarification ? CLARIFICATION_PLACEHOLDER : undefined}
         ref={composerRef}
-        showFollowUps={hasAnswer && !awaitingClarification}
+        showFollowUps={hasAnswer && !awaitingClarification && !foundNothing}
         status={status}
         value={draft}
       />

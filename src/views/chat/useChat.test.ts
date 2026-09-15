@@ -1,8 +1,18 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { AskParams, ChatClient } from '../../api';
-import type { Message, StreamEvent } from '../../model';
-import { CLARIFICATION_ANNOUNCEMENT } from './text';
+import {
+  emptyFilterSelection,
+  type FilterSelection,
+  type Message,
+  type StreamEvent,
+} from '../../model';
+import {
+  CLARIFICATION_ANNOUNCEMENT,
+  NO_HITS_ANNOUNCEMENT,
+  NO_HITS_FILTERED,
+  NO_HITS_WHOLE_CORPUS,
+} from './text';
 import { useChat } from './useChat';
 
 /** One `ask` call, held open so a test can decide when the next frame lands. */
@@ -150,12 +160,14 @@ describe('useChat', () => {
     act(() =>
       turns[0].emit({
         type: 'error',
-        error: { code: 'network', message: 'Assistenten svarte ikke.' },
+        error: { code: 'model-unavailable' },
       }),
     );
 
     await waitFor(() => expect(result.current.status).toBe('error'));
-    expect(result.current.error).toBe('Assistenten svarte ikke.');
+    // The code, not a sentence: which case it was is what the view needs to
+    // pick a heading, a text and whether to offer «Prøv igjen» at all.
+    expect(result.current.error).toEqual({ code: 'model-unavailable' });
     expect(result.current.announcement).toBe('');
     expect(assistantMessages(result.current.messages)).toHaveLength(0);
 
@@ -163,6 +175,63 @@ describe('useChat', () => {
     await waitFor(() => expect(result.current.status).toBe('pending'));
     expect(result.current.error).toBeNull();
     expect(turns[1].query).toBe('Hva er måloppnåelse?');
+  });
+
+  it('turns a search that found nothing into a finished answer', async () => {
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva sier dokumentene om romfart?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+
+    act(() => turns[0].emit({ type: 'error', error: { code: 'no-hits' } }));
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    // Not an error: nothing failed, the search just came back empty. A red
+    // alert with «Prøv igjen» would offer to ask the same question of the
+    // same documents again (brukerreiser punkt 12).
+    expect(result.current.error).toBeNull();
+
+    const [answer] = assistantMessages(result.current.messages);
+    expect(answer.status).toBe('complete');
+    expect(answer.content).toBe(NO_HITS_WHOLE_CORPUS);
+    // Empty and not absent: that is what makes the sources panel say the same
+    // thing instead of waiting for excerpts that are not coming.
+    expect(answer.sources).toEqual([]);
+    expect(result.current.announcement).toBe(NO_HITS_ANNOUNCEMENT);
+  });
+
+  it('tells the reader to loosen the filter only when there is one', async () => {
+    const { client, turns } = heldClient();
+    const narrowed: FilterSelection = { ...emptyFilterSelection, organisation: ['nkom'] };
+    const { result } = renderHook(() => useChat(client, [], narrowed));
+
+    act(() => result.current.send('Hva sier dokumentene om romfart?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+
+    act(() => turns[0].emit({ type: 'error', error: { code: 'no-hits' } }));
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    expect(assistantMessages(result.current.messages)[0].content).toBe(NO_HITS_FILTERED);
+  });
+
+  it('keeps what the agent did write when the search came back empty', async () => {
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva sier dokumentene om romfart?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+
+    act(() => turns[0].emit({ type: 'token', text: 'Dette står ikke i dokumentene.' }));
+    await waitFor(() => expect(result.current.status).toBe('streaming'));
+    act(() => turns[0].emit({ type: 'error', error: { code: 'no-hits' } }));
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    // The stand-in text is for a turn that said nothing at all. Words that
+    // did arrive are the answer, and replacing them would be rewriting it.
+    expect(assistantMessages(result.current.messages)[0].content).toBe(
+      'Dette står ikke i dokumentene.',
+    );
   });
 
   it('marks a turn the agent ended by asking back', async () => {

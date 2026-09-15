@@ -526,10 +526,10 @@ const klimaFeil: ScriptedConversation = {
   answer: '',
   documents: [],
   retrieval: { hitCount: 0, documentCount: 0, keywords: [] },
-  failure: {
-    code: 'agent',
-    message: 'Kunnskapsassistenten svarte ikke. Prøv igjen.',
-  },
+  // The language model is the part that is down, which is the one case where
+  // the reader can be told their question and filter are untouched. No
+  // `message`: the text belongs to the code, see views/chat/errorText.ts.
+  failure: { code: 'model-unavailable' },
   thinkingSteps: [
     {
       id: 'klima-1',

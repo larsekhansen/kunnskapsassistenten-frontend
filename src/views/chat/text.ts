@@ -117,3 +117,36 @@ export function shortcutHint(): string {
  */
 export const SHORTCUT_DESCRIPTION =
   'Trykk Ctrl og skråstrek, eller Cmd og skråstrek, for å flytte skrivemerket hit fra hvor som helst på siden.';
+
+/*
+ * A search that found nothing (design/brukerreiser-2026-09-15.md, punkt 12).
+ *
+ * Not an error and not in red: the assistant did what it was asked, looked
+ * through the documents and came back empty-handed. That is an answer with an
+ * empty source list, and API-bestilling A16 asks the backend to treat it as
+ * one too. So it is drawn as an answer — a turn in the thread, with the
+ * sources panel saying the same thing in its own words — rather than as an
+ * alert with «Prøv igjen» under it. Asking the same question again against
+ * the same documents gives the same nothing.
+ *
+ * Two versions, because the advice differs and only one of them is honest at
+ * a time: a reader who has not touched the filter cannot loosen it, and being
+ * told to is one more thing to go looking for.
+ */
+
+/** The reader had narrowed the corpus, so the filter is the first thing to try. */
+export const NO_HITS_FILTERED = [
+  'Fant ingen utdrag om dette i dokumentene som er valgt.',
+  '',
+  'Prøv å løsne filteret, eller still spørsmålet med andre ord.',
+].join('\n');
+
+/** Nothing was filtered away, so the words in the question are all there is to change. */
+export const NO_HITS_WHOLE_CORPUS = [
+  'Fant ingen utdrag om dette i dokumentene.',
+  '',
+  'Prøv å stille spørsmålet med andre ord, gjerne med ord du venter å finne i dokumentene.',
+].join('\n');
+
+/** What the polite live region says when the search came back empty. */
+export const NO_HITS_ANNOUNCEMENT = 'Fant ingen utdrag om dette i dokumentene.';
