@@ -62,6 +62,11 @@ export default defineConfig({
     // `KA_E2E_PORT` is how two runs coexist; see tests/e2e/paths.ts.
     reuseExistingServer: false,
     timeout: 180_000,
-    env: { VITE_API_MODE: 'mock' },
+    // `VITE_MOCK_SPEED=fast` for the same reason `VITE_API_MODE` is here:
+    // Vite substitutes both at BUILD time, so they have to be on the command
+    // that builds. The mock's own default is `realistic`, which is what makes
+    // the skeleton, the thinking panel and the streaming visible to a person
+    // — and what would make this suite sit and wait out every answer.
+    env: { VITE_API_MODE: 'mock', VITE_MOCK_SPEED: 'fast' },
   },
 });
