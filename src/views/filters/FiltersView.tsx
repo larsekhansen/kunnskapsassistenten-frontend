@@ -6,7 +6,7 @@ import { EmptyState, ErrorState, PanelHeader } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useFilterSelection } from '../../layout/useFilterSelection';
 import type { SlotViewProps } from '../../layout/viewModel';
-import { isEmptySelection, type FilterFacet } from '../../model';
+import { emptyFilterSelection, isEmptySelection, type FilterFacet } from '../../model';
 import { DocumentsList } from './DocumentsList';
 import { corpusSummary } from './corpusSummary';
 import { FacetField } from './FacetField';
@@ -49,11 +49,24 @@ export function FiltersView({
    * user is looking at right now. Fed only by a fetch that no selection
    * narrowed, so the line cannot say the corpus shrank when all that happened
    * was that somebody ticked a box.
-   *
-   * It costs no extra request: the selection starts empty, so the first fetch
-   * is the unconditional one.
    */
   const [corpus, setCorpus] = useState<FilterFacet[] | undefined>(given);
+  /*
+   * Whether the corpus needs a fetch of its own.
+   *
+   * It used to get one for free: the selection started empty, so the first
+   * conditional fetch WAS the unconditional one. #39 restores a saved filter
+   * before this view mounts, and with one saved the first fetch is already
+   * narrowed — `corpus` was then never set and the line fell back to
+   * «Dokumenter fra Kudos» alone, on exactly the reload where the user had
+   * most reason to want it. KA CC's follow-up on #34.
+   *
+   * Read once, at mount, because that is the question: was the selection
+   * empty when this view opened? Later changes cannot make the first fetch
+   * unconditional in hindsight. Clearing the filter does hand `corpus` the
+   * same data through the effect below, which is free and harmless.
+   */
+  const [needsOwnCorpusFetch] = useState(() => !isEmptySelection(selection));
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const backRef = useRef<HTMLButtonElement>(null);
@@ -102,6 +115,29 @@ export function FiltersView({
 
     return () => abort.abort();
   }, [client, given, attempt, selection]);
+
+  /*
+   * The unconditional facets, for the corpus line, when the conditional fetch
+   * above cannot double as them. One extra request, on a load that restored a
+   * filter, and none otherwise.
+   *
+   * A failure here is deliberately silent: the effect above owns `failed`,
+   * and it is asking the same endpoint. Losing this one alone costs the
+   * numbers in one sentence, which then says «Dokumenter fra Kudos» — the
+   * same thing it says in live mode. That is a worse sentence, not a broken
+   * panel, and an error region about it would be.
+   */
+  useEffect(() => {
+    if (given || !needsOwnCorpusFetch) return;
+
+    const abort = new AbortController();
+    client
+      .listFacets(abort.signal, emptyFilterSelection)
+      .then(setCorpus)
+      .catch(() => {});
+
+    return () => abort.abort();
+  }, [client, given, attempt, needsOwnCorpusFetch]);
 
   // Clearing the error here rather than in the effect: the retry click is
   // what changed, and setting state inside an effect starts another render.
