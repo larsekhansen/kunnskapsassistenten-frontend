@@ -22,10 +22,10 @@ type KudosDisclaimerProps = {
  *
  * The head is sticky (brukerblikk 2, finding 3), and everything pinned there
  * is taken off the reading area for as long as the reader scrolls. Measured at
- * 1440: pinning this line as well took the head to 292 px of a 778 px region,
- * 38 %. The line says something about the excerpts underneath and never
- * changes, so it is the one part of the old head that loses nothing by
- * scrolling with them.
+ * 1440 with two answers: the head is 219 px of a 778 px region without this
+ * line and 292 px with it, 28 % against 38 %. The line says something about
+ * the excerpts underneath and never changes, so it is the one part of the old
+ * head that loses nothing by scrolling with them.
  *
  * `aria-describedby` resolves by id, not by position, so the search field
  * still carries this as its description wherever it sits.

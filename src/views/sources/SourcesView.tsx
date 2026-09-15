@@ -430,11 +430,11 @@ export function SourcesView({
       {/* The panel head: what the reader needs while scrolling the excerpts.
 
           It is sticky, because a marker scrolls the panel to where the excerpt
-          is — 987 px on 1440 — and took «Kilder til svar 1 av 2» with it, so
-          the one line that makes «Utdrag 2» unambiguous was gone exactly while
-          the reader was looking at utdrag 2 (brukerblikk 2, finding 3). The
-          search field is here for the same reason and because today's KA
-          already pins it (eksisterende funksjonalitet/søk i kildene.md).
+          is and took «Kilder til svar 1 av 2» with it, so the one line that
+          makes «Utdrag 2» unambiguous was gone exactly while the reader was
+          looking at utdrag 2 (brukerblikk 2, finding 3). The search field is
+          here for the same reason and because today's KA already pins it
+          (eksisterende funksjonalitet/søk i kildene.md).
 
           Rendered even when both children are absent, so the box that carries
           the border does not appear and disappear as answers arrive. */}
