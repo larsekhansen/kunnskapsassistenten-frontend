@@ -79,3 +79,21 @@ export const CLARIFICATION_COPY = 'Kopier spørsmålet';
 
 /** The receipt after CLARIFICATION_COPY. */
 export const CLARIFICATION_COPIED = 'Spørsmålet er kopiert.';
+
+/*
+ * The keyboard shortcut to the compose field (reise 7 and 15). The field is
+ * tab stop 22 of 38 on a thread page, for the thing a reader does most often.
+ */
+
+/** A small hint by the field, for anyone looking at the screen. */
+export const SHORTCUT_HINT = 'Trykk / for å hoppe hit';
+
+/**
+ * The same thing for a screen reader, on the field itself.
+ *
+ * Spelled out rather than shown as the character: «/» read aloud is
+ * «skråstrek» in some voices and silence in others, and a shortcut nobody can
+ * hear the name of is not a shortcut.
+ */
+export const SHORTCUT_DESCRIPTION =
+  'Trykk skråstrek for å flytte skrivemerket hit fra hvor som helst på siden.';

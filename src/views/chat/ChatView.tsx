@@ -14,6 +14,7 @@ import { filterSummaryText } from './filterSummary';
 import { CLARIFICATION_PLACEHOLDER } from './text';
 import { threadHeading } from './threadHeading';
 import { useAtBottom } from './useAtBottom';
+import { useComposerShortcut } from './useComposerShortcut';
 import { useChat } from './useChat';
 import { Welcome } from './Welcome';
 import './chat.css';
@@ -189,6 +190,10 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   function focusField() {
     fieldRef.current?.focus();
   }
+
+  // `/` from anywhere on the page, the way GitHub and Slack do it. See
+  // useComposerShortcut.ts for what it refuses to do.
+  useComposerShortcut(fieldRef);
 
   /*
    * The same rescue, for the error that arrives on its own.

@@ -20,6 +20,8 @@ import {
   CLARIFICATION_TAG,
   COMPOSE_PLACEHOLDER,
   FOLLOW_UP_QUESTIONS,
+  SHORTCUT_DESCRIPTION,
+  SHORTCUT_HINT,
 } from './text';
 
 /*
@@ -438,5 +440,92 @@ describe('ChatView', () => {
     // The agent searched before it asked back, and that is the same fact here
     // as over an answer.
     expect(screen.getByText('Tenkte i 2 sekunder')).toBeTruthy();
+  });
+
+  it('puts the caret in the field when «/» is pressed anywhere on the page', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    await screen.findByRole('button', { name: 'Kopier svaret' });
+
+    const elsewhere = screen.getByRole('button', { name: 'Kopier svaret' });
+    elsewhere.focus();
+    fireEvent.keyDown(elsewhere, { key: '/' });
+
+    expect(document.activeElement).toBe(field());
+  });
+
+  it('lets «/» be typed into the question it belongs to', () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    field().focus();
+    const event = fireEvent.keyDown(field(), { key: '/', cancelable: true });
+
+    // Not swallowed: the reader is writing «kr/år», not asking for a shortcut.
+    expect(event).toBe(true);
+  });
+
+  it('leaves Ctrl+/ and Cmd+/ to the browser', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    const elsewhere = await screen.findByRole('button', { name: 'Kopier svaret' });
+
+    for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }]) {
+      elsewhere.focus();
+      fireEvent.keyDown(elsewhere, { key: '/', cancelable: true, ...modifier });
+      expect(document.activeElement).toBe(elsewhere);
+    }
+  });
+
+  it('leaves a field inside a shadow root alone', () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    // The three filter dropdowns are Designsystemet `Suggestion`, whose input
+    // lives in a shadow root — so `event.target` is the host, not the input.
+    const host = document.createElement('div');
+    document.body.append(host);
+    const inner = document.createElement('input');
+    host.attachShadow({ mode: 'open' }).append(inner);
+    inner.focus();
+
+    inner.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '/', bubbles: true, composed: true, cancelable: true }),
+    );
+
+    expect(document.activeElement).not.toBe(field());
+    host.remove();
+  });
+
+  it('says how to reach the field, on screen and to a screen reader', () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    expect(screen.getByText(SHORTCUT_HINT)).toBeTruthy();
+
+    // The field itself carries the spelled-out version: «/» read aloud is
+    // «skråstrek» in some voices and silence in others.
+    const described = field().getAttribute('aria-describedby');
+    expect(described).toBeTruthy();
+    expect(document.getElementById(described!)?.textContent).toBe(SHORTCUT_DESCRIPTION);
   });
 });

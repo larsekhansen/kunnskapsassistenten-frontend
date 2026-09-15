@@ -432,6 +432,23 @@
   gap: var(--ds-size-2);
 }
 
+/*
+ * «Trykk / for å hoppe hit», on the same line as the disclaimer.
+ *
+ * Its own line would be a second sentence of grey text under a field that
+ * already carries one; beside the disclaimer it is a footnote to a footnote,
+ * which is the weight a keyboard shortcut deserves. The separator is drawn in
+ * CSS so it is not read out as a word.
+ */
+.ka-composer__shortcut {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+.ka-composer__shortcut::after {
+  content: '·';
+  margin-inline: var(--ds-size-1);
+}
+
 .ka-composer__disclaimer {
   color: var(--ds-color-neutral-text-subtle);
   text-align: center;
