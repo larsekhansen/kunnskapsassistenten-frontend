@@ -97,6 +97,10 @@ test.describe('feilmeldinger skiller tilfellene', () => {
     await expect(page.getByRole('main').getByRole('alert')).toHaveText('');
     await expect(page.getByRole('button', { name: 'Prøv igjen' })).toHaveCount(0);
 
+    // Og ingen oppfølgingsforslag: «Kan du utdype?» ber assistenten si mer om
+    // ingenting, og de to andre leder tilbake til det samme tomme søket.
+    await expect(page.getByRole('button', { name: 'Kan du utdype?' })).toHaveCount(0);
+
     // And the sources panel says the same thing rather than waiting for
     // excerpts that are not coming.
     await page.getByRole('button', { name: 'Vis kilder' }).click();

@@ -61,6 +61,16 @@ export type UseChat = {
    * different filter must not rewrite the first answer's line.
    */
   appliedFilters: Record<string, FilterSelection>;
+  /**
+   * The answers whose search came back empty, by message id.
+   *
+   * Kept beside the messages rather than derived from their text: a turn that
+   * found nothing is a fact about the turn, and reading it back out of the
+   * words would break the moment the wording changed. The view needs it
+   * because the fixed follow-up suggestions do not apply under one — «Kan du
+   * utdype?» asks the assistant to say more about nothing.
+   */
+  noHitsAnswers: ReadonlySet<string>;
   send: (question: string) => void;
   /** Stop the generation and keep what has arrived (answer 34). */
   cancel: () => void;
@@ -111,6 +121,7 @@ export function useChat(
   const [appliedFilters, setAppliedFilters] = useState<Record<string, FilterSelection>>({});
   const [status, setStatus] = useState<ChatStatus>('idle');
   const [error, setError] = useState<ChatError | null>(null);
+  const [noHitsAnswers, setNoHitsAnswers] = useState<ReadonlySet<string>>(() => new Set());
   const [announcement, setAnnouncement] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
@@ -278,6 +289,7 @@ export function useChat(
                   citations: [],
                 }));
                 settleAnswer(answerId, 'complete');
+                setNoHitsAnswers((current) => new Set(current).add(answerId));
                 if (isCurrentTurn()) {
                   setAnnouncement(NO_HITS_ANNOUNCEMENT);
                   setStatus('idle');
@@ -393,5 +405,15 @@ export function useChat(
     void run(question, answerId);
   }, [filters, run]);
 
-  return { messages, status, error, announcement, appliedFilters, send, cancel, retry };
+  return {
+    messages,
+    status,
+    error,
+    announcement,
+    appliedFilters,
+    noHitsAnswers,
+    send,
+    cancel,
+    retry,
+  };
 }

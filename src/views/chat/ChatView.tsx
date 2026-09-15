@@ -42,11 +42,17 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   // the shell holds it, and this view sends it — the two views never meet.
   const { selection } = useFilterSelection();
 
-  const { messages, status, error, announcement, appliedFilters, send, cancel, retry } = useChat(
-    chatClient,
-    thread?.messages ?? [],
-    selection,
-  );
+  const {
+    messages,
+    status,
+    error,
+    announcement,
+    appliedFilters,
+    noHitsAnswers,
+    send,
+    cancel,
+    retry,
+  } = useChat(chatClient, thread?.messages ?? [], selection);
 
   // What the alert says, per case. Undefined while the turn is fine, which is
   // what keeps the region mounted and empty.
@@ -182,6 +188,23 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   const hasAnswer = messages.some(
     (message) => message.role === 'assistant' && message.status === 'complete',
   );
+
+  /**
+   * The turn on screen searched and found nothing.
+   *
+   * The fixed suggestions do not apply under one: «Kan du utdype?» asks the
+   * assistant to say more about nothing, and «Identifiser utfordringer» is a
+   * question about documents that were never found. The advice the answer
+   * already carries — loosen the filter, ask in other words — is the way on
+   * from here, and three buttons that lead back to the same nothing are in
+   * its way (the conductor, 2026-09-15).
+   *
+   * Read off the last message and not off the thread: an earlier answer that
+   * did find something is still worth following up, right up until this one
+   * replaced it as the turn the suggestions would act on.
+   */
+  const lastMessage = messages.at(-1);
+  const foundNothing = lastMessage !== undefined && noHitsAnswers.has(lastMessage.id);
 
   /**
    * The same head on both routes (brukerblikk 2026-09-15, finding 5). A
@@ -335,7 +358,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         onSubmit={() => submit(draft)}
         placeholder={awaitingClarification ? CLARIFICATION_PLACEHOLDER : undefined}
         ref={composerRef}
-        showFollowUps={hasAnswer && !awaitingClarification}
+        showFollowUps={hasAnswer && !awaitingClarification && !foundNothing}
         status={status}
         value={draft}
       />

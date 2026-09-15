@@ -317,6 +317,60 @@ describe('ChatView', () => {
     expect(last?.documents).toEqual([]);
   });
 
+  it('offers no follow-up suggestions under an answer that found nothing', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding([{ type: 'error', error: { code: 'no-hits' } }])} />
+      </Shell>,
+    );
+
+    ask('Hva sier dokumentene om romfart?');
+
+    await waitFor(() =>
+      expect(document.querySelector('.ka-messages')?.textContent).toContain(
+        NO_HITS_WHOLE_CORPUS.split('\n')[0],
+      ),
+    );
+
+    // «Kan du utdype?» asks the assistant to say more about nothing, and the
+    // other two lead back to the same empty search.
+    for (const question of FOLLOW_UP_QUESTIONS) {
+      expect(screen.queryByRole('button', { name: question }), question).toBeNull();
+    }
+  });
+
+  it('brings the suggestions back for the next answer that did find something', async () => {
+    let turn = 0;
+    const client: ChatClient = {
+      async *ask(): AsyncIterable<StreamEvent> {
+        turn += 1;
+        if (turn === 1) {
+          yield { type: 'error', error: { code: 'no-hits' } };
+          return;
+        }
+        for (const event of answer) yield event;
+      },
+      listThreads: async () => [],
+      getThread: async () => null,
+      listFacets: async () => [],
+    };
+
+    render(
+      <Shell>
+        <ChatView client={client} />
+      </Shell>,
+    );
+
+    ask('Hva sier dokumentene om romfart?');
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: FOLLOW_UP_QUESTIONS[0] })).toBeNull(),
+    );
+
+    // The empty search was one turn, not a property of the thread.
+    ask('Hva sier rapporten?');
+    expect(await screen.findByRole('button', { name: FOLLOW_UP_QUESTIONS[0] })).toBeTruthy();
+  });
+
   it('says «Avbryt» in words while the answer is on its way', async () => {
     render(
       <Shell>
