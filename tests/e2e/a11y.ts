@@ -33,8 +33,47 @@ declare global {
  */
 const DISABLED_RULES: string[] = [];
 
+/**
+ * Put the page at rest before measuring it.
+ *
+ * A tooltip is shown by focus or hover and fades in over
+ * `--dsc-tooltip-transition-duration` after a 150 ms delay. Axe run against
+ * one mid-fade reports `color-contrast (serious)` on `.ds-tooltip` — and it is
+ * not a contrast problem: measured 2026-09-15, the same tooltip gives one
+ * violation immediately and none 600 ms later, with identical computed
+ * colours, white on rgb(31, 44, 61), about 13:1.
+ *
+ * So this is the same class as the trace files and the shared port: the suite
+ * going red for reasons inside its own plumbing. `walkWithTab` leaves focus
+ * wherever it stopped, and whether that element happens to own a tooltip is
+ * not something a test should depend on.
+ *
+ * Dropping focus and the pointer is what makes the tooltip go away — the same
+ * move `saveScreenshot` makes below, for the same kind of reason — and then we
+ * wait for it to finish going. A page that never had one moves straight on.
+ */
+async function settle(page: Page): Promise<void> {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.mouse.move(0, 0);
+
+  await page
+    .waitForFunction(
+      () => {
+        const tip = document.querySelector('.ds-tooltip');
+        return !tip || !(tip as HTMLElement).checkVisibility();
+      },
+      undefined,
+      { timeout: 2000 },
+    )
+    // A tooltip that will not go away is a finding in its own right, but it is
+    // not this helper's to report: let axe run and say what it sees.
+    .catch(() => {});
+}
+
 /** Runs axe on whatever is on screen and fails the test on any violation. */
 export async function expectNoAxeViolations(page: Page, what: string): Promise<void> {
+  await settle(page);
+
   const results = await new AxeBuilder({ page })
     .withTags(RULE_SETS)
     .disableRules(DISABLED_RULES)
