@@ -38,15 +38,34 @@ export default defineConfig({
 
   use: {
     baseURL: `http://localhost:${PORT}`,
-    // The page template is drawn at 1440, and 900 is the height the design
-    // frames use. Every measurement in design/omraader/ assumes it.
-    viewport: { width: 1440, height: 900 },
     locale: 'nb-NO',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
 
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  /*
+   * The viewport belongs HERE and not in the `use` above, and that is the
+   * whole point of this block.
+   *
+   * `devices['Desktop Chrome']` carries a viewport of its own — 1280 × 720 —
+   * and a project's `use` is merged over the top-level one. So a
+   * `viewport: { width: 1440, height: 900 }` written above the spread was
+   * silently replaced, and the suite ran at 1280 × 720 for four days while
+   * every comment in it, and `docs/review/funksjonssjekk.md`, said 1440 × 900.
+   * Found by #2 in PR #55 and measured here with a throwaway spec that
+   * printed `window.innerWidth`.
+   *
+   * 1440 is the width the page template is drawn at, and 900 the height the
+   * design frames use; every measurement in design/omraader/ assumes both.
+   * The specs that test the layout itself — `layout.spec.ts`, `resize.spec.ts`
+   * — set their own viewport per test and were never affected.
+   */
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+  ],
 
   webServer: {
     command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,
