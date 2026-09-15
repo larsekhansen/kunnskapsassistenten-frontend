@@ -16,3 +16,5 @@ export { PanelHeader } from './PanelHeader';
 export type { PanelHeaderProps } from './PanelHeader';
 export { MIN_QUERY_LENGTH, findHits, hitsFor, splitByHits, stepHit } from './textSearch';
 export type { SearchHit, SearchableItem, SearchableKind, TextRun } from './textSearch';
+export { threadTime } from './threadTime';
+export type { ThreadTime } from './threadTime';
