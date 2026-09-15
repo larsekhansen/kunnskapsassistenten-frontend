@@ -46,6 +46,36 @@ dirigenten, som gir det til eieren.
 - Før grunnmuren er merget: bruk mock-data fra `src/api/mock/`, eller egne
   fixtures i din egen mappe.
 
+## View-hodet: det som står stille mens resten ruller
+
+Hver plass har én **view-hode-plass**, øverst i den rullende regionen, eid av
+skallet (`src/layout/ViewHead.tsx`). Et view fyller den:
+
+```tsx
+<ViewHead>
+  <Button onClick={() => onShowView('threads')}>Tråder</Button>
+  <PanelHeader title="Filtrering" />
+</ViewHead>
+```
+
+**Ikke lag ditt eget `position: sticky` i toppen av et panel.** Et klebrig
+hode dekker alt som ligger over det i samme rullende boks, og «over» gjelder
+tab-rekkefølgen også: nettleseren ruller en kontroll som får fokus til toppen
+av regionen, som er nøyaktig der hodet står. Kontrollen lander under hodet,
+klikkene havner på hodet og fokusringen er usynlig (WCAG 2.4.11). Målt i
+PR #55, der «Tråder»-knappen ble uklikkbar av et view-lokalt hode.
+
+Derfor plasserer skallet boksen først i regionen, og et view som vil ha en
+knapp stående legger **knappen i hodet** i stedet for over det. Skriv
+`ViewHead` først i viewet, så er DOM-rekkefølgen og tab-rekkefølgen den samme.
+Skallet setter også `scroll-padding-block-start` lik hodets høyde, så
+`scrollIntoView` og fokus stopper under det.
+
+Ett hode per plass. To views i samme plass er moduser av ett panel, og bare
+ett av dem er montert om gangen. Et tomt hode tegner ingen strek
+(`.view-head:empty`). Utenfor skallet — preview-sidene, de fleste unit-testene
+— tegnes hodet der det står.
+
 ## Designsystemet først, alltid
 
 Bygg aldri en komponent Designsystemet allerede har. Det koster dyrt å rette

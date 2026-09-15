@@ -38,6 +38,17 @@
 }
 
 /*
+ * The way back to the thread list, drawn in the shell's view head.
+ *
+ * `.filters-view > .ds-btn` above cannot reach it there, and the head's own
+ * stretch is a default in a box this view does not own. Said here so the
+ * button cannot quietly shrink the day that default changes.
+ */
+.filters-view__back {
+  inline-size: 100%;
+}
+
+/*
  * The corpus line under «Filtrering». Muted, because it is context for the
  * controls below rather than one of them.
  */
