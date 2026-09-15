@@ -30,6 +30,7 @@ eier bare denne mappa.
 | [`feat-chat-brukerblikk-2026-09-15.md`](feat-chat-brukerblikk-2026-09-15.md)                   | PR #23, brukerblikk-funn 5, 6, 9 og 10 i hovedkolonnen                     |
 | [`feat-thread-url-2026-09-15.md`](feat-thread-url-2026-09-15.md)                               | PR #25, tråd-URL og needs-clarification: plumbing uten kaller              |
 | [`feat-secondary-sidebar-2026-09-15.md`](feat-secondary-sidebar-2026-09-15.md)                 | PR #24, kildepanelet på 336 px: utdragsteksten fra 174 til 246 px          |
+| [`feat-sources-auto-open-2026-09-15.md`](feat-sources-auto-open-2026-09-15.md)                 | PR #30, auto-åpning med plass-regel, badge i navnet, settle() i axe        |
 
 ## Sånn går en review
 
