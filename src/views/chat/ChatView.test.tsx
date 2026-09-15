@@ -72,9 +72,14 @@ describe('ChatView', () => {
 
     // The thread has no title yet, so the first sentence of the question
     // stands in — the head is the same on both routes (finding 5).
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 2, name: 'Hva sier rapporten' })).toBeTruthy(),
+    const head = await waitFor(() =>
+      screen.getByRole('heading', { level: 2, name: 'Hva sier rapporten' }),
     );
+
+    // But it says no more than the question under it, so it is heard and not
+    // seen: the same text twice on screen is what finding 5 asked to stop.
+    expect(head.className).toContain('ds-sr-only');
+    expect(screen.getAllByText(/Hva sier rapporten\?/u)).toHaveLength(1);
   });
 
   it('keeps the thread title when the thread has one', () => {
@@ -101,7 +106,10 @@ describe('ChatView', () => {
       </Shell>,
     );
 
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('NKOM måloppnåelse');
+    const head = screen.getByRole('heading', { level: 2 });
+    expect(head.textContent).toBe('NKOM måloppnåelse');
+    // A real title says more than the question, so it is drawn.
+    expect(head.className).not.toContain('ds-sr-only');
   });
 
   it('does not ask for a retry in the text right above the retry button', async () => {

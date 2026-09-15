@@ -8,7 +8,7 @@ import { useMainScroll } from '../../layout/useMainScroll';
 import type { ThreadDetail } from '../../model';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
-import { threadTitle } from './threadTitle';
+import { threadHeading } from './threadHeading';
 import { useAtBottom } from './useAtBottom';
 import { useChat } from './useChat';
 import { Welcome } from './Welcome';
@@ -109,8 +109,9 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
    * The same head on both routes (brukerblikk 2026-09-15, finding 5). A
    * thread opened from the list brings its title; a conversation started on
    * `/` has none until the client names it, and then the question stands in.
+   * See threadHeading.ts for why a stand-in is heard and not seen.
    */
-  const title = threadTitle(thread?.title, messages);
+  const heading = threadHeading(thread?.title, messages);
 
   function submit(question: string) {
     send(question);
@@ -132,9 +133,13 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
 
   return (
     <div className="ka-chat" ref={rootRef}>
-      {title ? (
-        <Heading data-size="lg" level={2}>
-          {title}
+      {heading ? (
+        <Heading
+          className={heading.repeatsQuestion ? 'ds-sr-only' : undefined}
+          data-size="lg"
+          level={2}
+        >
+          {heading.title}
         </Heading>
       ) : null}
 
