@@ -258,9 +258,21 @@ test.describe('hovedkolonnen', () => {
      * appen, og at «/» ellers er et vanlig tegn.
      */
 
-    // Og «/» skrives som et tegn i feltet, som alle andre tegn.
-    await field.click();
-    await page.keyboard.type('a/b');
+    /*
+     * Og «/» skrives som et tegn i feltet, som alle andre tegn.
+     *
+     * `pressSequentially` på feltet, ikke `page.keyboard.type`: den første
+     * skriver til elementet, den andre til hva som nå enn har fokus. Denne
+     * påstanden ble rød i CI 15.09 med tom verdi — fire ganger, på fire
+     * grener — mens den var grønn lokalt hver gang. Jeg fant ikke årsaken:
+     * Playwright-artefaktene skrives til `~/.cache`, utenfor arbeidsområdet,
+     * så CI har ingen trace å laste opp. Det jeg kunne gjøre noe med er
+     * avhengigheten av omgivende fokus- og tastaturtilstand, og den er borte
+     * nå. Kommer den tilbake, er neste steg å flytte artefaktene inn i
+     * arbeidsområdet så kjøringen kan lastes opp.
+     */
+    await field.fill('');
+    await field.pressSequentially('a/b');
     await expect(field).toHaveValue('a/b');
 
     // Snarveien står to steder: en synlig hint og en beskrivelse på feltet.
