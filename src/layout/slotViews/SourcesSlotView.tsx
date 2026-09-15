@@ -1,5 +1,6 @@
 import { SourcesView } from '../../views/sources';
 import { useAnswerSources } from '../useAnswerSources';
+import { useCitation } from '../useCitation';
 import type { SlotViewProps } from '../viewModel';
 
 /**
@@ -9,18 +10,35 @@ import type { SlotViewProps } from '../viewModel';
  * they are produced by the chat view and the two may not import each other.
  * See answerSourcesContext.ts.
  *
- * The shell now also carries sources per answer and which answer an activated
- * marker sits in — `answers` and `activeCitation.messageId`. They are NOT
- * passed on yet, because the props that take them arrive with #4's PR #36.
- * The two lines are:
+ * Three things are handed over, and the last two are what make a marker in an
+ * older answer mean what it says (punkt 5 in
+ * design/brukerreiser-2026-09-15.md):
  *
- *     answers={answers}
- *     activeCitationMessageId={activeCitation?.messageId}
+ *   documents                the flat list, the newest answer's. Kept because
+ *                            the view normalises it to a one-entry `answers`
+ *                            and because the filter view and the rail badge
+ *                            read the same value.
+ *   answers                  every answer in the thread, oldest first.
+ *                            `undefined` until something is recorded, which
+ *                            the view reads as «nothing is known».
+ *   activeCitationMessageId  which answer the activated `[n]` sits in. Without
+ *                            it the panel cannot tell `[2]` in the first
+ *                            answer from `[2]` in the third.
  *
- * and they go in the moment that PR is on main. Until then the view falls
- * back to the flat list, which is exactly what it is built to do.
+ * `activeCitationNumber` and `activeCitationNonce` come the other way, through
+ * `SlotViewProps`, because every view gets those. The message id does not: it
+ * is only the sources view that has a use for it.
  */
 export function SourcesSlotView(props: SlotViewProps) {
-  const { documents } = useAnswerSources();
-  return <SourcesView {...props} documents={documents} />;
+  const { documents, answers } = useAnswerSources();
+  const { activeCitation } = useCitation();
+
+  return (
+    <SourcesView
+      {...props}
+      answers={answers}
+      documents={documents}
+      activeCitationMessageId={activeCitation?.messageId}
+    />
+  );
 }

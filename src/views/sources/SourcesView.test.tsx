@@ -1,9 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { excerptDomId, type SourceDocument } from '../../model';
+import { excerptDomId, type AnswerSources, type SourceDocument } from '../../model';
 import { SourcesView } from './SourcesView';
-import type { AnswerSources } from './types';
 
 /**
  * jsdom does no layout and implements no scrolling, so the method the view

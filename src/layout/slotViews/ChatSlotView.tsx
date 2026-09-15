@@ -6,6 +6,7 @@ import { threadFromQuestion, type Thread, type ThreadDetail } from '../../model'
 import { ChatView } from '../../views/chat';
 import { ThreadContext } from '../threadContext';
 import { useAnswerSources } from '../useAnswerSources';
+import { useNoAnswers } from '../useNoAnswers';
 
 /**
  * Mounts the chat view in whichever slot holds it.
@@ -93,6 +94,13 @@ function ChatSlot({ threadId }: { threadId?: string }) {
   // The sources on screen belong to the answer on screen. Leaving a thread
   // has to clear them, or the sources panel keeps citing the previous answer.
   useEffect(() => () => setDocuments(undefined), [setDocuments]);
+
+  // A thread that is not there has no answers either, and the panel has to
+  // say so rather than draw skeletons. It happens to be right without this
+  // today — the chat view mounts for a moment before the client answers, and
+  // reports an empty list on its way past — but that is a race in another
+  // view, not a decision this page has made. See useNoAnswers.ts.
+  useNoAnswers(missing);
 
   /**
    * Give the conversation an address, once.

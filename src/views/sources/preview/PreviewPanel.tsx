@@ -2,9 +2,8 @@ import { Button, Heading, Link, Paragraph } from '@digdir/designsystemet-react';
 import { useId, useState } from 'react';
 import { fixtures } from '../../../api/mock';
 import { SecondarySidebarIcon } from '../../../components/icons';
-import { excerptDomId, type SourceDocument } from '../../../model';
+import { excerptDomId, type AnswerSources, type SourceDocument } from '../../../model';
 import { SourcesView } from '../SourcesView';
-import type { AnswerSources } from '../types';
 import './preview.css';
 
 /**

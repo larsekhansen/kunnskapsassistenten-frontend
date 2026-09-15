@@ -1,7 +1,7 @@
 import { Heading } from '@digdir/designsystemet-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyState } from '../../components';
-import { excerptDomId, type Excerpt, type SourceDocument } from '../../model';
+import { excerptDomId, type AnswerSources, type Excerpt, type SourceDocument } from '../../model';
 import { AnswerSwitcher } from './AnswerSwitcher';
 import { ExcerptSearch } from './ExcerptSearch';
 import { SourceDocumentCard } from './SourceDocumentCard';
@@ -10,7 +10,7 @@ import { SourcesPlaceholder } from './SourcesPlaceholder';
 import { NO_ANSWER_YET, emptyStateFor, type SourcesEmptyState } from './emptyStates';
 import { documentDomId } from './ids';
 import { type SearchHit, buildSearchIndex, findHits, stepHit } from './search';
-import type { AnswerSources, SourcesViewProps } from './types';
+import type { SourcesViewProps } from './types';
 import './sources.css';
 
 /**

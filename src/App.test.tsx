@@ -65,6 +65,17 @@ describe('en adresse som ikke finnes', () => {
     openAt('/tull');
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Kunnskapsassistenten');
   });
+
+  it('lar kildepanelet si at det ikke er noen kilder, ikke at de er på vei', async () => {
+    openAt('/tull');
+
+    // The chat view is what reports sources, and this page has none, so
+    // nobody used to say anything at all — and «nothing said» is the loading
+    // state. Measured by KA CC: «Henter kilder …» with twelve skeletons,
+    // forever. See src/layout/useNoAnswers.ts.
+    expect(await screen.findByText('Ingen kilder ennå')).toBeDefined();
+    expect(screen.queryByText('Henter kilder …')).toBeNull();
+  });
 });
 
 describe('en tråd som ikke finnes', () => {
@@ -78,5 +89,13 @@ describe('en tråd som ikke finnes', () => {
     ).toBeDefined();
     expect(screen.getByRole('link', { name: 'Gå til forsiden' })).toBeDefined();
     expect(screen.queryByRole('textbox', { name: 'Spørsmål til Kunnskapsassistenten' })).toBeNull();
+  });
+
+  it('lar kildepanelet si det samme som oppsamlingsruta gjør', async () => {
+    openAt('/threads/finnes-ikke');
+    await screen.findByRole('heading', { level: 2, name: 'Fant ikke tråden' });
+
+    expect(screen.getByText('Ingen kilder ennå')).toBeDefined();
+    expect(screen.queryByText('Henter kilder …')).toBeNull();
   });
 });

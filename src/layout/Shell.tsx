@@ -4,6 +4,7 @@ import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
 import { MainScrollContext } from './scrollContext';
 import { useAnswerSources } from './useAnswerSources';
+import { useNoAnswers } from './useNoAnswers';
 import { useCitation } from './useCitation';
 import { useLayout } from './useLayout';
 import { viewComponents } from './viewComponents';
@@ -43,6 +44,11 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
   // The main slot owns the scroll, so the element is handed to the views
   // rather than looked up from inside them. See scrollContext.ts.
   const mainScroll = useRef<HTMLElement | null>(null);
+
+  // No conversation on this page, so nothing will ever report sources. The
+  // panel has to be told, or it draws the skeletons for an answer that is not
+  // coming. See useNoAnswers.ts.
+  useNoAnswers(routeOwnsMain);
 
   return (
     <MainScrollContext value={mainScroll}>
