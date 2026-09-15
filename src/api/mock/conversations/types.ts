@@ -95,8 +95,11 @@ export type ExcerptDraft = {
  *
  * No `page` anywhere. Kudos gives a summary per document and no page for any
  * part of it, and the brief is explicit that a page invented from nothing is
- * worse than none. The NKOM fixture keeps its pages, so the sources panel's
- * page rendering still has something to draw.
+ * worse than none. The NKOM fixture had pages until 2026-09-16 and lost them
+ * for the same reason when it was rebuilt on real documents, so nothing in
+ * the app draws `Excerpt.page` today. The field stays because the live path
+ * is where a real page number can come from; see the note on `#page=N` in
+ * design/kudos-lenker-og-usikre-2026-09-16.md.
  */
 export function sourceFrom(corpusId: string, drafts: ExcerptDraft[]): SourceDocument {
   const document = corpusDocument(corpusId);
