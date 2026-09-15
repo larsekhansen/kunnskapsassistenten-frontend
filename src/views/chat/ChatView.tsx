@@ -1,14 +1,16 @@
 import { Heading } from '@digdir/designsystemet-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createChatClient, type ChatClient } from '../../api';
 import { ErrorState } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useCitation } from '../../layout/useCitation';
+import { useFilterSelection } from '../../layout/useFilterSelection';
 import { useMainScroll } from '../../layout/useMainScroll';
 import { useThread } from '../../layout/useThread';
-import type { ThreadDetail } from '../../model';
+import { isEmptySelection, type ThreadDetail } from '../../model';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
+import { filterSummaryText } from './filterSummary';
 import { CLARIFICATION_PLACEHOLDER } from './text';
 import { threadHeading } from './threadHeading';
 import { useAtBottom } from './useAtBottom';
@@ -33,9 +35,23 @@ function defaultClient(): ChatClient {
 
 function ChatSession({ userName, thread, client }: ChatViewProps) {
   const chatClient = useMemo(() => client ?? defaultClient(), [client]);
-  const { messages, status, error, announcement, send, cancel, retry } = useChat(
+
+  // The document filter is part of the question. The filter view writes it,
+  // the shell holds it, and this view sends it — the two views never meet.
+  const { selection } = useFilterSelection();
+
+  const { messages, status, error, announcement, appliedFilters, send, cancel, retry } = useChat(
     chatClient,
     thread?.messages ?? [],
+    selection,
+  );
+
+  const filterSummary = useCallback(
+    (messageId: string) => {
+      const applied = appliedFilters[messageId];
+      return applied && !isEmptySelection(applied) ? filterSummaryText(applied) : undefined;
+    },
+    [appliedFilters],
   );
 
   const [draft, setDraft] = useState('');
@@ -174,6 +190,23 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
     fieldRef.current?.focus();
   }
 
+  /*
+   * The same rescue, for the error that arrives on its own.
+   *
+   * The send button becomes the stop button while an answer is on its way,
+   * and the stop button is gone the moment the turn fails. A reader who
+   * clicked it is then standing on `<body>` — Enter keeps the caret in the
+   * field, a mouse click does not, and the difference was measured (reise 10
+   * and 15). Focus is only taken when nobody holds it, so a reader who has
+   * moved on keeps their place.
+   */
+  useEffect(() => {
+    if (status !== 'error') return;
+    if (document.activeElement === document.body || document.activeElement === null) {
+      fieldRef.current?.focus();
+    }
+  }, [status]);
+
   return (
     <div className="ka-chat" ref={rootRef}>
       {heading ? (
@@ -199,7 +232,12 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
       ) : (
         <MessageList
           canScrollToBottom={!atBottom}
+          filterSummary={filterSummary}
           messages={messages}
+          onRegenerate={() => {
+            retry();
+            focusField();
+          }}
           onScrollToBottom={() => scrollToBottom()}
           onSelectSource={showCitation}
         />
