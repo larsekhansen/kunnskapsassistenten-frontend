@@ -463,9 +463,26 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
  * heading, as Figma draws it: «Kunnskapsassistenten» on top, the thread title
  * under it.
  *
- * The session is keyed on the thread, so moving between threads starts from
- * that thread's messages instead of carrying the previous conversation across.
+ * **It does not key itself.** It used to: `key={props.thread?.id ?? 'new'}`,
+ * so that moving between threads started from that thread's messages instead
+ * of carrying the previous conversation across. The trouble is that `thread`
+ * is undefined until the client has answered, so on `/threads/:id` the key
+ * went `'new'` → the id a moment after mount, and the session remounted with
+ * everything the compose field was holding. Type while the thread is loading
+ * and the text was gone. In CI, which is slower, the remount landed in the
+ * middle of a test's keystrokes and `chat.spec` went red on main.
+ *
+ * The remount it was for already happens above: `ChatSlotView` renders
+ * `<ChatSlot key={threadId}>` off the route, so a real thread change replaces
+ * this whole subtree, and the preview passes a key of its own. Keying here as
+ * well only added the one transition the route never makes — from «no thread»
+ * to «this thread» — which is not a change of conversation at all. It is the
+ * same conversation arriving.
+ *
+ * Which is also why the route is not read here instead: a view takes a
+ * `ThreadDetail` and never a route (see slotViews/ChatSlotView.tsx), and the
+ * caller that knows the address is already doing the job.
  */
 export function ChatView(props: ChatViewProps) {
-  return <ChatSession key={props.thread?.id ?? 'new'} {...props} />;
+  return <ChatSession {...props} />;
 }
