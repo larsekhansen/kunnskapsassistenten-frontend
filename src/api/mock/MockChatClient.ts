@@ -211,7 +211,7 @@ export class MockChatClient implements ChatClient {
       }
 
       /*
-       * A cached conversation, when the question is one of the ten. Lars
+       * A cached conversation, when the question is one of the eleven. Lars
        * asked for «noen nye søk, cachede, så jeg kan teste selv»; see
        * conversations/scripts.ts. Everything below it — steps, answer,
        * sources, done — is the same sequence the default answer uses, so a
@@ -227,7 +227,7 @@ export class MockChatClient implements ChatClient {
        *
        * It narrows a scripted conversation the same way it narrows the
        * default one. The filter belongs to the reader and not to the answer,
-       * and a control that quietly stops working on ten of the questions is
+       * and a control that quietly stops working on eleven of the questions is
        * worse than one that never worked at all.
        */
       const documents = narrowToSelection(scripted?.documents ?? nkomSources, params.filters);

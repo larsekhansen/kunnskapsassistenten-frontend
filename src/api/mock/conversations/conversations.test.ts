@@ -16,6 +16,29 @@ describe('scriptede samtaler', () => {
     expect(scriptedConversations.length).toBeGreaterThanOrEqual(10);
   });
 
+  /**
+   * Funn 2 i KA CC sin anmeldelse. `MessageList` tegner svaret med
+   * `startLevel={3}`, og `Markdown` mapper `min(startLevel + dybde − 1, 6)`.
+   * Et svar som begynner på `##` blir dermed `h4` rett under tråd-tittelens
+   * `h2`, og dokumentet hopper fra nivå 2 til 4.
+   *
+   * Ingen av verktøyene ser det: `heading-order` er merket best-practice hos
+   * axe, ikke wcag2a/2aa, så både e2e-suiten og anmelderens egen kjøring er
+   * blinde for det. Derfor står det her.
+   */
+  it('begynner på # og ikke ##, så overskriftene ikke hopper over et nivå', () => {
+    for (const conversation of scriptedConversations) {
+      const headings = conversation.answer
+        .split('\n')
+        .filter((line) => /^#{1,6} /.test(line))
+        .map((line) => line.match(/^#+/)?.[0].length ?? 0);
+
+      for (const depth of headings) {
+        expect(depth, `${conversation.id}: overskrift på dybde ${depth}`).toBe(1);
+      }
+    }
+  });
+
   it('siterer ordrett fra sammendraget i korpuset', () => {
     for (const conversation of scriptedConversations) {
       for (const document of conversation.documents) {

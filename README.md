@@ -474,11 +474,11 @@ noe annet», når sannheten er «du har ikke bedt om noe annet ennå».
 De andre dimensjonene snevrer inn. Huker du av «Helsedirektoratet», viser
 årene hvor mange av Helsedirektoratets dokumenter hvert år har.
 
-### Ti cachede samtaler
+### Elleve cachede samtaler
 
-Mocken har ti ferdige samtaler over korpuset, så det går an å se hele flyten
-uten backend: skjelett, tenkesteg, strømming, kilder og «Fremgangsmåte».
-`src/api/mock/conversations/scripts.ts`.
+Mocken har elleve ferdige samtaler over korpuset, så det går an å se hele
+flyten uten backend: skjelett, tenkesteg, strømming, kilder og
+«Fremgangsmåte». `src/api/mock/conversations/scripts.ts`.
 
 **Tre av dem er kickstarterne på tomtilstanden, ord for ord.** Trykk et
 forslag og send, og du får svar. Det krevde ingen endring i chat-viewet:

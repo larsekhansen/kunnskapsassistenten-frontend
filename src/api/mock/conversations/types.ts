@@ -12,7 +12,7 @@ import { corpusDocument } from '../corpus';
  * One cached conversation: a question the mock has a real answer for.
  *
  * Lars asked for «noen nye søk, cachede, så jeg kan teste selv». These are
- * those: ten questions across the Kudos corpus, each with the whole shape a
+ * those: eleven questions across the Kudos corpus, each with the whole shape a
  * real turn has — thinking steps, a streamed answer, excerpts behind it, and
  * «Fremgangsmåte».
  *
