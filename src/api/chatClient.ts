@@ -24,6 +24,22 @@ export interface AskParams {
 export interface ChatClient {
   ask(params: AskParams): AsyncIterable<StreamEvent>;
   listThreads(signal?: AbortSignal): Promise<Thread[]>;
+  /**
+   * Tell the client which conversation the questions that follow belong to.
+   *
+   * The shell calls it when it mints a thread for a question asked on `/`, and
+   * when it has read one from `/threads/:threadId`. It is the handshake a
+   * session would be on a server: `ask()` is given a query and a backend
+   * conversation id, never our thread id, so without this a client has no way
+   * to know which thread an answer belongs in.
+   *
+   * Optional, because only a client that can remember anything needs it. The
+   * mock keeps the conversation in `sessionStorage`; the live backend has no
+   * thread API to write to at all (gap 4 in
+   * design/eksisterende/api-for-frontend.md, API-bestilling A6), so it does
+   * not implement this and the shell's call is a no-op.
+   */
+  openThread?(thread: Thread): void;
   /** Resolves to null when the thread does not exist. */
   getThread(threadId: string, signal?: AbortSignal): Promise<ThreadDetail | null>;
   /**

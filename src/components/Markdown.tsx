@@ -34,6 +34,20 @@ export type MarkdownProps = {
    * what should happen when the model cites something that is not there.
    */
   citations?: CitationTarget[];
+  /**
+   * The sources for this answer never arrived, so a `[n]` in it points at
+   * nothing.
+   *
+   * Set it for an answer the user stopped mid-stream: the markers are
+   * written, the excerpts were still on their way. The marker is then drawn
+   * as text that says why instead of as a dead link.
+   *
+   * Off by default, and that matters: an answer that asks a clarifying
+   * question can contain a `[1]` as ordinary prose, and nothing was lost
+   * there — no search ran. Saying «kilden kom ikke fram» about it would be a
+   * lie. Only the caller knows which case it is.
+   */
+  sourcesLost?: boolean;
   /** Called when the reader activates a marker, with its number. */
   onCitationActivate?: (citationNumber: number) => void;
 };
@@ -47,12 +61,30 @@ const CITATION_MARKER = /\[(\d+)\]/g;
  * document and page as its accessible name. Convention decided 2026-09-11:
  * the marker points at an EXCERPT, not at a document.
  */
+/**
+ * What a `[n]` says when the excerpt behind it never arrived.
+ *
+ * Norwegian, because a user reads it. An answer the user stopped has markers
+ * whose sources were still on their way.
+ */
+export const MISSING_SOURCE = 'Kilden kom ikke fram';
+
 function withCitations(
   children: ReactNode,
   targets: Map<number, CitationTarget>,
   onActivate?: (citationNumber: number) => void,
+  sourcesLost?: boolean,
 ): ReactNode {
-  if (targets.size === 0) return children;
+  /*
+   * No early return when there are no targets, and that is the point rather
+   * than an oversight. An answer the user stopped has markers and no sources
+   * at all, so `targets` is empty — and that is exactly the case the
+   * unlinked marker below exists for. Returning early here meant the
+   * explanation never appeared for the one answer that needed it. Caught by
+   * its own test.
+   *
+   * Prose without markers costs one regex that matches nothing.
+   */
 
   return Children.map(children, (child, childIndex) => {
     if (typeof child !== 'string') return child;
@@ -63,7 +95,33 @@ function withCitations(
     for (const match of child.matchAll(CITATION_MARKER)) {
       const number = Number(match[1]);
       const target = targets.get(number);
-      if (!target) continue;
+
+      /*
+       * A marker with no excerpt behind it. It happens for real: an answer
+       * stopped mid-stream has written `[3]` but the sources never arrived,
+       * so there is nothing to point at. Found by #3.
+       *
+       * It stays plain text — a link to nowhere is worse than no link — but
+       * it says why, so a reader is not left wondering whether they missed
+       * something. `title` alone would be mouse-only, hence the second half
+       * for anyone listening.
+       */
+      if (!target) {
+        if (!sourcesLost) continue;
+        if (match.index > consumed) parts.push(child.slice(consumed, match.index));
+        parts.push(
+          <sup
+            className="markdown__citation"
+            title={MISSING_SOURCE}
+            key={`${childIndex}-${match.index}`}
+          >
+            {match[0]}
+            <span className="ds-sr-only"> ({MISSING_SOURCE.toLocaleLowerCase('nb-NO')})</span>
+          </sup>,
+        );
+        consumed = match.index + match[0].length;
+        continue;
+      }
 
       if (match.index > consumed) parts.push(child.slice(consumed, match.index));
       parts.push(
@@ -123,6 +181,7 @@ export function Markdown({
   startLevel = 2,
   citations,
   onCitationActivate,
+  sourcesLost,
 }: MarkdownProps) {
   const targets = useMemo(
     () => new Map((citations ?? []).map((target) => [target.number, target])),
@@ -133,12 +192,14 @@ export function Markdown({
     () => ({
       ...headingComponents(startLevel),
       p: ({ children: content }) => (
-        <Paragraph variant="long">{withCitations(content, targets, onCitationActivate)}</Paragraph>
+        <Paragraph variant="long">
+          {withCitations(content, targets, onCitationActivate, sourcesLost)}
+        </Paragraph>
       ),
       ul: ({ children: content }) => <List.Unordered>{content}</List.Unordered>,
       ol: ({ children: content }) => <List.Ordered>{content}</List.Ordered>,
       li: ({ children: content }) => (
-        <List.Item>{withCitations(content, targets, onCitationActivate)}</List.Item>
+        <List.Item>{withCitations(content, targets, onCitationActivate, sourcesLost)}</List.Item>
       ),
       a: ({ children: content, href }) => <Link href={href}>{content}</Link>,
       // A wide table gets its own scroll box, and a scrollable box must be
@@ -160,7 +221,7 @@ export function Markdown({
       tr: ({ children: content }) => <Table.Row>{content}</Table.Row>,
       th: ({ children: content }) => <Table.HeaderCell>{content}</Table.HeaderCell>,
       td: ({ children: content }) => (
-        <Table.Cell>{withCitations(content, targets, onCitationActivate)}</Table.Cell>
+        <Table.Cell>{withCitations(content, targets, onCitationActivate, sourcesLost)}</Table.Cell>
       ),
       // Designsystemet styles none of these three. See global.css.
       pre: ({ children: content }) => <pre className="markdown__pre">{content}</pre>,
@@ -169,7 +230,7 @@ export function Markdown({
         <blockquote className="markdown__quote">{content}</blockquote>
       ),
     }),
-    [startLevel, targets, onCitationActivate],
+    [startLevel, targets, onCitationActivate, sourcesLost],
   );
 
   return (

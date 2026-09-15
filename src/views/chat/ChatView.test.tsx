@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useRef, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { AskParams, ChatClient } from '../../api';
-import { AnswerSourcesContext } from '../../layout/answerSourcesContext';
+import { AnswerSourcesContext, inertAnswerSources } from '../../layout/answerSourcesContext';
 import { CitationContext } from '../../layout/citationContext';
 import { FilterContext } from '../../layout/filterContext';
 import { MainScrollContext } from '../../layout/scrollContext';
@@ -61,7 +61,7 @@ function Shell({ children, startThread, selection }: ShellProps) {
   return (
     <MainScrollContext value={scrollRef}>
       <CitationContext value={{ activeCitation: undefined, showCitation: () => {} }}>
-        <AnswerSourcesContext value={{ documents: undefined, setDocuments: () => {} }}>
+        <AnswerSourcesContext value={inertAnswerSources}>
           <ThreadContext
             value={{
               startThread: (question) => {

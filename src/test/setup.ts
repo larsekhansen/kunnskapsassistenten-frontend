@@ -1,5 +1,5 @@
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, beforeEach } from 'vitest';
 import { resetViewport } from './matchMedia';
 
 /**
@@ -46,3 +46,15 @@ afterEach(cleanup);
  * reaches its first assertion.
  */
 afterEach(resetViewport);
+
+/**
+ * Storage is shared by every test in a file, and the app now writes to it:
+ * the layout remembers collapsed panels and the filter in `localStorage`, and
+ * the mock remembers threads in `sessionStorage`. Without this, one test
+ * collapsing a panel decides what the next test opens on, and the failure
+ * shows up in whichever test happens to run second.
+ */
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});

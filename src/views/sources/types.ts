@@ -1,29 +1,5 @@
 import type { SlotViewProps } from '../../layout/viewModel';
-import type { MessageStatus, SourceDocument } from '../../model';
-
-/**
- * The sources behind ONE answer in the thread.
- *
- * A thread has several answers, and each has its own numbering: `[2]` in the
- * first answer and `[2]` in the second point at different excerpts from
- * different documents. The panel used to hold one flat list — the last
- * answer's — so a marker in an older answer opened the newer answer's excerpt
- * with the same number. It looked right and was not
- * (design/brukerreiser-2026-09-15.md, punkt 5).
- *
- * `status` is the answer's own `MessageStatus`, not a second vocabulary: the
- * chat view already has it on the message and passes it through. It is here
- * because an empty `documents` means four different things — the answer is
- * still writing, it was stopped, it failed, or it genuinely cited nothing —
- * and the panel has to say which (`emptyStates.ts`).
- */
-export type AnswerSources = {
-  /** The assistant message these sources belong to. */
-  messageId: string;
-  /** Grouped per document (answer 57). Empty until they arrive, or if none. */
-  documents: SourceDocument[];
-  status: MessageStatus;
-};
+import type { AnswerSources, SourceDocument } from '../../model';
 
 /**
  * What the sources view needs from whoever mounts it.

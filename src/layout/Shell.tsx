@@ -4,10 +4,20 @@ import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
 import { MainScrollContext } from './scrollContext';
 import { useAnswerSources } from './useAnswerSources';
+import { useNoAnswers } from './useNoAnswers';
 import { useCitation } from './useCitation';
 import { useLayout } from './useLayout';
 import { viewComponents } from './viewComponents';
 import { layoutStyle, slotLabel, views } from './viewModel';
+
+export type ShellProps = {
+  /**
+   * The route draws the main slot itself, and the view that normally sits
+   * there stands down. For pages that are not a conversation at all; see
+   * src/routes/NotFound.tsx.
+   */
+  routeOwnsMain?: boolean;
+};
 
 /**
  * The shell: three slots on one row.
@@ -29,11 +39,16 @@ import { layoutStyle, slotLabel, views } from './viewModel';
  * Widths come from the layout as CSS custom properties, so CSS never needs to
  * know whether a slot is collapsed. See viewModel.ts and LayoutProvider.tsx.
  */
-export function Shell() {
+export function Shell({ routeOwnsMain = false }: ShellProps) {
   const { layout } = useLayout();
   // The main slot owns the scroll, so the element is handed to the views
   // rather than looked up from inside them. See scrollContext.ts.
   const mainScroll = useRef<HTMLElement | null>(null);
+
+  // No conversation on this page, so nothing will ever report sources. The
+  // panel has to be told, or it draws the skeletons for an answer that is not
+  // coming. See useNoAnswers.ts.
+  useNoAnswers(routeOwnsMain);
 
   return (
     <MainScrollContext value={mainScroll}>
@@ -48,9 +63,15 @@ export function Shell() {
             the view in the slot is what draws the content, looked up in
             viewComponents like every other slot. Chat used to BE the outlet,
             and that made it the one view no reader could ever move.
+
+            `routeOwnsMain` is the one exception, and it is about pages rather
+            than about views: the catch-all route draws its own main, because
+            «siden finnes ikke» with a working conversation under it would be
+            two answers to one question. The sidebars stay: the thread list and
+            the filter are still there to steer to somewhere that exists.
           */}
           <Outlet />
-          <MainSlot />
+          {routeOwnsMain ? null : <MainSlot />}
         </main>
 
         <Sidebar slot="secondary-sidebar" element="aside" />
