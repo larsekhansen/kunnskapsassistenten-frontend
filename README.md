@@ -374,17 +374,87 @@ hører hjemme.
 - **Under 1280 er et kjent avvik fra WCAG 1.4.10 Reflow (AA).** Kravet er at
   innhold skal kunne vises i 320 px bredde uten vannrett rulling; appen
   garanterer 1280. Det er en bevisst begrensning i v1 (spørsmål 45: desktop og
-  stor tablet først), men det er et avvik og skal telles som det. **Planlagt
-  fiks:** kildepanelet som **skuff** over hovedkolonnen, Designsystemets
-  `Dialog` fra kanten, og tilsvarende for navigasjonspanelet. Ikke bygget.
+  stor tablet først), men det er et avvik og skal telles som det. Forslaget til
+  fiks står rett under.
+- **1024 px og 200 % zoom ruller vannrett i dag.** Reise 16, punkt 17 og 18 i
+  `design/brukerreiser-2026-09-15.md`. WCAG 1.4.4 Resize text er AA, og AA er et
+  krav. Forslag under.
 - **Topplinje** er ikke bestemt, så det finnes ingen.
 - ~~React Router-versjonen.~~ **Avgjort 2026-09-11:** 8.3.1, pinnet uten
   caret, samme versjon som ki.norge.no og Designsystemets egen nettside. Se
   «React Router» under.
 
+### Forslag: sidekolonnene som skuffer under 1139
+
+**Ikke bygget.** Dette er forslaget, med tallene som utløser det, så
+beslutningen kan tas på tall og ikke på skjermstørrelser — samme framgangsmåte
+som 1440.
+
+I dag må hver tilstand få plass **ved siden av** hovedkolonnen. Det gir tre
+terskler, alle summer av bredder som allerede står i `viewModel.ts`:
+
+| Tilstand                   | Regnestykke         | Trenger |
+| -------------------------- | ------------------- | ------- |
+| nav åpent, kilder som rail | 400 + 32 + 640 + 67 | 1139    |
+| kilder åpne, nav som rail  | 67 + 640 + 32 + 336 | 1075    |
+| begge som rail             | 67 + 640 + 67       | 774     |
+
+Målt i dag: 1024 × 768 ruller 51 px (1075 > 1024), og 1440 med 200 % zoom er
+720 CSS-px, altså 355 px for lite.
+
+**Trinn 1, under 1139:** en sidekolonne som åpnes legger seg **over**
+hovedkolonnen i stedet for ved siden av. Designsystemets `Dialog` med
+`placement` satt til kanten plassen står ved gir en skuff derfra (`left` og
+`right` er leverandørens egne verdier, og leverandørnavn er unntaket fra
+navneregelen); `closedby="any"` gir lukking ved klikk utenfor, og `Dialog` har
+fokusfelle og Escape ferdig. **Railene blir stående**, så veksleknappene
+beholder plassen sin og `aria-expanded` betyr fortsatt det samme — det eneste
+som endrer seg er hvor panelet tegnes. Konstanten hører hjemme ved siden av
+`bothSidebarsMinViewport` og regnes ut på samme måte:
+
+```
+drawerMaxViewport = 400 + 32 + 640 + 67 = 1139
+```
+
+Det løser punkt 17: ved 1024 er summen 774, og hovedkolonnen vokser til taket
+sitt på 800 med 90 px til overs. Regel B blir overflødig under terskelen, for
+to skuffer kan ikke ta plass fra hverandre.
+
+**Trinn 2, under 774:** da er det railene selv som ikke går opp, og de to
+knappene trenger et sted å bo. Det stedet er topplinja, som ikke er bestemt —
+så trinn 2 er en beslutning før det er kode. Alternativet er å la
+hovedkolonnens gulv på 640 gi etter i stedet, og det er billigere enn det
+høres ut: gulvet finnes for at kildene skal kunne leses **ved siden av**
+svaret (svar 46, 49 og 59), og under 1139 står kildene i en skuff. Da har
+gulvet ingen grunn igjen.
+
+Trinn 1 og 2 sammen tar 200 % zoom på 1440 (720) og på 1280 (640). Full
+1.4.10 Reflow ned til 320 px er fortsatt utenfor v1 (spørsmål 45).
+
 ## Tråder og adresser
 
-Rutene er `/` for ny samtale og `/threads/:threadId` for én samtale.
+Rutene er `/` for ny samtale, `/threads/:threadId` for én samtale, og en
+**oppsamlingsrute** for alt annet.
+
+| Adresse              | Hva                                         |
+| -------------------- | ------------------------------------------- |
+| `/`                  | ny samtale                                  |
+| `/threads/:threadId` | én samtale                                  |
+| alt annet            | «Siden finnes ikke», med lenke til forsiden |
+
+`/tull` ga **helt tom side** til 15.09 — ingen `main`, ingen overskrift, ingen
+hopp-lenke — fordi `Routes` tegner null når ingenting treffer og skallet ligger
+som ruteoppsett under. Nå tegnes skallet med beskjeden i hovedkolonnen.
+`App.tsx` har to ruteoppsett og ikke ett: oppsamlingsruta monterer skallet med
+`routeOwnsMain`, så chat-viewet står ned. «Siden finnes ikke» med et fungerende
+skrivefelt under er to svar på samme spørsmål, og det største av dem er feil.
+
+**En tråd-id ingen kjenner gir «Fant ikke tråden»**, ikke en fersk forside. Det
+er `ChatSlotView` som avgjør det, for svaret kommer først når klienten har
+svart: `getThread` som gir `null` betyr at tråden ikke finnes, mens en lesing
+som **kaster** ikke sier noe om det — da fortsetter samtalen som før. Reise 14
+i `design/brukerreiser-2026-09-15.md`: en delt lenke som var gått ut på dato
+så ut som den virket.
 
 **Første spørsmål fra `/` gir samtalen en adresse.** Viewet som eier
 skrivefeltet kaller `useThread().startThread(spørsmålet)`, og
@@ -407,8 +477,60 @@ en overskrift som gjentar det satte samme setning på sida to ganger (målt av
 #3, 15.09). Flagget forsvinner av seg selv den dagen backend sender en tittel.
 
 En tråd laget i nettleseren finnes bare i den fana: backend har ikke noe
-tråd-API å lagre den i (gap 4 i `design/eksisterende/api-for-frontend.md`), så
-en ny fane på samme adresse finner den ikke.
+tråd-API å lagre den i (gap 4 i `design/eksisterende/api-for-frontend.md`,
+API-bestilling A6). **I mock-modus overlever den likevel en reload**, se «Det
+appen husker». I **live**-modus gjør den ikke det: `getThread` svarer alltid
+`null`, så en reload av en samtale du nettopp hadde lander på «Fant ikke
+tråden». Det er sant — samtalen er borte — men det er A6 som er svaret på det,
+ikke noe frontenden kan fikse.
+
+## Det appen husker
+
+Tre nøkler, og ingenting annet. To i `localStorage`, som varer til nettleseren
+tømmes, og én i `sessionStorage`, som varer så lenge fana lever.
+
+| Nøkkel               | Lager          | Hva                                                                             |
+| -------------------- | -------------- | ------------------------------------------------------------------------------- |
+| `ka.color-scheme`    | localStorage   | lys, mørk eller auto. Se «Mørk modus»                                           |
+| `ka.layout.v1`       | localStorage   | hvilke sidekolonner som er lagt sammen, og om brukeren selv lukket kildepanelet |
+| `ka.filter.v1`       | localStorage   | filtervalget                                                                    |
+| `ka.mock.threads.v1` | sessionStorage | samtalene denne fana har hatt. **Bare i mock-modus**                            |
+
+**Layout og filter** ligger i `src/layout/persistence.ts` og leses én gang når
+`LayoutProvider` monteres. Punkt 9 i reise 16: `localStorage` var tom, og et
+panel du hadde lagt sammen var tilbake ved neste lasting. Nøklene har versjon
+fordi de går ut på dato av ulike grunner — layout-nøkkelen når plassene endrer
+seg, filternøkkelen når **korpuset** gjør det, siden verdiene er nøklene
+backend filtrerer på.
+
+To ting er bevisst med:
+
+- **«Lukket av brukeren» lagres ved siden av «er lagt sammen».** Kildepanelet
+  er lagt sammen som standard, så en kollaps som blir husket alene er ikke til
+  å skille fra en fersk side — og første svar med kilder ville åpnet panelet
+  igjen i ansiktet på en som nettopp lukket det.
+- **Regel B vinner over det som er husket.** Var begge sidekolonnene åpne da du
+  forlot sida, og vinduet er for smalt nå, kollapses kildepanelet på første
+  render. Det som er lagret er et ønske, ikke en garanti om plass.
+
+Breddene lagres **ikke**. Ingenting kan endre dem ennå (svar 10: abstraksjonen
+nå, dra-håndtaket senere), og å huske et tall ingen kan lage er bare noe å
+migrere den dagen håndtaket kommer.
+
+**Samtalene** ligger i `src/api/mock/sessionThreads.ts` og er mockens jobb
+alene. Skallet sier fra hvilken tråd som er åpen — `ChatClient.openThread`,
+som bare en klient som kan huske noe implementerer — og mocken skriver hver
+ferdige tur inn i den: spørsmål, svar, kilder, tenkesteg. Da gir
+`/threads/<uuid>` samtalen tilbake etter en reload, og trådlista viser den.
+
+`sessionStorage` og ikke `localStorage`, med vilje: dette er en stedfortreder
+for en server, ikke et arkiv. Det lever så lenge fana lever, deles ikke med
+andre faner, og forsvinner når nettleseren lukkes — som er den ærlige
+levetiden for noe som finnes fordi det ekte lageret mangler. Bare turer som
+faktisk produserte tekst skrives ned; et svar som feilet før første token
+tegner ikke noe kort, og et lagret tomt svar ville tegnet et kort som aldri
+fantes. En tur i en fixture-tråd legges til på toppen av fixture-meldingene,
+så det samme svaret aldri skrives ned to ganger.
 
 ## Mock-modus: to spørsmål som gjør noe spesielt
 
@@ -703,7 +825,8 @@ referanseoppsettene og dette repoet er på samme major.
 
 Klientmodus: `BrowserRouter` i `src/main.tsx`, og rutene som `Routes`/`Route`
 i `src/App.tsx`. Ingen framework-modus, ingen loaders, ingen
-`createBrowserRouter` ennå.
+`createBrowserRouter` ennå. Oppsamlingsruta er `path="*"` i sitt eget
+ruteoppsett; se «Tråder og adresser».
 
 Oppgraderingen fra 7 til 8 krevde **ingen** endringer i koden vår:
 `BrowserRouter`, `Routes`, `Route`, `Outlet` og `useParams` eksporteres

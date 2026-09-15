@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import type { StreamEvent } from '../../model';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { StreamEvent, Thread } from '../../model';
 import { MOCK_CLARIFICATION_QUERY, MockChatClient } from './MockChatClient';
-import { mockAnswerMarkdown, nkomThinkingSteps } from './fixtures';
+import { mockAnswerMarkdown, nkomThinkingSteps, threads } from './fixtures';
+import { resetMockThreads } from './sessionThreads';
 
 /** No artificial delay: the test is about order and content, not timing. */
 const client = new MockChatClient({
@@ -116,5 +117,79 @@ describe('MockChatClient og avklaring', () => {
     // bære feltet bare fordi feltet finnes.
     expect(events.at(-1)).toMatchObject({ type: 'done' });
     expect(events.at(-1)).not.toHaveProperty('outcome');
+  });
+});
+
+/**
+ * The conversation surviving a reload, decided 2026-09-15 (rolle-5h, punkt 3).
+ *
+ * Reise 12 and 14 in design/brukerreiser-2026-09-15.md: a question asked on
+ * `/` produced an address, and the address led to an empty conversation the
+ * moment the page was reloaded. A new client on the same storage is what a
+ * reload is, so that is what these build.
+ */
+describe('MockChatClient husker samtalen', () => {
+  beforeEach(() => resetMockThreads());
+
+  const started: Thread = {
+    id: 'tråd-fra-nettleseren',
+    title: 'Hvordan måler Nkom måloppnåelse?',
+    titleFromQuestion: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  it('gir samtalen tilbake på samme adresse etter en ny start', async () => {
+    client.openThread(started);
+    await collect(client.ask({ query: 'Hvordan måler Nkom måloppnåelse?' }));
+
+    // A new client, the way a reload builds one. Nothing is carried over in
+    // memory; everything comes back out of sessionStorage.
+    const reloaded = new MockChatClient({ requestMs: 0 });
+    const thread = await reloaded.getThread(started.id);
+
+    expect(thread?.title).toBe(started.title);
+    expect(thread?.messages.map((message) => message.role)).toEqual(['user', 'assistant']);
+    expect(thread?.messages[1]?.content).toBe(mockAnswerMarkdown);
+    // «id, tittel, meldinger, kilder» — the sources are what the sources panel
+    // draws again on the other side of the reload.
+    expect(thread?.messages[1]?.sources?.length).toBeGreaterThan(0);
+  });
+
+  it('viser den i trådlista', async () => {
+    client.openThread(started);
+    await collect(client.ask({ query: 'Hvordan måler Nkom måloppnåelse?' }));
+
+    const listed = await new MockChatClient({ requestMs: 0 }).listThreads();
+
+    expect(listed.map((thread) => thread.id)).toContain(started.id);
+    // The fixtures are still there; this is added to them, not instead.
+    expect(listed.length).toBe(threads.length + 1);
+  });
+
+  it('legger et oppfølgingssvar til en tråd fra fixturene, uten å skrive den av', async () => {
+    const fixture = threads.find((thread) => thread.id === 'nkom-maaloppnaaelse');
+    if (!fixture) throw new Error('fant ikke fixture-tråden');
+
+    const before = await client.getThread(fixture.id);
+    client.openThread(fixture);
+    await collect(client.ask({ query: 'Og hva med 2024?' }));
+
+    const after = await new MockChatClient({ requestMs: 0 }).getThread(fixture.id);
+
+    expect(after?.messages).toHaveLength((before?.messages.length ?? 0) + 2);
+    expect(after?.messages[0]?.id).toBe(before?.messages[0]?.id);
+    // The follow-up moves the thread in the list's period grouping.
+    expect(after?.updatedAt).not.toBe(fixture.updatedAt);
+  });
+
+  it('husker ingenting når ingen tråd er åpnet', async () => {
+    await collect(client.ask({ query: 'Nkom' }));
+
+    expect(await new MockChatClient({ requestMs: 0 }).listThreads()).toHaveLength(threads.length);
+  });
+
+  it('svarer null på en tråd ingen kjenner', async () => {
+    expect(await client.getThread('finnes-ikke')).toBeNull();
   });
 });

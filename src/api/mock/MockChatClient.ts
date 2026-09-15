@@ -7,6 +7,7 @@ import {
   type ThreadDetail,
 } from '../../model';
 import { facetsFor } from './corpus/facets';
+import { mockThreadDetail, mockThreadList, openMockThread, recordMockTurn } from './sessionThreads';
 import type { AskParams, ChatClient } from '../chatClient';
 import {
   findThread,
@@ -149,6 +150,18 @@ function tokenize(markdown: string): string[] {
   return markdown.match(/\S+\s*/g) ?? [];
 }
 
+let answerCounter = 0;
+
+/**
+ * An id for one answer. The clock alone was not enough: two questions asked
+ * inside the same millisecond produced the same id, and the stored thread
+ * then had two messages React could not tell apart.
+ */
+function nextMessageId(): string {
+  answerCounter += 1;
+  return `msg-${Date.now()}-${answerCounter}`;
+}
+
 /**
  * A backend that is not there. Streams the NKOM answer token by token with
  * thinking steps first and sources last, in the same order and shape the live
@@ -157,6 +170,11 @@ function tokenize(markdown: string): string[] {
  * Cancellation surfaces as a final `error` event with code `aborted` rather
  * than a thrown exception, so a caller has one code path for «the answer
  * stopped» regardless of why.
+ *
+ * It also remembers: every turn that produced text is written into the open
+ * thread in `sessionStorage`, so a reload finds the conversation again and
+ * the thread list shows it. See sessionThreads.ts for why a mock does this
+ * and the live client does not.
  */
 export class MockChatClient implements ChatClient {
   readonly #delays: MockDelays;
@@ -167,6 +185,9 @@ export class MockChatClient implements ChatClient {
 
   async *ask(params: AskParams): AsyncIterable<StreamEvent> {
     const { signal } = params;
+    // What has actually been said, so a turn the reader stopped can be
+    // remembered as the half-answer it is rather than dropped.
+    let written = '';
     try {
       if (params.query.trim().toLocaleLowerCase('nb-NO') === MOCK_FAILURE_QUERY) {
         // After a thinking step, not instantly: a failure that arrives before
@@ -193,12 +214,21 @@ export class MockChatClient implements ChatClient {
         await wait(this.#delays.firstTokenMs, signal);
         for (const text of tokenize(clarificationMarkdown)) {
           await wait(this.#delays.tokenMs, signal);
+          written += text;
           yield { type: 'token', text };
         }
 
+        const clarificationId = nextMessageId();
+        recordMockTurn({
+          question: params.query,
+          answerId: clarificationId,
+          // No sources, because nothing was retrieved. A clarification with
+          // sources behind it would be a different thing entirely.
+          answer: { content: written, citations: [], status: 'needs-clarification' },
+        });
         yield {
           type: 'done',
-          messageId: `msg-${Date.now()}`,
+          messageId: clarificationId,
           conversationId: params.conversationId ?? 'conv-nkom-1',
           outcome: 'needs-clarification',
         };
@@ -213,6 +243,7 @@ export class MockChatClient implements ChatClient {
       await wait(this.#delays.firstTokenMs, signal);
       for (const text of tokenize(mockAnswerMarkdown)) {
         await wait(this.#delays.tokenMs, signal);
+        written += text;
         yield { type: 'token', text };
       }
 
@@ -224,12 +255,43 @@ export class MockChatClient implements ChatClient {
         retrieval: nkomRetrieval,
       };
 
+      const messageId = nextMessageId();
+      recordMockTurn({
+        question: params.query,
+        answerId: messageId,
+        answer: {
+          content: written,
+          citations: nkomCitations,
+          sources: nkomSources,
+          retrieval: nkomRetrieval,
+          thinkingSteps: nkomThinkingSteps,
+          status: 'complete',
+        },
+      });
       yield {
         type: 'done',
-        messageId: `msg-${Date.now()}`,
+        messageId,
         conversationId: params.conversationId ?? 'conv-nkom-1',
       };
     } catch {
+      /*
+       * Stopped by the reader, and text had arrived. That half-answer stays
+       * on screen — answer 34 — so it is part of the conversation and is
+       * remembered as one.
+       *
+       * Stored as `complete` and not as `aborted`, deliberately: `useChat`
+       * settles a stopped answer as complete, so this is what the reader was
+       * looking at when they reloaded. Nothing arrived means nothing is
+       * stored: an answer with no content draws no card, and a stored empty
+       * one would draw a card that never existed.
+       */
+      if (signal?.aborted && written.length > 0) {
+        recordMockTurn({
+          question: params.query,
+          answerId: nextMessageId(),
+          answer: { content: written, citations: [], status: 'complete' },
+        });
+      }
       yield {
         type: 'error',
         error: signal?.aborted
@@ -239,14 +301,22 @@ export class MockChatClient implements ChatClient {
     }
   }
 
+  /**
+   * Which conversation the questions that follow belong to. See
+   * `ChatClient.openThread`, and sessionThreads.ts for what is kept.
+   */
+  openThread(thread: Thread): void {
+    openMockThread(thread);
+  }
+
   async listThreads(signal?: AbortSignal): Promise<Thread[]> {
     await wait(this.#delays.requestMs, signal);
-    return threads;
+    return mockThreadList(threads);
   }
 
   async getThread(threadId: string, signal?: AbortSignal): Promise<ThreadDetail | null> {
     await wait(this.#delays.requestMs, signal);
-    return findThread(threadId);
+    return mockThreadDetail(threadId, findThread(threadId));
   }
 
   /**
