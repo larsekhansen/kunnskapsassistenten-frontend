@@ -1,9 +1,10 @@
 import { Heading } from '@digdir/designsystemet-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { EmptyState, findHits, stepHit, type SearchHit } from '../../components';
 import { excerptDomId, type AnswerSources, type Excerpt, type SourceDocument } from '../../model';
 import { AnswerSwitcher } from './AnswerSwitcher';
 import { ExcerptSearch } from './ExcerptSearch';
+import { KudosDisclaimer } from './KudosDisclaimer';
 import { SourceDocumentCard } from './SourceDocumentCard';
 import { SourcesOverview } from './SourcesOverview';
 import { SourcesPlaceholder } from './SourcesPlaceholder';
@@ -177,6 +178,9 @@ export function SourcesView({
   activeCitationNonce,
   activeCitationMessageId,
 }: SourcesViewProps) {
+  // The disclaimer is drawn outside the sticky head and the search field
+  // inside it, so the id that ties them together is made here, where both are.
+  const disclaimerId = useId();
   const [query, setQuery] = useState('');
   const [currentHitIndex, setCurrentHitIndex] = useState(0);
   const [openExcerptIds, setOpenExcerptIds] = useState<ReadonlySet<string>>(new Set());
@@ -423,29 +427,45 @@ export function SourcesView({
           the identical string and is `aria-hidden`, so nothing is said twice. */}
       <output className="ds-sr-only">{answerLabel}</output>
 
-      {/* Shown whenever the thread has more than one answer, including while
-          the answer on screen has nothing to show: stepping back to the answer
-          that DID have sources is the whole point of it then. */}
-      {answersOnScreen.length > 1 && (
-        <AnswerSwitcher
-          label={answerLabel}
-          index={activeIndex}
-          count={answersOnScreen.length}
-          onStep={stepToAnswer}
-        />
-      )}
+      {/* The panel head: what the reader needs while scrolling the excerpts.
 
-      {/* No search field when there is nothing to search. It stays during
-          loading, so the layout does not shift when the sources arrive. */}
-      {content.kind !== 'empty' && (
-        <ExcerptSearch
-          query={query}
-          onQueryChange={changeQuery}
-          hitCount={hits.length}
-          currentHitIndex={currentHitIndex}
-          onStep={stepToHit}
-        />
-      )}
+          It is sticky, because a marker scrolls the panel to where the excerpt
+          is — 987 px on 1440 — and took «Kilder til svar 1 av 2» with it, so
+          the one line that makes «Utdrag 2» unambiguous was gone exactly while
+          the reader was looking at utdrag 2 (brukerblikk 2, finding 3). The
+          search field is here for the same reason and because today's KA
+          already pins it (eksisterende funksjonalitet/søk i kildene.md).
+
+          Rendered even when both children are absent, so the box that carries
+          the border does not appear and disappear as answers arrive. */}
+      <div className="sources-head">
+        {/* Shown whenever the thread has more than one answer, including while
+            the answer on screen has nothing to show: stepping back to the
+            answer that DID have sources is the whole point of it then. */}
+        {answersOnScreen.length > 1 && (
+          <AnswerSwitcher
+            label={answerLabel}
+            index={activeIndex}
+            count={answersOnScreen.length}
+            onStep={stepToAnswer}
+          />
+        )}
+
+        {/* No search field when there is nothing to search. It stays during
+            loading, so the layout does not shift when the sources arrive. */}
+        {content.kind !== 'empty' && (
+          <ExcerptSearch
+            query={query}
+            onQueryChange={changeQuery}
+            hitCount={hits.length}
+            currentHitIndex={currentHitIndex}
+            onStep={stepToHit}
+            descriptionId={disclaimerId}
+          />
+        )}
+      </div>
+
+      {content.kind !== 'empty' && <KudosDisclaimer id={disclaimerId} />}
 
       {content.kind === 'loading' ? (
         <SourcesPlaceholder />

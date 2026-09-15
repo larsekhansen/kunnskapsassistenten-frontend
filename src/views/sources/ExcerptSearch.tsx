@@ -2,18 +2,14 @@ import { Button, Label, Paragraph, Search } from '@digdir/designsystemet-react';
 import { useId } from 'react';
 import { MIN_QUERY_LENGTH } from '../../components';
 
-/**
- * The Kudos disclaimer.
- *
- * Question 25 is still open, and the two Figma panels word it differently.
- * Choice made here: the wording from the newer of the two Figma panels, which
- * is also the one the curated September page shows. Written down so the next
- * person does not have to re-derive it.
- */
-const KUDOS_DISCLAIMER =
-  'All tekst er sitater fra dokumentene fra Kudos. Ikke generert av kunstig intelligens.';
-
 type ExcerptSearchProps = {
+  /**
+   * The element this field is described by: the Kudos disclaimer.
+   *
+   * Passed in rather than owned here, because the disclaimer is drawn outside
+   * the sticky head while the field is inside it. See `KudosDisclaimer`.
+   */
+  descriptionId: string;
   query: string;
   onQueryChange: (query: string) => void;
   hitCount: number;
@@ -45,11 +41,11 @@ export function ExcerptSearch({
   hitCount,
   currentHitIndex,
   onStep,
+  descriptionId,
 }: ExcerptSearchProps) {
-  // Generated, not module constants: two SourcesView in two slots would share
+  // Generated, not a module constant: two SourcesView in two slots would share
   // one id, and `htmlFor` would then point at the wrong field.
   const fieldId = useId();
-  const descriptionId = useId();
 
   // The ends are ends: `stepHit` stops there, so the button that would do
   // nothing says so rather than staying the same blue as the one that works
@@ -88,9 +84,6 @@ export function ExcerptSearch({
         onSubmit={(event) => event.preventDefault()}
       >
         <Label htmlFor={fieldId}>Søk i kildene</Label>
-        <Paragraph id={descriptionId} data-size="xs" className="sources-search__description">
-          {KUDOS_DISCLAIMER}
-        </Paragraph>
 
         <Search>
           <Search.Input
