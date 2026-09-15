@@ -3,8 +3,10 @@ import { act } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { defaultViewportWidth, setViewportWidth } from '../test/matchMedia';
 import { LayoutProvider } from './LayoutProvider';
+import { useAnswerSources } from './useAnswerSources';
 import { useCitation } from './useCitation';
 import { useLayout } from './useLayout';
+import type { SourceDocument } from '../model';
 import { bothSidebarsMinViewport, defaultLayout, withCollapsed, type Layout } from './viewModel';
 
 /**
@@ -219,6 +221,132 @@ describe('over brytepunktet', () => {
     click('Vis kilder');
 
     expect(screen.getByTestId('primary').textContent).toBe('åpen');
+    expect(screen.getByTestId('secondary').textContent).toBe('åpen');
+  });
+});
+
+/**
+ * The sources panel opening itself when an answer brings sources, decided
+ * 2026-09-15 (rolle-5e, punkt 2).
+ *
+ * The rule has three ways to say no — the user closed it, there is no room,
+ * the answer brought nothing — and each of them is a separate test, because
+ * each is a different way for it to go wrong in front of a user.
+ */
+const twoDocuments = [
+  { id: 'd1', title: 'Årsrapport 2022', excerpts: [] },
+  { id: 'd2', title: 'Årsrapport 2023', excerpts: [] },
+] as unknown as SourceDocument[];
+
+function Sources() {
+  const { layout, setCollapsed } = useLayout();
+  const { setDocuments } = useAnswerSources();
+
+  return (
+    <>
+      <output data-testid="secondary">
+        {layout.slots['secondary-sidebar'].collapsed ? 'kollapset' : 'åpen'}
+      </output>
+      <output data-testid="primary">
+        {layout.slots['primary-sidebar'].collapsed ? 'kollapset' : 'åpen'}
+      </output>
+      <button type="button" onClick={() => setDocuments(twoDocuments)}>
+        Svar med kilder
+      </button>
+      <button type="button" onClick={() => setDocuments([])}>
+        Svar uten kilder
+      </button>
+      <button type="button" onClick={() => setCollapsed('secondary-sidebar', true)}>
+        Skjul kilder
+      </button>
+      <button type="button" onClick={() => setCollapsed('primary-sidebar', true)}>
+        Skjul tråder og filter
+      </button>
+    </>
+  );
+}
+
+function renderSources(initialLayout?: Layout) {
+  return render(
+    <LayoutProvider initialLayout={initialLayout}>
+      <Sources />
+    </LayoutProvider>,
+  );
+}
+
+describe('kildepanelet åpner seg selv', () => {
+  beforeEach(() => setViewportWidth(defaultViewportWidth));
+
+  it('åpner når svaret har kilder og det er plass', () => {
+    setViewportWidth(bothSidebarsMinViewport);
+    renderSources();
+    expect(screen.getByTestId('secondary').textContent).toBe('kollapset');
+
+    click('Svar med kilder');
+
+    expect(screen.getByTestId('secondary').textContent).toBe('åpen');
+    // Regel B er ikke i veien på brytepunktet, så navigasjonspanelet blir.
+    expect(screen.getByTestId('primary').textContent).toBe('åpen');
+  });
+
+  it('lar være når svaret ikke har kilder', () => {
+    renderSources();
+    click('Svar uten kilder');
+    expect(screen.getByTestId('secondary').textContent).toBe('kollapset');
+  });
+
+  it('lar være når brukeren selv har lukket panelet', () => {
+    renderSources();
+    click('Svar med kilder');
+    expect(screen.getByTestId('secondary').textContent).toBe('åpen');
+
+    click('Skjul kilder');
+    // Et oppfølgingssvar med nye kilder skal ikke overstyre det valget.
+    click('Svar uten kilder');
+    click('Svar med kilder');
+
+    expect(screen.getByTestId('secondary').textContent).toBe('kollapset');
+  });
+
+  it('lar være under brytepunktet når navigasjonspanelet er åpent', () => {
+    // Her ville regel B kollapset navigasjonspanelet for å gi plass. Å ta et
+    // panel fra brukeren er noe de må be om, ikke noe et svar gjør.
+    setViewportWidth(bothSidebarsMinViewport - 1);
+    renderSources();
+
+    click('Svar med kilder');
+
+    expect(screen.getByTestId('secondary').textContent).toBe('kollapset');
+    expect(screen.getByTestId('primary').textContent).toBe('åpen');
+  });
+
+  it('åpner under brytepunktet når navigasjonspanelet alt er kollapset', () => {
+    setViewportWidth(bothSidebarsMinViewport - 1);
+    renderSources();
+    click('Skjul tråder og filter');
+
+    click('Svar med kilder');
+
+    expect(screen.getByTestId('secondary').textContent).toBe('åpen');
+  });
+
+  it('teller ikke regel B sin kollaps som brukerens valg', () => {
+    // Dette er hele grunnen til at «lukket av brukeren» er egen tilstand og
+    // ikke bare «er kollapset». Krymper vinduet, tar regelen panelet — og
+    // hadde det blitt husket som en preferanse, ville én endring av
+    // vindusbredden slått av kildepanelet for resten av økta.
+    setViewportWidth(bothSidebarsMinViewport);
+    renderSources();
+    click('Svar med kilder');
+    expect(screen.getByTestId('secondary').textContent).toBe('åpen');
+
+    act(() => setViewportWidth(bothSidebarsMinViewport - 1));
+    expect(screen.getByTestId('secondary').textContent).toBe('kollapset');
+
+    act(() => setViewportWidth(bothSidebarsMinViewport));
+    click('Svar uten kilder');
+    click('Svar med kilder');
+
     expect(screen.getByTestId('secondary').textContent).toBe('åpen');
   });
 });

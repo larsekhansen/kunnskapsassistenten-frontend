@@ -50,6 +50,18 @@ export function LayoutProvider({
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | undefined>(undefined);
   const [selection, setSelection] = useState<FilterSelection>(emptyFilterSelection);
   const [answerDocuments, setAnswerDocuments] = useState<SourceDocument[] | undefined>(undefined);
+  /**
+   * Has the user said, in so many words, that they do not want the sources
+   * panel open?
+   *
+   * Only a collapse the USER asked for counts. The one-sidebar rule collapses
+   * this panel too, and treating that as a preference would mean a window
+   * resize silently switched the answer panel off for the rest of the session.
+   *
+   * Opening it again clears it: the last thing the user said about the panel
+   * is what this holds, and they have just said «show me».
+   */
+  const [sourcesDismissed, setSourcesDismissed] = useState(false);
   // The view the user last switched each slot to. Empty on a page load, which
   // is the whole point: a view that mounts because the default layout opened
   // on it must not take focus off the skip link.
@@ -105,14 +117,61 @@ export function LayoutProvider({
     }
   }
 
+  /** A collapse or an open that the user asked for, by name. */
+  const remember = useCallback((slot: Slot, collapsed: boolean) => {
+    if (slot === yieldingSidebar) setSourcesDismissed(collapsed);
+  }, []);
+
   const setCollapsed = useCallback(
-    (slot: Slot, collapsed: boolean) => setLayout((current) => fitted(current, slot, collapsed)),
-    [fitted],
+    (slot: Slot, collapsed: boolean) => {
+      remember(slot, collapsed);
+      setLayout((current) => fitted(current, slot, collapsed));
+    },
+    [fitted, remember],
   );
   const toggleCollapsed = useCallback(
-    (slot: Slot) => setLayout((current) => fitted(current, slot, !current.slots[slot].collapsed)),
-    [fitted],
+    (slot: Slot) => {
+      // Read from render scope, not from inside the updater: an updater has to
+      // stay pure, and `remember` is a second piece of state being set.
+      const collapsed = !layout.slots[slot].collapsed;
+      remember(slot, collapsed);
+      setLayout((current) => fitted(current, slot, collapsed));
+    },
+    [fitted, layout, remember],
   );
+  /**
+   * The sources panel opens itself when an answer brings sources, once there
+   * is somewhere to put it.
+   *
+   * Adjusted during render with a remembered previous value, the same shape as
+   * the narrow rule above and for the same reason: an effect would paint the
+   * answer once with the panel shut and then open it a frame later.
+   *
+   * «Somewhere to put it» is the whole condition. Above the breakpoint both
+   * sidebars fit, so it opens. Below it, only if the navigation panel is
+   * already collapsed — the one-sidebar rule would otherwise close the
+   * navigation panel to make room, and taking a panel away from the user is
+   * something they have to ask for, not something an arriving answer does.
+   *
+   * It runs on every batch of sources, not only the first. A follow-up answer
+   * finds the panel already open and changes nothing, and if the user closed
+   * it in between, `sourcesDismissed` is what stops it coming back.
+   */
+  const [sourcesSeen, setSourcesSeen] = useState<SourceDocument[] | undefined>(undefined);
+  if (answerDocuments !== sourcesSeen) {
+    setSourcesSeen(answerDocuments);
+
+    const roomForBoth = !narrow || layout.slots['primary-sidebar'].collapsed;
+    if (
+      (answerDocuments?.length ?? 0) > 0 &&
+      !sourcesDismissed &&
+      layout.slots[yieldingSidebar].collapsed &&
+      roomForBoth
+    ) {
+      setLayout((current) => fitted(current, yieldingSidebar, false));
+    }
+  }
+
   const setWidth = useCallback(
     (slot: Slot, width: number) => setLayout((current) => withWidth(current, slot, width)),
     [],
@@ -131,6 +190,9 @@ export function LayoutProvider({
   const showCitation = useCallback(
     (number: number) => {
       setActiveCitation((current) => ({ number, nonce: (current?.nonce ?? 0) + 1 }));
+      // Asking to see a citation is asking for the panel, so it counts as the
+      // user changing their mind about having closed it.
+      setSourcesDismissed(false);
       setLayout((current) => fitted(current, 'secondary-sidebar', false));
     },
     [fitted],

@@ -292,6 +292,28 @@ Regelen tar et panel bort når det ikke er plass. Den gir ikke noe tilbake når
 vinduet vokser igjen: et panel som åpnet seg selv ville overstyrt et valg
 brukeren har tatt.
 
+### Kildepanelet åpner seg selv
+
+Når et svar kommer med kilder, åpner kildepanelet seg — **hvis det er plass**.
+Over brytepunktet er det alltid plass. Under det bare når navigasjonspanelet
+alt er kollapset: ellers ville regel B tatt navigasjonspanelet for å gi rom,
+og å ta et panel fra brukeren er noe de må be om, ikke noe et svar gjør.
+
+**Lukker brukeren panelet selv, åpner det seg ikke igjen i økta.** Bare en
+kollaps brukeren ba om teller. Regel B kollapser også dette panelet, og hadde
+det blitt husket som en preferanse, ville én endring av vindusbredden slått av
+kildepanelet for resten av økta. Åpner brukeren det igjen — med knappen eller
+ved å trykke på en `[n]` — er det siste de har sagt «vis meg», og regelen
+gjelder på nytt.
+
+Når panelet er en rail og svaret har kilder, står antallet som en `Badge` på
+knappen. Tallet må også stå i teksten: Designsystemet tegner det som
+`content: attr(data-count)` på et pseudoelement, som skjermlesere leser
+ustabilt eller ikke i det hele tatt. Knappen heter derfor «Vis kilder, 3
+dokumenter», og tooltipen sier det samme — `@digdir/designsystemet-web`
+skriver `data-tooltip` inn i `aria-label` på et element uten egen tekst, så to
+forskjellige strenger ville betydd at den ene stille overskrev den andre.
+
 ### Garantien
 
 **Ingen vannrett rulling ved 1280 eller bredere, i alle tilstander.** Målt i
