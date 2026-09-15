@@ -103,19 +103,6 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
       <ComposerContext value={composerPresence}>
         <div className="shell" style={layoutStyle(layout, viewport)}>
           <Sidebar slot="primary-sidebar" element="nav" />
-          {/*
-            One separator per OPEN panel, on the edge it shares with the
-            answer column. A collapsed panel is a rail with a fixed width and
-            nothing to drag, and a tab stop that cannot do anything is a tab
-            stop in the way.
-
-            Outside the landmark rather than inside it: what it resizes is the
-            slot, and the panel's own content has no business containing the
-            handle that moves its edge.
-          */}
-          {layout.slots['primary-sidebar'].collapsed ? null : (
-            <PanelSeparator slot="primary-sidebar" />
-          )}
 
           <main id="main-content" className="main" ref={mainScroll}>
             {/*
@@ -135,9 +122,6 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
             {routeOwnsMain ? null : <MainSlot />}
           </main>
 
-          {layout.slots['secondary-sidebar'].collapsed ? null : (
-            <PanelSeparator slot="secondary-sidebar" />
-          )}
           <Sidebar slot="secondary-sidebar" element="aside" />
         </div>
       </ComposerContext>
@@ -392,14 +376,28 @@ function Sidebar({
         does the same at 991 px of content in a 900 px window. Finding 2 in
         docs/review/brukerblikk-2026-09-15.md.
       */}
-      <div className="sidebar-header">
-        {/*
+      {/*
+        The panel's own box. It carries the surface, the border, the padding
+        and the clipping; the landmark around it carries the width and the
+        separator.
+
+        The separator has to be inside the landmark — content outside every
+        landmark is an axe `region` violation, and a control a reader can
+        reach is content (KA CC, measured on four routes after #50). It cannot
+        be inside THIS box: `overflow: hidden` would cut its focus ring off,
+        and the scrolling region below it puts a scrollbar exactly where the
+        grip goes. So the landmark holds both, and this element is what makes
+        that possible.
+      */}
+      <div className="panel">
+        <div className="sidebar-header">
+          {/*
           The collapse button, and — while the panel is open — the two buttons
           that move its edge a step at a time. Those are the pointer path WCAG
           2.5.7 asks for beside the drag; see PanelWidthButtons.tsx.
         */}
-        {state.collapsed ? (
-          /*
+          {state.collapsed ? (
+            /*
             BadgePosition is rendered whether or not there is a badge, on
             purpose. It is a `<span>` wrapper, and a wrapper appearing around
             the button is a different element to React — the button would be
@@ -412,30 +410,43 @@ function Sidebar({
             put the tooltip and the accessible name on a span instead of on the
             control.
           */
-          <BadgePosition placement="top-right" overlap="rectangle">
-            {showBadge ? (
-              <Badge count={sourceCount} maxCount={99} data-size="sm" aria-hidden />
-            ) : null}
-            <Tooltip content={toggleName}>{toggleButton}</Tooltip>
-          </BadgePosition>
-        ) : (
-          toggleButton
-        )}
-        {state.collapsed ? null : <PanelWidthButtons slot={slot} />}
+            <BadgePosition placement="top-right" overlap="rectangle">
+              {showBadge ? (
+                <Badge count={sourceCount} maxCount={99} data-size="sm" aria-hidden />
+              ) : null}
+              <Tooltip content={toggleName}>{toggleButton}</Tooltip>
+            </BadgePosition>
+          ) : (
+            toggleButton
+          )}
+          {state.collapsed ? null : <PanelWidthButtons slot={slot} />}
+        </div>
+
+        <div id={contentId} ref={content} hidden={state.collapsed} className="sidebar-content">
+          <ActiveView
+            view={state.activeView}
+            collapsed={state.collapsed}
+            onCollapsedChange={(collapsed) => setCollapsed(slot, collapsed)}
+            activeCitationNumber={activeCitation?.number}
+            activeCitationNonce={activeCitation?.nonce}
+            siblingViews={state.views.filter((id) => id !== state.activeView)}
+            onShowView={(view) => setActiveView(slot, view)}
+            switchedByUser={isSwitchedByUser(slot)}
+          />
+        </div>
       </div>
 
-      <div id={contentId} ref={content} hidden={state.collapsed} className="sidebar-content">
-        <ActiveView
-          view={state.activeView}
-          collapsed={state.collapsed}
-          onCollapsedChange={(collapsed) => setCollapsed(slot, collapsed)}
-          activeCitationNumber={activeCitation?.number}
-          activeCitationNonce={activeCitation?.nonce}
-          siblingViews={state.views.filter((id) => id !== state.activeView)}
-          onShowView={(view) => setActiveView(slot, view)}
-          switchedByUser={isSwitchedByUser(slot)}
-        />
-      </div>
+      {/*
+        The edge this panel shares with the answer column. One per OPEN panel:
+        a rail has a fixed width and nothing to drag, and a tab stop that
+        cannot do anything is a tab stop in the way.
+
+        Inside the landmark, beside the panel box rather than in it. What it
+        resizes is this slot, so this is where it belongs — and it is also
+        what the `region` rule asks: a control outside every landmark is
+        content nobody can navigate to by landmark.
+      */}
+      {state.collapsed ? null : <PanelSeparator slot={slot} />}
     </Element>
   );
 }

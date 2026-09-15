@@ -106,34 +106,36 @@ body {
  * mode: «skjult filter kolonne er ikke skjult». 32 px of tinted page beside a
  * 67 px rail reads as a hole where a column used to be.
  *
- * The margin sits on the SEPARATOR below and not on the panel, because the
- * separator is the one element that exists exactly when the gap does: one per
- * open panel, none for a rail.
+ * A collapsed slot has no separator either, so `:not([data-collapsed])` is
+ * the one condition both the gap and the handle hang on.
  */
+.primary-sidebar:not([data-collapsed]) {
+  margin-inline-end: var(--ka-slot-gap);
+}
+
+.secondary-sidebar:not([data-collapsed]) {
+  margin-inline-start: var(--ka-slot-gap);
+}
 
 /*
  * The edge a reader can take hold of.
  *
- * It contributes nothing to the row's arithmetic — 400 + 32 + 640 + 32 + 336
- * is still the sum at 1440 — and that is what the margins below are for. The
- * box is `--ka-separator-grip` wide and the negative margins take the same
- * amount back, so the only thing left over is the 32 px gap it carries on
- * the answer column's side.
+ * Absolutely positioned inside the slot's landmark, over the 1 px border the
+ * panel box draws, so it takes no part in the row's arithmetic:
+ * 400 + 32 + 640 + 32 + 336 is still the sum at 1440.
  *
- * Centred on the panel's own 1 px border rather than sitting beside it: the
- * line is what the reader sees as the edge, so it has to be what they reach
- * for. Half the grip and half the border, hence the two halves in each
- * `calc`.
+ * It was a flex item with negative margins until the `region` rule caught it
+ * (KA CC, after #50): a control outside every landmark is content nobody can
+ * reach by landmark. Inside the landmark it has to be out of flow, because
+ * the panel box beside it is the full width of the slot.
  *
- * `position: relative` puts it above both neighbours without a `z-index`: a
- * positioned flex item paints after its unpositioned siblings, and the 4 px
- * it hangs over the panel would otherwise be painted over by the panel that
- * comes later in the DOM.
+ * Centred on the border rather than sitting beside it: the line is what the
+ * reader sees as the edge, so it has to be what they reach for. Half the grip
+ * and half the border, hence the two halves in the `calc`.
  */
 .panel-separator {
-  flex: 0 0 auto;
-  align-self: stretch;
-  position: relative;
+  position: absolute;
+  inset-block: 0;
   inline-size: var(--ka-separator-grip);
   cursor: col-resize;
   /*
@@ -145,22 +147,16 @@ body {
 }
 
 /*
- * Before the answer column: the panel's border box ends where this one
- * starts, so it is pulled back over the border, and the gap is on its other
- * side. After the answer column, the same two the other way round.
+ * Which edge of the slot it sits on: the one facing the answer column. The
+ * panel before it draws a `border-inline-end`, the one after it a
+ * `border-inline-start`, and the grip straddles whichever it is.
  */
 .panel-separator[data-before-main] {
-  margin-inline-start: calc(-0.5 * (var(--ka-separator-grip) + var(--ds-border-width-default)));
-  margin-inline-end: calc(
-    var(--ka-slot-gap) - 0.5 * (var(--ka-separator-grip) - var(--ds-border-width-default))
-  );
+  inset-inline-end: calc(-0.5 * (var(--ka-separator-grip) - var(--ds-border-width-default)));
 }
 
 .panel-separator:not([data-before-main]) {
-  margin-inline-start: calc(
-    var(--ka-slot-gap) - 0.5 * (var(--ka-separator-grip) - var(--ds-border-width-default))
-  );
-  margin-inline-end: calc(-0.5 * (var(--ka-separator-grip) + var(--ds-border-width-default)));
+  inset-inline-start: calc(-0.5 * (var(--ka-separator-grip) - var(--ds-border-width-default)));
 }
 
 /*
@@ -203,24 +199,44 @@ body {
 .primary-sidebar,
 .secondary-sidebar {
   box-sizing: border-box;
+  /*
+   * The landmark holds two things: the panel box, which fills it, and the
+   * separator, which hangs off the edge facing the answer column. Hence
+   * `relative` — the separator is positioned against this — and no `overflow`,
+   * so the handle's focus ring is not cut off at the slot's edge.
+   */
+  position: relative;
+  /*
+   * So the panel's own width can be asked about. The padding inside is the
+   * one thing that has to react to it, and an element cannot answer a
+   * container query about itself.
+   */
+  container-type: inline-size;
+}
+
+/*
+ * The panel box: everything the reader sees as the panel.
+ *
+ * Its own element since 2026-09-15, and only because the separator has to be
+ * inside the landmark and cannot be inside this: `overflow: hidden` would cut
+ * the handle's focus ring off at the edge, and `.sidebar-content` below puts
+ * a scrollbar exactly where the grip goes.
+ */
+.panel {
+  box-sizing: border-box;
+  block-size: 100%;
+  inline-size: 100%;
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-4);
   align-items: start;
   padding-block: var(--ds-size-8);
   /*
-   * The slot itself never scrolls — `.sidebar-content` below does. The head
+   * The panel itself never scrolls — `.sidebar-content` below does. The head
    * has to stay put, and a panel that scrolls as one takes its own toggle
    * button off screen. Finding 2.
    */
   overflow: hidden;
-  /*
-   * So the panel's own width can be asked about. The padding below is the one
-   * thing that has to react to it, and an element cannot answer a container
-   * query about itself — which is why the padding sits on the children and
-   * not here, where it used to be.
-   */
-  container-type: inline-size;
 }
 
 /*
@@ -263,11 +279,13 @@ body {
  * and 72 px of padding left an excerpt 246 px to set text in — two or three
  * words a line. 20 px gives it 278. Measured by #4 in PR #24.
  *
- * 380 and not 400, and that is a measurement rather than a margin of taste: a
- * container query asks about the container's CONTENT box, so the 400 px
- * navigation panel answers 399 — it spends a pixel on its own border — and
- * `width < 400px` matched it too, handing the widest panel the narrow-panel
- * padding. Measured 2026-09-15.
+ * 380 and not 400, and that is a measurement rather than a margin of taste:
+ * `width < 400px` matched the 400 px navigation panel too, handing the widest
+ * panel the narrow-panel padding. Measured 2026-09-15, when the container was
+ * the panel box and answered 399 — a pixel of its own border short of 400.
+ * The container is the slot now and answers a round 400, which is on the
+ * other side of `< 400` and would have hidden the bug rather than fixed it.
+ * 380 is clear of both readings.
  *
  * Anything between the sources panel's 336 px floor and the navigation
  * panel's 399 separates the two. 380 sits clear of both, and the sources
@@ -309,6 +327,9 @@ body {
    */
   flex: 0 1 var(--ka-primary-sidebar-width);
   min-inline-size: var(--ka-primary-sidebar-min-width);
+}
+
+.primary-sidebar > .panel {
   background: var(--ds-color-neutral-surface-default);
   border-inline-end: var(--ka-panel-border);
 }
@@ -323,6 +344,9 @@ body {
    * width when it is collapsed, and the model is what draws the number.
    */
   min-inline-size: var(--ka-secondary-sidebar-min-width);
+}
+
+.secondary-sidebar > .panel {
   border-inline-start: var(--ka-panel-border);
   /*
    * No surface of its own while it is open, and that is Lars's call on
@@ -361,8 +385,8 @@ body {
  * (Lars, 2026-09-15). Open, the sources panel is not folded away and has the
  * answer beside it to belong to.
  */
-.primary-sidebar[data-collapsed],
-.secondary-sidebar[data-collapsed] {
+.primary-sidebar[data-collapsed] > .panel,
+.secondary-sidebar[data-collapsed] > .panel {
   align-items: center;
   background: var(--ds-color-neutral-surface-default);
   /*
