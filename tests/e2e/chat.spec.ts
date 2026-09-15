@@ -206,6 +206,61 @@ test.describe('hovedkolonnen', () => {
    * etter hvilken maskin leseren sitter ved, så testen låser formen og ikke
    * ordet.
    */
+  /**
+   * «Tenkte i N sekunder» er den målte ventetiden, ikke summen av stegene.
+   *
+   * De to tallene er forskjellige, og det var nettopp der feilen bodde:
+   * `AnswerMessage` sendte ikke `thoughtMs` videre, så panelet falt tilbake på
+   * summen av stegenes egne `durationMs` — fire sekunder for en tur som tok
+   * sju (#72). Reload-testen i `samtale.spec.ts` kunne ikke fange det, fordi
+   * den sammenlikner før og etter en reload og en fallback er lik på begge
+   * sider.
+   *
+   * Så denne tar tiden selv, over NØYAKTIG det intervallet panelet måler:
+   * fra det første tenkesteget lander — som er når «Tenker …» dukker opp —
+   * til det første ordet står i svaret. To klokker over samme strekning kan
+   * sammenliknes.
+   *
+   * **Hva den ikke kan bevise.** Fallbacken er et fast tall (summen av
+   * stegenes `durationMs`, fire sekunder), og den ekte ventetiden under
+   * `VITE_MOCK_SPEED=fast` er knappe to. Testen skiller dem fordi de er langt
+   * fra hverandre — men på en maskin som er treg nok til at den ekte
+   * ventetiden nærmer seg fire, ville en fallback sett riktig ut. Toleransen
+   * er derfor ett sekund og ikke to: med fiksen på plass er panelets tall
+   * appens egen måling av samme strekning, og de to skiller seg bare med
+   * avrunding. Blir denne rød med en differanse rett over ett sekund, er det
+   * maskinen som skal mistenkes først, ikke koden.
+   */
+  test('tenketiden er den målte ventetiden, ikke summen av stegene', async ({ page }, testInfo) => {
+    covers(testInfo, 'tenketiden er målt, ikke summert');
+    await page.goto('/');
+
+    await composer(page).click();
+    await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByText('Tenker …')).toBeVisible({ timeout: 30_000 });
+    const startedThinking = Date.now();
+
+    await expect
+      .poll(() => page.locator('.ka-answer-card .markdown').innerText(), { timeout: 60_000 })
+      .not.toBe('');
+    const measuredSeconds = (Date.now() - startedThinking) / 1000;
+
+    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
+      timeout: 60_000,
+    });
+
+    const summary = await page.locator('.ka-thinking__summary').innerText();
+    const shown = Number(/(\d+)/.exec(summary)?.[1]);
+
+    expect(Number.isFinite(shown), `fant ikke noe tall i «${summary}»`).toBe(true);
+    expect(
+      Math.abs(shown - measuredSeconds),
+      `panelet sa «${summary}», testen målte ${measuredSeconds.toFixed(1)} s`,
+    ).toBeLessThanOrEqual(1);
+  });
+
   test('Ctrl+/ flytter skrivemerket til feltet, og bare / gjør ingenting', async ({
     page,
   }, testInfo) => {
