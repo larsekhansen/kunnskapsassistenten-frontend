@@ -184,7 +184,7 @@ function* readFrame(
       isError?: boolean;
       content?: { type?: string; text?: string }[];
       structuredContent?: { chunks?: unknown[]; conversation_id?: string };
-      _meta?: { conversation_id?: string };
+      _meta?: { conversation_id?: string; status?: string };
     };
     error?: { message?: string };
   };
@@ -252,5 +252,14 @@ function* readFrame(
       result.structuredContent?.conversation_id ??
       fallbackConversationId ??
       '',
+    // Only the one value is read. `complete` is the default anyway, and the
+    // schema's `error` is left alone on purpose: a failed turn already came
+    // through as an `error` event above, from `isError`. If a frame ever
+    // arrives saying `error` without `isError`, this drops it rather than
+    // inventing a second route to the same state — and that is worth finding
+    // out about rather than papering over.
+    ...(result._meta?.status === 'needs-clarification'
+      ? { outcome: 'needs-clarification' as const }
+      : {}),
   };
 }
