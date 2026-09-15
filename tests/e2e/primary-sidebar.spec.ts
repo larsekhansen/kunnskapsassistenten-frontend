@@ -25,6 +25,14 @@ import {
  */
 const SELECTED_ONE = /^1 av \d+ valgt$/;
 
+/**
+ * «Alle N valgt», whatever N happens to be — the sentence that must NOT be on
+ * an untouched page. Same reason as above: it was written as «Alle 6 valgt»
+ * against six hand-written values, and against the real corpus a literal 6
+ * would pass without testing anything.
+ */
+const ALL_SELECTED = /^Alle \d+ valgt$/;
+
 test.describe('navigasjonspanelet', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -42,8 +50,11 @@ test.describe('navigasjonspanelet', () => {
       await expect(facetField(page, dimension)).toBeVisible();
     }
 
-    // Nothing selected is «no restriction», which is what «Alle valgt» says.
-    await expect(panel.getByText('Alle valgt').first()).toBeVisible();
+    // Nothing selected is «no restriction», and the description says that and
+    // not «Alle valgt» — an untouched field and one where every value has been
+    // picked used to read word for word the same (brukerblikk, funn 3).
+    await expect(panel.getByText('Ingen avgrensning').first()).toBeVisible();
+    await expect(panel.getByText(ALL_SELECTED)).toHaveCount(0);
 
     await expectNoAxeViolations(page, 'filtreringen');
   });
