@@ -51,7 +51,16 @@ export default defineConfig({
   webServer: {
     command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
+    // Never reuse. A preview server already on the port belongs to somebody
+    // else — another run of this suite, or a worker's own server — and
+    // attaching to it is how a run ends up serving a `dist` it did not build
+    // (funksjonssjekk.md, «Et bygg som ikke er ferdig, lyver») or losing the
+    // server mid-suite when its owner finishes. With `false` and
+    // `--strictPort` a collision fails here, loudly, with the port in the
+    // message, instead of turning into a scatter of failed tests further in.
+    //
+    // `KA_E2E_PORT` is how two runs coexist; see tests/e2e/paths.ts.
+    reuseExistingServer: false,
     timeout: 180_000,
     env: { VITE_API_MODE: 'mock' },
   },
