@@ -10,6 +10,7 @@ import type {
 } from '../../model';
 import { daysAgo } from './clock';
 import { scriptedThreads } from './conversations/threads';
+import { sourceFrom } from './conversations/types';
 
 /**
  * Norwegian fixtures for development without a backend.
@@ -31,7 +32,7 @@ import { scriptedThreads } from './conversations/threads';
 /** Timestamps relative to now, so the thread grouping has something to group. */
 
 const NKOM_QUESTION =
-  'Hvordan jobber Nasjonal kommunikasjonsmyndighet med måloppnåelse, og hva har endret seg fra 2022 til 2023?';
+  'Hvordan jobber Nasjonal kommunikasjonsmyndighet med måloppnåelse, og hvor kommer målene fra?';
 
 /**
  * The answer, as markdown. Heading plus paragraph, with a list and a simple
@@ -40,125 +41,130 @@ const NKOM_QUESTION =
  */
 const NKOM_ANSWER = `# Måloppnåelse i Nasjonal kommunikasjonsmyndighet
 
-Nkom rapporterer måloppnåelse gjennom risikostyring, ressursbruk og
-strategiske prioriteringer. Årsrapportene for 2022 og 2023 beskriver det
-samme systemet, men vektlegger ulike deler av det.
+Nkom styres mot mål som settes i tildelingsbrevet og gjøres opp i
+årsrapporten. De to dokumentene under er hver sin ende av den samme syklusen.
 
-## Internkontroll og risikovurdering
+## Hva som gjøres opp
 
-Internkontrollen bygger på årlige risikovurderinger som følges opp gjennom
-året, og avvik rapporteres til ledelsen kvartalsvis [1]. I 2023 er
-risikovurderingen knyttet tettere til virksomhetsstrategien, slik at hvert
-hovedmål har egne risikoer med navngitt eier [3].
+Årsrapporten oppsummerer virksomheten og hovedtallene for året, med
+resultater, tilsynsaktivitet og ressursbruk [1]. Prioriteringene den
+rapporterer mot er sikkerhet og beredskap, markedsregulering, frekvens- og
+nummerforvaltning og digital bærekraft [2].
 
-## Ressursbruk og måloppnåelse
+## Hvor målene kommer fra
 
-Ressursbruken fordeles på fire hovedmål, og rapporteringen viser både
-timeforbruk og oppnådde resultater per mål [2][4]:
+Tildelingsbrevet fra Digitaliserings- og forvaltningsdepartementet gir Nkom
+fullmakt til å disponere budsjettmidlene, og fastsetter hovedmål, delmål,
+prioriteringer og rapporteringskrav [3]. Det inneholder også konkrete
+oppdrag, frister og styringsparametere for rapporteringen [4].
 
-- Sikre og robuste elektroniske kommunikasjonsnett
-- God konkurranse i markedene
-- Trygg digital hverdag for innbyggerne
-- Effektiv forvaltning av frekvenser og nummer
+## Prioriteringene det rapporteres mot
 
-## Sammenligning
+- Sikkerhet og beredskap for kritisk digital infrastruktur
+- Framtidsrettede og konkurransedyktige nett og tjenester
+- Forvaltning av frekvensressurser
+- Redusert digitalt klima- og naturfotavtrykk
 
-| Tema | 2022 | 2023 |
+## Fra oppdrag til rapport
+
+| Ledd | Dokument | År |
 | --- | --- | --- |
-| Risikoeiere per hovedmål | Ikke spesifisert | Navngitt |
-| Rapportering av avvik | Kvartalsvis | Kvartalsvis |
-| Egen omtale av 5G | Delvis | Eget kapittel |
+| Mål og krav | Tildelingsbrev | 2026 |
+| Oppfølging gjennom året | Instruks for økonomi- og virksomhetsstyring | 2024 |
+| Resultat | Årsrapport | 2025 |
 
-## Fokus på digital transformasjon
+Selve oppfølgingen mellom de to endene er beskrevet i instruksen, som slår
+fast at måloppnåelse vurderes gjennom året og ikke bare ved årsslutt [5].
 
-Begge årene omtaler digital transformasjon som en forutsetning for
-måloppnåelse, men 2023-rapporten knytter den til konkrete tiltak i
-saksbehandlingen [3].
+Merk at årsrapporten i dette korpuset er for 2025 og tildelingsbrevet for
+2026. De hører til hver sin runde av syklusen, så de beskriver den samme
+styringsmodellen og ikke det samme året.`;
 
-## 5G-utvikling
+/**
+ * The document the answer cites that is NOT in Kudos, and deliberately so.
+ *
+ * A corpus can be a folder as well as Kudos, and then the backend returns
+ * `url: null` — the panel has to draw an excerpt with nowhere to go. Nothing
+ * in the fetched corpus has a null URL (checked: 0 of 938), so the case can
+ * only be covered by a document written here.
+ *
+ * Which also settles what may be invented. The text below is ours, and it
+ * says so by belonging to a document that makes no claim to be in Kudos:
+ * there is no link to be wrong and no real document to misquote. That is the
+ * difference from what this fixture used to do, which was to put invented
+ * text under invented Kudos addresses — eight links, all 404, measured by #4
+ * in design/kudos-lenker-og-usikre-2026-09-16.md.
+ */
+const nkomInstruks: SourceDocument = {
+  id: 'nkom-instruks-oekonomistyring',
+  title: 'Instruks for økonomi- og virksomhetsstyring i Nkom',
+  documentType: 'Instruks',
+  organisation: 'Nasjonal kommunikasjonsmyndighet',
+  year: 2024,
+  // No url and no kudosUrl: this is the folder-corpus case.
+  excerpts: [
+    {
+      id: 'nkom-instruks-1',
+      citationNumber: 5,
+      relevance: 'low',
+      heading: 'Oppfølging gjennom året',
+      text: 'Måloppnåelse vurderes gjennom året og ikke bare ved årsslutt. Avvik fra fastsatte mål tas opp i den løpende styringsdialogen.',
+    },
+  ],
+};
 
-Utbyggingen av 5G får et eget kapittel i 2023, med dekningstall per
-fylke [4]. I 2021 er 5G omtalt som en framtidig oppgave [5].
-
-Disse rapportene viser hvordan Nkom arbeider systematisk med måloppnåelse
-gjennom risikostyring, ressursbruk og strategiske prioriteringer, med en
-tydelig utvikling mot digital transformasjon og 5G-teknologi.`;
-
+/**
+ * What the answer builds on: two real Kudos documents and one that is not in
+ * Kudos at all.
+ *
+ * The two real ones go through `sourceFrom`, the same machinery the scripted
+ * conversations use, so title, type, organisation, year and the Kudos URL all
+ * come from the fetched corpus and none of them can drift from it. The
+ * excerpts are literal sentences from each document's summary, which is the
+ * rule `ExcerptDraft` states and `conversations.test.ts` enforces.
+ *
+ * These are the only two Nkom documents the corpus holds. The fixture used to
+ * show three annual reports — 2021, 2022 and 2023 — and none of them exists:
+ * the ids were slugs somebody wrote by hand, so a freely typed question gave
+ * eight links that all 404, while a scripted conversation gave nine that all
+ * answered 200.
+ *
+ * No `page` on any excerpt any more. Kudos gives a summary per document and
+ * no page for any part of it, the backend's chunk schema has no page either,
+ * and `#page=N` only works on the PDF's own address, which the corpus does
+ * not carry. A page number written over a sentence lifted from a summary
+ * would be a new untruth in place of a broken link.
+ */
 export const nkomSources: SourceDocument[] = [
-  {
-    id: 'doc-nkom-2022',
-    title: 'Årsrapport Nasjonal kommunikasjonsmyndighet 2022',
-    url: 'https://kudos.dfo.no/dokument/nkom-arsrapport-2022',
-    documentType: 'Årsrapport',
-    organisation: 'Nasjonal kommunikasjonsmyndighet',
-    year: 2022,
-    excerpts: [
-      {
-        id: 'chunk-2022-04',
-        citationNumber: 1,
-        relevance: 'high',
-        heading: 'Internkontroll og risikovurdering',
-        page: 41,
-        kudosUrl: 'https://kudos.dfo.no/dokument/nkom-arsrapport-2022#side-41',
-        text: 'Nkom gjennomfører årlige risikovurderinger på virksomhetsnivå. Vurderingene følges opp gjennom året, og avvik rapporteres til ledelsen kvartalsvis. Internkontrollen er innrettet slik at den skal gi rimelig sikkerhet for måloppnåelse innenfor de fire hovedmålene.',
-      },
-      {
-        id: 'chunk-2022-09',
-        citationNumber: 2,
-        relevance: 'medium',
-        heading: 'Ressursbruk og måloppnåelse',
-        page: 52,
-        kudosUrl: 'https://kudos.dfo.no/dokument/nkom-arsrapport-2022#side-52',
-        text: 'Ressursbruken fordeles på hovedmålene, og rapporteringen viser både timeforbruk og oppnådde resultater per mål. Fordelingen er stabil sammenlignet med foregående år, med en mindre vridning mot tilsynsvirksomhet.',
-      },
-    ],
-  },
-  {
-    id: 'doc-nkom-2023',
-    title: 'Årsrapport Nasjonal kommunikasjonsmyndighet 2023',
-    url: 'https://kudos.dfo.no/dokument/nkom-arsrapport-2023',
-    documentType: 'Årsrapport',
-    organisation: 'Nasjonal kommunikasjonsmyndighet',
-    year: 2023,
-    excerpts: [
-      {
-        id: 'chunk-2023-02',
-        citationNumber: 3,
-        relevance: 'high',
-        heading: 'Internkontroll og risikovurdering',
-        page: 38,
-        kudosUrl: 'https://kudos.dfo.no/dokument/nkom-arsrapport-2023#side-38',
-        text: 'Risikovurderingen er i 2023 knyttet tettere til virksomhetsstrategien. Hvert hovedmål har egne risikoer med navngitt eier, og digital transformasjon av saksbehandlingen er ført opp som et eget tiltak under to av målene.',
-      },
-      {
-        id: 'chunk-2023-11',
-        citationNumber: 4,
-        relevance: 'medium',
-        heading: '5G-utvikling og dekning',
-        page: 64,
-        kudosUrl: 'https://kudos.dfo.no/dokument/nkom-arsrapport-2023#side-64',
-        text: 'Utbyggingen av 5G omtales i et eget kapittel med dekningstall per fylke. Rapporten knytter dekningsutviklingen til målet om sikre og robuste elektroniske kommunikasjonsnett, og viser ressursbruk per hovedmål i samme tabell.',
-      },
-    ],
-  },
-  {
-    id: 'doc-nkom-2021',
-    title: 'Årsrapport Nasjonal kommunikasjonsmyndighet 2021',
-    documentType: 'Årsrapport',
-    organisation: 'Nasjonal kommunikasjonsmyndighet',
-    year: 2021,
-    excerpts: [
-      {
-        id: 'chunk-2021-07',
-        citationNumber: 5,
-        relevance: 'low',
-        heading: 'Framtidige oppgaver',
-        // No kudosUrl: this document has no public URL. The backend returns
-        // `url: null` for folder-based corpora, and the panel must handle it.
-        text: '5G er omtalt som en framtidig oppgave. Nkom forbereder tildeling av frekvensressurser og varsler at dekningskrav vil bli vurdert i kommende auksjoner.',
-      },
-    ],
-  },
+  sourceFrom('a1c6feb9-3a47-4889-b049-92adae575b9f', [
+    {
+      citationNumber: 1,
+      relevance: 'high',
+      heading: 'Virksomhet og hovedtall',
+      text: 'Årsrapporten oppsummerer Nkoms virksomhet og hovedtall for 2025, inkludert resultater, tilsynsaktivitet og ressursbruk.',
+    },
+    {
+      citationNumber: 2,
+      relevance: 'medium',
+      heading: 'Sentrale prioriteringer',
+      text: 'Rapporten beskriver sentrale prioriteringer som sikkerhet og beredskap, markedsregulering, frekvens- og nummerforvaltning, samt arbeid med digital bærekraft.',
+    },
+  ]),
+  sourceFrom('373e48ad-e5c6-4d8d-83b0-7670f344d7d9', [
+    {
+      citationNumber: 3,
+      relevance: 'high',
+      heading: 'Fullmakt, hovedmål og rapporteringskrav',
+      text: 'Tildelingsbrevet frå Digitaliserings- og forvaltningsdepartementet gir Nasjonal kommunikasjonsmyndigheit (Nkom) fullmakt til å disponere budsjettmidlar for 2026 og fastset hovudmål, delmål, prioriteringar og rapporteringskrav.',
+    },
+    {
+      citationNumber: 4,
+      relevance: 'medium',
+      heading: 'Oppdrag og styringsparameter',
+      text: 'Det inneheld konkrete oppdrag, fristar og styringsparameterar for rapportering.',
+    },
+  ]),
+  nkomInstruks,
 ];
 
 export const nkomCitations: Citation[] = nkomSources.flatMap((document) =>
@@ -184,10 +190,10 @@ export const nkomRetrieval: RetrievalDetails = {
   documentCount: 3,
   keywords: [
     'Måloppnåelse Nkom',
-    'Internkontroll og risikovurdering',
-    'Ressursbruk per hovedmål',
-    'Digital transformasjon Nkom',
-    '5G-dekning 2023',
+    'Tildelingsbrev hovedmål',
+    'Ressursbruk og tilsynsaktivitet',
+    'Styringsparameter rapportering',
+    'Økonomi- og virksomhetsstyring',
   ],
 };
 
@@ -195,14 +201,17 @@ export const nkomThinkingSteps: ThinkingStep[] = [
   {
     id: 'step-1',
     kind: 'reasoning',
-    label:
-      'Jeg deler spørsmålet i to: hvordan måloppnåelse måles, og hva som skiller 2022 fra 2023.',
+    label: 'Jeg deler spørsmålet i to: hvordan måloppnåelse gjøres opp, og hvor målene er satt.',
   },
   {
     id: 'step-2',
     kind: 'search',
-    label: 'Jeg søker i årsrapportene.',
-    queries: ['måloppnåelse Nkom 2022', 'måloppnåelse Nkom 2023', 'internkontroll risikovurdering'],
+    label: 'Jeg søker i årsrapporten og tildelingsbrevet.',
+    queries: [
+      'måloppnåelse Nkom',
+      'tildelingsbrev Nkom hovedmål',
+      'rapporteringskrav styringsparameter',
+    ],
     detail: '60 utdrag funnet, 10 beholdt etter rangering.',
     durationMs: 2410,
   },

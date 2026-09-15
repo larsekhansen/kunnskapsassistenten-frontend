@@ -11,7 +11,7 @@ import { ask } from './helpers';
  *
  * What is asserted here is the thing unit tests cannot see: that the counter
  * and the highlights are the same set. The marks are rendered by
- * react-markdown and counted in the DOM afterwards, so «9 treff» and nine
+ * react-markdown and counted in the DOM afterwards, so «7 treff» and seven
  * `<mark>` elements agreeing is the whole correctness claim.
  */
 test.describe('søk i svaret', () => {
@@ -53,7 +53,7 @@ test.describe('søk i svaret', () => {
 
   test('forrige og neste går gjennom treffene og stopper i endene', async ({ page }) => {
     await field(page).fill('mål');
-    await expect(status(page)).toHaveText('1 av 9 treff');
+    await expect(status(page)).toHaveText('1 av 7 treff');
 
     const forrige = page.getByRole('button', { name: 'Forrige treff i svaret' });
     const neste = page.getByRole('button', { name: 'Neste treff i svaret' });
@@ -69,11 +69,11 @@ test.describe('søk i svaret', () => {
     await forrige.focus();
     await page.keyboard.press('Enter');
     // Den første enden holder (brukerblikk 2026-09-15, funn 11).
-    await expect(status(page)).toHaveText('1 av 9 treff');
+    await expect(status(page)).toHaveText('1 av 7 treff');
 
     await neste.focus();
     await page.keyboard.press('Enter');
-    await expect(status(page)).toHaveText('2 av 9 treff');
+    await expect(status(page)).toHaveText('2 av 7 treff');
     // Og det gjeldende treffet er rullet fram til leseren.
     await expect(current(page)).toBeInViewport();
 
@@ -93,7 +93,7 @@ test.describe('søk i svaret', () => {
 
   test('Escape lukker søket og gir fokus tilbake til knappen', async ({ page }) => {
     await field(page).fill('mål');
-    await expect(marks(page)).toHaveCount(9);
+    await expect(marks(page)).toHaveCount(7);
 
     await page.keyboard.press('Escape');
 
@@ -106,7 +106,7 @@ test.describe('søk i svaret', () => {
 
   test('0 axe i lys og mørk, med treff på skjermen', async ({ page }) => {
     await field(page).fill('mål');
-    await expect(status(page)).toHaveText('1 av 9 treff');
+    await expect(status(page)).toHaveText('1 av 7 treff');
 
     for (const mode of ['light', 'dark'] as const) {
       await setColorScheme(page, mode);

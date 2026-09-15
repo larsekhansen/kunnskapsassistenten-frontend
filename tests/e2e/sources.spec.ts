@@ -236,10 +236,10 @@ test.describe('kildepanelet', () => {
     const search = panel.getByRole('searchbox', { name: 'Søk i kildene' });
 
     await search.click();
-    await page.keyboard.type('risiko');
+    await page.keyboard.type('rapport');
     // The field must survive being typed in: the counter updating used to
     // pull focus out after the second character.
-    await expect(search).toHaveValue('risiko');
+    await expect(search).toHaveValue('rapport');
     await expect(search).toBeFocused();
 
     const counter = panel.locator('.sources-search__count');

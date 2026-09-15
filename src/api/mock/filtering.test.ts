@@ -13,25 +13,35 @@ describe('narrowToSelection', () => {
 
   it('narrows on a value the reader ticked', () => {
     // The dropdown value is the word itself; the document holds the number.
-    const narrowed = narrowToSelection(nkomSources, { ...emptyFilterSelection, year: ['2023'] });
+    const narrowed = narrowToSelection(nkomSources, { ...emptyFilterSelection, year: ['2026'] });
 
-    expect(years(narrowed)).toEqual([2023]);
+    expect(years(narrowed)).toEqual([2026]);
   });
 
   it('ands the dimensions together', () => {
+    /*
+     * Two organisations, and that is the corpus and not a slip: Kudos files a
+     * tildelingsbrev under the department that WROTE it, so Nkom's own
+     * assignment letter is «Digitaliserings- og forvaltningsdepartementet».
+     * A reader narrowing to Nkom alone loses it, which is worth knowing about
+     * the real data rather than smoothing over in a fixture.
+     */
     const narrowed = narrowToSelection(nkomSources, {
-      documentType: ['Årsrapport'],
-      organisation: ['Nasjonal kommunikasjonsmyndighet'],
-      year: ['2022', '2023'],
+      documentType: ['Årsrapport', 'Tildelingsbrev'],
+      organisation: [
+        'Nasjonal kommunikasjonsmyndighet',
+        'Digitaliserings- og forvaltningsdepartementet',
+      ],
+      year: ['2025', '2026'],
     });
 
-    expect(years(narrowed)).toEqual([2022, 2023]);
+    expect(years(narrowed)).toEqual([2025, 2026]);
   });
 
   it('keeps nothing when the selection matches nothing', () => {
     const narrowed = narrowToSelection(nkomSources, {
       ...emptyFilterSelection,
-      documentType: ['Tildelingsbrev'],
+      documentType: ['Proposisjon til Stortinget'],
     });
 
     expect(narrowed).toEqual([]);
@@ -46,7 +56,7 @@ describe('narrowToSelection', () => {
 
 describe('retrievalFor', () => {
   it('counts the excerpts and documents that survived', () => {
-    const narrowed = narrowToSelection(nkomSources, { ...emptyFilterSelection, year: ['2023'] });
+    const narrowed = narrowToSelection(nkomSources, { ...emptyFilterSelection, year: ['2026'] });
     const retrieval = retrievalFor(narrowed, nkomRetrieval);
 
     expect(retrieval.documentCount).toBe(1);
@@ -68,7 +78,7 @@ describe('withOnlyCitations', () => {
   });
 
   it('agrees with what the narrowed documents actually cite', () => {
-    const narrowed = narrowToSelection(nkomSources, { ...emptyFilterSelection, year: ['2022'] });
+    const narrowed = narrowToSelection(nkomSources, { ...emptyFilterSelection, year: ['2025'] });
     const kept = citedNumbers(narrowed);
     const text = withOnlyCitations('Ett [1], to [2], tre [3], fire [4].', kept);
 

@@ -22,7 +22,7 @@ describe('citation convention', () => {
 
     expect(targets.map((target) => target.number)).toEqual([1, 2, 3, 4, 5]);
     expect(targets[0].targetId).toBe('excerpt-1');
-    expect(targets[0].label).toContain('Årsrapport Nasjonal kommunikasjonsmyndighet 2022');
+    expect(targets[0].label).toContain('Årsrapport Nasjonal kommunikasjonsmyndighet');
   });
 
   it('skips an excerpt the answer never cited', () => {
