@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { covers } from './a11y';
 import { ask, composer, showThreads } from './helpers';
 
 /**
@@ -37,7 +38,10 @@ function row(page: Page, title: string): Locator {
 }
 
 test.describe('trådlista mens en samtale pågår', () => {
-  test('tråden du lager med lista åpen havner i lista, uten å bytte visning', async ({ page }) => {
+  test('tråden du lager med lista åpen havner i lista, uten å bytte visning', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'ser en ny tråd dukke opp i lista mens den står åpen');
     await page.goto('/');
     await showThreads(page);
 
@@ -103,7 +107,10 @@ test.describe('trådlista mens en samtale pågår', () => {
     await expect(created).toHaveAttribute('aria-current', 'page');
   });
 
-  test('et svar i en eldre tråd flytter raden til «I dag» med klokkeslett', async ({ page }) => {
+  test('et svar i en eldre tråd flytter raden til «I dag» med klokkeslett', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'ser en eldre tråd flytte seg til «I dag» etter et svar');
     await page.goto('/');
     await showThreads(page);
 
