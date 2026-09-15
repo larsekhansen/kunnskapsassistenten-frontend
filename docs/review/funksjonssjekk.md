@@ -9,16 +9,18 @@ Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 `lang="nb"`. Hver testet tilstand kontrolleres med axe mot `wcag2a` og
 `wcag2aa`; et brudd feiler testen.
 
-**55 tester grønne og 1 rød**, kjørt mot PR #14 (`feat/foundation` `a219e9d`)
-med `layout.spec.ts` fra `chore/e2e-layout` lagt oppå. De 19 layouttestene som
-holder V1-beslutningen er **alle grønne**; den røde er et nytt funn, ikke en
-tilstand #5 ikke har bygget: regel B mister tastaturet når den kollapser et
-panel brukeren står i. Se
-[`feat-foundation-2026-09-14.md`](feat-foundation-2026-09-14.md).
+**58 tester, alle grønne** mot `main` `b7981f3`. To av dem er nye
+(N6, under), og suiten er samtidig gjort stabil — se «Suiten løy» nedenfor.
 
-Mot `main` `8060c9b` alene er 36 grønne og layouttestene røde, siden layouten
-ikke er merget ennå. Matrisen og hullet ved 1280 står i
-[`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md).
+**Én kjøring per port om gangen.** `KA_E2E_PORT=4174` flytter den, og det
+trengs når suiten kjøres fra to arbeidstrær på denne maskinen samtidig.
+Portfordelingen i natt: KA CC 4173, #2 4174, #3 4175, #4 4176, #5 4177.
+
+Suiten **gjenbruker aldri** en preview-server som alt står på porten. En
+server der tilhører noen andre, og å henge seg på den er hvordan en kjøring
+ender med å teste et `dist` den ikke bygde selv. Kollisjon feiler nå med
+portnummeret i meldinga, før første test, i stedet for å bli en spredning av
+røde tester lenger inne.
 
 De 22 testene for de tre viewene ble skrevet mot en lokal montering i
 arbeidstreet mens monterings-PR-en ble laget, og **de passerte uendret mot den
@@ -52,6 +54,8 @@ slik de ble anmeldt.
 | Hopper til et dokument fra snarveislista                  | `sources.spec.ts`          |
 | Søker i utdragene og stepper mellom treff                 | `sources.spec.ts`          |
 | Tabber gjennom hvert view i lys og mørk                   | alle fire spec-ene         |
+| Beholder filtervalget gjennom veksling filter ↔ tråder    | `primary-sidebar.spec.ts`  |
+| Beholder filtervalget gjennom et ruteskifte til en tråd   | `primary-sidebar.spec.ts`  |
 | Måler layouten på 1280, 1440 og 1536 i lys og mørk        | `layout.spec.ts`           |
 | Åpner og kollapser sidekolonnene i hver kombinasjon       | `layout.spec.ts`           |
 
@@ -107,6 +111,41 @@ utilsiktet trygge fordi de tas etter mye annet arbeid, men det var flaks.
 svaret token for token à 18 ms. Ventingene i testene poller, så en test
 koster det svaret koster. Hele suiten går på under 20 sekunder fordi testene
 kjører i parallell.
+
+## Suiten løy, og det var min feil
+
+**Fra 13 til 49 av 58 «feil» hadde ingenting med produktet å gjøre.** Målt
+2026-09-15 da N6-testene ble skrevet: kjøringer ga mellom 42 og 56 grønne, med
+et nytt utvalg røde hver gang. Ingen av dem var en påstand som slo feil. To
+delte ressurser, begge mine:
+
+1. **Én fast `outputDir`.** Playwright tømmer den når en kjøring starter, og
+   skriver en trace for hver test mens den går. To kjøringer i samme mappe
+   betyr at den andre sletter filer den første fortsatt skriver, og den første
+   faller i `browserContext.close` med `ENOENT` på en `.trace`-fil. Testen har
+   da allerede passert; det er oppryddingen som kaster. Rettet:
+   `RUN_ARTIFACTS` gir hver kjøring sin egen mappe, og mapper eldre enn et
+   døgn ryddes bort.
+2. **Én fast port.** `reuseExistingServer` lar kjøring to henge seg på
+   preview-serveren til kjøring én, og når kjøring én er ferdig tar den
+   serveren ned under kjøring to, som melder `ERR_CONNECTION_REFUSED` på alt
+   som gjenstår. 49 av 58 i den kjøringen som startet sist. Rettet med
+   `KA_E2E_PORT`, og regelen skrevet ned: én kjøring per port.
+
+Verifisert etterpå med to samtidige kjøringer på 4173 og 4174: **58 grønne i
+begge**.
+
+Verdt å si høyt: en suite som melder rødt av grunner i sitt eget stell er
+verre enn ingen suite, fordi det første den koster er tilliten til den. Alle
+funnene i reviewene 14.09 ble tatt før dette, med sekvensielle kjøringer, og
+er ikke berørt.
+
+**Fonten er en egen risiko, ikke denne.** #5 påpekte at to tester måler
+tekstbredde etter `document.fonts.ready`, og at Inter hentes fra
+`altinncdn.no` ved hver kjøring. Målt her: 200 OK på tre forespørsler,
+`fonts.ready` etter 166–187 ms, likt over kjøringer. Den er altså ikke årsaken
+til det over, men står igjen som den mest sannsynlige årsaken til flakiness i
+CI, der cachen er kald og nettet er noen andres.
 
 ## Det som ikke er en test
 

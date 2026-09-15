@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { ARTIFACTS, PORT } from './tests/e2e/paths';
+import { ARTIFACTS, PORT, RUN_ARTIFACTS } from './tests/e2e/paths';
 
 /**
  * End-to-end tests for kunnskapsassistenten-frontend.
@@ -28,7 +28,9 @@ import { ARTIFACTS, PORT } from './tests/e2e/paths';
  */
 export default defineConfig({
   testDir: './tests/e2e',
-  outputDir: `${ARTIFACTS}/test-results`,
+  // Per run, not per suite: see RUN_ARTIFACTS in tests/e2e/paths.ts for
+  // what a shared one costs.
+  outputDir: RUN_ARTIFACTS,
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
@@ -49,7 +51,16 @@ export default defineConfig({
   webServer: {
     command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
+    // Never reuse. A preview server already on the port belongs to somebody
+    // else — another run of this suite, or a worker's own server — and
+    // attaching to it is how a run ends up serving a `dist` it did not build
+    // (funksjonssjekk.md, «Et bygg som ikke er ferdig, lyver») or losing the
+    // server mid-suite when its owner finishes. With `false` and
+    // `--strictPort` a collision fails here, loudly, with the port in the
+    // message, instead of turning into a scatter of failed tests further in.
+    //
+    // `KA_E2E_PORT` is how two runs coexist; see tests/e2e/paths.ts.
+    reuseExistingServer: false,
     timeout: 180_000,
     env: { VITE_API_MODE: 'mock' },
   },
