@@ -383,7 +383,12 @@ test.describe('samtalen', () => {
      * i tenkefasen kom tilbake til en tom tråd — etter å ha sett et kort med
      * «Generer på nytt» på et øyeblikk før (KA CC på #71).
      */
-    await expect(page.getByText('Hvordan jobber Nkom med måloppnåelse?')).toBeVisible();
+    // Spørsmålet står to steder: som brukermelding, og som tråd-overskrift
+    // som er skjult for øyet men ikke for lokatoren. Det er meldingen som
+    // skal ha overlevd, så det er den vi spør om (KA CC på #76).
+    await expect(
+      page.locator('.ka-message--user').getByText('Hvordan jobber Nkom med måloppnåelse?'),
+    ).toBeVisible();
     await expect(page.locator('.ka-answer-card')).toHaveCount(1);
     await expect(page.getByText('Du stoppet søket før svaret begynte.')).toBeVisible();
     const again = page.getByRole('button', { name: 'Generer på nytt' });
