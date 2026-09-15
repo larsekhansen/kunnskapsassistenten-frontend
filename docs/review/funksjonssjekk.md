@@ -9,8 +9,9 @@ Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 `lang="nb"`. Hver testet tilstand kontrolleres med axe mot `wcag2a` og
 `wcag2aa`; et brudd feiler testen.
 
-**86 tester, alle grønne** mot `main` `52d8069`. Fjorten av dem er nye i bølge
-3, skrevet mot det som ble merget 15.09: filteret som når spørringen,
+**94 tester, alle grønne** mot `main` `5e42eed`. Åtte av dem kom med #49 i
+`feilmeldinger.spec.ts` og er #3 sine; fjorten er bølge 3, skrevet mot det som
+ble merget 15.09: filteret som når spørringen,
 tidsstempel på trådradene, korpuslinja, «Generer på nytt», oppsamlingsruta,
 ukjent tråd, husket panel- og filtertilstand, samtalen som overlever en
 reload, snarveien til skrivefeltet, hopp-lenke nummer to, kilder per svar, og
@@ -82,9 +83,14 @@ slik de ble anmeldt.
 | Lastetilstanden i kildepanelet                | Vises bare mens `documents` er `undefined`, og monteringen gir dem med én gang. Trenger enten en treg mock eller en egen rute                                               |
 | Opplasting, «Vis flere dokumenter», topplinje | Ikke bygget. Se `skal-dette-implementeres.md`                                                                                                                               |
 
-Feiltilstanden i chatten står ikke lenger her: `MOCK_FAILURE_QUERY` («simuler
-feil») og `MOCK_CLARIFICATION_QUERY` («simuler avklaring») er utløsere i det
-bygde appet, og begge er dekket.
+Feiltilstandene står ikke lenger her. Det er nå **seks** nøkkelord i det
+bygde appet — `simuler feil`, `simuler feil modell`, `simuler feil korpus`,
+`simuler tidsavbrudd`, `simuler ingen treff` og `simuler avvist nøkkel` — pluss
+`simuler avklaring`, og `feilmeldinger.spec.ts` dekker dem.
+
+Verdt å merke seg for den som skriver flere: et utløserord er et **eksakt**
+treff på hele spørsmålet, så `simuler feil modell` er sitt eget spørsmål og
+ikke et prefiks på det korte.
 
 ## Skjermbilder
 
