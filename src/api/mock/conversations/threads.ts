@@ -23,22 +23,13 @@ export function citationsFor(conversation: ScriptedConversation): Citation[] {
 }
 
 /**
- * How long ago each scripted conversation was had, in days.
- *
- * The same spread the thread list had when its rows were titles and nothing
- * else: today, this week, this month, some months back, and one from last
- * year. That spread is the point — it is what keeps every bucket in
- * `views/threads/grouping.ts` drawn on a page anybody opens, and a list where
- * everything happened today would quietly stop testing four of them.
- *
- * Paired with `scriptedConversations` by position, so a conversation added to
- * that list needs a day here too. `conversations.test.ts` checks the two
- * stay the same length rather than letting the last one fall off the end.
- */
-const daysOld = [0, 3, 4, 6, 7, 12, 18, 26, 48, 310];
-
-/**
  * A scripted conversation, as a thread that is already in the list.
+ *
+ * When it was had comes from the conversation itself (`daysAgo`), so nothing
+ * here is paired by position with anything. It was an array beside this list
+ * until KA CC read PR #58 and noticed the array was paired with the FILTERED
+ * conversations: a second one that fails would have shifted every day after
+ * it, silently.
  *
  * The question, then the answer with everything behind it: the sources
  * grouped per document, the `[n]` markers resolved against them, the thinking
@@ -48,9 +39,9 @@ const daysOld = [0, 3, 4, 6, 7, 12, 18, 26, 48, 310];
  * every thread a reader opened from the list was empty. Punkt 16 på
  * brukerreise-lista, målt av #4.
  */
-function threadFor(conversation: ScriptedConversation, days: number): ThreadDetail {
-  const asked = daysAgo(days, 8);
-  const answered = daysAgo(days, 9);
+function threadFor(conversation: ScriptedConversation): ThreadDetail {
+  const asked = daysAgo(conversation.daysAgo, 8);
+  const answered = daysAgo(conversation.daysAgo, 9);
 
   const question: Message = {
     id: `${conversation.id}-question`,
@@ -103,4 +94,4 @@ function threadFor(conversation: ScriptedConversation, days: number): ThreadDeta
  */
 export const scriptedThreads: ThreadDetail[] = scriptedConversations
   .filter((conversation) => conversation.failure === undefined)
-  .map((conversation, index) => threadFor(conversation, daysOld[index] ?? 0));
+  .map(threadFor);

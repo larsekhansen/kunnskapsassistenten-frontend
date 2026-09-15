@@ -31,6 +31,24 @@ export type ScriptedConversation = {
   aliases?: string[];
   /** The thread title, which is the question until a backend writes one. */
   threadTitle: string;
+  /**
+   * How long ago this conversation was had, in days, for the thread list.
+   *
+   * On the conversation and not in a list beside it, which is the difference
+   * between a mismatch being impossible and being something a test has to
+   * catch: the days used to be an array paired by position, and they were
+   * paired with the FILTERED list — so a second conversation that fails would
+   * have shifted every day after it without a word. Found by KA CC reviewing
+   * PR #58.
+   *
+   * Relative rather than a date, so the spread keeps exercising every bucket
+   * in `views/threads/grouping.ts` however long after they were written
+   * somebody opens the app. See `daysAgo` in ../clock.ts.
+   *
+   * A conversation that gets no thread — the one that fails — still carries
+   * one. It says when the conversation was had, which is true either way.
+   */
+  daysAgo: number;
   /** Markdown. Heading and paragraphs, sometimes a list or a table. */
   answer: string;
   documents: SourceDocument[];

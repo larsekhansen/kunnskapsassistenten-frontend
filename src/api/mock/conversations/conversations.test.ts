@@ -229,10 +229,24 @@ describe('de scriptede samtalene som tråder', () => {
     }
   });
 
-  it('gir hver tråd sin egen dag, så ingen faller utenfor lista', () => {
-    // `daysOld` i threads.ts er paret med samtalene etter posisjon. En samtale
-    // til uten en dag til ville fått `?? 0` og havnet i «I dag» uten at noen
-    // merket det.
+  it('henter dagen fra samtalen selv, ikke fra en liste ved siden av', () => {
+    // Dette var en `daysOld`-tabell paret etter posisjon, og paret med den
+    // FILTRERTE lista: en feilsamtale til ville forskjøvet hver eneste dag
+    // etter seg uten at noe sa fra. Funn fra KA CC i #58. Nå bærer samtalen
+    // dagen sin, så det ikke finnes noe par som kan gå i utakt.
+    for (const conversation of scriptedConversations) {
+      const thread = scriptedThreads.find((candidate) => candidate.id === conversation.id);
+      if (!thread) continue;
+
+      const drawn = Math.round((Date.now() - Date.parse(thread.updatedAt)) / 86_400_000);
+      expect(drawn, `tråden «${thread.title}»`).toBe(conversation.daysAgo);
+    }
+  });
+
+  it('gir hver samtale sin egen dag, så ingen to rader står på samme tid', () => {
+    const days = scriptedConversations.map((conversation) => conversation.daysAgo);
+    expect(new Set(days).size, 'to samtaler med samme dag').toBe(days.length);
+
     const dates = scriptedThreads.map((thread) => thread.updatedAt);
     expect(new Set(dates).size, 'to tråder med samme tidspunkt').toBe(dates.length);
   });
@@ -240,12 +254,12 @@ describe('de scriptede samtalene som tråder', () => {
   it('sprer trådene over hele grupperingen, fra i dag til i fjor', () => {
     // Grupperingen i views/threads/grouping.ts har fem bøtter. En liste der
     // alt skjedde i dag ville stilltiende sluttet å tegne fire av dem.
-    const daysOld = scriptedThreads.map((thread) =>
+    const days = scriptedThreads.map((thread) =>
       Math.round((Date.now() - Date.parse(thread.updatedAt)) / 86_400_000),
     );
 
-    expect(Math.min(...daysOld)).toBeLessThanOrEqual(1);
-    expect(Math.max(...daysOld)).toBeGreaterThan(300);
+    expect(Math.min(...days)).toBeLessThanOrEqual(1);
+    expect(Math.max(...days)).toBeGreaterThan(300);
   });
 
   it('har ingen id som kolliderer med tråden som er skrevet for hånd', () => {

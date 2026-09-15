@@ -759,7 +759,10 @@ nås som før, ved å stille spørsmålet.
 
 Tidspunktene er relative (`clock.ts`), spredt fra i dag til i fjor, så
 grupperingen i trådlista — «I dag», «Siste 7 dager», «Siste 30 dager», måned,
-år — fortsatt tegnes hel uansett når appen åpnes.
+år — fortsatt tegnes hel uansett når appen åpnes. Hver samtale bærer dagen sin
+selv, i `daysAgo`, og ikke i en liste ved siden av: en tabell paret etter
+posisjon ville forskjøvet alle dagene etter en samtale som ble lagt til eller
+filtrert bort.
 
 **Tre av dem er kickstarterne på tomtilstanden, ord for ord.** Trykk et
 forslag og send, og du får svar. Det krevde ingen endring i chat-viewet:
