@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupThreads } from './grouping';
+import { groupThreads } from '../views/threads/grouping';
 import { threadTime } from './threadTime';
 
 /** A Tuesday, so the weekday cases are not all the same day. */

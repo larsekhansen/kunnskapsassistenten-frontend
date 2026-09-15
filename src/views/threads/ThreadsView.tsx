@@ -3,12 +3,11 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router';
 import { createChatClient } from '../../api';
 import { FilterIcon, NewThreadIcon } from '../../components/icons';
-import { EmptyState, ErrorState, PanelHeader } from '../../components';
+import { EmptyState, ErrorState, PanelHeader, threadTime } from '../../components';
 import { useOpenThread } from '../../layout/useOpenThread';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { Thread } from '../../model';
 import { groupThreads } from './grouping';
-import { threadTime } from './threadTime';
 import './threads.css';
 
 export type ThreadsViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> &
