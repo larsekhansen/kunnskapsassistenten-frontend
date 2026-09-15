@@ -28,6 +28,7 @@ eier bare denne mappa.
 | [`brukerblikk-2026-09-15.md`](brukerblikk-2026-09-15.md)                                       | Brukerblikk: 17 ting som ser rart ut, ingen av dem fanget av axe eller e2e |
 | [`feat-foundation-2026-09-15-rail.md`](feat-foundation-2026-09-15-rail.md)                     | PR #20, railen på 67 px                                                    |
 | [`feat-chat-brukerblikk-2026-09-15.md`](feat-chat-brukerblikk-2026-09-15.md)                   | PR #23, brukerblikk-funn 5, 6, 9 og 10 i hovedkolonnen                     |
+| [`feat-thread-url-2026-09-15.md`](feat-thread-url-2026-09-15.md)                               | PR #25, tråd-URL og needs-clarification: plumbing uten kaller              |
 
 ## Sånn går en review
 
