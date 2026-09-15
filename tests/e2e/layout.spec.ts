@@ -295,10 +295,166 @@ test.describe('layouten', () => {
    * 2026-09-15. The collapsed button carries no label on screen any more — it
    * is an icon with an accessible name and a tooltip — so there is no text
    * node left to count lines in, and the question the test asked is one the
-   * rail decision answered by removing it. Deleted rather than rewritten:
-   * what a rail needs asserted instead (the name, the tooltip, the 67 px) is
-   * KA CC's to write.
+   * rail decision answered by removing it. #5 deleted it and left the
+   * replacements to this file; the three below are them.
    */
+
+  /**
+   * The rail is the whole of the decision of 2026-09-15, and it has to be
+   * measured rather than assumed: it exists because 236 px of empty surface
+   * did not read as a panel folded away, and a rail that quietly grew back
+   * would fail the same way without failing anything else.
+   */
+  test('en kollapset sidekolonne er en rail på 67 px, med panelflate i begge moduser', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'layout: kollapset sidekolonne er en rail');
+    await page.setViewportSize({ width: V1_MIN_VIEWPORT, height: HEIGHT });
+    await page.goto('/');
+
+    for (const scheme of ['light', 'dark'] as const) {
+      await setColorScheme(page, scheme);
+
+      // The open navigation panel first, and once per scheme: the rail is
+      // compared against the surface it is supposed to keep, not against a
+      // colour written down here. Reading it once in light and holding it
+      // across the switch is how this test first failed — on a product that
+      // had the surface right in both.
+      await setSidebars(page, stateNamed('nav-aapent'));
+      const openSurface = await page.evaluate(
+        () => getComputedStyle(document.querySelector('.primary-sidebar')!).backgroundColor,
+      );
+
+      await setSidebars(page, stateNamed('begge-kollapset'));
+      const rails = await page.evaluate(() => {
+        const read = (selector: string) => {
+          const element = document.querySelector(selector)!;
+          const style = getComputedStyle(element);
+          return {
+            width: Math.round(element.getBoundingClientRect().width),
+            background: style.backgroundColor,
+            // The border is what draws the rail's edge against the answer
+            // column; it is the term that makes 67 out of 66.
+            border: Math.round(
+              parseFloat(
+                selector.includes('primary')
+                  ? style.borderInlineEndWidth
+                  : style.borderInlineStartWidth,
+              ),
+            ),
+          };
+        };
+        return {
+          nav: read('.primary-sidebar'),
+          sources: read('.secondary-sidebar'),
+          ground: getComputedStyle(document.querySelector('.shell')!).backgroundColor,
+        };
+      });
+
+      for (const [name, rail] of Object.entries({ nav: rails.nav, sources: rails.sources })) {
+        expect(rail.width, `${name}-railen er ${RAIL} px i ${scheme}`).toBe(RAIL);
+        expect(rail.border, `${name}-railen har en kant i ${scheme}`).toBeGreaterThan(0);
+        // A surface, and the SAME surface an open panel has. Both rails carry
+        // it, which is the half of the decision that answers «skjult kolonne
+        // er ikke skjult»: a rail that borrowed the page ground would be the
+        // old hole, only narrower.
+        expect(rail.background, `${name}-railen har panelflate i ${scheme}`).not.toBe(rails.ground);
+        expect(rail.background, `${name}-railen har samme flate som et åpent panel`).toBe(
+          openSurface,
+        );
+      }
+    }
+  });
+
+  /**
+   * The label did not disappear with the rail; it moved. It is the button's
+   * accessible name, so a screen reader user hears the same words in both
+   * states, and a tooltip, so a sighted user can still find out what the icon
+   * means. Both halves, because either one alone is a different product.
+   */
+  test('rail-knappen bærer etiketten som tilgjengelig navn og som tooltip', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'layout: railens navn og tooltip');
+    await page.setViewportSize({ width: V1_MIN_VIEWPORT, height: HEIGHT });
+    await page.goto('/');
+    await setSidebars(page, stateNamed('begge-kollapset'));
+
+    for (const [selector, label] of [
+      ['.primary-sidebar', 'Vis tråder og filter'],
+      ['.secondary-sidebar', 'Vis kilder'],
+    ] as const) {
+      const button = page.locator(`${selector} button`).first();
+
+      await expect(button, `${label}: navnet er der for skjermleseren`).toHaveAccessibleName(label);
+      // Nothing on screen, which is why the tooltip has to exist.
+      expect((await button.textContent())?.trim(), `${label}: ingen synlig tekst i railen`).toBe(
+        '',
+      );
+      await expect(button).toHaveAttribute('data-tooltip', label);
+
+      // And the tooltip is real, not just an attribute nobody draws.
+      // Designsystemet's Tooltip sets `data-tooltip` and the custom element in
+      // @digdir/designsystemet-web renders it; it contributes no accessible
+      // name of its own, which is why the aria-label above is not optional.
+      await button.hover();
+      await expect(
+        page.locator('.ds-tooltip', { hasText: label }),
+        `${label}: tooltipen tegnes ved hover`,
+      ).toBeVisible();
+      await page.mouse.move(0, 0);
+    }
+  });
+
+  /**
+   * The rail wraps the toggle in a Tooltip and the open panel does not, so
+   * collapsing REPLACES the button: a wrapper appearing around an element is
+   * a different element to React, the old node is unmounted, and the user is
+   * left standing on a node that no longer exists.
+   *
+   * It is the same defect as the one found reviewing PR #14 — focus on
+   * `<body>`, next Tab back at the skip link — reached a different way, and
+   * this time by the most ordinary action there is: pressing the button.
+   * #5 measured six cases; this covers both directions in both sidebars.
+   */
+  test('fokus overlever at veksleknappen byttes ut ved kollaps', async ({ page }, testInfo) => {
+    covers(testInfo, 'layout: fokus overlever at knappen byttes ut');
+    await page.setViewportSize({ width: PREFERRED_VIEWPORT, height: HEIGHT });
+    await page.goto('/');
+
+    const activeName = () =>
+      page.evaluate(() => {
+        const element = document.activeElement;
+        if (!element || element === document.body) return 'body';
+        return (
+          element.getAttribute('aria-label') || (element.textContent ?? '').trim() || 'uten navn'
+        );
+      });
+
+    for (const [open, closed] of [
+      ['Skjul tråder og filter', 'Vis tråder og filter'],
+      ['Skjul kilder', 'Vis kilder'],
+    ] as const) {
+      // Open it first when it starts collapsed, so both directions are
+      // exercised for both sidebars.
+      if (await page.getByRole('button', { name: closed }).count()) {
+        const show = page.getByRole('button', { name: closed });
+        await show.focus();
+        await show.press('Enter');
+        expect(await activeName(), `${open}: fokus overlevde åpningen`).toBe(open);
+      }
+
+      const hide = page.getByRole('button', { name: open });
+      await hide.focus();
+      await hide.press('Enter');
+      expect(await activeName(), `${closed}: fokus overlevde kollapsen`).toBe(closed);
+
+      // And back again, from the rail.
+      const show = page.getByRole('button', { name: closed });
+      await show.press('Enter');
+      expect(await activeName(), `${open}: fokus overlevde at railen ble åpnet`).toBe(open);
+    }
+  });
 
   /**
    * The whole matrix the decision promises: three widths, every state the
