@@ -38,3 +38,31 @@ export const FOLLOW_UP_QUESTIONS = [
   'Identifiser utfordringer',
   'Lag relaterte spørsmål',
 ] as const;
+
+/*
+ * The agent asking for more before it answers: backend status
+ * `needs-clarification` (design/eksisterende/api-for-frontend.md l.208).
+ *
+ * The wording is the conductor's, from the brief. It frames the card as a
+ * question to the reader rather than as a failed answer, which is what it is:
+ * nothing went wrong, the assistant just needs one more thing.
+ */
+
+/** The `Tag` at the top of the clarification card. */
+export const CLARIFICATION_TAG = 'Trenger avklaring';
+
+/** Replaces COMPOSE_PLACEHOLDER while a clarification is the last message. */
+export const CLARIFICATION_PLACEHOLDER = 'Svar på spørsmålet over …';
+
+/** What the polite live region says when the clarification arrives. */
+export const CLARIFICATION_ANNOUNCEMENT = 'Kunnskapsassistenten trenger en avklaring.';
+
+/**
+ * The only action on a clarification. Named after what it copies, like
+ * «Kopier svaret» on a finished answer — the card holds a question, not an
+ * answer, so the label says so.
+ */
+export const CLARIFICATION_COPY = 'Kopier spørsmålet';
+
+/** The receipt after CLARIFICATION_COPY. */
+export const CLARIFICATION_COPIED = 'Spørsmålet er kopiert.';

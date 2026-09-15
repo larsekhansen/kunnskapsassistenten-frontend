@@ -1,7 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { AskParams, ChatClient } from '../../api';
-import type { StreamEvent } from '../../model';
+import type { Message, StreamEvent } from '../../model';
+import { CLARIFICATION_ANNOUNCEMENT } from './text';
 import { useChat } from './useChat';
 
 /** One `ask` call, held open so a test can decide when the next frame lands. */
@@ -62,7 +63,7 @@ function heldClient(): { client: ChatClient; turns: OpenTurn[] } {
   };
 }
 
-const assistantMessages = (messages: { role: string }[]) =>
+const assistantMessages = (messages: Message[]) =>
   messages.filter((message) => message.role === 'assistant');
 
 describe('useChat', () => {
@@ -160,5 +161,45 @@ describe('useChat', () => {
     await waitFor(() => expect(result.current.status).toBe('pending'));
     expect(result.current.error).toBeNull();
     expect(turns[1].query).toBe('Hva er måloppnåelse?');
+  });
+
+  it('marks a turn the agent ended by asking back', async () => {
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+
+    act(() => turns[0].emit({ type: 'token', text: 'Mener du årsrapporten?' }));
+    act(() =>
+      turns[0].emit({
+        type: 'done',
+        messageId: 'm1',
+        conversationId: 'c1',
+        outcome: 'needs-clarification',
+      }),
+    );
+
+    // A finished turn, not a failed one: idle, no error, and the message
+    // carries the status the card reads.
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    expect(result.current.error).toBeNull();
+    expect(assistantMessages(result.current.messages)[0]?.status).toBe('needs-clarification');
+    expect(result.current.announcement).toBe(CLARIFICATION_ANNOUNCEMENT);
+  });
+
+  it('treats a done frame without an outcome as a finished answer', async () => {
+    const { client, turns } = heldClient();
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send('Hva er måloppnåelse?'));
+    await waitFor(() => expect(turns).toHaveLength(1));
+
+    act(() => turns[0].emit({ type: 'token', text: 'Svaret.' }));
+    act(() => turns[0].emit({ type: 'done', messageId: 'm1', conversationId: 'c1' }));
+
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    expect(assistantMessages(result.current.messages)[0]?.status).toBe('complete');
+    expect(result.current.announcement).toBe('Svaret er ferdig.');
   });
 });

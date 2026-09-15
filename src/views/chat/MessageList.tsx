@@ -2,6 +2,7 @@ import { Card, Paragraph, Skeleton, Spinner } from '@digdir/designsystemet-react
 import { Markdown } from '../../components';
 import { citationTargets, type Message } from '../../model';
 import { AnswerActions } from './AnswerActions';
+import { Clarification } from './Clarification';
 import { RetrievalPanel } from './RetrievalPanel';
 import { CLOSING_QUESTION } from './text';
 
@@ -53,6 +54,10 @@ function AnswerSkeleton() {
  * The answer is rendered by the shared `Markdown` component at `startLevel`
  * 3, because it sits under the thread title, which is a level 2 under the
  * route's level 1.
+ *
+ * An assistant turn that came back as `needs-clarification` is a question to
+ * the reader and not an answer, so the sender line says «spurte» and the card
+ * is `Clarification`.
  */
 export function MessageList({
   messages,
@@ -72,6 +77,19 @@ export function MessageList({
               <Paragraph data-size="lg" variant="long">
                 {message.content}
               </Paragraph>
+            </li>
+          );
+        }
+
+        // The agent asking back rather than answering. It is an assistant
+        // turn like any other, but nothing a finished answer carries applies
+        // to it, so it is drawn by its own component rather than by switching
+        // four things off in this one.
+        if (message.status === 'needs-clarification') {
+          return (
+            <li className="ka-message ka-message--assistant" key={message.id}>
+              <span className="ds-sr-only">Kunnskapsassistenten spurte:</span>
+              <Clarification question={message.content} />
             </li>
           );
         }

@@ -1,13 +1,18 @@
 import { Button, Chip, Paragraph, Textfield } from '@digdir/designsystemet-react';
-import type { KeyboardEvent, RefObject } from 'react';
+import type { KeyboardEvent, Ref, RefObject } from 'react';
 import { PaperclipIcon, PaperplaneIcon, StopIcon } from '@navikt/aksel-icons';
 import { COMPOSE_PLACEHOLDER, DISCLAIMER, FOLLOW_UP_QUESTIONS } from './text';
 import type { ChatStatus } from './useChat';
 
 type ComposerProps = {
+  /** The sticky area around the field, for a caller that has to measure or
+   * ask where focus is. */
+  ref?: Ref<HTMLDivElement>;
   /** So a kickstarter can put the caret in the field after filling it. */
   fieldRef?: RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   value: string;
+  /** Defaults to the everyday one. A clarification asks for an answer to it. */
+  placeholder?: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   onCancel: () => void;
@@ -46,8 +51,10 @@ type ComposerProps = {
  * keyboard user, which `disabled` would not.
  */
 export function Composer({
+  ref,
   fieldRef,
   value,
+  placeholder = COMPOSE_PLACEHOLDER,
   onChange,
   onSubmit,
   onCancel,
@@ -65,7 +72,7 @@ export function Composer({
   }
 
   return (
-    <div className="ka-composer-area">
+    <div className="ka-composer-area" ref={ref}>
       <div className="ka-composer">
         <Textfield
           aria-label="Spørsmål til Kunnskapsassistenten"
@@ -73,7 +80,7 @@ export function Composer({
           multiline
           onChange={(event) => onChange(event.currentTarget.value)}
           onKeyDown={onKeyDown}
-          placeholder={COMPOSE_PLACEHOLDER}
+          placeholder={placeholder}
           ref={fieldRef}
           rows={1}
           value={value}

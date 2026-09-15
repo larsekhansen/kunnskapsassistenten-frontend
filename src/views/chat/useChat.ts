@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatClient } from '../../api';
-import type { Message } from '../../model';
+import type { Message, MessageStatus } from '../../model';
 import { announcedText } from './answerText';
+import { CLARIFICATION_ANNOUNCEMENT } from './text';
 
 /** Where the current turn is. Drives the skeleton, the stop button and the error. */
 export type ChatStatus = 'idle' | 'pending' | 'streaming' | 'error';
+
+/** What an answer can be once the turn is over. */
+type SettledStatus = Extract<MessageStatus, 'complete' | 'needs-clarification' | 'error'>;
 
 let counter = 0;
 function nextId(prefix: string): string {
@@ -84,7 +88,7 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
    * is the hidden «Kunnskapsassistenten svarte:» — a screen reader hears an
    * assistant that answered nothing.
    */
-  const settleAnswer = useCallback((id: string, status: 'complete' | 'error') => {
+  const settleAnswer = useCallback((id: string, status: SettledStatus) => {
     setMessages((current) => {
       const answer = current.find((message) => message.id === id);
       if (answer && answer.content.length === 0) {
@@ -155,14 +159,18 @@ export function useChat(client: ChatClient, initialMessages: Message[] = []): Us
               }));
               break;
 
-            case 'done':
+            case 'done': {
               conversationRef.current = event.conversationId;
-              settleAnswer(answerId, 'complete');
+              // `outcome` absent means the turn completed, which is what every
+              // answer was before the field existed. See model/stream.ts.
+              const clarifying = event.outcome === 'needs-clarification';
+              settleAnswer(answerId, clarifying ? 'needs-clarification' : 'complete');
               if (isCurrentTurn()) {
-                setAnnouncement('Svaret er ferdig.');
+                setAnnouncement(clarifying ? CLARIFICATION_ANNOUNCEMENT : 'Svaret er ferdig.');
                 setStatus('idle');
               }
               return;
+            }
 
             case 'error':
               if (event.error.code === 'aborted') {
