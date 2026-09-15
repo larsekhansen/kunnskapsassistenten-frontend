@@ -255,7 +255,20 @@ function Sidebar({
         accessible name at all, which is why `aria-label` is on the button and
         not left to this. See design/designsystemet/komponenter/tooltip.md.
       */}
-      {state.collapsed ? <Tooltip content={toggleLabel}>{toggleButton}</Tooltip> : toggleButton}
+      {/*
+        The panel head does not scroll; the content under it does.
+
+        Without that, the toggle button rides the panel's own scrolling. Click
+        a `[n]` marker and the sources panel scrolls 987 px to the excerpt at
+        1440, taking «Skjul kilder» to y = −955 — a screen above the top of the
+        window — so the panel has no visible way to close itself and the user
+        has to scroll back up to find out where it went. The navigation panel
+        does the same at 991 px of content in a 900 px window. Finding 2 in
+        docs/review/brukerblikk-2026-09-15.md.
+      */}
+      <div className="sidebar-header">
+        {state.collapsed ? <Tooltip content={toggleLabel}>{toggleButton}</Tooltip> : toggleButton}
+      </div>
 
       <div id={contentId} ref={content} hidden={state.collapsed} className="sidebar-content">
         <ActiveView
