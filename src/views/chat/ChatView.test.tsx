@@ -621,6 +621,38 @@ describe('ChatView', () => {
     );
   });
 
+  it('leaves focus on the paperclip, which changed nothing', async () => {
+    render(
+      <Shell>
+        <ChatView
+          client={clientYielding([{ type: 'error', error: { code: 'model-unavailable' } }])}
+        />
+      </Shell>,
+    );
+
+    const send = screen.getByRole('button', { name: 'Send spørsmålet' });
+    fireEvent.change(field(), { target: { value: 'Hva sier rapporten?' } });
+    send.focus();
+    fireEvent.click(send);
+
+    // The reader moves to the paperclip while the answer is on its way. It is
+    // inert, it says «Vedlegg kommer», and nothing about it changes when the
+    // turn fails — so the rescue must leave it alone. The rescue is about the
+    // one control that changed meaning, not about the area it sits in
+    // (KA CC on #59).
+    // Found by position, not by name: the paperclip is named by
+    // Designsystemet's `data-tooltip`, and the custom element that turns that
+    // into an accessible name is never upgraded in jsdom. The e2e suite finds
+    // it by name, where the name exists.
+    const paperclip = document.querySelector<HTMLButtonElement>('.ka-composer__buttons button');
+    paperclip?.focus();
+
+    expect(paperclip?.getAttribute('aria-disabled')).toBe('true');
+
+    await screen.findByText('Assistenten svarte ikke');
+    expect(document.activeElement).toBe(paperclip);
+  });
+
   it('falls back to the field when the failure offers no retry', async () => {
     render(
       <Shell>

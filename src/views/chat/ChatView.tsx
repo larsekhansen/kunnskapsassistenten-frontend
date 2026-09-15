@@ -73,6 +73,9 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   // «Prøv igjen», so focus can be put on it when the error takes the control
   // the reader was holding.
   const retryRef = useRef<HTMLButtonElement>(null);
+  // The send button, which is the stop button mid-answer. The one control
+  // that changes meaning under the reader when a turn fails.
+  const sendRef = useRef<HTMLButtonElement>(null);
 
   // The main slot owns the scroll, and the shell hands it over. A view must
   // not go looking for it: the day chat is moved to another slot, a search up
@@ -287,8 +290,11 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
    *
    * So «is focus lost» cannot be asked of `document.activeElement` alone —
    * asked here it is still the button, and one frame later it is too late.
-   * A button inside the composer counts as lost too: it is the control that
-   * just changed meaning underneath the reader.
+   * That one button counts as lost too, and it is compared by identity: the
+   * reasoning is about the control that changed meaning under the reader, so
+   * «a button in the composer» was too wide a net. It caught the paperclip,
+   * which changes nothing when a turn fails and has every right to keep the
+   * focus a reader put on it (KA CC on #59).
    *
    * Where focus goes is «Prøv igjen», which is the one thing to do next, and
    * the compose field when the error offers no retry — a rejected key does
@@ -301,9 +307,8 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
     if (status !== 'error') return;
 
     const active = document.activeElement;
-    const onComposerButton =
-      active instanceof HTMLButtonElement && (composerRef.current?.contains(active) ?? false);
-    if (active !== document.body && active !== null && !onComposerButton) return;
+    const onSendButton = active !== null && active === sendRef.current;
+    if (active !== document.body && active !== null && !onSendButton) return;
 
     (retryRef.current ?? fieldRef.current)?.focus();
   }, [status]);
@@ -370,6 +375,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
 
       <Composer
         fieldRef={fieldRef}
+        sendRef={sendRef}
         onCancel={() => {
           cancel();
           focusField();

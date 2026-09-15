@@ -26,6 +26,15 @@ type ComposerProps = {
   onChange: (value: string) => void;
   onSubmit: () => void;
   onCancel: () => void;
+  /**
+   * The send button, which is the stop button while an answer is on its way.
+   *
+   * One ref for both, because it is one element to the browser: React keeps
+   * the same `<button>` and swaps its label and handler, which is why focus
+   * survives the change. The chat view needs to recognise it by identity when
+   * a failure takes it out from under the reader — see `ChatView`.
+   */
+  sendRef?: RefObject<HTMLButtonElement | null>;
   status: ChatStatus;
   /** Show the fixed follow-up suggestions under the field (answer 29). */
   showFollowUps?: boolean;
@@ -73,6 +82,7 @@ type ComposerProps = {
  */
 export function Composer({
   ref,
+  sendRef,
   fieldRef,
   value,
   placeholder = COMPOSE_PLACEHOLDER,
@@ -125,7 +135,12 @@ export function Composer({
           </Button>
 
           {busy ? (
-            <Button aria-label="Avbryt genereringen" onClick={onCancel} variant="secondary">
+            <Button
+              aria-label="Avbryt genereringen"
+              onClick={onCancel}
+              ref={sendRef}
+              variant="secondary"
+            >
               <StopIcon aria-hidden />
               Avbryt
             </Button>
@@ -135,6 +150,7 @@ export function Composer({
               disabled={value.trim().length === 0}
               icon
               onClick={onSubmit}
+              ref={sendRef}
             >
               <PaperplaneIcon aria-hidden />
             </Button>
