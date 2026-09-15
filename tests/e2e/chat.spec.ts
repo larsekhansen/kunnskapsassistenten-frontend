@@ -219,7 +219,17 @@ test.describe('hovedkolonnen', () => {
    * Så denne tar tiden selv, over NØYAKTIG det intervallet panelet måler:
    * fra det første tenkesteget lander — som er når «Tenker …» dukker opp —
    * til det første ordet står i svaret. To klokker over samme strekning kan
-   * sammenliknes; toleransen er det rommet en travel maskin trenger.
+   * sammenliknes.
+   *
+   * **Hva den ikke kan bevise.** Fallbacken er et fast tall (summen av
+   * stegenes `durationMs`, fire sekunder), og den ekte ventetiden under
+   * `VITE_MOCK_SPEED=fast` er knappe to. Testen skiller dem fordi de er langt
+   * fra hverandre — men på en maskin som er treg nok til at den ekte
+   * ventetiden nærmer seg fire, ville en fallback sett riktig ut. Toleransen
+   * er derfor ett sekund og ikke to: med fiksen på plass er panelets tall
+   * appens egen måling av samme strekning, og de to skiller seg bare med
+   * avrunding. Blir denne rød med en differanse rett over ett sekund, er det
+   * maskinen som skal mistenkes først, ikke koden.
    */
   test('tenketiden er den målte ventetiden, ikke summen av stegene', async ({ page }, testInfo) => {
     covers(testInfo, 'tenketiden er målt, ikke summert');
@@ -248,7 +258,7 @@ test.describe('hovedkolonnen', () => {
     expect(
       Math.abs(shown - measuredSeconds),
       `panelet sa «${summary}», testen målte ${measuredSeconds.toFixed(1)} s`,
-    ).toBeLessThanOrEqual(2);
+    ).toBeLessThanOrEqual(1);
   });
 
   test('Ctrl+/ flytter skrivemerket til feltet, og bare / gjør ingenting', async ({
