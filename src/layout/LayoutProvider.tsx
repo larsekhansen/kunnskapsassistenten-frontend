@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   emptyFilterSelection,
   type AnswerSources,
@@ -9,6 +9,13 @@ import { AnswerSourcesContext } from './answerSourcesContext';
 import { CitationContext, type ActiveCitation } from './citationContext';
 import { FilterContext } from './filterContext';
 import { LayoutContext } from './layoutContext';
+import {
+  readStoredFilter,
+  readStoredLayout,
+  withStoredCollapse,
+  writeStoredFilter,
+  writeStoredLayout,
+} from './persistence';
 import { useNarrowViewport } from './useNarrowViewport';
 import {
   defaultLayout,
@@ -30,8 +37,12 @@ import {
  *
  * The operations are the ones a layout UI would need — switch view, collapse,
  * resize, move a view between slots — and they exist before that UI does, on
- * purpose (answers 10 and 48). Nothing here persists yet: a reload returns to
- * `defaultLayout`.
+ * purpose (answers 10 and 48).
+ *
+ * Collapse and the document filter survive a reload, in `localStorage`. See
+ * persistence.ts for what is kept and what is deliberately not. A caller that
+ * hands in `initialLayout` is saying exactly what it wants to see, and is not
+ * overruled by what the browser remembers.
  *
  * It also holds the pieces of state that two views have to agree on and
  * therefore neither can own: the active citation, the document filter, and
@@ -45,15 +56,25 @@ import {
  */
 export function LayoutProvider({
   children,
-  initialLayout = defaultLayout,
+  initialLayout,
 }: {
   children: ReactNode;
   initialLayout?: Layout;
 }) {
-  const [layout, setLayout] = useState(initialLayout);
+  /**
+   * What the browser remembered, read once on mount and never again. A
+   * caller that hands in a layout skips it: a test or a preview that asks for
+   * both sidebars open has to get both sidebars open.
+   */
+  const [restored] = useState(() => (initialLayout ? undefined : readStoredLayout()));
+  const [layout, setLayout] = useState(() =>
+    withStoredCollapse(initialLayout ?? defaultLayout, restored),
+  );
   const narrow = useNarrowViewport();
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | undefined>(undefined);
-  const [selection, setSelection] = useState<FilterSelection>(emptyFilterSelection);
+  const [selection, setSelection] = useState<FilterSelection>(
+    () => readStoredFilter() ?? emptyFilterSelection,
+  );
   const [answerDocuments, setAnswerDocuments] = useState<SourceDocument[] | undefined>(undefined);
   /**
    * The sources of every answer in the thread, oldest first.
@@ -73,8 +94,13 @@ export function LayoutProvider({
    *
    * Opening it again clears it: the last thing the user said about the panel
    * is what this holds, and they have just said «show me».
+   *
+   * Remembered across a reload, and that is the whole reason it is stored at
+   * all: the panel starts collapsed by default, so a collapse restored on its
+   * own is indistinguishable from a fresh page, and the first answer with
+   * sources would open the panel in the face of somebody who had just shut it.
    */
-  const [sourcesDismissed, setSourcesDismissed] = useState(false);
+  const [sourcesDismissed, setSourcesDismissed] = useState(restored?.sourcesDismissed ?? false);
   // The view the user last switched each slot to. Empty on a page load, which
   // is the whole point: a view that mounts because the default layout opened
   // on it must not take focus off the skip link.
@@ -236,6 +262,19 @@ export function LayoutProvider({
     (slot: Slot) => switchedTo[slot] === layout.slots[slot].activeView,
     [switchedTo, layout],
   );
+
+  /**
+   * Write the two remembered things back whenever they change.
+   *
+   * In an effect rather than in the setters: this state is changed from six
+   * places — both toggle buttons, rule B, a citation, the panel opening
+   * itself, the filter view — and a write in each of them is five chances to
+   * forget one. Here it runs once per commit, on what the state actually
+   * settled at. The first run writes back what was just read, which costs one
+   * `setItem` and keeps the rule to one sentence.
+   */
+  useEffect(() => writeStoredLayout(layout, sourcesDismissed), [layout, sourcesDismissed]);
+  useEffect(() => writeStoredFilter(selection), [selection]);
 
   const value = useMemo(
     () => ({

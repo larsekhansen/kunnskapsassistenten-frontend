@@ -3,8 +3,10 @@ import { act } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { defaultViewportWidth, setViewportWidth } from '../test/matchMedia';
 import { LayoutProvider } from './LayoutProvider';
+import { LAYOUT_STORAGE_KEY } from './persistence';
 import { useAnswerSources } from './useAnswerSources';
 import { useCitation } from './useCitation';
+import { useFilterSelection } from './useFilterSelection';
 import { useLayout } from './useLayout';
 import type { SourceDocument } from '../model';
 import { bothSidebarsMinViewport, defaultLayout, withCollapsed, type Layout } from './viewModel';
@@ -348,5 +350,150 @@ describe('kildepanelet åpner seg selv', () => {
     click('Svar med kilder');
 
     expect(screen.getByTestId('secondary').textContent).toBe('åpen');
+  });
+});
+
+/**
+ * What survives a reload, decided 2026-09-15 (rolle-5h, punkt 2).
+ *
+ * A reload is a new mounting here: the provider reads storage once on mount
+ * and writes on every change, so unmounting and rendering again walks exactly
+ * the path a reload walks. jsdom keeps `localStorage` between the two, and
+ * src/test/setup.ts empties it between tests.
+ */
+function Remembered() {
+  const { layout, setCollapsed } = useLayout();
+  const { selection, setSelection } = useFilterSelection();
+  const { setDocuments } = useAnswerSources();
+
+  return (
+    <>
+      <output data-testid="primary">
+        {layout.slots['primary-sidebar'].collapsed ? 'kollapset' : 'åpen'}
+      </output>
+      <output data-testid="secondary">
+        {layout.slots['secondary-sidebar'].collapsed ? 'kollapset' : 'åpen'}
+      </output>
+      <output data-testid="filter">{selection.organisation.join(', ')}</output>
+      <button type="button" onClick={() => setCollapsed('primary-sidebar', true)}>
+        Skjul tråder og filter
+      </button>
+      <button type="button" onClick={() => setCollapsed('secondary-sidebar', false)}>
+        Vis kilder
+      </button>
+      <button type="button" onClick={() => setCollapsed('secondary-sidebar', true)}>
+        Skjul kilder
+      </button>
+      <button type="button" onClick={() => setSelection({ ...selection, organisation: ['nkom'] })}>
+        Velg Nkom
+      </button>
+      <button type="button" onClick={() => setDocuments(twoDocuments)}>
+        Svar med kilder
+      </button>
+    </>
+  );
+}
+
+let mounted: ReturnType<typeof render> | undefined;
+
+/** Leave the page. Storage keeps whatever the last commit wrote. */
+function close(): void {
+  mounted?.unmount();
+  mounted = undefined;
+}
+
+/** Open the page, as a reload does: a fresh provider on the same storage. */
+function open(initialLayout?: Layout): void {
+  close();
+  mounted = render(
+    <LayoutProvider initialLayout={initialLayout}>
+      <Remembered />
+    </LayoutProvider>,
+  );
+}
+
+describe('det appen husker til neste gang', () => {
+  beforeEach(() => {
+    mounted = undefined;
+    setViewportWidth(defaultViewportWidth);
+  });
+
+  it('husker at en sidekolonne er lagt sammen', () => {
+    open();
+    expect(read('primary')).toBe('åpen');
+
+    click('Skjul tråder og filter');
+    open();
+
+    expect(read('primary')).toBe('kollapset');
+  });
+
+  it('husker filtervalget', () => {
+    open();
+    click('Velg Nkom');
+
+    open();
+
+    expect(read('filter')).toBe('nkom');
+  });
+
+  it('husker at brukeren selv lukket kildepanelet', () => {
+    open();
+    click('Vis kilder');
+    click('Skjul kilder');
+
+    open();
+    expect(read('secondary')).toBe('kollapset');
+
+    // The panel opening itself on an answer with sources is what this has to
+    // stay out of the way of. Collapsed alone cannot say it: collapsed is
+    // also the default, so «I closed this» would be forgotten by the reload
+    // and the next answer would push the panel back at somebody who shut it.
+    click('Svar med kilder');
+    expect(read('secondary')).toBe('kollapset');
+  });
+
+  it('lar regel B overstyre det som er husket', () => {
+    open();
+    click('Vis kilder');
+    expect(read('secondary')).toBe('åpen');
+
+    // Same browser, narrower window. Both sidebars were open when the page
+    // was left, and this one cannot hold both. Closed before the resize on
+    // purpose: what is under test is the first render in a narrow window,
+    // not the rule reacting to a change.
+    close();
+    setViewportWidth(bothSidebarsMinViewport - 1);
+    open();
+
+    expect(read('primary')).toBe('åpen');
+    expect(read('secondary')).toBe('kollapset');
+  });
+
+  it('lar et layout som er gitt inn vinne over det som er husket', () => {
+    open();
+    click('Skjul tråder og filter');
+
+    open(bothSidebarsOpen);
+
+    expect(read('primary')).toBe('åpen');
+    expect(read('secondary')).toBe('åpen');
+  });
+
+  it('åpner på standard når lageret inneholder tull', () => {
+    // The reader is free to edit this by hand, and a `collapsed` that is the
+    // number 3 would otherwise reach `aria-expanded`.
+    localStorage.setItem(LAYOUT_STORAGE_KEY, '{ikke json');
+    open();
+    expect(read('primary')).toBe('åpen');
+    expect(read('secondary')).toBe('kollapset');
+
+    close();
+    localStorage.setItem(
+      LAYOUT_STORAGE_KEY,
+      JSON.stringify({ collapsed: { 'primary-sidebar': 3 } }),
+    );
+    open();
+    expect(read('primary')).toBe('åpen');
   });
 });
