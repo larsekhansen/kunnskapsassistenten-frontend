@@ -115,6 +115,18 @@
   cursor: auto;
 }
 
+/*
+ * The «Trenger avklaring» row above the agent's question.
+ *
+ * A paragraph rather than a bare Tag, so the mark sits on its own line with
+ * the card's own block spacing under it and never runs alongside the first
+ * line of the question. One tag, so no list: a `ul` is what several of them
+ * would need to be countable. See designsystemet/komponenter/tag.md.
+ */
+.ka-clarification__label {
+  margin: 0;
+}
+
 /* ----------------------------------------------------------------- status */
 
 .ka-answer-skeleton {

@@ -1,4 +1,4 @@
-import type { Message } from '../../model';
+import type { Message, Thread } from '../../model';
 
 /**
  * The `h2` over a conversation: the thread title, and whether it is worth
@@ -11,14 +11,21 @@ import type { Message } from '../../model';
  * head is the same on both routes now.
  *
  * Until a thread has a title of its own, the first sentence of the first
- * question stands in — the same rule the client will use when it names the
- * thread. That title is the question again, and the question is right under
- * it, so the conductor settled it on 2026-09-15: a title that only repeats
- * the question is visually hidden. The heading stays in the document, so the
- * outline a screen reader walks is the same on both routes and in both
- * states; it is the second copy on screen that goes. A real title — from the
- * backend, or generated later from more than the first sentence — is shown
- * with the question under it, as Figma draws it.
+ * question stands in. That title is the question again, and the question is
+ * right under it, so the conductor settled it on 2026-09-15: a title that
+ * only repeats the question is visually hidden. The heading stays in the
+ * document, so the outline a screen reader walks is the same on both routes
+ * and in both states; it is the second copy on screen that goes. A real title
+ * — from the backend, or generated later from more than the first sentence —
+ * is shown with the question under it, as Figma draws it.
+ *
+ * Whether a title is the question over again is the thread's own answer, not
+ * something guessed from the text: `titleFromQuestion` is set by whoever made
+ * the title (`threadFromQuestion` in src/model/thread.ts), and it stores the
+ * whole question rather than a first sentence, so comparing the two strings
+ * would say «different» for any question of more than one sentence. A thread
+ * that carries no flag is one nobody has claimed to have named after the
+ * question, and the stand-in below is ours and always is.
  *
  * The stand-in is a label rather than a sentence, so it loses the question
  * mark or full stop the question ended on, the way the titles it replaces are
@@ -57,40 +64,25 @@ function shorten(text: string): string {
   return `${text.slice(0, cut > 0 ? cut : MAX_LENGTH).trimEnd()} …`;
 }
 
-/** What the question would be called, so a given title can be held up to it. */
-function fromQuestion(question: string): string {
-  return shorten(firstSentence(question));
-}
-
-/*
- * Two titles say the same thing when they differ only in case, spacing or the
- * mark the sentence ended on. Nothing looser than that: this decides whether
- * a heading is hidden, and a guess at what «close enough» means would hide a
- * real title that happens to start with the same words.
- */
-function saysTheSame(one: string, other: string): boolean {
-  const plain = (text: string) =>
-    text.trim().replace(/\s+/gu, ' ').replace(TRAILING_END, '').toLocaleLowerCase('nb-NO');
-  return plain(one) === plain(other);
-}
-
 /**
  * The heading to draw, or undefined when there is nothing to head — an
  * untouched front page has no thread and no question yet.
  */
 export function threadHeading(
-  title: string | undefined,
+  thread: Pick<Thread, 'title' | 'titleFromQuestion'> | undefined,
   messages: Message[],
 ): ThreadHeading | undefined {
+  const named = thread?.title.trim();
+  if (named) {
+    return { title: named, repeatsQuestion: thread?.titleFromQuestion === true };
+  }
+
+  // No thread yet, or one the backend has not named: the first sentence of
+  // the first question stands in, and it is the question over again by
+  // construction.
   const question = messages.find((message) => message.role === 'user')?.content;
-  const standIn = question ? fromQuestion(question) : undefined;
+  if (!question) return undefined;
 
-  const named = title?.trim();
-  const shown = named && named.length > 0 ? named : standIn;
-  if (!shown) return undefined;
-
-  return {
-    title: shown,
-    repeatsQuestion: standIn !== undefined && saysTheSame(shown, standIn),
-  };
+  const standIn = shorten(firstSentence(question));
+  return standIn.length > 0 ? { title: standIn, repeatsQuestion: true } : undefined;
 }

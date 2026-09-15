@@ -1,12 +1,19 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useRef, type ReactNode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AskParams, ChatClient } from '../../api';
 import { AnswerSourcesContext } from '../../layout/answerSourcesContext';
 import { CitationContext } from '../../layout/citationContext';
 import { MainScrollContext } from '../../layout/scrollContext';
-import type { StreamEvent, ThreadDetail } from '../../model';
+import { ThreadContext } from '../../layout/threadContext';
+import { threadFromQuestion, type StreamEvent, type ThreadDetail } from '../../model';
 import { ChatView } from './ChatView';
+import {
+  CLARIFICATION_PLACEHOLDER,
+  CLARIFICATION_TAG,
+  COMPOSE_PLACEHOLDER,
+  FOLLOW_UP_QUESTIONS,
+} from './text';
 
 /*
  * Designsystemet's Skeleton asks document.getAnimations, which jsdom does not
@@ -34,34 +41,70 @@ function clientYielding(events: StreamEvent[]): ChatClient {
   };
 }
 
-/** The three pieces of the shell the chat view reads. */
-function Shell({ children }: { children: ReactNode }) {
+/** The pieces of the shell the chat view reads. */
+function Shell({ children, startThread }: { children: ReactNode; startThread?: () => void }) {
   const scrollRef = useRef<HTMLElement | null>(null);
   return (
     <MainScrollContext value={scrollRef}>
       <CitationContext value={{ activeCitation: undefined, showCitation: () => {} }}>
         <AnswerSourcesContext value={{ documents: undefined, setDocuments: () => {} }}>
-          {children}
+          <ThreadContext
+            value={{
+              startThread: (question) => {
+                startThread?.();
+                return threadFromQuestion(question);
+              },
+            }}
+          >
+            {children}
+          </ThreadContext>
         </AnswerSourcesContext>
       </CitationContext>
     </MainScrollContext>
   );
 }
 
+function field() {
+  return screen.getByRole('textbox', { name: 'Spørsmål til Kunnskapsassistenten' });
+}
+
 function ask(question: string) {
-  fireEvent.change(screen.getByRole('textbox', { name: 'Spørsmål til Kunnskapsassistenten' }), {
-    target: { value: question },
-  });
+  fireEvent.change(field(), { target: { value: question } });
   fireEvent.click(screen.getByRole('button', { name: 'Send spørsmålet' }));
 }
 
+function threadWith(title: string, titleFromQuestion?: boolean): ThreadDetail {
+  return {
+    id: 't1',
+    title,
+    titleFromQuestion,
+    createdAt: '2026-09-15T09:00:00Z',
+    updatedAt: '2026-09-15T09:00:00Z',
+    messages: [
+      {
+        id: 'u1',
+        role: 'user',
+        content: 'Hva sier rapporten?',
+        createdAt: '2026-09-15T09:00:00Z',
+        citations: [],
+        status: 'complete',
+      },
+    ],
+  };
+}
+
 const done: StreamEvent = { type: 'done', messageId: 'm1', conversationId: 'c1' };
+const answer: StreamEvent[] = [{ type: 'token', text: 'Svaret på spørsmålet.' }, done];
+const clarification: StreamEvent[] = [
+  { type: 'token', text: 'Mener du årsrapporten eller tildelingsbrevet?' },
+  { type: 'done', messageId: 'm1', conversationId: 'c1', outcome: 'needs-clarification' },
+];
 
 describe('ChatView', () => {
   it('gives a conversation started on the front page the same head as a thread', async () => {
     render(
       <Shell>
-        <ChatView client={clientYielding([{ type: 'token', text: 'Svar.' }, done])} />
+        <ChatView client={clientYielding(answer)} />
       </Shell>,
     );
 
@@ -82,34 +125,48 @@ describe('ChatView', () => {
     expect(screen.getAllByText(/Hva sier rapporten\?/u)).toHaveLength(1);
   });
 
-  it('keeps the thread title when the thread has one', () => {
-    const thread: ThreadDetail = {
-      id: 't1',
-      title: 'NKOM måloppnåelse',
-      createdAt: '2026-09-15T09:00:00Z',
-      updatedAt: '2026-09-15T09:00:00Z',
-      messages: [
-        {
-          id: 'u1',
-          role: 'user',
-          content: 'Hva sier rapporten?',
-          createdAt: '2026-09-15T09:00:00Z',
-          citations: [],
-          status: 'complete',
-        },
-      ],
-    };
-
+  it('draws a real thread title, with the question under it', () => {
     render(
       <Shell>
-        <ChatView client={clientYielding([done])} thread={thread} />
+        <ChatView client={clientYielding([done])} thread={threadWith('NKOM måloppnåelse')} />
       </Shell>,
     );
 
     const head = screen.getByRole('heading', { level: 2 });
     expect(head.textContent).toBe('NKOM måloppnåelse');
-    // A real title says more than the question, so it is drawn.
     expect(head.className).not.toContain('ds-sr-only');
+  });
+
+  it('hides a title the client made out of the question', () => {
+    // `threadFromQuestion` stores the whole question and says so with
+    // `titleFromQuestion`. The flag decides, not a comparison of the strings:
+    // the stored title is the whole question and the stand-in is its first
+    // sentence, so the two do not match for a question of several sentences.
+    render(
+      <Shell>
+        <ChatView
+          client={clientYielding([done])}
+          thread={threadWith('Hva sier rapporten? Og hva med 2023?', true)}
+        />
+      </Shell>,
+    );
+
+    const head = screen.getByRole('heading', { level: 2 });
+    expect(head.className).toContain('ds-sr-only');
+  });
+
+  it('gives the conversation an address when a question is sent', async () => {
+    const startThread = vi.fn();
+    render(
+      <Shell startThread={startThread}>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    ask('  Hva er måloppnåelse?  ');
+
+    // Once, with the question as the reader typed it minus the padding. C16.
+    await waitFor(() => expect(startThread).toHaveBeenCalledOnce());
   });
 
   it('does not ask for a retry in the text right above the retry button', async () => {
@@ -144,5 +201,57 @@ describe('ChatView', () => {
     // A bare square is not obviously «stopp» to anyone looking (finding 10).
     const stop = await screen.findByRole('button', { name: 'Avbryt genereringen' });
     expect(stop.textContent).toContain('Avbryt');
+  });
+
+  it('shows a clarification as a question and asks the reader to answer it', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(clarification)} />
+      </Shell>,
+    );
+
+    ask('Hva er måloppnåelse?');
+
+    expect(await screen.findByText(CLARIFICATION_TAG)).toBeTruthy();
+
+    // The field says what it wants, and takes the caret: the reader has just
+    // been asked something and this is where the answer goes.
+    await waitFor(() => expect(field()).toHaveProperty('placeholder', CLARIFICATION_PLACEHOLDER));
+    expect(document.activeElement).toBe(field());
+
+    // «Kan du utdype?» is not an answer to anything the agent asked.
+    expect(screen.queryByRole('button', { name: FOLLOW_UP_QUESTIONS[0] })).toBeNull();
+
+    // Nothing a finished answer carries.
+    expect(screen.queryByRole('button', { name: 'Kopier lenke til tråden' })).toBeNull();
+    expect(screen.queryByText('Fremgangsmåte')).toBeNull();
+  });
+
+  it('sends the reader’s answer as the next message in the same thread', async () => {
+    const asked: string[] = [];
+    const client: ChatClient = {
+      async *ask({ query }: AskParams): AsyncIterable<StreamEvent> {
+        asked.push(query);
+        for (const event of asked.length === 1 ? clarification : answer) yield event;
+      },
+      listThreads: async () => [],
+      getThread: async () => null,
+      listFacets: async () => [],
+    };
+
+    render(
+      <Shell>
+        <ChatView client={client} />
+      </Shell>,
+    );
+
+    ask('Hva er måloppnåelse?');
+    await screen.findByText(CLARIFICATION_TAG);
+
+    ask('Årsrapporten.');
+
+    // An ordinary next turn: same thread, no special path.
+    await waitFor(() => expect(asked).toEqual(['Hva er måloppnåelse?', 'Årsrapporten.']));
+    await waitFor(() => expect(field()).toHaveProperty('placeholder', COMPOSE_PLACEHOLDER));
   });
 });

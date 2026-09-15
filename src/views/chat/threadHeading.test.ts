@@ -25,7 +25,7 @@ function question(content: string): Message[] {
 
 describe('threadHeading', () => {
   it('shows a title that says more than the question', () => {
-    expect(threadHeading('NKOM måloppnåelse', question('Hva sier rapporten?'))).toEqual({
+    expect(threadHeading({ title: 'NKOM måloppnåelse' }, question('Hva sier rapporten?'))).toEqual({
       title: 'NKOM måloppnåelse',
       repeatsQuestion: false,
     });
@@ -44,18 +44,29 @@ describe('threadHeading', () => {
     });
   });
 
-  it('marks a given title that is the question over again', () => {
-    // The client names a new thread after the question until the backend has
-    // a title of its own; that is the same text twice, whoever wrote it.
-    expect(
-      threadHeading('Hva sier rapporten?', question('Hva sier rapporten?'))?.repeatsQuestion,
-    ).toBe(true);
+  it('takes the thread at its word when it named itself after the question', () => {
+    // `threadFromQuestion` stores the question whole, so the stored title and
+    // our first-sentence stand-in are different strings for a question of
+    // several sentences. The flag is what decides, not a comparison.
+    const named = { title: 'Hva sier rapporten? Og hva med 2023?', titleFromQuestion: true };
+
+    expect(threadHeading(named, question('Hva sier rapporten? Og hva med 2023?'))).toEqual({
+      title: 'Hva sier rapporten? Og hva med 2023?',
+      repeatsQuestion: true,
+    });
   });
 
-  it('does not treat a title that merely starts the same way as a repeat', () => {
-    expect(threadHeading('Årsrapport', question('Årsrapport for Digdir 2023?'))).toEqual({
-      title: 'Årsrapport',
-      repeatsQuestion: false,
+  it('draws a title that happens to start like the question', () => {
+    expect(
+      threadHeading({ title: 'Årsrapport' }, question('Årsrapport for Digdir 2023?'))
+        ?.repeatsQuestion,
+    ).toBe(false);
+  });
+
+  it('stands in for a thread whose title is still empty', () => {
+    expect(threadHeading({ title: '  ' }, question('Hva sier rapporten?'))).toEqual({
+      title: 'Hva sier rapporten',
+      repeatsQuestion: true,
     });
   });
 

@@ -6,13 +6,16 @@ import type { ChatStatus } from './useChat';
 
 type ComposerProps = {
   /**
-   * The sticky area around the field. The chat view measures it, so the
-   * scroll container can keep that much room free at the bottom.
+   * The sticky area around the field. The chat view measures it, to keep that
+   * much of the scroll container free at the bottom, and asks it where focus
+   * is before moving the caret into the field.
    */
   ref?: Ref<HTMLDivElement>;
   /** So a kickstarter can put the caret in the field after filling it. */
   fieldRef?: RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   value: string;
+  /** Defaults to the everyday one. A clarification asks for an answer to it. */
+  placeholder?: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   onCancel: () => void;
@@ -60,6 +63,7 @@ export function Composer({
   ref,
   fieldRef,
   value,
+  placeholder = COMPOSE_PLACEHOLDER,
   onChange,
   onSubmit,
   onCancel,
@@ -85,7 +89,7 @@ export function Composer({
           multiline
           onChange={(event) => onChange(event.currentTarget.value)}
           onKeyDown={onKeyDown}
-          placeholder={COMPOSE_PLACEHOLDER}
+          placeholder={placeholder}
           ref={fieldRef}
           rows={1}
           value={value}

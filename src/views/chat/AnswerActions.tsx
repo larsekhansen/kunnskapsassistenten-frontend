@@ -1,7 +1,7 @@
 import { Button } from '@digdir/designsystemet-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowDownIcon, ClipboardIcon, ClipboardLinkIcon } from '@navikt/aksel-icons';
 import { answerAsPlainText } from './answerText';
+import { useCopy } from './useCopy';
 
 type AnswerActionsProps = {
   /** The answer as markdown. Copied as plain text, without the `[n]` markers. */
@@ -15,36 +15,20 @@ type AnswerActionsProps = {
  * What a reader can do with a finished answer: copy it (answer 15), copy a
  * link to the thread (answer 16), jump to the newest message (answer 17).
  *
- * Copying has to say that it worked. The receipt is one element that is both
- * visible and a polite live region, so a sighted reader and a screen reader
- * user are told the same thing at the same time — and the clipboard can
- * refuse, in which case saying so is the only honest outcome.
+ * The receipt under the row is rendered empty rather than hidden while there
+ * is nothing to say. A live region that is `display: none` is not in the
+ * accessibility tree, so the region and its text would appear in the same
+ * frame and announce nothing — the same rule
+ * `src/components/ErrorState.tsx` is built around.
  *
- * It is rendered empty rather than hidden while there is nothing to say. A
- * live region that is `display: none` is not in the accessibility tree, so
- * the region and its text would appear in the same frame and announce
- * nothing — the same rule `src/components/ErrorState.tsx` is built around.
+ * A clarification has its own, shorter row: see `Clarification.tsx`.
  */
 export function AnswerActions({
   content,
   onScrollToBottom,
   canScrollToBottom,
 }: AnswerActionsProps) {
-  const [receipt, setReceipt] = useState<string | null>(null);
-  const timerRef = useRef<number | undefined>(undefined);
-
-  useEffect(() => () => window.clearTimeout(timerRef.current), []);
-
-  const copy = useCallback(async (text: string, done: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setReceipt(done);
-    } catch {
-      setReceipt('Kunne ikke kopiere. Nettleseren tillot det ikke.');
-    }
-    window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => setReceipt(null), 4000);
-  }, []);
+  const { receipt, copy } = useCopy();
 
   return (
     <div className="ka-answer-actions">
