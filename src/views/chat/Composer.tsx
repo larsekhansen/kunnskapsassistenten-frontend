@@ -7,7 +7,7 @@ import {
   DISCLAIMER,
   FOLLOW_UP_QUESTIONS,
   SHORTCUT_DESCRIPTION,
-  SHORTCUT_HINT,
+  shortcutHint,
 } from './text';
 import type { ChatStatus } from './useChat';
 
@@ -157,7 +157,7 @@ export function Composer({
       </p>
 
       <Paragraph className="ka-composer__disclaimer" data-size="sm">
-        <span className="ka-composer__shortcut">{SHORTCUT_HINT}</span>
+        <span className="ka-composer__shortcut">{shortcutHint()}</span>
         {DISCLAIMER}
       </Paragraph>
     </div>

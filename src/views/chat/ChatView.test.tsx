@@ -21,7 +21,7 @@ import {
   COMPOSE_PLACEHOLDER,
   FOLLOW_UP_QUESTIONS,
   SHORTCUT_DESCRIPTION,
-  SHORTCUT_HINT,
+  shortcutHint,
 } from './text';
 
 /*
@@ -552,7 +552,7 @@ describe('ChatView', () => {
       </Shell>,
     );
 
-    expect(screen.getByText(SHORTCUT_HINT)).toBeTruthy();
+    expect(screen.getByText(shortcutHint())).toBeTruthy();
 
     // The field itself carries the spelled-out version: «/» read aloud is
     // «skråstrek» in some voices and silence in others.

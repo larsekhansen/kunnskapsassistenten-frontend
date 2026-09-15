@@ -91,12 +91,21 @@ export const CLARIFICATION_COPIED = 'Spørsmålet er kopiert.';
 /**
  * A small hint by the field, for anyone looking at the screen.
  *
- * It names Ctrl on every platform, because Ctrl+/ works on every platform —
- * Cmd is the extra one a Mac gets, not a different shortcut. Naming the one
- * that is always true beats detecting the operating system to say the same
- * thing twice.
+ * It names the modifier the reader's own keyboard has. Both work everywhere —
+ * the handler takes `ctrlKey` or `metaKey` — so this is about which one to
+ * say, not which one to accept, and «Ctrl + / (Cmd + / på Mac)» is a lot of
+ * parenthesis for a line that shares its row with the disclaimer.
+ *
+ * A function and not a constant, because the answer depends on the machine
+ * and a module constant would be read before a test could say otherwise.
  */
-export const SHORTCUT_HINT = 'Trykk Ctrl + / for å hoppe hit';
+export function shortcutHint(): string {
+  // `userAgentData` is not in Safari or Firefox, and the user agent string is
+  // what is left. It is only choosing a word, so a wrong guess costs a reader
+  // one confusing label and nothing else.
+  const apple = /Mac|iPhone|iPad/u.test(navigator.userAgent);
+  return `Trykk ${apple ? 'Cmd' : 'Ctrl'} + / for å hoppe hit`;
+}
 
 /**
  * The same thing for a screen reader, on the field itself.

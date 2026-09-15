@@ -216,6 +216,9 @@ Praktisk betyr det:
 | ---------------------- | ------------------------------------- |
 | `Ctrl + /` (`Cmd + /`) | flytter skrivemerket til skrivefeltet |
 
+Begge modifikatorene virker overalt; hinten ved feltet navngir den maskinen
+leseren sitter ved (`shortcutHint()` i `src/views/chat/text.ts`).
+
 **Hvorfor ikke bare `/`.** En snarvei bundet til én tegntast er WCAG 2.1.4
 Character Key Shortcuts, **nivå A**, og må da kunne slås av, remappes, eller
 bare virke når komponenten har fokus. Snarveien var `/` alene i første
