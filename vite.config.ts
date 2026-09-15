@@ -51,6 +51,13 @@ export default defineConfig(({ mode }) => {
       setupFiles: ['./src/test/setup.ts'],
       include: ['src/**/*.test.{ts,tsx}'],
       restoreMocks: true,
+      /*
+       * Fire arbeidere lokalt. Vitest tar ellers én per kjerne: målt 15.09 gikk
+       * vitest-prosessene fra 1 til 17 på denne maskinen, og tre—fire agenter
+       * kjører `npm test` samtidig. Samme grunn og samme skille som i
+       * `playwright.config.ts`, som har den lange begrunnelsen.
+       */
+      maxWorkers: process.env.GITHUB_ACTIONS ? undefined : 4,
     },
   };
 });
