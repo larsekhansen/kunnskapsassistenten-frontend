@@ -1,7 +1,14 @@
-import type { FilterFacet, StreamEvent, Thread, ThreadDetail } from '../../model';
+import {
+  emptyFilterSelection,
+  type FilterFacet,
+  type FilterSelection,
+  type StreamEvent,
+  type Thread,
+  type ThreadDetail,
+} from '../../model';
+import { facetsFor } from './corpus/facets';
 import type { AskParams, ChatClient } from '../chatClient';
 import {
-  facets,
   findThread,
   mockAnswerMarkdown,
   nkomCitations,
@@ -24,13 +31,61 @@ export interface MockDelays {
   requestMs: number;
 }
 
-export const defaultMockDelays: MockDelays = {
-  thinkingStepMs: 500,
-  firstTokenMs: 300,
-  tokenMs: 18,
-  sourcesMs: 400,
-  requestMs: 250,
-};
+/**
+ * How fast the mock answers, as three settings rather than a number.
+ *
+ * `realistic` is the default and the reason this exists: a mock that answers
+ * instantly cannot show what it is supposed to show. Lars asked to see the
+ * skeletons, the thinking panel and the streaming actually happen, and at
+ * 500 ms per thinking step and 18 ms per token the whole thing was over
+ * before any of them registered. These numbers are what a real agent takes —
+ * measured against the running stack on 2026-09-11, one question took 15,1
+ * seconds, 15,1 of them inside the agent.
+ *
+ * `fast` is for the end-to-end suite, which tests what the app does and not
+ * how long it takes: 56 tests each waiting out a realistic answer is minutes
+ * of nothing. `slow` is for looking hard at one state.
+ *
+ * Chosen with `VITE_MOCK_SPEED`; see src/api/index.ts.
+ */
+export const mockSpeeds = {
+  /*
+   * Quick, not instant. These are the delays the mock had before there were
+   * three settings, and the end-to-end suite is written against them.
+   *
+   * Zero was tried and is wrong: «avbryt stopper genereringen og beholder
+   * teksten som kom» needs an answer that is still arriving when the stop
+   * button is pressed, and at zero the whole thing is over before the test
+   * can press anything. A mock that streams instantly does not stream.
+   */
+  fast: {
+    thinkingStepMs: 500,
+    firstTokenMs: 300,
+    tokenMs: 18,
+    sourcesMs: 400,
+    requestMs: 250,
+  },
+  realistic: {
+    thinkingStepMs: 1100, // the brief asks for 0,8–1,5 s
+    firstTokenMs: 3800, // 3–5 s after the last thinking step
+    tokenMs: 25,
+    sourcesMs: 500,
+    requestMs: 350,
+  },
+  slow: {
+    thinkingStepMs: 2500,
+    firstTokenMs: 7000,
+    tokenMs: 60,
+    sourcesMs: 1200,
+    requestMs: 800,
+  },
+} as const satisfies Record<string, MockDelays>;
+
+export type MockSpeed = keyof typeof mockSpeeds;
+
+export const defaultMockSpeed: MockSpeed = 'realistic';
+
+export const defaultMockDelays: MockDelays = mockSpeeds[defaultMockSpeed];
 
 /**
  * Ask this and the mock fails instead of answering.
@@ -152,8 +207,13 @@ export class MockChatClient implements ChatClient {
     return findThread(threadId);
   }
 
-  async listFacets(signal?: AbortSignal): Promise<FilterFacet[]> {
+  /**
+   * Facets counted from the real corpus, conditioned on what is already
+   * ticked — what API-bestilling A2 asks the backend for. See
+   * corpus/facets.ts for the rule about a dimension not narrowing itself.
+   */
+  async listFacets(signal?: AbortSignal, selection?: FilterSelection): Promise<FilterFacet[]> {
     await wait(this.#delays.requestMs, signal);
-    return facets;
+    return facetsFor(selection ?? emptyFilterSelection);
   }
 }

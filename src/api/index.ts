@@ -1,6 +1,6 @@
 import type { ChatClient } from './chatClient';
 import { LiveChatClient } from './live';
-import { MockChatClient } from './mock';
+import { defaultMockSpeed, MockChatClient, mockSpeeds } from './mock';
 
 export type { AskParams, ChatClient } from './chatClient';
 
@@ -13,7 +13,14 @@ export type { AskParams, ChatClient } from './chatClient';
  */
 export function createChatClient(): ChatClient {
   const mode = import.meta.env.VITE_API_MODE ?? 'mock';
-  if (mode !== 'live') return new MockChatClient();
+  if (mode !== 'live') {
+    // `VITE_MOCK_SPEED` decides how long the mock takes to answer. The default
+    // is the slow, lifelike one on purpose: a mock that answers instantly
+    // cannot show the skeleton, the thinking panel or the streaming, which is
+    // most of what there is to look at. The e2e suite sets `fast`.
+    const speed = import.meta.env.VITE_MOCK_SPEED ?? defaultMockSpeed;
+    return new MockChatClient(mockSpeeds[speed] ?? mockSpeeds[defaultMockSpeed]);
+  }
 
   // Which corpus to ask, when somebody has said. Both or neither; the client
   // drops a lone one and says so. Unset is the behaviour up to now: the
