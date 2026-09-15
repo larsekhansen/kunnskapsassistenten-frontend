@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { createChatClient } from '../../api';
+import { NotFoundState } from '../../components';
 import { threadFromQuestion, type Thread, type ThreadDetail } from '../../model';
 import { ChatView } from '../../views/chat';
 import { ThreadContext } from '../threadContext';
@@ -21,6 +22,11 @@ import { useAnswerSources } from '../useAnswerSources';
  * A conversation started on `/` gets an address here, through
  * `ThreadContext`. See `ChatSlot` below.
  *
+ * An id the client does not know draws «Fant ikke tråden» instead of a
+ * conversation. Before that it drew a fresh, working front page under an
+ * address naming a thread, so a shared link that had gone stale looked like
+ * it had worked — reise 14 in design/brukerreiser-2026-09-15.md.
+ *
  * The sources behind the answer are lifted to the shell, so the sources view
  * can draw them without the two views knowing about each other. See
  * answerSourcesContext.ts.
@@ -38,6 +44,15 @@ export function ChatSlotView() {
 function ChatSlot({ threadId }: { threadId?: string }) {
   const client = useMemo(() => createChatClient(), []);
   const [thread, setThread] = useState<ThreadDetail | null>(null);
+  /**
+   * The client answered, and the answer was «no such thread».
+   *
+   * Separate from `thread === null`, which is also what «not read yet» looks
+   * like. Only the client saying no counts, and only saying no in so many
+   * words: a read that THREW says nothing about whether the thread exists, so
+   * it is left alone below and the conversation carries on.
+   */
+  const [missing, setMissing] = useState(false);
   const { setDocuments } = useAnswerSources();
 
   /**
@@ -58,11 +73,18 @@ function ChatSlot({ threadId }: { threadId?: string }) {
     client
       .getThread(threadId, abort.signal)
       .then((found) => {
-        if (!abort.signal.aborted) setThread(found);
+        if (abort.signal.aborted) return;
+        setThread(found);
+        setMissing(found === null);
+        // Tell the client which conversation the questions that follow belong
+        // to. Only a client that remembers anything implements it; see
+        // ChatClient.openThread.
+        if (found) client.openThread?.(found);
       })
       .catch(() => {
-        // A thread that cannot be read is a new conversation, not an error
+        // A thread that cannot be READ is a new conversation, not an error
         // page: the compose field still works and the user can ask again.
+        // «Does not exist» is the other answer and is handled above.
       });
 
     return () => abort.abort();
@@ -104,10 +126,13 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       const created = threadFromQuestion(question);
       startedRef.current = created;
       setStarted(created);
+      // Before the address is written, so a client that remembers threads has
+      // somewhere to file the answer that is about to stream in.
+      client.openThread?.(created);
       window.history.replaceState(window.history.state, '', `/threads/${created.id}`);
       return created;
     },
-    [thread],
+    [client, thread],
   );
 
   const value = useMemo(
@@ -117,7 +142,14 @@ function ChatSlot({ threadId }: { threadId?: string }) {
 
   return (
     <ThreadContext value={value}>
-      <ChatView thread={thread ?? undefined} />
+      {missing ? (
+        <NotFoundState
+          title="Fant ikke tråden"
+          description="Lenken peker på en samtale som ikke finnes her. Tråder lagres ikke på tvers av nettlesere, så en delt lenke fører ikke fram ennå."
+        />
+      ) : (
+        <ChatView thread={thread ?? undefined} />
+      )}
     </ThreadContext>
   );
 }
