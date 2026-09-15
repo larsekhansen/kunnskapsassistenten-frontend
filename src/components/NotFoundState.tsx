@@ -25,7 +25,10 @@ export type NotFoundStateProps = {
  * noise a screen reader user did not ask for — they are about to read it.
  *
  * Level 2, because this is the whole page: it sits directly under the route's
- * own level 1. See `EmptyState`.
+ * own level 1. That is also what draws it at the size the answer column
+ * speaks in rather than at a panel's — `EmptyState` reads the size off the
+ * level, and funn 2 in docs/review/brukerblikk-2-2026-09-15.md is what it
+ * cost when it did not.
  */
 export function NotFoundState({ title, description }: NotFoundStateProps) {
   return (

@@ -102,4 +102,39 @@ describe('EmptyState', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByRole('heading', { name: 'Ingen kilder ennå' })).toBeTruthy();
   });
+
+  it('is drawn small inside a panel, where what is missing is part of it', () => {
+    render(<EmptyState title="Ingen treff" />);
+
+    // 18 px, under a panel head at 21 or 24. This is the case the size was
+    // written for, and it is the one that must not change.
+    expect(screen.getByRole('heading', { name: 'Ingen treff' }).getAttribute('data-size')).toBe(
+      '2xs',
+    );
+  });
+
+  it('is drawn in the answer column`s own voice when it IS the page', () => {
+    render(<EmptyState level={2} title="Siden finnes ikke" />);
+
+    // `lg` is the size «Hei 👋 / Hva lurer du på?» and a thread title are
+    // already drawn at, and this stands where they would have stood. At
+    // `2xs` it was the smallest thing on a page it was the whole of — funn 2
+    // in docs/review/brukerblikk-2-2026-09-15.md.
+    expect(
+      screen.getByRole('heading', { name: 'Siden finnes ikke' }).getAttribute('data-size'),
+    ).toBe('lg');
+  });
+
+  it('reads the size off the level, so the two cannot disagree', () => {
+    // No second prop to get wrong: where it sits is one fact, asked once.
+    const { rerender } = render(<EmptyState level={3} title="Ingenting" />);
+    const size = () => screen.getByRole('heading', { name: 'Ingenting' }).getAttribute('data-size');
+    expect(size()).toBe('2xs');
+
+    rerender(<EmptyState level={4} title="Ingenting" />);
+    expect(size()).toBe('2xs');
+
+    rerender(<EmptyState level={2} title="Ingenting" />);
+    expect(size()).toBe('lg');
+  });
 });
