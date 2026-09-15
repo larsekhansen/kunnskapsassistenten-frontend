@@ -82,11 +82,22 @@ export function FacetField({ facet, selected, onChange }: FacetFieldProps) {
    * Chosen: the dimension name stays the field's Label, and the state goes in
    * the description under it. Renaming a control as its value changes is what
    * the Figma sketch does with «Alle valgt», and it breaks the promise a
-   * label makes to a screen reader user — the name has to stay put. «Alle
-   * valgt» also fits an empty selection: an empty selection is no
-   * restriction, so every document is still in play.
+   * label makes to a screen reader user — the name has to stay put.
+   *
+   * Three states, three sentences. «Alle valgt» used to cover both an
+   * untouched field and one where the user had picked every value, which made
+   * the two word for word identical: the reader could not tell whether a
+   * filter was set, and «Velg alle» offered an action whose result the text
+   * already claimed (brukerblikk, funn 3). An empty selection is no
+   * restriction — that is still the logic — but it is not the same thing as
+   * having chosen everything, and now it does not say so.
    */
-  const state = chosen === 0 || allChosen ? 'Alle valgt' : `${chosen} av ${total} valgt`;
+  const state =
+    chosen === 0
+      ? 'Ingen avgrensning'
+      : allChosen
+        ? `Alle ${total} valgt`
+        : `${chosen} av ${total} valgt`;
 
   /*
    * Empties the search text.
@@ -167,7 +178,15 @@ export function FacetField({ facet, selected, onChange }: FacetFieldProps) {
         onSelectedChange={(items) => change(items.map((item) => item.value))}
         {...SCREEN_READER_TEXTS}
       >
-        <Suggestion.Input ref={inputRef} placeholder="Søk" />
+        {/*
+          The placeholder names the dimension. All three fields had the bare
+          word «Søk», so the three of them read as one repeated control even
+          though each has its own <label> (brukerblikk, funn 16).
+        */}
+        <Suggestion.Input
+          ref={inputRef}
+          placeholder={`Søk i ${facet.label.toLocaleLowerCase('nb-NO')}`}
+        />
         <Suggestion.Toggle />
         <Suggestion.Clear />
         <Suggestion.List data-overscroll="contain" data-autoplacement="false">
