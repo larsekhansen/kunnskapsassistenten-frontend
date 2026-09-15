@@ -9,7 +9,13 @@ Kjøres med `npx playwright test` fra rota. Testene bygger appen og kjører mot
 `lang="nb"`. Hver testet tilstand kontrolleres med axe mot `wcag2a` og
 `wcag2aa`; et brudd feiler testen.
 
-**94 tester, alle grønne** mot `main` `5e42eed`. Åtte av dem kom med #49 i
+**1440 × 900 er sant fra 2026-09-15.** Fram til da sto tallet i denne fila og
+i kommentarene, og suiten kjørte i 1280 × 720: `devices['Desktop Chrome']` i
+`projects` bærer sin egen viewport, og en prosjekt-`use` slås over den øverste.
+Funnet av #2 i PR #55. Se «Suiten løy» nedenfor.
+
+**111 tester, alle grønne** mot `main` `2f2e97e`, og grønne i **1440 × 900**,
+som er første gang det er målt der. Åtte av dem kom med #49 i
 `feilmeldinger.spec.ts` og er #3 sine; fjorten er bølge 3, skrevet mot det som
 ble merget 15.09: filteret som når spørringen,
 tidsstempel på trådradene, korpuslinja, «Generer på nytt», oppsamlingsruta,
@@ -159,6 +165,22 @@ koster det svaret koster. Hele suiten går på under 20 sekunder fordi testene
 kjører i parallell.
 
 ## Suiten løy, og det var min feil
+
+**Den målte i 1280 × 720 mens den sa 1440 × 900.** I fire dager.
+`playwright.config.ts` hadde `viewport: { width: 1440, height: 900 }` i
+topp-`use`, og `projects: [{ use: { ...devices['Desktop Chrome'] } }]` under —
+og en prosjekt-`use` slås over den øverste. `Desktop Chrome` har 1280 × 720 i
+seg, så tallet over ble byttet ut i stillhet.
+
+Målt etter rettingen: **111 av 111 grønne i 1440 × 900**, altså ingen påstand
+som faktisk hang på bredden. Det er den gode nyheten og den dårlige på én
+gang: ingenting var galt, og ingenting ville ha sagt fra hvis det var det.
+`layout.spec.ts` og `resize.spec.ts` setter sin egen viewport per test og har
+alltid målt det de sier.
+
+Lærdommen er den samme som under: en påstand om et oppsett er en påstand som
+må måles, ikke leses. En kasteklar spec som skriver ut `window.innerWidth` tok
+tre sekunder å skrive og fire dager å komme på.
 
 **Fra 13 til 49 av 58 «feil» hadde ingenting med produktet å gjøre.** Målt
 2026-09-15 da N6-testene ble skrevet: kjøringer ga mellom 42 og 56 grønne, med
