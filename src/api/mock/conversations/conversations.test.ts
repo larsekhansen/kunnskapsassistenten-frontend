@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { daysSince } from '../clock';
 import { corpusDocument } from '../corpus';
 import { citationsFor, scriptedConversations, scriptedFor, scriptedThreads } from './index';
 import { threads } from '../fixtures';
@@ -238,8 +239,13 @@ describe('de scriptede samtalene som tråder', () => {
       const thread = scriptedThreads.find((candidate) => candidate.id === conversation.id);
       if (!thread) continue;
 
-      const drawn = Math.round((Date.now() - Date.parse(thread.updatedAt)) / 86_400_000);
-      expect(drawn, `tråden «${thread.title}»`).toBe(conversation.daysAgo);
+      // `daysSince` and not a millisecond difference divided by a day: the
+      // fixture counts CALENDAR days, and the division disagrees with it for
+      // most of the clock. `daysAgo(0, 9)` is today 09:30, so before 09:30
+      // the division gives -0 — which `toBe(0)` rejects — and after 21:30 it
+      // rounds up to 1. This test was red between midnight and 09:30 for
+      // that reason alone, with the fixture correct. See ../clock.ts.
+      expect(daysSince(thread.updatedAt), `tråden «${thread.title}»`).toBe(conversation.daysAgo);
     }
   });
 
@@ -254,12 +260,19 @@ describe('de scriptede samtalene som tråder', () => {
   it('sprer trådene over hele grupperingen, fra i dag til i fjor', () => {
     // Grupperingen i views/threads/grouping.ts har fem bøtter. En liste der
     // alt skjedde i dag ville stilltiende sluttet å tegne fire av dem.
-    const days = scriptedThreads.map((thread) =>
-      Math.round((Date.now() - Date.parse(thread.updatedAt)) / 86_400_000),
-    );
+    const days = scriptedThreads.map((thread) => daysSince(thread.updatedAt));
 
     expect(Math.min(...days)).toBeLessThanOrEqual(1);
     expect(Math.max(...days)).toBeGreaterThan(300);
+  });
+
+  it('gir hver tråd i lista sitt eget tidspunkt, også den håndskrevne', () => {
+    // The test above covers the scripted ones against each other. This one is
+    // about the list the reader actually sees: NKOM and «Regnskap og
+    // bevilgning i DSS» were both stamped `daysAgo(0, 9)`, so two rows shared
+    // an instant and had no order between them. Measured 2026-09-16.
+    const times = threads.map((thread) => thread.updatedAt);
+    expect(new Set(times).size, 'to tråder på samme millisekund').toBe(times.length);
   });
 
   it('har ingen id som kolliderer med tråden som er skrevet for hånd', () => {
