@@ -12,12 +12,17 @@ import { ask, citation } from './helpers';
  * panel gives way, one sidebar at a time below 1440, and no horizontal
  * scrolling at 1280 or above in any state.
  *
- * The decision was amended twice the same day, both times because something
- * here measured it: the answer column's floor drops to 618 while the sources
- * panel is collapsed (the addendum «hullet ved 1280»), and the collapsed
- * navigation panel is 236 rather than 232. Both are written up where the
- * number is, and the review of #5's PR is in
- * `docs/review/feat-foundation-2026-09-14.md`.
+ * The decision was amended twice on 2026-09-14, both times because something
+ * here measured it: the answer column's floor dropped to 618 while the
+ * sources panel was collapsed (the addendum «hullet ved 1280»), and the
+ * collapsed navigation panel became 236 rather than 232. The review of #5's
+ * PR is in `docs/review/feat-foundation-2026-09-14.md`.
+ *
+ * Both of those are gone again, replaced on 2026-09-15 by the rail
+ * (`rolle-5d-kollapset-rail.md`): a collapsed sidebar is 67 px, sits flush
+ * against the answer column, and the answer column's floor is 640 in every
+ * state. The two amendments were both ways of buying room at 1280, and the
+ * rail bought more of it than either.
  *
  * 1440 is not an arbitrary number twice over. Every frame in
  * `design/omraader/` is drawn at 1440, so it is the one width the design
@@ -36,22 +41,29 @@ import { ask, citation } from './helpers';
  */
 const NAV_OPEN = 400;
 /**
- * 236, not the 232 the decision first wrote down.
+ * A collapsed sidebar is a rail, and both collapse to the same one.
  *
- * 232 was 196 + 36: the label «Vis tråder og filter» on one line, plus the
- * padding against the edge of the window. Built and measured, the button is
- * 195,78 px — the icon, the gap, the button's own padding and its border —
- * and the slot carries 1 px of border as well, so the state needs 233 and 232
- * still wraps to two lines. 236 is the next step on the 4 px scale. #5
- * measured it on the built app on 2026-09-14 and this file's own matrix is
- * what says so: 7 red at 232, all 19 green at 236 with nothing else changed.
+ * Decided 2026-09-15 (`rolle-5d-kollapset-rail.md`) after Lars looked at the
+ * collapsed navigation panel in dark mode: 236 px of empty surface with one
+ * button at the top did not read as a panel folded away. 67 is the icon-only
+ * toggle button at 42 px, 12 px of padding on each side, and the rail's own
+ * 1 px border — `railWidth` in src/layout/viewModel.ts writes out the sum.
+ *
+ * It was 236 for the navigation panel and 198 for the sources panel, each
+ * wide enough to draw its own label on one line. The labels are gone from the
+ * rail; they are the button's accessible name and its tooltip now.
  */
-const NAV_COLLAPSED = 236;
+const RAIL = 67;
+const NAV_COLLAPSED = RAIL;
 const MAIN_FLOOR = 640;
 const MAIN_CEILING = 800;
 const SOURCES_PREFERRED = 432;
 const SOURCES_FLOOR = 336;
-const SOURCES_COLLAPSED = 198;
+const SOURCES_COLLAPSED = RAIL;
+/**
+ * Between an OPEN panel and the answer column. A rail sits flush against it,
+ * with no gap at all, which is what made the 618 floor unnecessary.
+ */
 const GAP = 32;
 
 /**
@@ -73,19 +85,6 @@ const PREFERRED_VIEWPORT = NAV_OPEN + GAP + MAIN_FLOOR + GAP + SOURCES_PREFERRED
  * the answer column, later — so nothing here measures below it.
  */
 const V1_MIN_VIEWPORT = 1280;
-
-/**
- * The answer column's floor while the sources panel is collapsed.
- *
- * 640 exists so the sources can be read BESIDE the answer (answers 46, 49,
- * 59). With the panel collapsed there is nothing beside it, so the reason
- * does not apply in that state — and the state has to fit at 1280, which 640
- * does not: 400 + 32 + 640 + 32 + 198 = 1302. The conductor settled this on
- * 2026-09-14 (`rolle-5c-layout-v1.md`, lever a) after this file measured the
- * 22 px; 618 is not a new number but what V1's narrowest window leaves once
- * the other three are paid.
- */
-const MAIN_FLOOR_SOURCES_COLLAPSED = V1_MIN_VIEWPORT - NAV_OPEN - GAP - GAP - SOURCES_COLLAPSED;
 
 const WIDTHS = [V1_MIN_VIEWPORT, BOTH_SIDEBARS_MIN_VIEWPORT, PREFERRED_VIEWPORT];
 
@@ -247,14 +246,13 @@ function expectLayoutFits(measured: Measurement, state: LayoutState, where: stri
     );
   }
 
-  // Two floors, one per state, and which one applies is the whole of lever a:
-  // the 640 floor is about reading the sources beside the answer, so it is
-  // only the floor while there are sources beside the answer.
-  const mainFloor = state.sources === 'open' ? MAIN_FLOOR : MAIN_FLOOR_SOURCES_COLLAPSED;
+  // One floor again. It had a second, lower one of 618 for the state that did
+  // not fit at 1280; the rail gave that state 131 px back and took the reason
+  // away. Decision 2026-09-15.
   expect(
     measured.mainWidth,
-    `hovedkolonnen skal aldri under gulvet sitt (${mainFloor}) i ${where}`,
-  ).toBeGreaterThanOrEqual(mainFloor);
+    `hovedkolonnen skal aldri under gulvet sitt (${MAIN_FLOOR}) i ${where}`,
+  ).toBeGreaterThanOrEqual(MAIN_FLOOR);
   expect(measured.mainWidth, `hovedkolonnen skal aldri over taket i ${where}`).toBeLessThanOrEqual(
     MAIN_CEILING,
   );
@@ -281,31 +279,15 @@ test.describe('layouten', () => {
     ).toBeLessThanOrEqual(measured.windowWidth);
   });
 
-  test('etiketten på kollapsknappen står på én linje', async ({ page }, testInfo) => {
-    covers(testInfo, 'layout: kollapset panel rommer sin egen etikett');
-    await page.setViewportSize({ width: BOTH_SIDEBARS_MIN_VIEWPORT, height: HEIGHT });
-    await page.goto('/');
-
-    // Wait for the web font. Inter is fetched from a CDN, and until it lands
-    // the fallback's metrics apply — «Vis kilder» fits on one line in the
-    // fallback and wraps in Inter, so measuring too early passes a test that
-    // should fail. Any assertion about text layout has to wait for this.
-    await page.evaluate(() => document.fonts.ready);
-
-    // The secondary sidebar starts collapsed, so this is the first thing a
-    // user sees of it. A label that wraps is the panel saying it is narrower
-    // than the only control it holds.
-    const lines = await page.evaluate(() => {
-      const button = document.querySelector('aside')?.querySelector('button');
-      const text = [...(button?.childNodes ?? [])].find((node) => node.nodeType === Node.TEXT_NODE);
-      if (!text) return null;
-      const range = document.createRange();
-      range.selectNode(text);
-      return range.getClientRects().length;
-    });
-
-    expect(lines, '«Vis kilder» skal få plass på én linje i det kollapsede panelet').toBe(1);
-  });
+  /*
+   * «etiketten på kollapsknappen står på én linje» stood here until
+   * 2026-09-15. The collapsed button carries no label on screen any more — it
+   * is an icon with an accessible name and a tooltip — so there is no text
+   * node left to count lines in, and the question the test asked is one the
+   * rail decision answered by removing it. Deleted rather than rewritten:
+   * what a rail needs asserted instead (the name, the tooltip, the 67 px) is
+   * KA CC's to write.
+   */
 
   /**
    * The whole matrix the decision promises: three widths, every state the
@@ -321,9 +303,10 @@ test.describe('layouten', () => {
    * 400 + 32 + 640 + 32 + 198 = 1302 px, and the decision's own arithmetic
    * only checked the state where the navigation panel is collapsed — while
    * this is the state `defaultLayout` opens on, so it is what a user at 1280
-   * meets. The conductor answered it with lever a on 2026-09-14: the answer
-   * column's floor is 618 while the sources panel is collapsed. See
-   * `docs/review/layout-v1-2026-09-14.md`, finding 1.
+   * meets. See `docs/review/layout-v1-2026-09-14.md`, finding 1.
+   *
+   * The same cell is now the slackest of the six: the rail made it
+   * 400 + 32 + 640 + 67 = 1139.
    */
   test.describe('ingen vannrett rulling fra 1280 og opp', () => {
     for (const width of WIDTHS) {
@@ -358,29 +341,15 @@ test.describe('layouten', () => {
    * are what they are, so a change to any width shows up here first, with the
    * arithmetic written out rather than hidden in a tolerance.
    */
-  test('ved 1280 med bare navigasjonspanelet åpent står hovedkolonnen på 618', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'layout: 1280 med kollapset kildepanel går opp på 618');
-    await page.setViewportSize({ width: V1_MIN_VIEWPORT, height: HEIGHT });
-    await page.goto('/');
-    await setSidebars(page, stateNamed('nav-aapent'));
-
-    const measured = await measure(page);
-
-    // Lever a, measured rather than assumed: the answer column gives up the
-    // 22 px the row was short, and gives up exactly those, so the state that
-    // `defaultLayout` opens on fits in V1's narrowest window.
-    expect(measured.navWidth).toBe(NAV_OPEN);
-    expect(measured.sourcesWidth).toBe(SOURCES_COLLAPSED);
-    expect(measured.mainWidth, 'hovedkolonnens gulv med kildepanelet kollapset').toBe(
-      MAIN_FLOOR_SOURCES_COLLAPSED,
-    );
-    expect(
-      measured.navWidth + GAP + measured.mainWidth + GAP + measured.sourcesWidth,
-      'summen er 1280, gulvet i V1',
-    ).toBe(V1_MIN_VIEWPORT);
-  });
+  /*
+   * «ved 1280 med bare navigasjonspanelet åpent står hovedkolonnen på 618»
+   * stood here until 2026-09-15. There is no 618 to stand on: the rail made
+   * that state 400 + 32 + 640 + 67 = 1139, and the floor went back to 640
+   * everywhere. The state itself is still covered, by the matrix above —
+   * `1280, nav-aapent` asserts no horizontal scrolling, both slot widths and
+   * the floor — so deleting this loses no coverage, only a number that has
+   * stopped being true.
+   */
 
   test('ved 1440 går de tre plassene nøyaktig opp, med kildepanelet på gulvet', async ({
     page,

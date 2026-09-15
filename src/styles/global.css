@@ -34,6 +34,7 @@
    */
   --ka-slot-gap: var(--ds-size-8); /* 32 px */
   --ka-sidebar-padding-inline: var(--ds-size-9); /* 36 px */
+  --ka-rail-padding-inline: var(--ds-size-3); /* 12 px, the 24 in railWidth */
 }
 
 html,
@@ -63,10 +64,27 @@ body {
  */
 .shell {
   display: flex;
-  gap: var(--ka-slot-gap);
   align-items: stretch;
   height: 100%;
   background: var(--ds-color-neutral-background-tinted);
+}
+
+/*
+ * The 32 px belongs between an OPEN panel and the answer column, and nowhere
+ * else, so it is a margin on the panel rather than `gap` on the row.
+ *
+ * `gap` cannot say that: it spaces every pair of items alike, and a collapsed
+ * rail must sit flush against the answer column. That is the whole point of
+ * the rail — Lars, 2026-09-15, on the collapsed navigation panel in dark
+ * mode: «skjult filter kolonne er ikke skjult». 32 px of tinted page beside a
+ * 67 px rail reads as a hole where a column used to be.
+ */
+.primary-sidebar:not([data-collapsed]) {
+  margin-inline-end: var(--ka-slot-gap);
+}
+
+.secondary-sidebar:not([data-collapsed]) {
+  margin-inline-start: var(--ka-slot-gap);
 }
 
 /*
@@ -125,32 +143,40 @@ body {
 }
 
 /*
- * A collapsed slot carries its padding on the outer edge only.
+ * A collapsed slot is a rail: its toggle button, centred, and nothing else.
  *
- * 198 px is the collapsed width the page template draws for the sources
- * panel, and it draws the button on one line inside it. It only adds up with
- * the template's own padding, `32px 36px 32px 0`: 36 px against the edge of
- * the window and none against the answer column, which leaves 162 px of
- * content rather than 126. With 36 px on both sides «Vis kilder» needed
- * 129 px in 126 and broke over two lines.
+ * It keeps a panel surface and a border so it reads as a column folded away
+ * rather than as empty page. That is the fix Lars asked for on 2026-09-15,
+ * and the surface is what dark mode needed most: without it the collapsed
+ * navigation panel was tinted page against tinted page, and the only thing
+ * on screen was a button floating in nothing.
  *
- * The navigation panel collapses to 236 rather than 198 for the same reason
- * read the other way: its label is longer, and it spends a border the sources
- * panel does not. Both numbers are the button plus the one padding plus what
- * the slot's own frame costs — the slots share the derivation, not the
- * result. The terms are written out in viewModel.ts.
+ * `padding-block` is left at the open panel's 32 px on purpose, so the button
+ * does not jump up the screen the moment the panel folds.
  *
- * The two slots mirror each other because slots ARE positional — that is what
- * the name `primary-sidebar` means — and the 32 px gap keeps the button clear
- * of the answer column either way. The logical properties are the vendor
- * exception to the naming rule; see CONTRIBUTING.
+ * The width is `railWidth` in viewModel.ts — 42 button + 24 padding + 1
+ * border — and the padding below is the 24 in that sum. Change one and the
+ * other is wrong; tests/e2e/layout.spec.ts measures what is drawn.
+ *
+ * The logical properties are the vendor exception to the naming rule; see
+ * CONTRIBUTING.
  */
-.primary-sidebar[data-collapsed] {
-  padding-inline-end: 0;
+.primary-sidebar[data-collapsed],
+.secondary-sidebar[data-collapsed] {
+  align-items: center;
+  padding-inline: var(--ka-rail-padding-inline);
+  background: var(--ds-color-neutral-surface-default);
+  overflow: hidden;
 }
 
+/*
+ * The border goes on the edge facing the answer column, which is the edge a
+ * reader sees the rail against. The navigation panel already draws one when
+ * it is open; the sources panel has none open and gets one only as a rail,
+ * because open it sits on the tinted page by design.
+ */
 .secondary-sidebar[data-collapsed] {
-  padding-inline-start: 0;
+  border-inline-start: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
 }
 
 /*
