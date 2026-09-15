@@ -42,6 +42,13 @@ test.describe('trådlista mens en samtale pågår', () => {
     await showThreads(page);
 
     const panel = threadPanel(page);
+    /*
+     * Count the rows only once they are there. The list opens on skeletons
+     * and reads the threads asynchronously, so a count taken on the render
+     * after the switch is 0 — and «one more than before» would then be a
+     * claim about an empty list. Measured: expected 1, received 12.
+     */
+    await expect(panel.getByRole('link', { name: 'NKOM måloppnåelse' })).toBeVisible();
     const before = await panel.locator('.threads-view__thread').count();
     const question = 'Hvor mange årsverk bruker Nkom på tilsyn?';
 
