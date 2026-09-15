@@ -1,5 +1,11 @@
 import { Button } from '@digdir/designsystemet-react';
-import { ArrowDownIcon, ClipboardIcon, ClipboardLinkIcon } from '@navikt/aksel-icons';
+import {
+  ArrowDownIcon,
+  ClipboardIcon,
+  ClipboardLinkIcon,
+  MagnifyingGlassIcon,
+} from '@navikt/aksel-icons';
+import type { RefObject } from 'react';
 import type { SourceDocument } from '../../model';
 import { answerWithSources, copyReceipt, referenceList } from './answerText';
 import { useCopy } from './useCopy';
@@ -15,6 +21,11 @@ type AnswerActionsProps = {
   /** Shown only when there is something below the fold (answer 17). */
   onScrollToBottom?: () => void;
   canScrollToBottom?: boolean;
+  /** Opens or closes the search inside this answer (brukerreiser punkt 13). */
+  onToggleSearch?: () => void;
+  searchOpen?: boolean;
+  /** Where focus goes when the search strip closes. */
+  searchToggleRef?: RefObject<HTMLButtonElement | null>;
 };
 
 /**
@@ -40,6 +51,9 @@ export function AnswerActions({
   sources,
   onScrollToBottom,
   canScrollToBottom,
+  onToggleSearch,
+  searchOpen,
+  searchToggleRef,
 }: AnswerActionsProps) {
   const { receipt, copy } = useCopy();
 
@@ -69,6 +83,27 @@ export function AnswerActions({
         <ClipboardLinkIcon aria-hidden />
         Kopier lenke til tråden
       </Button>
+
+      {/*
+        The reader's own way into a long answer (brukerreiser punkt 13). The
+        browser's Ctrl+F is left alone on purpose — it is the one find every
+        reader already has, and a page that takes it away to offer its own has
+        made things worse. `aria-expanded` is what says the strip below
+        belongs to this button.
+      */}
+      {onToggleSearch ? (
+        <Button
+          aria-expanded={searchOpen ?? false}
+          data-color="neutral"
+          data-size="sm"
+          onClick={onToggleSearch}
+          ref={searchToggleRef}
+          variant="tertiary"
+        >
+          <MagnifyingGlassIcon aria-hidden />
+          Søk i svaret
+        </Button>
+      ) : null}
 
       {canScrollToBottom ? (
         <Button data-color="neutral" data-size="sm" onClick={onScrollToBottom} variant="tertiary">

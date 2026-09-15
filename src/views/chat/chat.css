@@ -319,6 +319,62 @@
   font-size: var(--ds-font-size-minus-1);
 }
 
+/*
+ * Search inside one answer (brukerreiser punkt 13). A strip under the action
+ * row, in the same Card.Block, so it reads as belonging to the answer above
+ * rather than to the conversation.
+ */
+.ka-answer-search {
+  display: block;
+  margin-block-start: var(--ds-size-2);
+}
+
+.ka-answer-search__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-size-2);
+}
+
+/*
+ * Wide enough for a word or two and no wider: it sits beside the counter and
+ * the step buttons, and a field that takes the whole row pushes them onto a
+ * line of their own at every width.
+ */
+.ka-answer-search__field {
+  flex: 1 1 14rem;
+  min-width: 0;
+  max-width: 22rem;
+}
+
+.ka-answer-search__count {
+  margin: 0;
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: var(--ds-font-size-minus-1);
+}
+
+.ka-answer-search__steps {
+  display: flex;
+  gap: var(--ds-size-1);
+}
+
+/*
+ * The same two surfaces the sources panel marks with, so a hit looks like a
+ * hit wherever the reader found it. Warning rather than accent: the answer
+ * already spends accent on the `[n]` markers, and a highlight in the same
+ * colour would read as one more of those.
+ */
+.ka-answer-mark {
+  background: var(--ds-color-warning-surface-tinted);
+  color: var(--ds-color-warning-text-default);
+  border-radius: var(--ds-border-radius-sm);
+}
+
+.ka-answer-mark[data-current='true'] {
+  background: var(--ds-color-warning-base-default);
+  color: var(--ds-color-warning-base-contrast-default);
+}
+
 /* --------------------------------------------------------------- composer */
 
 /*
