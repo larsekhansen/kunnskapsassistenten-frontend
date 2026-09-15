@@ -62,6 +62,18 @@
    * 2026-09-15, in both colour schemes.
    */
   --ka-panel-border: var(--ds-border-width-default) solid var(--ds-color-neutral-border-default);
+
+  /*
+   * The ground a scrolling region is drawn on, so a pinned head can hide what
+   * scrolls under it.
+   *
+   * A variable and not one colour, because the three regions do not share a
+   * ground: the navigation panel has its own white surface, the sources panel
+   * has none and sits on the page (Lars, 2026-09-15), and the answer column
+   * is the page. Each of them redeclares this where it declares its
+   * background, so the head cannot drift from the surface it is painted on.
+   */
+  --ka-region-surface: var(--ds-color-neutral-background-tinted);
 }
 
 html,
@@ -330,7 +342,8 @@ body {
 }
 
 .primary-sidebar > .panel {
-  background: var(--ds-color-neutral-surface-default);
+  --ka-region-surface: var(--ds-color-neutral-surface-default);
+  background: var(--ka-region-surface);
   border-inline-end: var(--ka-panel-border);
 }
 
@@ -447,6 +460,59 @@ body {
 }
 
 .sidebar-content[hidden] {
+  display: none;
+}
+
+/*
+ * The view head: what stays put while the rest of the region scrolls.
+ *
+ * One rule for all three regions, because they asked for the same thing
+ * within a day — the answer switcher and the excerpt search in the sources
+ * panel (#54), the corpus line in the filter panel (#55), the search strip in
+ * the answer (#60). The box is the shell's and the contents are the view's;
+ * see src/layout/viewHeadContext.ts for why it cannot be the other way round.
+ *
+ * `sticky` and not a fixed band above the region, and that is what lets one
+ * rule cover the answer column as well: `.main` IS its scrolling region and
+ * has no head to sit under, so a band would mean restructuring it. Sticky
+ * also costs nothing when the region is short enough not to scroll.
+ *
+ * The ground is the region's own (`--ka-region-surface`), so content passing
+ * behind the head is actually hidden: the navigation panel's white surface,
+ * the page's tint under the sources panel and the answer.
+ *
+ * `--ka-panel-border` is the same line the panels draw against the answer
+ * column — 3.95:1 light, 4.23:1 dark, over the 3:1 WCAG 1.4.11 asks of a
+ * boundary that carries meaning. One variable, so the two cannot drift.
+ *
+ * The gap inside is the tight one, not the 48 px between a panel's blocks:
+ * everything pinned here is taken off the reading area for as long as the
+ * reader scrolls, and 48 px of that would be air. Measured by #4 at 1440 with
+ * two answers — 219 px of a 778 px region, 28 %.
+ */
+.view-head {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-3);
+  inline-size: 100%;
+  background: var(--ka-region-surface);
+  border-block-end: var(--ka-panel-border);
+  padding-block-end: var(--ds-size-3);
+}
+
+/*
+ * An empty head draws no line. The box is mounted whether or not a view fills
+ * it — it has to exist before the view can render into it — and on the
+ * untouched front page there is neither a selector nor a search to pin.
+ *
+ * `:empty` is exact here: React renders nothing into the portal target, not
+ * even whitespace, so the element really has no child nodes.
+ */
+.view-head:empty,
+.view-head[hidden] {
   display: none;
 }
 
