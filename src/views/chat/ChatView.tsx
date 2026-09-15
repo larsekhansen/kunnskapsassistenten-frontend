@@ -107,24 +107,72 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
 
   // The sources go the same way, and for the same reason: the sources view
   // draws them, this view produces them, and the two may not import each
-  // other. The last answer that carries sources is the one on screen; they
-  // arrive at the end of a stream, so earlier messages keep theirs.
+  // other.
   //
-  // `undefined` and `[]` are different answers over there: undefined draws
-  // «loading», an empty array draws «no sources yet». So undefined is only
-  // honest while an answer is actually on its way. An untouched front page
-  // has nothing to load, and a turn that ended without sources has finished
-  // not loading; both are empty, not pending.
-  const { setDocuments } = useAnswerSources();
-  const answerSources = useMemo(() => {
-    for (let index = messages.length - 1; index >= 0; index -= 1) {
-      const message = messages[index];
-      if (message?.role === 'assistant' && message.sources) return message.sources;
-    }
-    return status === 'pending' || status === 'streaming' ? undefined : [];
-  }, [messages, status]);
+  // One entry per answer, under the answer's own message id. A thread has
+  // several answers and each numbers its excerpts from 1, so a single flat
+  // list made `[2]` in the first answer open the second answer's excerpt two
+  // — it looked right and was not (#4, brukerreiser punkt 5). The status
+  // travels with it, because an empty `documents` means four different
+  // things and only the answer knows which.
+  const { setAnswerSources, clearAnswerSources, setDocuments } = useAnswerSources();
 
-  useEffect(() => setDocuments(answerSources), [answerSources, setDocuments]);
+  /*
+   * What has already been reported, by message id.
+   *
+   * `messages` changes on every token, and almost none of those changes say
+   * anything about sources. The signature is the two things that do — the
+   * answer's status, and whether its documents have arrived — so the shell is
+   * told once per real change instead of once per word.
+   */
+  const reported = useRef(new Map<string, string>());
+
+  useEffect(() => {
+    const answers = messages.filter((message) => message.role === 'assistant');
+    const live = new Set(answers.map((message) => message.id));
+
+    /*
+     * An answer that never produced a token is taken out of the thread again
+     * (see `settleAnswer` in useChat), and the context can only be emptied
+     * whole. So a disappearance costs a rebuild rather than a removal. It
+     * happens when a reader stops a turn before the first word, and the
+     * alternative is a sources panel waiting forever for an answer that is no
+     * longer on screen.
+     */
+    if ([...reported.current.keys()].some((id) => !live.has(id))) {
+      reported.current.clear();
+      clearAnswerSources();
+    }
+
+    /*
+     * A thread with no answers at all, which `answers` cannot say on its own:
+     * `clearAnswerSources()` sets it to undefined, and undefined means
+     * «nobody has reported yet», which is what draws «Henter kilder …». An
+     * untouched front page is not loading anything. So the empty state still
+     * goes through the flat slot, and hands over the moment there is a real
+     * answer to report.
+     */
+    if (answers.length === 0) {
+      setDocuments([]);
+      return;
+    }
+
+    for (const message of answers) {
+      const signature = `${message.status}:${message.sources?.length ?? 'venter'}`;
+      if (reported.current.get(message.id) === signature) continue;
+      reported.current.set(message.id, signature);
+
+      setAnswerSources({
+        messageId: message.id,
+        documents: message.sources ?? [],
+        status: message.status,
+      });
+    }
+  }, [messages, setAnswerSources, clearAnswerSources, setDocuments]);
+
+  // Leaving the thread takes its sources with it. This view is keyed on the
+  // thread, so unmount is exactly that moment.
+  useEffect(() => () => clearAnswerSources(), [clearAnswerSources]);
 
   const hasAnswer = messages.some(
     (message) => message.role === 'assistant' && message.status === 'complete',

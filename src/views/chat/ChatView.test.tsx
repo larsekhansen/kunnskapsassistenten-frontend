@@ -9,6 +9,7 @@ import { MainScrollContext } from '../../layout/scrollContext';
 import { ThreadContext } from '../../layout/threadContext';
 import {
   emptyFilterSelection,
+  type AnswerSources,
   threadFromQuestion,
   type FilterSelection,
   type StreamEvent,
@@ -55,15 +56,23 @@ type ShellProps = {
   startThread?: () => void;
   /** What the filter view has narrowed to, as the shell would hold it. */
   selection?: FilterSelection;
+  /** Records what the view reports about each answer's sources. */
+  onAnswerSources?: (answer: AnswerSources) => void;
+  /** Records `[n]` activations, with the answer they came from. */
+  onCitation?: (number: number, messageId?: string) => void;
 };
 
 /** The pieces of the shell the chat view reads. */
-function Shell({ children, startThread, selection }: ShellProps) {
+function Shell({ children, startThread, selection, onAnswerSources, onCitation }: ShellProps) {
   const scrollRef = useRef<HTMLElement | null>(null);
   return (
     <MainScrollContext value={scrollRef}>
-      <CitationContext value={{ activeCitation: undefined, showCitation: () => {} }}>
-        <AnswerSourcesContext value={inertAnswerSources}>
+      <CitationContext
+        value={{ activeCitation: undefined, showCitation: onCitation ?? (() => {}) }}
+      >
+        <AnswerSourcesContext
+          value={{ ...inertAnswerSources, setAnswerSources: onAnswerSources ?? (() => {}) }}
+        >
           <ThreadContext
             value={{
               startThread: (question) => {
@@ -559,5 +568,99 @@ describe('ChatView', () => {
     const described = field().getAttribute('aria-describedby');
     expect(described).toBeTruthy();
     expect(document.getElementById(described!)?.textContent).toBe(SHORTCUT_DESCRIPTION);
+  });
+
+  it('reports every answer under its own message id', async () => {
+    const reported: AnswerSources[] = [];
+    render(
+      <Shell onAnswerSources={(answer) => reported.push(answer)}>
+        <ChatView client={clientYielding(sourcedAnswer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    await screen.findByRole('button', { name: 'Kopier svaret' });
+
+    // One id all the way through, and the status travels with the sources:
+    // an empty `documents` means four different things, and only the answer
+    // knows which (#4, brukerreiser punkt 5).
+    const ids = new Set(reported.map((answer) => answer.messageId));
+    expect(ids.size).toBe(1);
+    expect(reported.at(0)).toMatchObject({ documents: [], status: 'streaming' });
+    expect(reported.at(-1)?.status).toBe('complete');
+    expect(reported.at(-1)?.documents).toHaveLength(1);
+  });
+
+  it('reports once per real change, not once per token', async () => {
+    const reported: AnswerSources[] = [];
+    const manyTokens: StreamEvent[] = [
+      ...'ett to tre fire fem seks'
+        .split(' ')
+        .map((word): StreamEvent => ({ type: 'token', text: `${word} ` })),
+      done,
+    ];
+
+    render(
+      <Shell onAnswerSources={(answer) => reported.push(answer)}>
+        <ChatView client={clientYielding(manyTokens)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    await screen.findByRole('button', { name: 'Kopier svaret' });
+
+    // Six tokens, two states: writing, then finished. The shell is told
+    // about the second, not about the words.
+    expect(reported.map((answer) => answer.status)).toEqual(['streaming', 'complete']);
+  });
+
+  it('tells the shell which answer a marker sits in', async () => {
+    const activated: [number, string | undefined][] = [];
+    render(
+      <Shell onCitation={(number, messageId) => activated.push([number, messageId])}>
+        <ChatView client={clientYielding(sourcedAnswer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    const marker = await screen.findByRole('link', { name: /^Kilde 1:/u });
+    fireEvent.click(marker);
+
+    expect(activated).toHaveLength(1);
+    const [number, messageId] = activated[0]!;
+    expect(number).toBe(1);
+    // Each answer numbers its excerpts from 1, so the number alone does not
+    // say which excerpt.
+    expect(messageId).toBeTruthy();
+  });
+
+  it('draws a stopped answer’s markers as text that says why', async () => {
+    const asked: string[] = [];
+    const client: ChatClient = {
+      async *ask({ query, signal }: AskParams): AsyncIterable<StreamEvent> {
+        asked.push(query);
+        yield { type: 'token', text: 'Halve svaret med [1] i seg' };
+        await new Promise<void>((resolve) => signal?.addEventListener('abort', () => resolve()));
+        yield { type: 'error', error: { code: 'aborted', message: 'Svaret ble avbrutt.' } };
+      },
+      listThreads: async () => [],
+      getThread: async () => null,
+      listFacets: async () => [],
+    };
+
+    render(
+      <Shell>
+        <ChatView client={client} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    fireEvent.click(await screen.findByRole('button', { name: 'Avbryt genereringen' }));
+    await screen.findByRole('button', { name: /Generer på nytt/u });
+
+    // The marker was written; the excerpt was still on its way. A link to
+    // nothing would be worse than no link.
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.getByTitle('Kilden kom ikke fram')).toBeTruthy();
   });
 });
