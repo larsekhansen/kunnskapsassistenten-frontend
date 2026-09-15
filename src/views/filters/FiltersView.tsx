@@ -7,7 +7,7 @@ import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useFilterSelection } from '../../layout/useFilterSelection';
 import type { SlotViewProps } from '../../layout/viewModel';
 import { emptyFilterSelection, isEmptySelection, type FilterFacet } from '../../model';
-import { DocumentsList } from './DocumentsList';
+import { KudosDocuments, OwnDocuments } from './DocumentsList';
 import { corpusSummary } from './corpusSummary';
 import { FacetField } from './FacetField';
 import './filters.css';
@@ -183,6 +183,30 @@ export function FiltersView({
         {corpusSummary(corpus)}
       </Paragraph>
 
+      {/*
+        The documents the answer builds on, directly under the corpus line and
+        ABOVE the facets.
+ 
+        Drawn last in Figma, and that is where it was: measured at 1440 × 900
+        with an answer on screen, the first row started at y = 818 in a 900 px
+        window, under three facet fields nobody had touched (brukerblikk runde
+        2, funn 4). What changes with every answer was sitting below what
+        changes rarely.
+
+        Answer 1 is not touched by this. It settles which VIEW a first-time
+        user meets — filtering rather than the thread list — and they still
+        land here, on a panel headed «Filtrering» with the corpus line under
+        it. It says nothing about the order inside the view.
+
+        Answer 2 is the reason the facets keep their full size just under it:
+        the horizontal filter in the main column was dropped, so this panel is
+        the only place filtering lives and it may not be folded away. That is
+        also why the facets are not collapsed into `Details` instead — a
+        disclosure that starts closed would hide «Ingen avgrensning» and «3 av
+        6 valgt», which is the very text brukerblikk funn 3 existed to expose.
+      */}
+      <KudosDocuments documents={documents} />
+
       <ErrorState message={failed ? 'Klarte ikke å hente filtrene.' : undefined} onRetry={retry} />
 
       {/*
@@ -223,7 +247,12 @@ export function FiltersView({
         />
       ))}
 
-      <DocumentsList documents={documents} />
+      {/*
+        Last, and it is the one thing here with no claim on the space above
+        the fold: upload does not exist anywhere in the stack yet
+        (API-bestilling A3), so nothing in it changes with the answer.
+      */}
+      <OwnDocuments />
     </div>
   );
 }

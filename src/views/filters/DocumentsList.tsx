@@ -11,7 +11,7 @@ import type { SourceDocument } from '../../model';
  */
 const initiallyVisible = 5;
 
-export type DocumentsListProps = {
+export type KudosDocumentsProps = {
   /**
    * The documents behind the answer on screen, held by the shell. See
    * src/layout/answerSourcesContext.ts.
@@ -24,8 +24,19 @@ export type DocumentsListProps = {
 };
 
 /**
- * The documents the answer may build on: the ones Kudos matched, and the
- * user's own uploads.
+ * The documents from Kudos that the answer on screen builds on.
+ *
+ * This and {@link OwnDocuments} were one component, drawn as one column at
+ * the foot of the panel, because that is where Figma draws them. In a panel
+ * that scrolls they ended up under the window edge: measured at 1440 × 900
+ * with an answer on screen, the first row started at y = 818 in a 900 px
+ * window, under the corpus line and three facet fields (brukerblikk runde 2,
+ * funn 4). What changes with every answer sat below what changes rarely.
+ *
+ * So the two halves are separate components now, and the view puts this one
+ * above the facets. They were only together because they shared a heading;
+ * splitting costs that grouping and buys a list the reader can see. See
+ * FiltersView for the ordering and why it does not touch answer 1.
  *
  * Two deliberate omissions against the Figma frame:
  *
@@ -42,7 +53,7 @@ export type DocumentsListProps = {
  *   open, so this is text, not a control. A dashed box that looks droppable
  *   but drops nothing is worse than a sentence that says so.
  */
-export function DocumentsList({ documents }: DocumentsListProps) {
+export function KudosDocuments({ documents }: KudosDocumentsProps) {
   // Not a module constant: two filter views in different slots would then
   // share one id, and the layout model exists so views can be moved.
   const kudosHeadingId = useId();
@@ -83,26 +94,23 @@ export function DocumentsList({ documents }: DocumentsListProps) {
   }, [expanded]);
 
   return (
-    <>
-      <section className="documents-list">
-        <Heading level={3} data-size="xs">
-          Dokumenter
-        </Heading>
-        <Heading level={4} data-size="2xs" id={kudosHeadingId}>
-          Fra Kudos
-        </Heading>
+    <section className="documents-list">
+      <Heading level={3} data-size="xs">
+        Dokumenter
+      </Heading>
+      <Heading level={4} data-size="2xs" id={kudosHeadingId}>
+        Fra Kudos
+      </Heading>
 
-        {fromKudos.length === 0 ? (
-          /*
+      {fromKudos.length === 0 ? (
+        /*
             The spec reads «Dokumentene som er relevant for ditt søk vises her».
             Deliberate deviation: «relevant» has to agree with «dokumentene».
           */
-          <Paragraph data-size="sm">
-            Dokumentene som er relevante for søket ditt vises her.
-          </Paragraph>
-        ) : (
-          <>
-            {/*
+        <Paragraph data-size="sm">Dokumentene som er relevante for søket ditt vises her.</Paragraph>
+      ) : (
+        <>
+          {/*
               «Viser 7 av 15 dokumenter.» in the spec, against a corpus the
               panel cannot see. Ours counts the documents behind the answer,
               which is the only total the frontend knows.
@@ -111,13 +119,13 @@ export function DocumentsList({ documents }: DocumentsListProps) {
               the line says «Viser 3 av 3 dokumenter», which is noise, and it
               leaves together with the button that made it worth reading.
             */}
-            {hidden > 0 && (
-              <Paragraph data-size="xs" className="documents-list__count">
-                Viser {shown.length} av {fromKudos.length} dokumenter.
-              </Paragraph>
-            )}
+          {hidden > 0 && (
+            <Paragraph data-size="xs" className="documents-list__count">
+              Viser {shown.length} av {fromKudos.length} dokumenter.
+            </Paragraph>
+          )}
 
-            {/*
+          {/*
               `tabIndex={-1}` so «Vis flere dokumenter» has somewhere to put
               focus; the list is not in the tab order. `ds-focus` draws
               Designsystemet's ring on :focus-visible — the keyboard user who
@@ -125,67 +133,79 @@ export function DocumentsList({ documents }: DocumentsListProps) {
               `ds-focus--visible`, which is the forced-on variant and paints a
               ring around the list at rest.
             */}
-            <List.Unordered
-              data-size="sm"
-              aria-labelledby={kudosHeadingId}
-              className="documents-list__list ds-focus"
-              tabIndex={-1}
-              ref={listRef}
-            >
-              {shown.map((source) => {
-                // Named `source`, not `document`: the DOM global.
-                const about = [source.documentType, source.organisation, source.year]
-                  .filter((part) => part !== undefined)
-                  .join(' · ');
+          <List.Unordered
+            data-size="sm"
+            aria-labelledby={kudosHeadingId}
+            className="documents-list__list ds-focus"
+            tabIndex={-1}
+            ref={listRef}
+          >
+            {shown.map((source) => {
+              // Named `source`, not `document`: the DOM global.
+              const about = [source.documentType, source.organisation, source.year]
+                .filter((part) => part !== undefined)
+                .join(' · ');
 
-                return (
-                  <List.Item key={source.id}>
-                    {source.url === undefined ? (
-                      // Normal, not an error: folder-based corpora have no
-                      // public URL, and a title without a link beats a link
-                      // that goes nowhere.
-                      <Paragraph data-size="sm">{source.title}</Paragraph>
-                    ) : (
-                      <Link href={source.url} target="_blank" rel="noreferrer">
-                        {source.title}
-                        {/* Designsystemet says not to mark an external link
+              return (
+                <List.Item key={source.id}>
+                  {source.url === undefined ? (
+                    // Normal, not an error: folder-based corpora have no
+                    // public URL, and a title without a link beats a link
+                    // that goes nowhere.
+                    <Paragraph data-size="sm">{source.title}</Paragraph>
+                  ) : (
+                    <Link href={source.url} target="_blank" rel="noreferrer">
+                      {source.title}
+                      {/* Designsystemet says not to mark an external link
                             with an icon alone, so the fact that it leaves the
                             app is said in words. */}
-                        <span className="ds-sr-only"> (åpnes i ny fane)</span>
-                      </Link>
-                    )}
-                    {about !== '' && (
-                      <Paragraph data-size="xs" className="documents-list__about">
-                        {about}
-                      </Paragraph>
-                    )}
-                  </List.Item>
-                );
-              })}
-            </List.Unordered>
+                      <span className="ds-sr-only"> (åpnes i ny fane)</span>
+                    </Link>
+                  )}
+                  {about !== '' && (
+                    <Paragraph data-size="xs" className="documents-list__about">
+                      {about}
+                    </Paragraph>
+                  )}
+                </List.Item>
+              );
+            })}
+          </List.Unordered>
 
-            {/*
+          {/*
               An action that loads more, not navigation, so a Button — the
               spec links it to `button.tsx` and draws it as a link, and
               `documents-list.md` settles that as tertiary. See
               design/designsystemet/behov-til-komponent.md.
             */}
-            {hidden > 0 && (
-              <Button
-                variant="tertiary"
-                data-size="sm"
-                data-color="neutral"
-                onClick={() => setExpanded(true)}
-              >
-                Vis flere dokumenter
-              </Button>
-            )}
-          </>
-        )}
-      </section>
+          {hidden > 0 && (
+            <Button
+              variant="tertiary"
+              data-size="sm"
+              data-color="neutral"
+              onClick={() => setExpanded(true)}
+            >
+              Vis flere dokumenter
+            </Button>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
 
-      <section className="documents-list">
-        {/*
+/**
+ * «Dine dokumenter»: the user's own uploads, when there are any to have.
+ *
+ * It stays at the foot of the panel. Nothing here changes with the answer —
+ * upload does not exist anywhere in the stack yet (API-bestilling A3) — so it
+ * is the one thing in the panel that has no claim on the space above the
+ * fold. Separated from {@link KudosDocuments} for that reason; see funn 4.
+ */
+export function OwnDocuments() {
+  return (
+    <section className="documents-list">
+      {/*
           Level 4, a sibling of «Fra Kudos», and the same `2xs` as that one.
           The spec draws DocumentsList as one column with «Dokumenter» over
           both sources; level 3 here made this a sibling of «Dokumenter»
@@ -197,22 +217,21 @@ export function DocumentsList({ documents }: DocumentsListProps) {
           to try, directly above a box saying upload does not work yet
           (brukerblikk, funn 13). It comes back when upload does.
         */}
-        <Heading level={4} data-size="2xs">
-          Dine dokumenter
-        </Heading>
-        <div className="documents-list__upload">
-          <Paragraph data-size="sm">Last opp egne dokumenter</Paragraph>
-          {/*
+      <Heading level={4} data-size="2xs">
+        Dine dokumenter
+      </Heading>
+      <div className="documents-list__upload">
+        <Paragraph data-size="sm">Last opp egne dokumenter</Paragraph>
+        {/*
             The spec reads «Kun PDF og .docx for øyeblikket». Deliberate
             deviation: that sentence describes a limit on something the user
             can do, and there is nothing to do here yet, so it would promise a
             control that does not exist. The formats are kept.
           */}
-          <Paragraph data-size="xs">
-            Opplasting er ikke klar ennå. Når den kommer, tar den PDF og .docx.
-          </Paragraph>
-        </div>
-      </section>
-    </>
+        <Paragraph data-size="xs">
+          Opplasting er ikke klar ennå. Når den kommer, tar den PDF og .docx.
+        </Paragraph>
+      </div>
+    </section>
   );
 }
