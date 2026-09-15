@@ -486,8 +486,8 @@ ikke noe frontenden kan fikse.
 
 ## Det appen husker
 
-Tre nøkler, og ingenting annet. To i `localStorage`, som varer til nettleseren
-tømmes, og én i `sessionStorage`, som varer så lenge fana lever.
+Fire nøkler, og ingenting annet. Tre i `localStorage`, som varer til
+nettleseren tømmes, og én i `sessionStorage`, som varer så lenge fana lever.
 
 | Nøkkel               | Lager          | Hva                                                                             |
 | -------------------- | -------------- | ------------------------------------------------------------------------------- |
@@ -503,7 +503,7 @@ fordi de går ut på dato av ulike grunner — layout-nøkkelen når plassene en
 seg, filternøkkelen når **korpuset** gjør det, siden verdiene er nøklene
 backend filtrerer på.
 
-To ting er bevisst med:
+To ting er bevisst:
 
 - **«Lukket av brukeren» lagres ved siden av «er lagt sammen».** Kildepanelet
   er lagt sammen som standard, så en kollaps som blir husket alene er ikke til
@@ -529,7 +529,7 @@ andre faner, og forsvinner når nettleseren lukkes — som er den ærlige
 levetiden for noe som finnes fordi det ekte lageret mangler. Bare turer som
 faktisk produserte tekst skrives ned; et svar som feilet før første token
 tegner ikke noe kort, og et lagret tomt svar ville tegnet et kort som aldri
-fantes. En tur i en fixture-tråd legges til på toppen av fixture-meldingene,
+fantes. En tur i en fixture-tråd legges etter fixture-meldingene fra koden,
 så det samme svaret aldri skrives ned to ganger.
 
 ## Mock-modus: to spørsmål som gjør noe spesielt
