@@ -1,9 +1,10 @@
 import { Button, Link, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link as RouterLink, NavLink } from 'react-router';
+import { Link as RouterLink } from 'react-router';
 import { createChatClient } from '../../api';
 import { FilterIcon, NewThreadIcon } from '../../components/icons';
 import { EmptyState, ErrorState, PanelHeader } from '../../components';
+import { useOpenThread } from '../../layout/useOpenThread';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { Thread } from '../../model';
 import { groupThreads } from './grouping';
@@ -32,6 +33,9 @@ export function ThreadsView({
   threads: given,
 }: ThreadsViewProps) {
   const client = useMemo(() => createChatClient(), []);
+  // Which conversation is on screen, whoever put it there. See
+  // src/layout/openThreadContext.ts.
+  const openThreadId = useOpenThread();
   const [threads, setThreads] = useState<Thread[] | undefined>(given);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -105,11 +109,11 @@ export function ThreadsView({
       )}
 
       {/*
-        Link and not NavLink: NavLink marks itself as the current page when the
-        route matches, and on «/» that told a screen reader user that the
-        button they are about to press is the page they are already on. «Ny
-        tråd» is an action. The thread rows below are places, and they keep
-        NavLink and aria-current (answer 7).
+        No `aria-current` here, and that is the same distinction the rows
+        below make: «Ny tråd» is an ACTION, and marking it as the current page
+        told a screen reader user that the button they are about to press is
+        the page they are already on. The thread rows are places, and they are
+        marked (answer 7).
       */}
       <Button asChild>
         <RouterLink to="/">
@@ -187,13 +191,25 @@ export function ThreadsView({
               return (
                 <li key={thread.id} className="threads-view__item">
                   {/*
-                    NavLink sets aria-current="page" on the active route by
-                    itself, and that attribute — not the colour — is what makes
-                    the selected thread available to a screen reader. The style
+                    `aria-current="page"` — not the colour — is what makes the
+                    open thread available to a screen reader, and the style
                     hangs off the same attribute so the two can never drift.
+
+                    It came from `NavLink`, which reads the router's location,
+                    until 2026-09-15. That missed the commonest way in: a
+                    conversation the reader starts on `/` gets its address from
+                    `history.replaceState`, which the router never sees, so the
+                    thread they had just made stayed unmarked until a reload
+                    (KA CC). The shell knows which conversation is on screen
+                    however the address got there; see openThreadContext.ts.
                   */}
                   <Link asChild data-size="sm" className="threads-view__thread">
-                    <NavLink to={`/threads/${thread.id}`}>{thread.title}</NavLink>
+                    <RouterLink
+                      aria-current={thread.id === openThreadId ? 'page' : undefined}
+                      to={`/threads/${thread.id}`}
+                    >
+                      {thread.title}
+                    </RouterLink>
                   </Link>
                   {/*
                     Beside the link and not inside it. Inside, the time would
