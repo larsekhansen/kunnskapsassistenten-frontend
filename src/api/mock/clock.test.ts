@@ -49,13 +49,50 @@ describe('daysAgo og daysSince', () => {
     expect(daysSince('2026-09-16T00:00:00')).toBe(0);
   });
 
-  it('gir 0 for et tidspunkt senere i dag', () => {
+  it('legger aldri en fixtur i framtida', () => {
+    /*
+     * The thread list sorts on `updatedAt`, so a fixture dated later today
+     * sorts above a thread the user created a second ago — and `aria-current`
+     * then points at the wrong row. Measured by the conductor at 00:08, where
+     * the two top rows both showed «09:30».
+     *
+     * Every hour a caller uses, at the hour of the night where the naive sum
+     * fails worst.
+     */
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-09-16T00:05:00'));
+    vi.setSystemTime(new Date('2026-09-16T00:08:00'));
 
-    // What `daysAgo(0, 9)` actually produces at this hour. A future timestamp
-    // on today's date is today; see the note in clock.ts on why it is not
-    // clamped, and `bucketFor` in grouping.ts for the view agreeing.
-    expect(Object.is(daysSince('2026-09-16T09:30:00'), 0)).toBe(true);
+    const now = Date.now();
+    for (const hour of [0, 8, 9, 12, 23]) {
+      expect(Date.parse(daysAgo(0, hour)), `daysAgo(0, ${hour})`).toBeLessThan(now);
+      // And still today, so the grouping still says «I dag».
+      expect(daysSince(daysAgo(0, hour)), `daysAgo(0, ${hour})`).toBe(0);
+    }
+  });
+
+  it('holder rekkefølgen mellom fixturer på samme dag', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-16T00:08:00'));
+
+    // `hour` is what keeps two fixtures on one day apart — the NKOM thread is
+    // created at 8 and updated at 9 — so the order has to survive the clamp.
+    const created = Date.parse(daysAgo(0, 8));
+    const updated = Date.parse(daysAgo(0, 9));
+    expect(created).toBeLessThan(updated);
+
+    // A thread the user makes right now is newer than all of them.
+    expect(updated).toBeLessThan(Date.now());
+  });
+
+  it('bruker klokkeslettet når det har passert', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-16T14:00:00'));
+
+    // Nothing is clamped in daylight, so the fixtures read as they were
+    // written: «09:30» in the row, not a time derived from the clock.
+    expect(new Date(daysAgo(0, 9)).getHours()).toBe(9);
+    expect(new Date(daysAgo(0, 9)).getMinutes()).toBe(30);
+    // An earlier day is over, so its hour is never clamped at any time of day.
+    expect(new Date(daysAgo(3, 9)).getHours()).toBe(9);
   });
 });
