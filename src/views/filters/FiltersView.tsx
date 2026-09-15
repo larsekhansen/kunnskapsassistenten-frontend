@@ -1,4 +1,4 @@
-import { Button, Skeleton } from '@digdir/designsystemet-react';
+import { Button, Paragraph, Skeleton } from '@digdir/designsystemet-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createChatClient } from '../../api';
 import { BackIcon } from '../../components/icons';
@@ -8,6 +8,7 @@ import { useFilterSelection } from '../../layout/useFilterSelection';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { FilterFacet } from '../../model';
 import { DocumentsList } from './DocumentsList';
+import { corpusSummary } from './corpusSummary';
 import { FacetField } from './FacetField';
 import './filters.css';
 
@@ -104,6 +105,20 @@ export function FiltersView({
       )}
 
       <PanelHeader title="Filtrering" size="sm" />
+
+      {/*
+        What the answers are actually built on. «Kudos» used to appear nowhere
+        the first-time user could see it, and nothing said how much there is or
+        which years it covers (brukerreiser, punkt 11).
+
+        Read off the unconditional facets, so it follows the corpus rather than
+        being a sentence someone has to remember to update — and it says
+        «Dokumenter fra Kudos» on its own while they load and in live mode,
+        where there is no facet aggregation to read.
+      */}
+      <Paragraph data-size="xs" className="filters-view__corpus">
+        {corpusSummary(facets)}
+      </Paragraph>
 
       <ErrorState message={failed ? 'Klarte ikke å hente filtrene.' : undefined} onRetry={retry} />
 
