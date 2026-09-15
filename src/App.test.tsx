@@ -134,6 +134,24 @@ describe('en tråd som ikke finnes', () => {
   });
 });
 
+describe('skillene som endrer panelbredde', () => {
+  it('ligger inne i landemerket de hører til', () => {
+    openAt('/');
+
+    // Et søsken av landemerkene i stedet for inni ett er et axe
+    // `region`-brudd — innhold ingen kan navigere til med landemerker — og
+    // det er regelen som fanget regresjonen fra #50 på fire ruter (KA CC).
+    // `region` er best-practice og ikke wcag2a/2aa, så e2e-suitens vanlige
+    // axe-kjøring var blind for det; denne ser på strukturen direkte.
+    const separators = document.querySelectorAll('[role="separator"]');
+    expect(separators.length).toBeGreaterThan(0);
+
+    for (const separator of separators) {
+      expect(separator.closest('nav, aside, main')).not.toBeNull();
+    }
+  });
+});
+
 describe('hopp-lenkene', () => {
   it('gir en vei rett til skrivefeltet, og lenka peker på feltet som finnes', () => {
     openAt('/');
