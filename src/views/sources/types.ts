@@ -25,10 +25,8 @@ export type SourcesViewProps = Partial<SlotViewProps> & {
    * `undefined` means the mounter does not know yet, which is the loading
    * state. `[]` means the thread has no answers.
    *
-   * `SourcesSlotView` passes this from `answerSourcesContext` (PR #39). It is
-   * undefined until something records an answer, and today nothing does:
-   * `setAnswerSources` has no caller, so a thread with two answers still
-   * reaches the panel as one flat list. Measured on main 15.09.
+   * `SourcesSlotView` passes this from `answerSourcesContext` (PR #39), and
+   * the chat view records one entry per answer (PR #42).
    */
   answers?: readonly AnswerSources[];
   /**
