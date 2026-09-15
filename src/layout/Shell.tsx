@@ -1,13 +1,5 @@
 import { Badge, BadgePosition, Button, SkipLink, Tooltip } from '@digdir/designsystemet-react';
-import {
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
 import { ComposerContext } from './composerContext';
@@ -23,7 +15,6 @@ import { useCitation } from './useCitation';
 import { useComposerRegistry } from './useComposerPresence';
 import { useLayout } from './useLayout';
 import { useViewportWidth } from './useViewportWidth';
-import { ViewHeadContext, type ViewHeadContextValue } from './viewHeadContext';
 import { viewComponents } from './viewComponents';
 import { layoutStyle, slotLabel, views } from './viewModel';
 
@@ -96,13 +87,6 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
    */
   const openThread = useOpenThreadRegistry();
 
-  /**
-   * The view head of the answer column. Held here rather than in a component
-   * of its own, because the box is drawn inside `<main>` and the provider has
-   * to wrap what comes after it.
-   */
-  const [mainHead, mainHeadRef] = useViewHeadBox(mainScroll);
-
   return (
     <MainScrollContext value={mainScroll}>
       <SkipLink href="#main-content">Hopp til hovedinnhold</SkipLink>
@@ -135,18 +119,6 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
 
             <main id="main-content" className="main" ref={mainScroll}>
               {/*
-              The answer column's view head. First in the region, so nothing
-              the reader can reach ends up underneath it when it pins — which
-              is the whole reason the shell owns the place rather than the
-              view. The search strip in the answer (#60) is what asked for it:
-              it sits at the bottom of the answer card and scrolls out of
-              sight exactly when a hit is found at the top.
-
-              Empty until a view fills it, and an empty head draws no line.
-            */}
-              <div className="view-head" ref={mainHeadRef} />
-
-              {/*
               The route contributes the page's level 1 heading and nothing
               else; the view in the slot is what draws the content, looked up
               in viewComponents like every other slot. Chat used to BE the
@@ -159,10 +131,8 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
               thread list and the filter are still there to steer to somewhere
               that exists.
             */}
-              <ViewHeadContext value={mainHead}>
-                <Outlet />
-                {routeOwnsMain ? null : <MainSlot />}
-              </ViewHeadContext>
+              <Outlet />
+              {routeOwnsMain ? null : <MainSlot />}
             </main>
 
             <Sidebar slot="secondary-sidebar" element="aside" />
@@ -171,64 +141,6 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
       </ComposerContext>
     </MainScrollContext>
   );
-}
-
-/**
- * The shell's end of the view head: the box, and the context a view renders
- * into it through.
- *
- * State and not a ref, because the view has to render again once the box
- * exists. React runs the ref callback during the commit and flushes the state
- * it sets before paint, so the extra render costs a render and not a frame.
- *
- * Why the shell holds the box at all, rather than each view pinning its own
- * head: viewHeadContext.ts, with the measurement from #55.
- */
-function useViewHeadBox(
-  scroller: RefObject<HTMLElement | null>,
-): [ViewHeadContextValue, (element: HTMLDivElement | null) => void] {
-  const [element, setElement] = useState<HTMLElement | null>(null);
-  const value = useMemo(() => ({ element }), [element]);
-
-  /*
-   * Keep the region from scrolling things underneath its own head.
-   *
-   * `scrollIntoView` and the scroll the browser does when something takes
-   * focus both stop at the top of the scrollport, which is exactly where the
-   * head is pinned. So a `[n]` marker sent to an excerpt, or a Tab onto a
-   * facet field further down, lands behind it: the reader is told they are
-   * somewhere they cannot see, and the focus ring is invisible. WCAG 2.4.11.
-   *
-   * `scroll-padding-block-start` moves that stopping line down by the head's
-   * height. Measured rather than written down, because the head is the view's
-   * and changes with it — the sources panel grows an answer selector with the
-   * second answer, the filter panel's corpus line wraps to two lines in a
-   * narrow panel. Zero when the head is empty, since `.view-head:empty` is
-   * `display: none` and an element that is not drawn has no height.
-   *
-   * The same repair the compose field makes at the other end of the same
-   * element (`scrollPaddingBlockEnd` in views/chat/ChatView.tsx). Two
-   * properties, no argument between them.
-   */
-  useEffect(() => {
-    const region = scroller.current;
-    if (element === null || region === null) return;
-    // jsdom has no ResizeObserver, and nothing there scrolls or paints. The
-    // stub belongs in the tests that need the views' own observers, not here.
-    if (typeof ResizeObserver === 'undefined') return;
-
-    const observer = new ResizeObserver(() => {
-      region.style.scrollPaddingBlockStart = `${Math.round(element.offsetHeight)}px`;
-    });
-    observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-      region.style.scrollPaddingBlockStart = '';
-    };
-  }, [element, scroller]);
-
-  return [value, setElement];
 }
 
 /**
@@ -287,13 +199,6 @@ function Sidebar({
   const toggle = useRef<HTMLButtonElement>(null);
   const element = useRef<HTMLElement>(null);
   const content = useRef<HTMLDivElement>(null);
-
-  /**
-   * This slot's view head. Outside `ActiveView`, so switching between the two
-   * views in a slot does not take the box away and put a new one back — the
-   * view that mounts finds the place already there.
-   */
-  const [viewHead, viewHeadRef] = useViewHeadBox(content);
 
   /**
    * Whether the keyboard focus is anywhere inside this slot — the toggle
@@ -532,34 +437,16 @@ function Sidebar({
         </div>
 
         <div id={contentId} ref={content} hidden={state.collapsed} className="sidebar-content">
-          {/*
-            The view head, and it is FIRST in the scrolling region on purpose.
-
-            A pinned head covers whatever is above it in the same scrolling
-            box, and «above» includes the tab order: the browser scrolls a
-            focused control into view at the top of the region, which is
-            precisely where the head is. That is what #55 measured — a head
-            pinned under the «Tråder» button took the clicks meant for it —
-            and it is why the place is the shell's rather than each view's.
-            Put the head first and there is nothing above it to cover; a view
-            that wants its own button to stay put puts the button IN the head.
-
-            Empty until a view fills it, and an empty head draws no line.
-          */}
-          <div className="view-head" ref={viewHeadRef} />
-
-          <ViewHeadContext value={viewHead}>
-            <ActiveView
-              view={state.activeView}
-              collapsed={state.collapsed}
-              onCollapsedChange={(collapsed) => setCollapsed(slot, collapsed)}
-              activeCitationNumber={activeCitation?.number}
-              activeCitationNonce={activeCitation?.nonce}
-              siblingViews={state.views.filter((id) => id !== state.activeView)}
-              onShowView={(view) => setActiveView(slot, view)}
-              switchedByUser={isSwitchedByUser(slot)}
-            />
-          </ViewHeadContext>
+          <ActiveView
+            view={state.activeView}
+            collapsed={state.collapsed}
+            onCollapsedChange={(collapsed) => setCollapsed(slot, collapsed)}
+            activeCitationNumber={activeCitation?.number}
+            activeCitationNonce={activeCitation?.nonce}
+            siblingViews={state.views.filter((id) => id !== state.activeView)}
+            onShowView={(view) => setActiveView(slot, view)}
+            switchedByUser={isSwitchedByUser(slot)}
+          />
         </div>
       </div>
 

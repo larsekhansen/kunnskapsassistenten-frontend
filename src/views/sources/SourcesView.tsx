@@ -1,7 +1,6 @@
 import { Heading } from '@digdir/designsystemet-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { EmptyState, findHits, stepHit, type SearchHit } from '../../components';
-import { ViewHead } from '../../layout/ViewHead';
 import { excerptDomId, type AnswerSources, type Excerpt, type SourceDocument } from '../../model';
 import { AnswerSwitcher } from './AnswerSwitcher';
 import { ExcerptSearch } from './ExcerptSearch';
@@ -430,22 +429,16 @@ export function SourcesView({
 
       {/* The panel head: what the reader needs while scrolling the excerpts.
 
-          It stays put, because a marker scrolls the panel to where the excerpt
+          It is sticky, because a marker scrolls the panel to where the excerpt
           is and took «Kilder til svar 1 av 2» with it, so the one line that
           makes «Utdrag 2» unambiguous was gone exactly while the reader was
           looking at utdrag 2 (brukerblikk 2, finding 3). The search field is
           here for the same reason and because today's KA already pins it
           (eksisterende funksjonalitet/søk i kildene.md).
 
-          The box belongs to the shell now, and this says what goes in it.
-          Nothing changes on screen: this panel has no view switcher above its
-          head, which is the only reason it could pin its own in #54 while the
-          navigation panel could not in #55. See src/layout/viewHeadContext.ts.
-
           Rendered even when both children are absent, so the box that carries
-          the border does not appear and disappear as answers arrive — and an
-          empty one draws no line. */}
-      <ViewHead>
+          the border does not appear and disappear as answers arrive. */}
+      <div className="sources-head">
         {/* Shown whenever the thread has more than one answer, including while
             the answer on screen has nothing to show: stepping back to the
             answer that DID have sources is the whole point of it then. */}
@@ -470,7 +463,7 @@ export function SourcesView({
             descriptionId={disclaimerId}
           />
         )}
-      </ViewHead>
+      </div>
 
       {content.kind !== 'empty' && <KudosDisclaimer id={disclaimerId} />}
 

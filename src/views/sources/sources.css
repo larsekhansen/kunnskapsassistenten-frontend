@@ -49,6 +49,50 @@
   display: none;
 }
 
+/*
+ * The panel head: the answer selector and the search, pinned to the top of the
+ * scrolling region.
+ *
+ * A `[n]` marker scrolls the panel to where its excerpt is, and everything
+ * above went with it — including the one line that says WHICH answer the
+ * excerpts belong to. The reader was then looking at «Utdrag 2» with nothing
+ * on screen to say which answer's utdrag 2 it was (brukerblikk 2, finding 3).
+ * How far it scrolls depends on the answer and the marker, so there is no one
+ * number to quote here. Today's KA already pins the search field for the same
+ * reason (eksisterende funksjonalitet/søk i kildene.md), so the two belong in
+ * one box.
+ *
+ * `.sidebar-content` is the scroll container and has no padding at the top, so
+ * `0` is its own upper edge. The background is the shell's ground rather than
+ * a surface of its own: the panel is transparent over it, and a head that
+ * matched nothing would read as a floating card. The border is the same
+ * `--ka-panel-border` the panel uses on the edge facing the answer: one token,
+ * one width, and the contrast that was measured for it.
+ *
+ * The gap inside the head is the tight one, not the 48 px between the panel's
+ * blocks: everything pinned here is taken off the reading area for as long as
+ * the reader scrolls, and 48 px of it would be air. Measured at 1440 with two
+ * answers: 219 px of a 778 px region, 28 %.
+ */
+.sources-head {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-3);
+  inline-size: 100%;
+  background: var(--ds-color-neutral-background-tinted);
+  border-block-end: var(--ka-panel-border);
+  padding-block-end: var(--ds-size-3);
+}
+
+/* An empty head draws no line. It is rendered on the untouched front page,
+   where there is neither a selector nor a search to pin. */
+.sources-head:empty {
+  display: none;
+}
+
 /* Which answer's sources are on screen */
 
 /*
