@@ -83,6 +83,8 @@ export type FocusStep = {
   boxShadow: string;
   /** An ancestor draws the ring instead, through `:focus-within`. */
   ringOnAncestor: boolean;
+  /** Designsystemet's `SkipLink`, which carries focus without an outline. */
+  skipLink: boolean;
 };
 
 export async function walkWithTab(page: Page, limit = 80): Promise<FocusStep[]> {
@@ -129,6 +131,12 @@ export async function walkWithTab(page: Page, limit = 80): Promise<FocusStep[]> 
         // around them carries the ring with `:focus-within` and the textarea
         // gives up its own. What the rule asks is that the user can see where
         // focus is, not which element the browser painted it on.
+        // Designsystemet's own class, not our markup: every skip link the app
+        // grows carries it, and the exception then follows the component
+        // instead of a list of Norwegian labels somebody has to remember to
+        // extend. `ds-skip-link` sets `outline: 0` and draws focus with a
+        // surface and an underline.
+        skipLink: element.classList.contains('ds-skip-link'),
         ringOnAncestor: (() => {
           let parent = element.parentElement;
           while (parent && parent !== document.body) {
@@ -159,14 +167,19 @@ export async function walkWithTab(page: Page, limit = 80): Promise<FocusStep[]> 
 /**
  * Every step has a Norwegian name and a ring the user can see.
  *
- * One named exception: Designsystemet's `SkipLink` sets `outline: 0` on
- * purpose and carries focus with a surface and an underline instead. The
- * other case — a control whose frame draws the ring — is answered by
- * `ringOnAncestor` rather than by a name, so it keeps working for controls
- * nobody has built yet.
+ * Two exceptions, and both follow the component rather than the label:
+ *
+ * `skipLink` — Designsystemet's `SkipLink` sets `outline: 0` on purpose and
+ * carries focus with a surface and an underline instead. It used to be a list
+ * of Norwegian names with «Hopp til hovedinnhold» in it, and the second skip
+ * link the app grew («Hopp til skrivefeltet») failed four Tab walks on a rule
+ * that was about the component all along. The class is what the component
+ * puts there, so the exception now covers every skip link there will ever be.
+ *
+ * `ringOnAncestor` — a control whose frame draws the ring through
+ * `:focus-within`. Same idea: what the rule asks is that the user can see
+ * where focus is, not which element the browser painted it on.
  */
-const RINGLESS_BY_DESIGN = ['Hopp til hovedinnhold'];
-
 export function expectEveryStepReachable(steps: FocusStep[], what: string): void {
   expect(
     steps.filter((step) => step.name === ''),
@@ -176,7 +189,7 @@ export function expectEveryStepReachable(steps: FocusStep[], what: string): void
   expect(
     steps.filter(
       (step) =>
-        !RINGLESS_BY_DESIGN.includes(step.name) &&
+        !step.skipLink &&
         step.outline === 'none' &&
         step.boxShadow === 'none' &&
         !step.ringOnAncestor,
