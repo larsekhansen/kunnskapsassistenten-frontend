@@ -79,3 +79,41 @@ export const CLARIFICATION_COPY = 'Kopier spørsmålet';
 
 /** The receipt after CLARIFICATION_COPY. */
 export const CLARIFICATION_COPIED = 'Spørsmålet er kopiert.';
+
+/*
+ * The keyboard shortcut to the compose field (reise 7 and 15). The field is
+ * tab stop 22 of 38 on a thread page, for the thing a reader does most often.
+ *
+ * Ctrl and not the bare key: a single character key shortcut is WCAG 2.1.4,
+ * level A, and this one could not be switched off. See useComposerShortcut.ts.
+ */
+
+/**
+ * A small hint by the field, for anyone looking at the screen.
+ *
+ * It names the modifier the reader's own keyboard has. Both work everywhere —
+ * the handler takes `ctrlKey` or `metaKey` — so this is about which one to
+ * say, not which one to accept, and «Ctrl + / (Cmd + / på Mac)» is a lot of
+ * parenthesis for a line that shares its row with the disclaimer.
+ *
+ * A function and not a constant, because the answer depends on the machine
+ * and a module constant would be read before a test could say otherwise.
+ */
+export function shortcutHint(): string {
+  // `userAgentData` is not in Safari or Firefox, and the user agent string is
+  // what is left. It is only choosing a word, so a wrong guess costs a reader
+  // one confusing label and nothing else.
+  const apple = /Mac|iPhone|iPad/u.test(navigator.userAgent);
+  return `Trykk ${apple ? 'Cmd' : 'Ctrl'} + / for å hoppe hit`;
+}
+
+/**
+ * The same thing for a screen reader, on the field itself.
+ *
+ * The key is spelled out rather than shown as the character: «/» read aloud is
+ * «skråstrek» in some voices and silence in others, and a shortcut nobody can
+ * hear the name of is not a shortcut. Both modifiers are named here, where
+ * there is room for it.
+ */
+export const SHORTCUT_DESCRIPTION =
+  'Trykk Ctrl og skråstrek, eller Cmd og skråstrek, for å flytte skrivemerket hit fra hvor som helst på siden.';

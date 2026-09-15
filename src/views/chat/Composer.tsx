@@ -1,7 +1,14 @@
 import { Button, Chip, Paragraph, Textfield } from '@digdir/designsystemet-react';
-import type { KeyboardEvent, Ref, RefObject } from 'react';
+import { useId, type KeyboardEvent, type Ref, type RefObject } from 'react';
+import { COMPOSER_ID } from '../../layout/ids';
 import { PaperclipIcon, PaperplaneIcon, StopIcon } from '@navikt/aksel-icons';
-import { COMPOSE_PLACEHOLDER, DISCLAIMER, FOLLOW_UP_QUESTIONS } from './text';
+import {
+  COMPOSE_PLACEHOLDER,
+  DISCLAIMER,
+  FOLLOW_UP_QUESTIONS,
+  SHORTCUT_DESCRIPTION,
+  shortcutHint,
+} from './text';
 import type { ChatStatus } from './useChat';
 
 type ComposerProps = {
@@ -53,6 +60,11 @@ type ComposerProps = {
  * longer than the visible text — it says which generation is being stopped —
  * and starts with the same word, which is what WCAG 2.5.3 asks for.
  *
+ * The field carries the page's skip-link target and says, twice, how to reach
+ * it with the keyboard: a small hint for anyone looking at it, and a
+ * description on the field itself for anyone who is not. Two texts rather than
+ * one because they are read in different ways — see text.ts.
+ *
  * Attachments are in scope (answer 53) but there is no upload endpoint
  * (API-bestilling A3), so the paperclip is inert. It keeps its focus and says
  * «Vedlegg kommer» rather than disappearing, because a control that is coming
@@ -72,6 +84,9 @@ export function Composer({
   onFollowUp,
 }: ComposerProps) {
   const busy = status === 'pending' || status === 'streaming';
+  // Generated, not a constant: two chat views in two slots would otherwise
+  // share one id and the description would describe the wrong field.
+  const descriptionId = useId();
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== 'Enter' || event.shiftKey) return;
@@ -84,8 +99,10 @@ export function Composer({
     <div className="ka-composer-area" ref={ref}>
       <div className="ka-composer">
         <Textfield
+          aria-describedby={descriptionId}
           aria-label="Spørsmål til Kunnskapsassistenten"
           className="ka-composer__field"
+          id={COMPOSER_ID}
           multiline
           onChange={(event) => onChange(event.currentTarget.value)}
           onKeyDown={onKeyDown}
@@ -135,7 +152,12 @@ export function Composer({
         </ul>
       ) : null}
 
+      <p className="ds-sr-only" id={descriptionId}>
+        {SHORTCUT_DESCRIPTION}
+      </p>
+
       <Paragraph className="ka-composer__disclaimer" data-size="sm">
+        <span className="ka-composer__shortcut">{shortcutHint()}</span>
         {DISCLAIMER}
       </Paragraph>
     </div>

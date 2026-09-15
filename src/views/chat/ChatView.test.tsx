@@ -20,6 +20,8 @@ import {
   CLARIFICATION_TAG,
   COMPOSE_PLACEHOLDER,
   FOLLOW_UP_QUESTIONS,
+  SHORTCUT_DESCRIPTION,
+  shortcutHint,
 } from './text';
 
 /*
@@ -438,5 +440,124 @@ describe('ChatView', () => {
     // The agent searched before it asked back, and that is the same fact here
     // as over an answer.
     expect(screen.getByText('Tenkte i 2 sekunder')).toBeTruthy();
+  });
+
+  it('puts the caret in the field on Ctrl+/ from anywhere on the page', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    const elsewhere = await screen.findByRole('button', { name: 'Kopier svaret' });
+    elsewhere.focus();
+
+    // shiftKey is true because on a Norwegian keyboard «/» IS Shift+7. A
+    // handler that rejected shift could never fire on the layout this app is
+    // written for.
+    fireEvent.keyDown(elsewhere, { key: '/', ctrlKey: true, shiftKey: true });
+
+    expect(document.activeElement).toBe(field());
+  });
+
+  it('answers to Cmd+/ as well, for a Mac', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    const elsewhere = await screen.findByRole('button', { name: 'Kopier svaret' });
+    elsewhere.focus();
+
+    fireEvent.keyDown(elsewhere, { key: '/', metaKey: true, shiftKey: true });
+
+    expect(document.activeElement).toBe(field());
+  });
+
+  it('does nothing on a bare «/»', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    const elsewhere = await screen.findByRole('button', { name: 'Kopier svaret' });
+    elsewhere.focus();
+
+    // A shortcut on a single character key is WCAG 2.1.4, level A, and this
+    // one could not be switched off. The modifier is what takes it out of
+    // scope — so the bare key has to stay inert.
+    const notSwallowed = fireEvent.keyDown(elsewhere, { key: '/', cancelable: true });
+
+    expect(document.activeElement).toBe(elsewhere);
+    expect(notSwallowed).toBe(true);
+  });
+
+  it('leaves Ctrl+Alt+/ alone, because that is AltGr on Windows', async () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier rapporten?');
+    const elsewhere = await screen.findByRole('button', { name: 'Kopier svaret' });
+    elsewhere.focus();
+
+    fireEvent.keyDown(elsewhere, { key: '/', ctrlKey: true, altKey: true, shiftKey: true });
+
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
+  it('reaches the handler from inside a shadow root', () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    // The three filter dropdowns are Designsystemet `Suggestion`, whose input
+    // lives in a shadow root. With a modifier the shortcut is welcome there
+    // too — nobody holds Ctrl to write a slash — but the event has to cross
+    // the boundary at all, which is what this guards.
+    const host = document.createElement('div');
+    document.body.append(host);
+    const inner = document.createElement('input');
+    host.attachShadow({ mode: 'open' }).append(inner);
+    inner.focus();
+
+    inner.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: '/',
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(document.activeElement).toBe(field());
+    host.remove();
+  });
+
+  it('says how to reach the field, on screen and to a screen reader', () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    expect(screen.getByText(shortcutHint())).toBeTruthy();
+
+    // The field itself carries the spelled-out version: «/» read aloud is
+    // «skråstrek» in some voices and silence in others.
+    const described = field().getAttribute('aria-describedby');
+    expect(described).toBeTruthy();
+    expect(document.getElementById(described!)?.textContent).toBe(SHORTCUT_DESCRIPTION);
   });
 });

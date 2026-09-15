@@ -208,6 +208,36 @@ Praktisk betyr det:
 - Hopp-lenka er Designsystemets `SkipLink` og er alltid første fokuserbare
   element.
 
+### Tastatursnarveier
+
+Én, og den har en modifikator med vilje.
+
+| Snarvei                | Hva                                   |
+| ---------------------- | ------------------------------------- |
+| `Ctrl + /` (`Cmd + /`) | flytter skrivemerket til skrivefeltet |
+
+Begge modifikatorene virker overalt; hinten ved feltet navngir den maskinen
+leseren sitter ved (`shortcutHint()` i `src/views/chat/text.ts`).
+
+**Hvorfor ikke bare `/`.** En snarvei bundet til én tegntast er WCAG 2.1.4
+Character Key Shortcuts, **nivå A**, og må da kunne slås av, remappes, eller
+bare virke når komponenten har fokus. Snarveien var `/` alene i første
+utkast — ingen av delene — og KA CC blokkerte den 15.09. Med modifikator
+faller den utenfor 2.1.4, og mnemonikken er den samme som i GitHub og Slack.
+Hopp-lenka rett til skrivefeltet er primærveien; snarveien er snarveien.
+
+**Shift slipper gjennom.** På norsk tastatur er `/` = Shift+7, så `shiftKey`
+er alltid sann når tasten i det hele tatt finnes. En vakt som avviste shift
+ville aldri utløst på oppsettet appen er skrevet for.
+
+**Alt avvises.** Ctrl+Alt er AltGr på Windows, som setter sammen tegn i stedet
+for å gi kommandoer.
+
+Snarveien står to steder i grensesnittet, fordi den leses på to måter: en liten
+dempet linje ved feltet, og en visuelt skjult beskrivelse på selve feltet der
+tegnet er skrevet ut som «skråstrek» — `/` lest høyt er stumt i noen stemmer.
+Se `src/views/chat/useComposerShortcut.ts` og `text.ts`.
+
 ## Layout og brytepunkter
 
 Avgjort 2026-09-14, endret 2026-09-15. Se `design/visjon-og-beslutninger.md`.
