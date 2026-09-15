@@ -286,8 +286,16 @@ test.describe('samtalen', () => {
    * Fikstureringen gjør regnestykket etterprøvbart: de to Nkom-dokumentene
    * korpuset faktisk har — årsrapporten for 2025 med utdrag [1][2] og
    * tildelingsbrevet for 2026 med [3][4] — og en instruks fra 2024 med [5],
-   * som ikke ligger i Kudos. Velger leseren 2026, står [3] og [4] igjen — og
+   * som ikke ligger i Kudos. Velger leseren 2025, står [1] og [2] igjen — og
    * bare de.
+   *
+   * Året er 2025 og ikke 2026, og det er `chooseFacetValue` som avgjør det:
+   * hjelperen leter etter `[role="option"]` på hele sida, ikke i lista til
+   * feltet den skriver i. «2026» finnes også i virksomheten «Regelrådet
+   * (avviklet 2026)», hvis skjulte option kommer først i DOM-en, så ventingen
+   * går på et element som aldri blir synlig. Målt 2026-09-16. 2025 og 2024
+   * finnes ikke i noe virksomhets- eller typenavn, så de er trygge til
+   * hjelperen scoper oppslaget til feltet sitt.
    */
   test('filteret når spørringen: 2 treff i 1 dokument, og markørene følger med', async ({
     page,
@@ -295,11 +303,11 @@ test.describe('samtalen', () => {
     covers(testInfo, 'filter → spørring');
     await page.goto('/');
 
-    await chooseFacetValue(page, 'År', '2026');
+    await chooseFacetValue(page, 'År', '2025');
     await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
     // Svaret sier selv hva det ble spurt mot.
-    await expect(page.getByText(/Avgrenset til: 2026/)).toBeVisible();
+    await expect(page.getByText(/Avgrenset til: 2025/)).toBeVisible();
 
     // «Fremgangsmåte» teller det som faktisk overlevde, ikke det korpuset har.
     await expect(page.getByText('2 treff i 1 dokument')).toBeVisible();
@@ -308,16 +316,16 @@ test.describe('samtalen', () => {
     // er borte fra teksten. En død [1] ville sagt «frontenden er i stykker»
     // i stedet for «det dokumentet er utenfor utvalget ditt».
     const answer = (await page.locator('.ka-answer-card').first().innerText()).replace(/\s+/g, ' ');
-    expect(answer, 'markøren inn i tildelingsbrevet står').toContain('[3]');
-    expect(answer).toContain('[4]');
-    for (const gone of ['[1]', '[2]', '[5]']) {
+    expect(answer, 'markøren inn i årsrapporten står').toContain('[1]');
+    expect(answer).toContain('[2]');
+    for (const gone of ['[3]', '[4]', '[5]']) {
       expect(answer, `${gone} peker på et dokument utenfor utvalget`).not.toContain(gone);
     }
 
     // Og kildepanelet viser ett kort, ikke tre.
-    await openSources(page, 3);
+    await openSources(page, 1);
     await expect(page.locator('.source-document')).toHaveCount(1);
-    await expect(page.locator('.source-document__subtitle')).toHaveText(/2026$/);
+    await expect(page.locator('.source-document__subtitle')).toHaveText(/2025$/);
 
     await expectNoAxeViolations(page, 'et svar med filteret på');
   });
