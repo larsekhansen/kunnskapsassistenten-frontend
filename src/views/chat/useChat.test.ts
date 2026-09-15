@@ -100,7 +100,9 @@ describe('useChat', () => {
 
     await waitFor(() => expect(result.current.status).toBe('idle'));
     const [answer] = assistantMessages(result.current.messages);
-    expect(answer).toMatchObject({ content: 'Måloppnåelse er ', status: 'complete' });
+    // Stopped, not finished: the sources never came, so the card offers to
+    // run again instead of a copy button.
+    expect(answer).toMatchObject({ content: 'Måloppnåelse er ', status: 'aborted' });
   });
 
   it('lets a new question override the turn it interrupted', async () => {

@@ -58,17 +58,45 @@
   gap: var(--ds-size-1);
 }
 
+/*
+ * One row: the link, and under it when the thread was last touched. A column
+ * rather than two things on a line, because the titles are long enough to
+ * wrap on a 328 px panel and a time pushed to the end of a wrapped line lands
+ * nowhere predictable.
+ */
+.threads-view__item {
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * The timestamp. Indented to line up with the link text above it, which sits
+ * inside the link's own padding.
+ */
+.threads-view__time {
+  padding-inline: var(--ds-size-2);
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: var(--ds-font-size-1);
+}
+
+/*
+ * A thread row is a link, and it looks like one.
+ *
+ * It used to be painted as neutral body text with the underline removed, and
+ * a reader met a column of dark headings under a bright blue «Ny tråd»
+ * button with nothing saying the titles could be clicked (brukerblikk,
+ * funn 8). Designsystemet's own link style — accent colour and an underline —
+ * is what says it, so this rule no longer overrides either. Only the box is
+ * ours: the padding and the radius that give the row a surface to sit on.
+ */
 .threads-view__thread {
   display: block;
   padding: var(--ds-size-1) var(--ds-size-2);
   border-radius: var(--ds-border-radius-md);
-  color: var(--ds-color-neutral-text-default);
-  text-decoration: none;
 }
 
 .threads-view__thread:hover {
   background: var(--ds-color-accent-surface-hover);
-  text-decoration: underline;
 }
 
 /*
@@ -78,12 +106,24 @@
  * The spec marks the active thread with weight alone. The surface is an
  * addition, and a deliberate one — but it only reaches 1.6:1 against the
  * panel, so it cannot be the signal on its own. Semibold rather than medium
- * is what actually carries the state at 14 px; text contrast is 8.6:1 light
- * and 8.4:1 dark either way.
+ * is what actually carries the state at 14 px.
+ *
+ * Dropping the underline is the third difference, and it is what keeps the
+ * selected row apart from a hovered one now that both draw a surface: the
+ * page you are on is not a place to go. Weight, surface and underline all
+ * differ, so the two states cannot be confused at a glance.
+ *
+ * The text colour is set with it, and it has to be. The link colour the other
+ * rows now carry is `accent-text-subtle`, which reaches only 4.01:1 light and
+ * 4.15:1 dark on this surface — axe caught it. `accent-text-default` measures
+ * 8.62:1 and 8.44:1 on the same surface. The rows that are still links keep
+ * the link colour, at 4.70:1 and 5.07:1 on the hover surface.
  */
 .threads-view__thread[aria-current='page'] {
   background: var(--ds-color-accent-surface-active);
+  color: var(--ds-color-accent-text-default);
   font-weight: var(--ds-font-weight-semibold);
+  text-decoration: none;
 }
 
 /*
@@ -101,6 +141,8 @@
 .threads-view__loading[hidden],
 .threads-view__group[hidden],
 .threads-view__list[hidden],
+.threads-view__item[hidden],
+.threads-view__time[hidden],
 .threads-view__thread[hidden] {
   display: none;
 }

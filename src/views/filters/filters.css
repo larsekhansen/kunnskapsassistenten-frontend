@@ -21,12 +21,28 @@
   /* The slot lays its children out with align-items: start, so the view has
      to claim the width itself. */
   inline-size: 100%;
+  /*
+   * Air under the last thing in the panel. The content is taller than a
+   * 900 px window, so «Dine dokumenter» sat flush against the bottom edge and
+   * was cut mid-sentence, which reads as a rendering fault rather than as
+   * something to scroll to (brukerblikk, funn 7). The scrolling region itself
+   * belongs to the slot, not to the view.
+   */
+  padding-block-end: var(--ds-size-6);
 }
 
 .filters-view > .ds-btn,
 .filters-view > ds-field,
 .filters-view > section {
   inline-size: 100%;
+}
+
+/*
+ * The corpus line under «Filtrering». Muted, because it is context for the
+ * controls below rather than one of them.
+ */
+.filters-view__corpus {
+  color: var(--ds-color-neutral-text-subtle);
 }
 
 .filters-view__loading {
@@ -99,12 +115,6 @@
   color: var(--ds-color-neutral-text-subtle);
 }
 
-.documents-list__heading-row {
-  display: flex;
-  align-items: center;
-  gap: var(--ds-size-2);
-}
-
 /*
  * The upload area, drawn in Figma as a dashed drop zone. It is text and not a
  * control until upload exists anywhere in the stack, so it is styled to look
@@ -127,7 +137,6 @@
 .facet-field__label-row[hidden],
 .facet-field__actions[hidden],
 .documents-list[hidden],
-.documents-list__heading-row[hidden],
 .documents-list__upload[hidden] {
   display: none;
 }

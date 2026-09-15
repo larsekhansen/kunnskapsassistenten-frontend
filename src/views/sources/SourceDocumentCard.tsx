@@ -14,6 +14,14 @@ type SourceDocumentCardProps = {
   currentHit?: SearchHit;
   /** `citationNumber` of the excerpt a `[n]` marker in the answer points at. */
   activeCitationNumber?: number;
+  /**
+   * Moves focus back to the marker the reader came from.
+   *
+   * Handed only to the excerpt that marker points at, which is why it arrives
+   * here rather than being decided per excerpt: the card is where the active
+   * number is already compared.
+   */
+  onReturnToAnswer?: () => void;
 };
 
 /**
@@ -36,6 +44,7 @@ export function SourceDocumentCard({
   hits,
   currentHit,
   activeCitationNumber,
+  onReturnToAnswer,
 }: SourceDocumentCardProps) {
   const subtitle = [source.documentType, source.organisation, source.year]
     .filter((part) => part !== undefined)
@@ -64,20 +73,26 @@ export function SourceDocumentCard({
         </Paragraph>
       </Card.Block>
 
-      {source.excerpts.map((excerpt) => (
-        <SourceExcerpt
-          key={excerpt.id}
-          excerpt={excerpt}
-          documentTitle={source.title}
-          open={openExcerptIds.has(excerpt.id)}
-          onOpenChange={(open) => onExcerptOpenChange(excerpt.id, open)}
-          hits={hitsFor(hits, excerpt.id)}
-          currentHit={currentHit?.itemId === excerpt.id ? currentHit : undefined}
-          active={
-            excerpt.citationNumber !== undefined && excerpt.citationNumber === activeCitationNumber
-          }
-        />
-      ))}
+      {source.excerpts.map((excerpt) => {
+        const active =
+          excerpt.citationNumber !== undefined && excerpt.citationNumber === activeCitationNumber;
+
+        return (
+          <SourceExcerpt
+            key={excerpt.id}
+            excerpt={excerpt}
+            documentTitle={source.title}
+            open={openExcerptIds.has(excerpt.id)}
+            onOpenChange={(open) => onExcerptOpenChange(excerpt.id, open)}
+            hits={hitsFor(hits, excerpt.id)}
+            currentHit={currentHit?.itemId === excerpt.id ? currentHit : undefined}
+            active={active}
+            // Only the excerpt the marker points at gets a way back, because
+            // it is the only one the reader was sent to.
+            onReturnToAnswer={active ? onReturnToAnswer : undefined}
+          />
+        );
+      })}
 
       <Card.Block className="source-document__foot">
         {source.url === undefined ? (

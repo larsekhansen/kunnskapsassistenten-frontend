@@ -1,4 +1,4 @@
-import { Button, Heading, Link, List, Paragraph, Tag } from '@digdir/designsystemet-react';
+import { Button, Heading, Link, List, Paragraph } from '@digdir/designsystemet-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { SourceDocument } from '../../model';
 
@@ -185,20 +185,21 @@ export function DocumentsList({ documents }: DocumentsListProps) {
       </section>
 
       <section className="documents-list">
-        <div className="documents-list__heading-row">
-          {/*
-            Level 4, a sibling of «Fra Kudos». The spec draws DocumentsList as
-            one column with «Dokumenter» over both sources; level 3 here made
-            this a sibling of «Dokumenter» instead, and the outline stopped
-            matching the picture.
-          */}
-          <Heading level={4} data-size="xs">
-            Dine dokumenter
-          </Heading>
-          <Tag data-color="info" data-size="sm">
-            Ny
-          </Tag>
-        </div>
+        {/*
+          Level 4, a sibling of «Fra Kudos», and the same `2xs` as that one.
+          The spec draws DocumentsList as one column with «Dokumenter» over
+          both sources; level 3 here made this a sibling of «Dokumenter»
+          instead, and the outline stopped matching the picture. The size used
+          to be `xs`, which made two h4 in the panel different sizes and one of
+          them as big as the h3 above (brukerblikk, funn 12).
+
+          The Tag «Ny» that stood beside it is gone. It promised something new
+          to try, directly above a box saying upload does not work yet
+          (brukerblikk, funn 13). It comes back when upload does.
+        */}
+        <Heading level={4} data-size="2xs">
+          Dine dokumenter
+        </Heading>
         <div className="documents-list__upload">
           <Paragraph data-size="sm">Last opp egne dokumenter</Paragraph>
           {/*

@@ -1,4 +1,5 @@
-import { Card, Details, Heading, Link, Paragraph, Tag } from '@digdir/designsystemet-react';
+import { Button, Card, Details, Heading, Link, Paragraph, Tag } from '@digdir/designsystemet-react';
+import { BackIcon } from '../../components/icons';
 import { excerptDomId, relevanceLabels, type Excerpt } from '../../model';
 import { HighlightedText } from './HighlightedText';
 import { relevanceTagColor } from './relevance';
@@ -36,6 +37,13 @@ type SourceExcerptProps = {
   currentHit?: SearchHit;
   /** True while this is the excerpt a `[n]` marker in the answer points at. */
   active: boolean;
+  /**
+   * Moves focus back to the marker the reader came from, when there is one.
+   *
+   * Absent for an excerpt the reader opened themselves: a way back to a place
+   * they never came from is a control that does nothing.
+   */
+  onReturnToAnswer?: () => void;
 };
 
 /**
@@ -51,6 +59,12 @@ type SourceExcerptProps = {
  * that. Such an excerpt is still worth showing, it just has nothing pointing
  * at it, so it gets no scroll target and says plainly that the answer did not
  * use it.
+ *
+ * Getting here is one click on a `[n]` marker; getting back was eight
+ * Shift+Tab that ended somewhere else entirely, and Escape did nothing
+ * (design/brukerreiser-2026-09-15.md, punkt 4). So the excerpt the reader was
+ * sent to offers both ways back: Escape anywhere inside it, and a visible
+ * control at the end of the quote for everyone who does not know that.
  *
  * Open and close is `Details`, decided in answer 38: Figma builds the same
  * toggle by hand in three places (`chunk`, `blackbox`, `expandable`), and
@@ -74,6 +88,7 @@ export function SourceExcerpt({
   hits,
   currentHit,
   active,
+  onReturnToAnswer,
 }: SourceExcerptProps) {
   const { citationNumber, relevance, heading, text, page, kudosUrl } = excerpt;
   const cited = citationNumber !== undefined;
@@ -106,6 +121,23 @@ export function SourceExcerpt({
       // Focus, not only scroll: focus is what tells a screen reader user that
       // something happened, and it puts the keyboard where the eye is.
       tabIndex={cited ? -1 : undefined}
+      /*
+        Escape returns to the marker. Scoped to this card rather than to the
+        panel, so it cannot take Escape from the search field, where the
+        browser's own `type='search'` handling clears the query.
+
+        `stopPropagation`, because Escape means «out of the thing I am in» to
+        anything listening further up, and this is that thing.
+      */
+      onKeyDown={
+        onReturnToAnswer === undefined
+          ? undefined
+          : (event) => {
+              if (event.key !== 'Escape') return;
+              event.stopPropagation();
+              onReturnToAnswer();
+            }
+      }
     >
       <div className="source-excerpt__head">
         <Heading level={4} data-size="2xs" className="source-excerpt__number">
@@ -146,6 +178,28 @@ export function SourceExcerpt({
               {page === undefined ? 'Les utdraget på Kudos' : `Les side ${page} på Kudos`}
               <span className="ds-sr-only"> (åpnes i ny fane)</span>
             </Link>
+          )}
+
+          {/* A button, not a link, although the brief calls it a link and it is
+              styled like one. It navigates nowhere: it moves focus back to an
+              element that has no id to point at, and the one fragment we could
+              build would be a real route change that remounts the chat slot
+              (see the comment on the marker in Markdown.tsx). A control that
+              acts on this page is a button, and the name says where it goes.
+
+              Last in the content, because that is where the reader is by the
+              time they want it — after the quote and after the Kudos link. */}
+          {onReturnToAnswer !== undefined && (
+            <Button
+              type="button"
+              variant="tertiary"
+              data-size="sm"
+              className="source-excerpt__back"
+              onClick={onReturnToAnswer}
+            >
+              <BackIcon aria-hidden />
+              Tilbake til svaret
+            </Button>
           )}
         </Details.Content>
       </Details>

@@ -9,6 +9,7 @@ import {
 import { facetsFor } from './corpus/facets';
 import { mockThreadDetail, mockThreadList, openMockThread, recordMockTurn } from './sessionThreads';
 import type { AskParams, ChatClient } from '../chatClient';
+import { citedNumbers, narrowToSelection, retrievalFor, withOnlyCitations } from './filtering';
 import {
   findThread,
   mockAnswerMarkdown,
@@ -167,6 +168,9 @@ function nextMessageId(): string {
  * thinking steps first and sources last, in the same order and shape the live
  * client will produce.
  *
+ * It honours the document filter, which the real backend does not yet. See
+ * filtering.ts for why that belongs here and not only in a test.
+ *
  * Cancellation surfaces as a final `error` event with code `aborted` rather
  * than a thrown exception, so a caller has one code path for «the answer
  * stopped» regardless of why.
@@ -235,13 +239,20 @@ export class MockChatClient implements ChatClient {
         return;
       }
 
+      // What the filter leaves to search in. The backend ignores the
+      // parameter today (API-bestilling A2), so this is the only place the
+      // control has an effect — and a filter with no effect is the thing
+      // reise 8 says a first-time user meets first. See filtering.ts.
+      const documents = narrowToSelection(nkomSources, params.filters);
+      const cited = citedNumbers(documents);
+
       for (const step of nkomThinkingSteps) {
         await wait(this.#delays.thinkingStepMs, signal);
         yield { type: 'thinking-step', step };
       }
 
       await wait(this.#delays.firstTokenMs, signal);
-      for (const text of tokenize(mockAnswerMarkdown)) {
+      for (const text of tokenize(withOnlyCitations(mockAnswerMarkdown, cited))) {
         await wait(this.#delays.tokenMs, signal);
         written += text;
         yield { type: 'token', text };
@@ -250,9 +261,9 @@ export class MockChatClient implements ChatClient {
       await wait(this.#delays.sourcesMs, signal);
       yield {
         type: 'sources',
-        documents: nkomSources,
-        citations: nkomCitations,
-        retrieval: nkomRetrieval,
+        documents,
+        citations: nkomCitations.filter((citation) => cited.has(citation.number)),
+        retrieval: retrievalFor(documents, nkomRetrieval),
       };
 
       const messageId = nextMessageId();

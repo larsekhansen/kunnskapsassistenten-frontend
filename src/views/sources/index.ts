@@ -8,6 +8,6 @@
  * function.
  */
 export { SourcesView } from './SourcesView';
-export type { SourcesViewProps } from './types';
+export type { AnswerSources, SourcesViewProps } from './types';
 export { documentDomId } from './ids';
 export { excerptDomId } from '../../model';
