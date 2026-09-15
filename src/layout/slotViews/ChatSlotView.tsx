@@ -8,6 +8,7 @@ import { ThreadContext } from '../threadContext';
 import { useAnswerSources } from '../useAnswerSources';
 import { useComposerPresence } from '../useComposerPresence';
 import { useNoAnswers } from '../useNoAnswers';
+import { useReportOpenThread } from '../useOpenThread';
 
 /**
  * Mounts the chat view in whichever slot holds it.
@@ -167,6 +168,23 @@ function ChatSlot({ threadId }: { threadId?: string }) {
     () => ({ thread: thread ?? started, startThread }),
     [thread, started, startThread],
   );
+
+  /**
+   * Tell the shell which conversation is on screen, so the thread list can
+   * mark its row.
+   *
+   * `thread ?? started` and not the route's id, and that is the whole point:
+   * a conversation the reader started here has an address written with
+   * `history.replaceState` (see `startThread`), which `NavLink` never sees.
+   * The row for the thread they had just made stayed unmarked until the next
+   * reload — measured by KA CC, and for a screen reader an open thread
+   * without `aria-current` is a thread that is not open.
+   *
+   * `missing` is the one case where the address names a thread and none is on
+   * screen. Marking a row for a thread that is not there would point the
+   * reader at the conversation they failed to open.
+   */
+  useReportOpenThread(missing ? undefined : (thread ?? started)?.id);
 
   return (
     <ThreadContext value={value}>

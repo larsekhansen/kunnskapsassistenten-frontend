@@ -6,9 +6,11 @@ import { ComposerContext } from './composerContext';
 import { COMPOSER_ID } from './ids';
 import { PanelSeparator } from './PanelSeparator';
 import { PanelWidthButtons } from './PanelWidthButtons';
+import { OpenThreadContext } from './openThreadContext';
 import { MainScrollContext } from './scrollContext';
 import { useAnswerSources } from './useAnswerSources';
 import { useNoAnswers } from './useNoAnswers';
+import { useOpenThreadRegistry } from './useOpenThread';
 import { useCitation } from './useCitation';
 import { useComposerRegistry } from './useComposerPresence';
 import { useLayout } from './useLayout';
@@ -75,6 +77,16 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
    */
   const composerPresence = useComposerRegistry();
 
+  /**
+   * Which conversation is on screen, for the thread list's `aria-current`.
+   *
+   * Held here for the same reason as the compose field above: the question is
+   * about what is on screen in THIS shell, and the two layout routes mount
+   * separate shells. See openThreadContext.ts for why the router cannot
+   * answer it.
+   */
+  const openThread = useOpenThreadRegistry();
+
   return (
     <MainScrollContext value={mainScroll}>
       <SkipLink href="#main-content">Hopp til hovedinnhold</SkipLink>
@@ -101,11 +113,12 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
       ) : null}
 
       <ComposerContext value={composerPresence}>
-        <div className="shell" style={layoutStyle(layout, viewport)}>
-          <Sidebar slot="primary-sidebar" element="nav" />
+        <OpenThreadContext value={openThread}>
+          <div className="shell" style={layoutStyle(layout, viewport)}>
+            <Sidebar slot="primary-sidebar" element="nav" />
 
-          <main id="main-content" className="main" ref={mainScroll}>
-            {/*
+            <main id="main-content" className="main" ref={mainScroll}>
+              {/*
               The route contributes the page's level 1 heading and nothing
               else; the view in the slot is what draws the content, looked up
               in viewComponents like every other slot. Chat used to BE the
@@ -118,12 +131,13 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
               thread list and the filter are still there to steer to somewhere
               that exists.
             */}
-            <Outlet />
-            {routeOwnsMain ? null : <MainSlot />}
-          </main>
+              <Outlet />
+              {routeOwnsMain ? null : <MainSlot />}
+            </main>
 
-          <Sidebar slot="secondary-sidebar" element="aside" />
-        </div>
+            <Sidebar slot="secondary-sidebar" element="aside" />
+          </div>
+        </OpenThreadContext>
       </ComposerContext>
     </MainScrollContext>
   );

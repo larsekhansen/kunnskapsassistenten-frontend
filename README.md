@@ -590,6 +590,16 @@ navigering: ingenting på skjermen skal flytte seg. Prisen er at React Router
 tror den står på `/` til neste ekte navigering — alle lenker i appen er
 absolutte, så ingenting løses opp mot den.
 
+**Derfor vet ikke ruteren hvilken samtale som er åpen, og skallet gjør det.**
+Trådlista merker den åpne raden med `aria-current="page"`, og det attributtet
+— ikke fargen — er det som sier til en skjermleser hvor leseren står. Det kom
+fra `NavLink`, som leser ruterens posisjon, og som derfor lot raden for tråden
+leseren nettopp lagde stå umerket til neste lasting (målt av KA CC). Nå melder
+`ChatSlotView` hvilken samtale som er på skjermen, skallet holder den, og lista
+leser den: `openThreadContext.ts`, samme mønster som den aktive kildehenvisningen
+og filteret. Begge veiene inn — en rad du klikker på og en tråd du nettopp lagde
+— går gjennom den samme mekanismen.
+
 **Tittelen er spørsmålet, til backend gir en ekte.** `Thread.title` er
 brukerens eget spørsmål, trimmet, og `titleFromQuestion` sier at det er et
 stedfortredertall. Trådlista bruker det som radtittel; samtalen skal **ikke**

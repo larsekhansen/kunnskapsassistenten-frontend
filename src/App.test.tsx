@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
@@ -149,6 +150,77 @@ describe('skillene som endrer panelbredde', () => {
     for (const separator of separators) {
       expect(separator.closest('nav, aside, main')).not.toBeNull();
     }
+  });
+});
+
+describe('den åpne tråden i lista', () => {
+  it('er merket med aria-current, og bare den', async () => {
+    // Hele kjeden: chat-viewet melder hvilken samtale som er på skjermen,
+    // skallet holder den, og trådlista merker raden. Veien gjennom ruta —
+    // den `NavLink` alt klarte — går nå den samme veien, så begge måtene å
+    // åpne en tråd på deler én mekanisme.
+    openAt('/threads/nkom-maaloppnaaelse');
+
+    act(() => screen.getByRole('button', { name: 'Tråder' }).click());
+
+    const row = await screen.findByRole('link', { name: 'NKOM måloppnåelse' }, { timeout: 3000 });
+    expect(row.getAttribute('aria-current')).toBe('page');
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+  });
+
+  it('merker ingen rad på en side uten samtale', async () => {
+    // «Siden finnes ikke» monterer ingen chat-view, så ingen samtale er åpen
+    // — og en merket rad ville pekt leseren på en samtale de ikke er i.
+    openAt('/tull');
+
+    act(() => screen.getByRole('button', { name: 'Tråder' }).click());
+
+    await screen.findByRole('link', { name: 'NKOM måloppnåelse' }, { timeout: 3000 });
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(0);
+  });
+
+  it('merker tråden leseren nettopp lagde, uten en reload', async () => {
+    // Selve feilen KA CC målte. Adressen til en samtale startet på «/»
+    // skrives med `history.replaceState`, som `NavLink` aldri så, så raden
+    // for tråden leseren nettopp lagde sto umerket til neste lasting. For en
+    // skjermleser er en åpen tråd uten `aria-current` en tråd som ikke er
+    // åpen.
+    //
+    // Svaret strømmer i flere sekunder etterpå, og ingenting her venter på
+    // det: `startThread` kjører idet spørsmålet sendes, og det er det som
+    // gir samtalen både adressen og raden.
+    openAt('/');
+
+    const field = screen.getByRole('textbox', { name: 'Spørsmål til Kunnskapsassistenten' });
+    fireEvent.change(field, { target: { value: 'Hva rapporterer Digdir om digitalisering?' } });
+    act(() => screen.getByRole('button', { name: 'Send spørsmålet' }).click());
+
+    // MemoryRouter leser ikke `window.history`, så adressen er det eneste
+    // stedet id-en finnes — som er hele grunnen til at lista ikke kunne
+    // spørre ruta om den.
+    const id = window.location.pathname.split('/').pop();
+    expect(id, 'samtalen skal ha fått en adresse').toBeTruthy();
+
+    act(() => screen.getByRole('button', { name: 'Tråder' }).click());
+
+    const row = await screen.findByRole(
+      'link',
+      { name: 'Hva rapporterer Digdir om digitalisering?' },
+      { timeout: 3000 },
+    );
+    expect(row.getAttribute('href')).toBe(`/threads/${id}`);
+    expect(row.getAttribute('aria-current')).toBe('page');
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+  });
+
+  it('merker ingen rad når adressen navngir en tråd som ikke finnes', async () => {
+    openAt('/threads/finnes-ikke');
+    await screen.findByRole('heading', { level: 2, name: 'Fant ikke tråden' });
+
+    act(() => screen.getByRole('button', { name: 'Tråder' }).click());
+
+    await screen.findByRole('link', { name: 'NKOM måloppnåelse' }, { timeout: 3000 });
+    await waitFor(() => expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(0));
   });
 });
 
