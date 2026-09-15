@@ -375,8 +375,8 @@ describe('ChatView', () => {
     expect(await screen.findByText('Hva sier rapporten?')).toBeTruthy();
   });
 
-  it('does not let a late thread overwrite a question already asked', async () => {
-    const { rerender } = render(
+  it('puts a late thread in front of a question already asked', async () => {
+    const { container, rerender } = render(
       <Shell>
         <ChatView client={clientYielding(answer)} />
       </Shell>,
@@ -391,10 +391,23 @@ describe('ChatView', () => {
       </Shell>,
     );
 
-    // The reader got in first. A thread landing afterwards is the address
-    // catching up, not a second conversation.
+    /*
+     * Both are real, and both stay. The reader's own turn is untouched — that
+     * was the whole point of adopting rather than remounting — and the stored
+     * conversation is laid in front of it, which is the order they happened
+     * in: it was there before the question that was asked while it loaded.
+     *
+     * It used to be dropped instead, and a reader who asked something before
+     * `getThread` answered never saw the conversation that was already at
+     * that address (KA CC on #66).
+     */
     expect(screen.getByText('Hva er måloppnåelse?')).toBeTruthy();
-    expect(screen.queryByText('Hva sier rapporten?')).toBeNull();
+    expect(screen.getByText('Hva sier rapporten?')).toBeTruthy();
+
+    const said = [...container.querySelectorAll('.ka-message')].map((message) =>
+      message.textContent?.includes('Hva sier rapporten?') ? 'lagret' : 'nytt',
+    );
+    expect(said[0]).toBe('lagret');
   });
 
   it('reports the sources again when something empties the shell', async () => {

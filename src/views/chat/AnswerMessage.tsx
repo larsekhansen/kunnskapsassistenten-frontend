@@ -5,6 +5,7 @@ import { Markdown } from '../../components';
 import { citationTargets, type Message } from '../../model';
 import { AnswerActions } from './AnswerActions';
 import { AnswerSearch } from './AnswerSearch';
+import { AnswerTime } from './AnswerTime';
 import { RetrievalPanel } from './RetrievalPanel';
 import { ThinkingPanel } from './ThinkingPanel';
 import { ABORTED_BEFORE_ANSWER, ABORTED_NOTE, CLOSING_QUESTION, REGENERATE } from './text';
@@ -215,6 +216,7 @@ export function AnswerMessage({
               <AnswerActions
                 canScrollToBottom={canScrollToBottom}
                 content={message.content}
+                createdAt={message.createdAt}
                 onScrollToBottom={onScrollToBottom}
                 onToggleSearch={() => {
                   if (searching) {
@@ -263,6 +265,11 @@ export function AnswerMessage({
                   <ArrowsCirclepathIcon aria-hidden />
                   {REGENERATE}
                 </Button>
+
+                {/* A stopped answer is still an answer the reader can refer
+                    back to, and it is in the thread with the same timestamp
+                    as any other. */}
+                <AnswerTime createdAt={message.createdAt} />
               </div>
             </Card.Block>
           ) : null}

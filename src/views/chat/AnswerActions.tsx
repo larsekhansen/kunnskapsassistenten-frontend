@@ -7,12 +7,15 @@ import {
 } from '@navikt/aksel-icons';
 import type { RefObject } from 'react';
 import type { SourceDocument } from '../../model';
+import { AnswerTime } from './AnswerTime';
 import { answerWithSources, copyReceipt, referenceList } from './answerText';
 import { useCopy } from './useCopy';
 
 type AnswerActionsProps = {
   /** The answer as markdown. */
   content: string;
+  /** When the answer came, ISO 8601. Drawn at the end of the row. */
+  createdAt: string;
   /**
    * The documents behind the answer. They become the reference list under the
    * copied text, and the `[n]` markers are kept so they point at something.
@@ -48,6 +51,7 @@ type AnswerActionsProps = {
  */
 export function AnswerActions({
   content,
+  createdAt,
   sources,
   onScrollToBottom,
   canScrollToBottom,
@@ -111,6 +115,14 @@ export function AnswerActions({
           Bla til nederst
         </Button>
       ) : null}
+
+      {/*
+        When the answer came, after the things a reader can do with it: the
+        row is what to do first, and when it was is a fact about it. Outside
+        every button, so it never joins one's accessible name — the same
+        reason the thread list keeps it beside the link rather than inside.
+      */}
+      <AnswerTime createdAt={createdAt} />
 
       <p aria-live="polite" className="ka-answer-actions__receipt">
         {receipt}

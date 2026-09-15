@@ -132,9 +132,22 @@ export function useChat(
    * (the remount fell in the middle of a test's keystrokes; two different
    * assertions, one cause). So the messages are adopted instead.
    *
-   * Only into an empty conversation. A reader who has already asked
-   * something at this address keeps what they asked: a thread arriving late
-   * must not overwrite a turn that is already under way.
+   * A reader who has already asked something at this address keeps what they
+   * asked. The stored conversation is laid in FRONT of it rather than instead
+   * of it: both are real, and the order is the one they happened in — the
+   * saved turns are older than the question asked while they loaded.
+   *
+   * It used to be dropped outright (`if (messages.length === 0)`), which is
+   * the hole KA CC found in #66: ask something on `/threads/:id` before
+   * `getThread` answers, and the conversation that was already there never
+   * arrived. Only the turn in flight was protected, and protecting it did not
+   * require throwing the rest away.
+   *
+   * By id, so nothing lands twice. The live turn and the stored one can be
+   * the same turn — the mock writes a finished answer into the store under
+   * the id it just streamed (`recordMockTurn`), so a thread that resolves
+   * after the answer settled carries it back. What is already on screen wins;
+   * only ids the conversation has not seen are prepended.
    *
    * Adjusted while rendering the change rather than in an effect, which is
    * React's own answer to «a prop changed and state has to follow»: an effect
@@ -152,7 +165,12 @@ export function useChat(
   const [adopted, setAdopted] = useState(threadSignature);
   if (threadSignature !== '' && threadSignature !== adopted) {
     setAdopted(threadSignature);
-    if (messages.length === 0) setMessages(initialMessages);
+    setMessages((current) => {
+      if (current.length === 0) return initialMessages;
+      const here = new Set(current.map((message) => message.id));
+      const stored = initialMessages.filter((message) => !here.has(message.id));
+      return stored.length === 0 ? current : [...stored, ...current];
+    });
   }
   const [appliedFilters, setAppliedFilters] = useState<Record<string, FilterSelection>>({});
   const [status, setStatus] = useState<ChatStatus>('idle');

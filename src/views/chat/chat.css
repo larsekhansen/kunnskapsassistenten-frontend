@@ -307,6 +307,24 @@
 }
 
 /*
+ * When the answer came, at the far end of the action row.
+ *
+ * `margin-inline-start: auto` rather than a fixed gap: the row holds between
+ * one and four buttons depending on what the answer is and where the reader
+ * has scrolled, so «after the last one» is not a distance this rule can know.
+ * It gives way when the row wraps, which is what it should do — the time is
+ * the least important thing in the row.
+ *
+ * Subtle and a step down in size, like the receipt under it: it is a fact
+ * about the answer, not something to do.
+ */
+.ka-answer-time {
+  margin-inline-start: auto;
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: var(--ds-font-size-minus-1);
+}
+
+/*
  * Always rendered, never hidden while empty. It is an aria-live region, and a
  * region that is `display: none` is not in the accessibility tree — the
  * region and its text would then appear in the same frame, which announces
