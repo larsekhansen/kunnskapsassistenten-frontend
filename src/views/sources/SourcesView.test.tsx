@@ -314,6 +314,53 @@ describe('SourcesView, the live region that says which answer', () => {
   });
 });
 
+describe('SourcesView, the panel head that stays put', () => {
+  function head(): HTMLElement | null {
+    return document.querySelector('.sources-head');
+  }
+
+  it('holds the answer selector and the search, so one box can be pinned', () => {
+    render(<Harness answers={[firstAnswer, secondAnswer]} />);
+
+    const box = head();
+    expect(box).toBeTruthy();
+    expect(box?.querySelector('.sources-answer-switcher')).toBeTruthy();
+    expect(box?.querySelector('.sources-search')).toBeTruthy();
+  });
+
+  it('leaves the Kudos line outside, where it scrolls with the excerpts', () => {
+    // Everything pinned is taken off the reading area for as long as the
+    // reader scrolls; this line never changes and says something about the
+    // excerpts below it.
+    render(<Harness answers={[firstAnswer, secondAnswer]} />);
+
+    const line = screen.getByText(/All tekst er sitater fra dokumentene fra Kudos/);
+    expect(line).toBeTruthy();
+    expect(head()?.contains(line)).toBe(false);
+  });
+
+  it('keeps the search field described by the line that moved', () => {
+    // `aria-describedby` resolves by id, not by position, and that is the only
+    // reason the line may sit somewhere else at all.
+    render(<Harness answers={[firstAnswer, secondAnswer]} />);
+
+    const field = screen.getByRole('searchbox');
+    const describedBy = field.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy as string)?.textContent).toMatch(
+      /All tekst er sitater/,
+    );
+  });
+
+  it('draws no head on a page with nothing to pin', () => {
+    // `:empty` hides it, so the border does not appear on the untouched front
+    // page. The box is still rendered, so it does not pop in and out.
+    render(<Harness answers={[]} />);
+
+    expect(head()?.children.length).toBe(0);
+  });
+});
+
 describe('SourcesView, empty states', () => {
   it('says a stopped answer was stopped', () => {
     render(<Harness answers={[{ messageId: 'svar-1', status: 'aborted', documents: [] }]} />);
