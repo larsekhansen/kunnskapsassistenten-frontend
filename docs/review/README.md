@@ -10,36 +10,38 @@ eier bare denne mappa.
 
 ## Rapporter
 
-| Fil                                                                                            | Hva                                                                                             |
-| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| [`main-2026-09-11.md`](main-2026-09-11.md)                                                     | Grunnlinje for skallet etter Trinn 1, og første måling av mørk modus                            |
-| [`feat-foundation-2026-09-11.md`](feat-foundation-2026-09-11.md)                               | PR #1, domenetyper og mock-klient                                                               |
-| [`feat-secondary-sidebar-2026-09-11.md`](feat-secondary-sidebar-2026-09-11.md)                 | PR #2, kildepanelet                                                                             |
-| [`main-2026-09-11-pr6.md`](main-2026-09-11-pr6.md)                                             | Etterrevisjon av PR #6 på `main`                                                                |
-| [`feat-primary-sidebar-2026-09-11.md`](feat-primary-sidebar-2026-09-11.md)                     | PR #3, navigasjonspanelet                                                                       |
-| [`feat-chat-2026-09-11.md`](feat-chat-2026-09-11.md)                                           | PR #5, chat-flyten i hovedkolonnen                                                              |
-| [`feat-secondary-sidebar-2026-09-11-runde-2.md`](feat-secondary-sidebar-2026-09-11-runde-2.md) | PR #2, etterrevisjon: de tre blokkerende er rettet                                              |
-| [`main-2026-09-11-pr8.md`](main-2026-09-11-pr8.md)                                             | Etterrevisjon av PR #8 på `main`, den ekte klienten                                             |
-| [`runde-2-pr3-pr5-2026-09-11.md`](runde-2-pr3-pr5-2026-09-11.md)                               | Etterrevisjon av PR #3 og PR #5: alle blokkerende rettet                                        |
-| [`funksjonssjekk.md`](funksjonssjekk.md)                                                       | Hva e2e-testene dekker, hva som er merget men udekket                                           |
-| [`visuell-2026-09-11.md`](visuell-2026-09-11.md)                                               | Visuell gjennomgang mot Figma, alle fire views i lys og mørk                                    |
-| [`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md)                                           | E2E-spec for layoutbeslutningen for V1, og hullet i regnestykket ved 1280                       |
-| [`feat-foundation-2026-09-14.md`](feat-foundation-2026-09-14.md)                               | PR #14, layout V1: garantien holder, men regel B mister tastaturet                              |
-| [`brukerblikk-2026-09-15.md`](brukerblikk-2026-09-15.md)                                       | Brukerblikk: 17 ting som ser rart ut, ingen av dem fanget av axe eller e2e                      |
-| [`e2e-runde2-2026-09-15.md`](e2e-runde2-2026-09-15.md)                                         | E2E-bølge 2, og to sømfunn: død trådlenke og fasettellere som aldri spørres om                  |
-| [`main-2026-09-15-tapt-pr22.md`](main-2026-09-15-tapt-pr22.md)                                 | PR #22 er merget, men innholdet er ikke på main                                                 |
-| [`feat-foundation-2026-09-15-rail.md`](feat-foundation-2026-09-15-rail.md)                     | PR #20, railen på 67 px                                                                         |
-| [`feat-chat-brukerblikk-2026-09-15.md`](feat-chat-brukerblikk-2026-09-15.md)                   | PR #23, brukerblikk-funn 5, 6, 9 og 10 i hovedkolonnen                                          |
-| [`feat-thread-url-2026-09-15.md`](feat-thread-url-2026-09-15.md)                               | PR #25, tråd-URL og needs-clarification: plumbing uten kaller                                   |
-| [`feat-secondary-sidebar-2026-09-15.md`](feat-secondary-sidebar-2026-09-15.md)                 | PR #24, kildepanelet på 336 px: utdragsteksten fra 174 til 246 px                               |
-| [`feat-sources-auto-open-2026-09-15.md`](feat-sources-auto-open-2026-09-15.md)                 | PR #30, auto-åpning med plass-regel, badge i navnet, settle() i axe                             |
-| [`feat-panel-scroll-2026-09-15.md`](feat-panel-scroll-2026-09-15.md)                           | PR #31, sticky panelhode, kant over 3:1, kildepanelet på midtens grunn                          |
-| [`brukerblikk-2-2026-09-15.md`](brukerblikk-2-2026-09-15.md)                                   | Brukerblikk runde 2 etter bølgen 15.09: sju funn, og åtte punkter som er lukket                 |
-| [`brukerblikk-3-2026-09-16.md`](brukerblikk-3-2026-09-16.md)                                   | Brukerblikk runde 3 etter nattbølgen: ni funn, og alle sju fra runde 2 målt på nytt             |
-| [`fix-threads-title-clamp-2026-09-16.md`](fix-threads-title-clamp-2026-09-16.md)               | PR #80, trådtittelen stopper etter to linjer: målingen kjøres ikke på nytt når vekta endrer seg |
-| [`fix-chat-blikk3-2026-09-16.md`](fix-chat-blikk3-2026-09-16.md)                               | PR #82, søkestripa inn i view-hodet: runde 3 funn 1, 3 og 6 lukket                              |
-| [`fix-view-head-padding-2026-09-16.md`](fix-view-head-padding-2026-09-16.md)                   | PR #83, hodet fester seg på 0: 32 px-båndet over stripa er borte                                |
-| [`fix-mock-error-thinking-step-2026-09-16.md`](fix-mock-error-thinking-step-2026-09-16.md)     | PR #81, feilstien tenker på spørsmålet som ble stilt: runde 3 funn 4 lukket                     |
+| Fil                                                                                            | Hva                                                                                                    |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| [`main-2026-09-11.md`](main-2026-09-11.md)                                                     | Grunnlinje for skallet etter Trinn 1, og første måling av mørk modus                                   |
+| [`feat-foundation-2026-09-11.md`](feat-foundation-2026-09-11.md)                               | PR #1, domenetyper og mock-klient                                                                      |
+| [`feat-secondary-sidebar-2026-09-11.md`](feat-secondary-sidebar-2026-09-11.md)                 | PR #2, kildepanelet                                                                                    |
+| [`main-2026-09-11-pr6.md`](main-2026-09-11-pr6.md)                                             | Etterrevisjon av PR #6 på `main`                                                                       |
+| [`feat-primary-sidebar-2026-09-11.md`](feat-primary-sidebar-2026-09-11.md)                     | PR #3, navigasjonspanelet                                                                              |
+| [`feat-chat-2026-09-11.md`](feat-chat-2026-09-11.md)                                           | PR #5, chat-flyten i hovedkolonnen                                                                     |
+| [`feat-secondary-sidebar-2026-09-11-runde-2.md`](feat-secondary-sidebar-2026-09-11-runde-2.md) | PR #2, etterrevisjon: de tre blokkerende er rettet                                                     |
+| [`main-2026-09-11-pr8.md`](main-2026-09-11-pr8.md)                                             | Etterrevisjon av PR #8 på `main`, den ekte klienten                                                    |
+| [`runde-2-pr3-pr5-2026-09-11.md`](runde-2-pr3-pr5-2026-09-11.md)                               | Etterrevisjon av PR #3 og PR #5: alle blokkerende rettet                                               |
+| [`funksjonssjekk.md`](funksjonssjekk.md)                                                       | Hva e2e-testene dekker, hva som er merget men udekket                                                  |
+| [`visuell-2026-09-11.md`](visuell-2026-09-11.md)                                               | Visuell gjennomgang mot Figma, alle fire views i lys og mørk                                           |
+| [`layout-v1-2026-09-14.md`](layout-v1-2026-09-14.md)                                           | E2E-spec for layoutbeslutningen for V1, og hullet i regnestykket ved 1280                              |
+| [`feat-foundation-2026-09-14.md`](feat-foundation-2026-09-14.md)                               | PR #14, layout V1: garantien holder, men regel B mister tastaturet                                     |
+| [`brukerblikk-2026-09-15.md`](brukerblikk-2026-09-15.md)                                       | Brukerblikk: 17 ting som ser rart ut, ingen av dem fanget av axe eller e2e                             |
+| [`e2e-runde2-2026-09-15.md`](e2e-runde2-2026-09-15.md)                                         | E2E-bølge 2, og to sømfunn: død trådlenke og fasettellere som aldri spørres om                         |
+| [`main-2026-09-15-tapt-pr22.md`](main-2026-09-15-tapt-pr22.md)                                 | PR #22 er merget, men innholdet er ikke på main                                                        |
+| [`feat-foundation-2026-09-15-rail.md`](feat-foundation-2026-09-15-rail.md)                     | PR #20, railen på 67 px                                                                                |
+| [`feat-chat-brukerblikk-2026-09-15.md`](feat-chat-brukerblikk-2026-09-15.md)                   | PR #23, brukerblikk-funn 5, 6, 9 og 10 i hovedkolonnen                                                 |
+| [`feat-thread-url-2026-09-15.md`](feat-thread-url-2026-09-15.md)                               | PR #25, tråd-URL og needs-clarification: plumbing uten kaller                                          |
+| [`feat-secondary-sidebar-2026-09-15.md`](feat-secondary-sidebar-2026-09-15.md)                 | PR #24, kildepanelet på 336 px: utdragsteksten fra 174 til 246 px                                      |
+| [`feat-sources-auto-open-2026-09-15.md`](feat-sources-auto-open-2026-09-15.md)                 | PR #30, auto-åpning med plass-regel, badge i navnet, settle() i axe                                    |
+| [`feat-panel-scroll-2026-09-15.md`](feat-panel-scroll-2026-09-15.md)                           | PR #31, sticky panelhode, kant over 3:1, kildepanelet på midtens grunn                                 |
+| [`brukerblikk-2-2026-09-15.md`](brukerblikk-2-2026-09-15.md)                                   | Brukerblikk runde 2 etter bølgen 15.09: sju funn, og åtte punkter som er lukket                        |
+| [`brukerblikk-3-2026-09-16.md`](brukerblikk-3-2026-09-16.md)                                   | Brukerblikk runde 3 etter nattbølgen: ni funn, og alle sju fra runde 2 målt på nytt                    |
+| [`fix-threads-title-clamp-2026-09-16.md`](fix-threads-title-clamp-2026-09-16.md)               | PR #80, trådtittelen stopper etter to linjer: målingen kjøres ikke på nytt når vekta endrer seg        |
+| [`fix-chat-blikk3-2026-09-16.md`](fix-chat-blikk3-2026-09-16.md)                               | PR #82, søkestripa inn i view-hodet: runde 3 funn 1, 3 og 6 lukket                                     |
+| [`fix-view-head-padding-2026-09-16.md`](fix-view-head-padding-2026-09-16.md)                   | PR #83, hodet fester seg på 0: 32 px-båndet over stripa er borte                                       |
+| [`fix-mock-error-thinking-step-2026-09-16.md`](fix-mock-error-thinking-step-2026-09-16.md)     | PR #81, feilstien tenker på spørsmålet som ble stilt: runde 3 funn 4 lukket                            |
+| [`feat-live-conversations-2026-09-16.md`](feat-live-conversations-2026-09-16.md)               | PR #84, trådliste og lagring i live: løkka målt mot kjørende stack, og tomtilstanden som ikke er nåbar |
+| [`chore-tenkesteg-kan-2026-09-16.md`](chore-tenkesteg-kan-2026-09-16.md)                       | PR #86, de to «kan» fra #81 tatt: kommentaren myknet, pushene testet                                   |
 
 ## Sånn går en review
 
