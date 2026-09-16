@@ -89,8 +89,30 @@
  * is what says it, so this rule no longer overrides either. Only the box is
  * ours: the padding and the radius that give the row a surface to sit on.
  */
+/*
+ * Two lines, and an ellipsis after them.
+ *
+ * `Thread.title` is the reader's own question until a backend writes titles,
+ * so the thread they just started was the one row in the panel that was raw
+ * question text — three lines against one for «NKOM måloppnåelse»
+ * (brukerblikk runde 3, funn 5). The whole title stays in the DOM and is read
+ * by a screen reader; ThreadLink.tsx puts it in a tooltip for the rows where
+ * something is actually hidden.
+ *
+ * The `-webkit-` properties are not a vendor prefix to clean up later: they
+ * are how line clamping is spelled in every browser that ships it, including
+ * Firefox and Safari. The unprefixed `line-clamp` is written beside them for
+ * the day that changes; it is ignored where it is not understood.
+ *
+ * `overflow: hidden` clips the children, never the element's own outline, so
+ * the focus ring around the row is untouched.
+ */
 .threads-view__thread {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
   padding: var(--ds-size-1) var(--ds-size-2);
   border-radius: var(--ds-border-radius-md);
 }
