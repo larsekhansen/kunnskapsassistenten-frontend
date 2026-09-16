@@ -77,10 +77,15 @@ function errorFromStatus(status: number): ChatError {
  * response even if it had the key. The Vite dev server is that proxy here;
  * production needs a real one. See design/eksisterende/api-for-frontend.md.
  *
- * `listThreads`, `getThread` and `listFacets` return nothing on purpose: the
- * backend has neither thread history a frontend can read back nor facet
- * counts. Both are marked at the type that needs them. Mock mode has the
- * data, live mode says the truth.
+ * `listThreads` and `getThread` read the conversation store; see
+ * conversations.ts for what the backend keeps and what it drops. They used to
+ * return nothing, on the belief that a conversation could not be read back at
+ * all — it can, once the conversation is created with an owner this reader
+ * can be listed by.
+ *
+ * `listFacets` still returns nothing on purpose: the backend filters by whole
+ * dataset, so there are no counts to give (API-bestilling A2). Mock mode has
+ * the data, live mode says the truth.
  */
 export class LiveChatClient implements ChatClient {
   readonly #basePath: string;

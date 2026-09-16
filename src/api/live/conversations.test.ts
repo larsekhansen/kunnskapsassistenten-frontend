@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   agentIdFromToolName,
+  citationCountIn,
   messagesFromApi,
   sourcesFromChunks,
   threadDetailFrom,
@@ -12,8 +13,11 @@ import {
 /**
  * A real response, recorded off the running stack on 2026-09-16.
  *
- * `GET /api/conversations/:id` after one live turn against `norquad-docs`,
- * with the answer trimmed for length. Recorded rather than invented, because
+ * `GET /api/conversations/:id` after one live turn against `norquad-docs`.
+ * The answer is kept whole, and that is not laziness: it was trimmed at first,
+ * and the trim cut away three of its four `[n]` markers — the very thing the
+ * count below is about. A fixture shortened past the property under test
+ * measures nothing. Recorded rather than invented, because
  * every surprise in it is a thing the mapping has to survive and none of them
  * were in the route's name: the system prompt stored as a message, `created`
  * as epoch milliseconds, and — the one that decides what the sources panel
@@ -49,7 +53,7 @@ const RECORDED = {
     },
     {
       id: 'J6R-1phfYTQ0-kKZkyveD',
-      text: 'Norge er blant annet kjent for:\n\n- En lang kyst mot Nordsjøen, Norskehavet og Barentshavet, samt store fiskefelter og petroleumsforekomster på kontinentalsokkelen. [2]  \n- Olje- og […]',
+      text: 'Norge er blant annet kjent for:\n\n- En lang kyst mot Nordsjøen, Norskehavet og Barentshavet, samt store fiskefelter og petroleumsforekomster på kontinentalsokkelen. [2]  \n- Olje- og gassvirksomhet i Nordsjøen, særlig etter funnet av Ekofiskfeltet i 1969. Gassproduksjonen har økt, mens oljeproduksjonen nådde toppen i 2000 og deretter har hatt en nedadgående trend. [3]  \n- Vannkraft og et deregulert kraftmarked, med handel gjennom den nordiske kraftbørsen Nord Pool. [4]  \n- Store verneområder: 17 % av hovedlandets areal og 65 % av Svalbard var vernet, ifølge tall fra 2018. [2]  \n- Et langt og smalt hovedland på Den skandinaviske halvøya, med grense mot Sverige, Finland og Russland. [2]  \n- Et navn med gammel historie: «Norge» kan trolig rekonstrueres som *Norðrvegr*, «veien mot nord», og var opprinnelig navn på skipsleia langs vestkysten. [1]',
       role: 'assistant',
       created: 1789543570840,
       tags: [],
@@ -124,10 +128,54 @@ describe('messagesFromApi', () => {
     expect(Date.parse(answer!.createdAt)).not.toBeNaN();
   });
 
+  it('gir svaret et markørtall og spørsmålet ingen', () => {
+    // Bare et svar siterer. Et spørsmål med klammer i er et spørsmål med
+    // klammer i.
+    const [question, answer] = messagesFromApi(RECORDED.messages);
+
+    expect(answer?.citationCount).toBe(4);
+    expect(question?.citationCount).toBeUndefined();
+    // Og siteringene er tomme, fordi ingen utdrag ble lagret. Det er nettopp
+    // de to som kommer fra hverandre her.
+    expect(answer?.citations).toEqual([]);
+  });
+
   it('dropper en tur uten tekst', () => {
     // En tur som feilet lar en tom melding ligge igjen, og en tom boble midt
     // i en samtale leses som en tegnefeil.
     expect(messagesFromApi([{ id: 'a', role: 'assistant', text: '   ' }])).toHaveLength(0);
+  });
+});
+
+describe('citationCountIn', () => {
+  it('teller ingen markører i en tekst uten', () => {
+    expect(citationCountIn('Norge er kjent for fjell og fisk.')).toBe(0);
+    expect(citationCountIn('')).toBe(0);
+    expect(citationCountIn(null)).toBe(0);
+  });
+
+  it('teller én', () => {
+    expect(citationCountIn('Nkom rapporterer kvartalsvis [1].')).toBe(1);
+  });
+
+  it('teller flere, også flersifrede', () => {
+    expect(citationCountIn('Ett [1], to [2], tolv [12].')).toBe(3);
+  });
+
+  it('teller den samme markøren én gang', () => {
+    /*
+     * Tallet er «hvor mange kilder peker svaret på», ikke «hvor mange ganger
+     * peker det». Det opptakede svaret skriver [2] to ganger, og det er
+     * fortsatt én kilde.
+     */
+    expect(citationCountIn('Kysten [2]. Verneområdene [2]. Navnet [1].')).toBe(2);
+  });
+
+  it('teller markørene i det ekte svaret', () => {
+    const answer = RECORDED.messages.find((message) => message.role === 'assistant');
+    // Fire distinkte markører i en tekst uten ett eneste lagret utdrag. Det er
+    // hele grunnen til at tomtilstanden måtte skrives om.
+    expect(citationCountIn(answer?.text)).toBe(4);
   });
 });
 

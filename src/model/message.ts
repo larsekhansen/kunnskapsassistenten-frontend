@@ -38,6 +38,21 @@ export interface Message {
    */
   citations: Citation[];
   /**
+   * How many DISTINCT `[n]` the answer's own text carries, resolved or not.
+   *
+   * `citations` above is what could be resolved against excerpts, and the two
+   * come apart exactly where it matters: a conversation restored from the
+   * live backend has the answer text with `[1][2][3][4]` in it and no chunks
+   * behind them, so `citations` is empty while the reader can plainly see
+   * four markers. Without this the sources panel says «Svaret viser ikke til
+   * noen utdrag» beside an answer that does. See `AnswerSources.citationCount`
+   * and `emptyStateFor`.
+   *
+   * Optional, because only a turn read back from a store has to count: a turn
+   * watched live resolves its markers as they arrive.
+   */
+  citationCount?: number;
+  /**
    * Sources behind this answer, grouped per document (answer 57). Arrives at
    * the end of the stream, so it is absent while the answer is streaming.
    */

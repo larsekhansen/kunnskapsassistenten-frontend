@@ -180,6 +180,23 @@ function citationsFromSources(documents: SourceDocument[] | undefined): Citation
 }
 
 /**
+ * How many distinct `[n]` an answer's text carries.
+ *
+ * Distinct, because the number is «how many sources does this answer point
+ * at», not «how many times does it point». The recorded answer writes `[2]`
+ * twice, and it is still one source.
+ *
+ * Counted off the text rather than taken from the store, because the store is
+ * exactly what is missing: the backend keeps the answer and not the chunks
+ * behind it, so this is the only place left that knows the markers were ever
+ * there.
+ */
+export function citationCountIn(text: string | null | undefined): number {
+  const numbers = new Set((text ?? '').match(/\[\d+\]/g) ?? []);
+  return numbers.size;
+}
+
+/**
  * The stored messages as turns.
  *
  * `system` is dropped: the stack writes «You are a helpful assistant.» as the
@@ -196,12 +213,16 @@ export function messagesFromApi(messages: ApiMessage[] | null | undefined): Mess
     .filter((message) => (message.text ?? '').trim() !== '')
     .map((message) => {
       const sources = sourcesFromChunks(message.chunks);
+      const role = message.role === 'user' ? ('user' as const) : ('assistant' as const);
       return {
         id: message.id,
-        role: message.role === 'user' ? ('user' as const) : ('assistant' as const),
+        role,
         content: message.text ?? '',
         createdAt: isoFrom(message.created, new Date(0).toISOString()),
         citations: citationsFromSources(sources),
+        // Only an answer cites. A question with brackets in it is a question
+        // with brackets in it.
+        ...(role === 'assistant' ? { citationCount: citationCountIn(message.text) } : {}),
         ...(sources ? { sources } : {}),
         status: 'complete' as const,
       };
