@@ -6,6 +6,7 @@ import {
   type StreamEvent,
   type Thread,
   type ThreadDetail,
+  type ThinkingStep,
 } from '../../model';
 import { facetsFor } from './corpus/facets';
 import { citationsFor, scriptedFor } from './conversations';
@@ -218,6 +219,27 @@ export class MockChatClient implements ChatClient {
     // What has actually been said, so a turn the reader stopped can be
     // remembered as the half-answer it is rather than dropped.
     let written = '';
+
+    /*
+     * The steps that have actually gone out, and the wait up to the first
+     * word. Both live out here rather than inside the `try`, because the
+     * `catch` is where a stopped turn is written down and it needs them.
+     *
+     * A turn stopped during «Tenker …» came back from a reload without its
+     * thinking panel: the card said it had been stopped and offered to run
+     * again, but the part that said how long it had taken and how far it got
+     * was gone. That is the part the reader who stopped BECAUSE it was slow
+     * was looking at (brukerblikk 3, funn 6).
+     *
+     * `thoughtAtFirstToken` is set where the first word goes out and nowhere
+     * else, so it exists for exactly the turns whose live copy has it. Giving
+     * a stopped-before-the-first-word turn a measured number here would make
+     * the store say something the screen does not — «Tenkte i 6 sekunder»
+     * before a reload and a different number after, which is runde 2 punkt 5
+     * all over again.
+     */
+    const stepsSent: ThinkingStep[] = [];
+    let thoughtAtFirstToken: { thoughtMs: number } | undefined;
     /*
      * The clock over the thinking, so the turn written into `sessionStorage`
      * carries the wait the reader actually sat through. Without it a reloaded
@@ -239,6 +261,7 @@ export class MockChatClient implements ChatClient {
         // first, and the thinking panel is what says so.
         await wait(this.#delays.thinkingStepMs, signal);
         thinkingStartedAt = Date.now();
+        stepsSent.push(nkomThinkingSteps[0]!);
         yield { type: 'thinking-step', step: nkomThinkingSteps[0]! };
         await wait(this.#delays.firstTokenMs, signal);
         // No `message`: the whole point is that the text comes from the code,
@@ -254,6 +277,7 @@ export class MockChatClient implements ChatClient {
         // with sources behind it would be a different thing entirely.
         await wait(this.#delays.thinkingStepMs, signal);
         thinkingStartedAt = Date.now();
+        stepsSent.push(nkomThinkingSteps[0]!);
         yield { type: 'thinking-step', step: nkomThinkingSteps[0]! };
 
         await wait(this.#delays.firstTokenMs, signal);
@@ -319,6 +343,7 @@ export class MockChatClient implements ChatClient {
       for (const step of steps) {
         await wait(this.#delays.thinkingStepMs, signal);
         thinkingStartedAt ??= Date.now();
+        stepsSent.push(step);
         yield { type: 'thinking-step', step };
       }
 
@@ -332,6 +357,7 @@ export class MockChatClient implements ChatClient {
 
       await wait(this.#delays.firstTokenMs, signal);
       const thought = thoughtMs();
+      thoughtAtFirstToken = thought;
       for (const text of tokenize(
         withOnlyCitations(scripted?.answer ?? mockAnswerMarkdown, cited),
       )) {
@@ -439,6 +465,12 @@ export class MockChatClient implements ChatClient {
             content: written,
             citations: [],
             createdAt: stoppedAt,
+            // What the agent had done by the time it was stopped, so the
+            // restored card carries the same «Tenkte i N sekunder» it did a
+            // moment before. Empty when nothing had gone out yet, and then
+            // there is no panel to draw either way.
+            ...(stepsSent.length > 0 ? { thinkingSteps: [...stepsSent] } : {}),
+            ...(thoughtAtFirstToken ?? {}),
             status: 'aborted',
           },
         });

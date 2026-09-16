@@ -342,9 +342,25 @@
  * row, in the same Card.Block, so it reads as belonging to the answer above
  * rather than to the conversation.
  */
+/*
+ * The strip lives in the shell's view-head now, pinned to the top of the
+ * answer column (brukerblikk 3, funn 1). `.view-head` brings the surface, the
+ * rule under it and the padding, so there is no margin to add here — one at
+ * the top would push the strip off the line the head draws.
+ */
 .ka-answer-search {
   display: block;
-  margin-block-start: var(--ds-size-2);
+}
+
+/*
+ * «Søk i svar 2 av 3». Visible, because the strip is no longer inside the
+ * answer it searches, and at the start of the row rather than on a line of
+ * its own: everything pinned here is taken off the reading area for as long
+ * as the reader scrolls.
+ */
+.ka-answer-search__label {
+  flex: 0 0 auto;
+  color: var(--ds-color-neutral-text-subtle);
 }
 
 .ka-answer-search__form {

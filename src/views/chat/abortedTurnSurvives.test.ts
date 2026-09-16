@@ -200,4 +200,58 @@ describe('en stoppet tur overlever en oppfriskning', () => {
     expect(result.current.messages).toHaveLength(4);
     expect(result.current.messages.at(-1)?.status).toBe('streaming');
   });
+  it('tar tenkepanelet med seg gjennom oppfriskningen', async () => {
+    /*
+     * Brukerblikk 3, funn 6. Turen overlevde, tidsstemplet også, men
+     * tenkepanelet var borte: «Tenkte i 6 sekunder» før, ingenting etter.
+     * Det er nettopp den delen leseren som stoppet FORDI det tok tid satt og
+     * så på.
+     */
+    client.openThread(nkom);
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send(SPOERSMAAL));
+    // Vent til minst ett tenkesteg har kommet, ellers er det ingenting å ta
+    // vare på.
+    await waitFor(
+      () => expect(answers(result.current.messages)[0]?.thinkingSteps?.length).toBeGreaterThan(0),
+      { timeout: 5000 },
+    );
+
+    act(() => result.current.cancel());
+    await waitFor(() => expect(result.current.status).toBe('idle'), { timeout: 5000 });
+
+    const paaSkjermen = answers(result.current.messages).at(-1);
+    const lagret = (await lastTurnAfterReload())[1];
+
+    // Samme steg, i samme rekkefølge: panelet tegner det samme begge steder.
+    expect(lagret.thinkingSteps?.map((step) => step.id)).toEqual(
+      paaSkjermen?.thinkingSteps?.map((step) => step.id),
+    );
+    expect(lagret.thinkingSteps?.length).toBeGreaterThan(0);
+  });
+
+  it('gir ikke den stoppede turen en måling skjermen ikke har', async () => {
+    /*
+     * Runde 2 punkt 5 igjen, i en ny form. Stoppet før første ord har den
+     * levende turen ingen `thoughtMs` — panelet faller tilbake på summen av
+     * stegenes egne varigheter. Skrev lageret inn en målt tid her, ville
+     * samme tur sagt to forskjellige tall før og etter en oppfriskning.
+     */
+    client.openThread(nkom);
+    const { result } = renderHook(() => useChat(client));
+
+    act(() => result.current.send(SPOERSMAAL));
+    await waitFor(() => expect(result.current.status).toBe('pending'));
+    expect(answers(result.current.messages)[0]?.content).toBe('');
+
+    act(() => result.current.cancel());
+    await waitFor(() => expect(result.current.status).toBe('idle'), { timeout: 5000 });
+
+    const paaSkjermen = answers(result.current.messages).at(-1);
+    const lagret = (await lastTurnAfterReload())[1];
+
+    expect(paaSkjermen?.thoughtMs).toBeUndefined();
+    expect(lagret.thoughtMs).toBeUndefined();
+  });
 });

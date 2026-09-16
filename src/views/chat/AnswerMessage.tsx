@@ -1,7 +1,8 @@
 import { Button, Card, Paragraph, Skeleton, Spinner } from '@digdir/designsystemet-react';
 import { ArrowsCirclepathIcon } from '@navikt/aksel-icons';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Markdown } from '../../components';
+import { ViewHead } from '../../layout/ViewHead';
 import { citationTargets, type Message } from '../../model';
 import { AnswerActions } from './AnswerActions';
 import { AnswerSearch } from './AnswerSearch';
@@ -19,6 +20,23 @@ type AnswerMessageProps = {
   canScrollToBottom: boolean;
   /** Ask the stopped question again, in place of the answer that was cut off. */
   onRegenerate: () => void;
+  /**
+   * Whether the search strip belongs to THIS answer right now.
+   *
+   * Held by the list rather than by each answer, because the strip is drawn
+   * in the shell's view-head and there is one of those per region. Two
+   * answers searching at once would be two heads in one place; see
+   * `MessageList`.
+   */
+  searchOpen: boolean;
+  /** What is typed in the strip. One strip, one query. */
+  searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
+  /** Open the search on this answer, or close it if it is already here. */
+  onToggleSearch: () => void;
+  onCloseSearch: () => void;
+  /** «Søk i svar 2 av 3» — which answer the pinned strip is searching. */
+  searchLabel: string;
   /** «Avgrenset til …» over the answer. Absent means the whole corpus. */
   narrowedTo?: string;
   /**
@@ -79,6 +97,12 @@ export function AnswerMessage({
   onScrollToBottom,
   canScrollToBottom,
   onRegenerate,
+  searchOpen,
+  searchQuery,
+  onSearchQueryChange,
+  onToggleSearch,
+  onCloseSearch,
+  searchLabel,
   narrowedTo,
   foundNothing,
 }: AnswerMessageProps) {
@@ -92,8 +116,8 @@ export function AnswerMessage({
   // again (#4, funn A).
   const showCard = !empty || streaming || aborted;
 
-  const [searching, setSearching] = useState(false);
-  const [query, setQuery] = useState('');
+  const searching = searchOpen;
+  const query = searchQuery;
   const answerRef = useRef<HTMLDivElement>(null);
   const searchFieldRef = useRef<HTMLInputElement>(null);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
@@ -107,13 +131,42 @@ export function AnswerMessage({
    * document, a whole page from the answer they were reading (WCAG 2.4.3).
    */
   function closeSearch() {
-    setSearching(false);
-    setQuery('');
+    onCloseSearch();
     searchToggleRef.current?.focus();
   }
 
   return (
     <li className="ka-message ka-message--assistant">
+      {/*
+        The search strip, pinned to the top of the answer column.
+
+        It used to sit at the bottom of this card, and the card scrolls: one
+        «Neste treff» and the strip was under the sticky compose field, so the
+        reader was typing in a field they could not see and the hit counter —
+        the whole point of having a counter — stood behind the composer's
+        buttons (brukerblikk 3, funn 1). The shell owns a place at the top of
+        the region for exactly this; see layout/viewHeadContext.ts, which
+        names this case.
+
+        Written first in the view on purpose. React sends events through the
+        portal along the React tree while the browser tabs the DOM, so a head
+        written first and drawn first is in the same place both ways round.
+      */}
+      {searching ? (
+        <ViewHead>
+          <AnswerSearch
+            currentHitIndex={currentIndex}
+            fieldRef={searchFieldRef}
+            hitCount={hitCount}
+            label={searchLabel}
+            onClose={closeSearch}
+            onQueryChange={onSearchQueryChange}
+            onStep={step}
+            query={query}
+          />
+        </ViewHead>
+      ) : null}
+
       <span className="ds-sr-only">Kunnskapsassistenten svarte:</span>
 
       {/*
@@ -223,28 +276,15 @@ export function AnswerMessage({
                     closeSearch();
                     return;
                   }
-                  setSearching(true);
-                  // The strip is not in the page yet, so the focus goes in the
-                  // effect the next render runs — see `AnswerSearch`'s field
-                  // ref below.
+                  onToggleSearch();
+                  // The strip is not in the page yet, so the focus goes on the
+                  // next render.
                   queueMicrotask(() => searchFieldRef.current?.focus());
                 }}
                 searchOpen={searching}
                 searchToggleRef={searchToggleRef}
                 sources={message.sources}
               />
-
-              {searching ? (
-                <AnswerSearch
-                  currentHitIndex={currentIndex}
-                  fieldRef={searchFieldRef}
-                  hitCount={hitCount}
-                  onClose={closeSearch}
-                  onQueryChange={setQuery}
-                  onStep={step}
-                  query={query}
-                />
-              ) : null}
             </Card.Block>
           ) : null}
 

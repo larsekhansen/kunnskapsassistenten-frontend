@@ -7,6 +7,16 @@ import { MessageList } from './MessageList';
 
 /** A Tuesday at 14:00, so «i går» and the weekday cases are not the same day. */
 const NOW = new Date(2026, 8, 15, 14, 0, 0);
+/** Søket eies av `MessageList`; disse testene handler om noe annet. */
+const utenSok = {
+  searchOpen: false,
+  searchQuery: '',
+  onSearchQueryChange: () => {},
+  onToggleSearch: () => {},
+  onCloseSearch: () => {},
+  searchLabel: 'Søk i svaret',
+};
+
 const at = (...args: [number, number, number, number?, number?]) => new Date(...args).toISOString();
 
 beforeEach(() => {
@@ -76,6 +86,7 @@ describe('AnswerTime', () => {
     render(
       <ol>
         <AnswerMessage
+          {...utenSok}
           canScrollToBottom={false}
           message={answer}
           onRegenerate={() => {}}
@@ -107,6 +118,7 @@ describe('AnswerTime', () => {
     const { container } = render(
       <ol>
         <AnswerMessage
+          {...utenSok}
           canScrollToBottom={true}
           message={answer}
           onRegenerate={() => {}}
@@ -140,6 +152,7 @@ describe('AnswerTime', () => {
     const { container } = render(
       <ol>
         <AnswerMessage
+          {...utenSok}
           canScrollToBottom={false}
           message={answer}
           onRegenerate={() => {}}
@@ -180,6 +193,7 @@ describe('AnswerTime', () => {
             <li key={message.id}>{message.content}</li>
           ) : (
             <AnswerMessage
+              {...utenSok}
               canScrollToBottom={false}
               key={message.id}
               message={message}
@@ -300,6 +314,7 @@ describe('AnswerTime', () => {
     const { container } = render(
       <ol>
         <AnswerMessage
+          {...utenSok}
           canScrollToBottom={false}
           message={underveis}
           onRegenerate={() => {}}
@@ -326,6 +341,7 @@ describe('AnswerTime', () => {
     const { container } = render(
       <ol>
         <AnswerMessage
+          {...utenSok}
           canScrollToBottom={false}
           message={tomt}
           onRegenerate={() => {}}
