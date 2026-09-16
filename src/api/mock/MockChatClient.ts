@@ -5,8 +5,8 @@ import {
   type FilterSelection,
   type StreamEvent,
   type Thread,
-  type ThreadDetail,
   type ThinkingStep,
+  type ThreadDetail,
 } from '../../model';
 import { facetsFor } from './corpus/facets';
 import { citationsFor, scriptedFor } from './conversations';
@@ -149,6 +149,75 @@ const clarificationMarkdown = [
   'tallene står forskjellige steder.',
 ].join('\n');
 
+/**
+ * The thinking step a simulated failure shows.
+ *
+ * All six codes used to yield `nkomThinkingSteps[0]` — «Jeg deler spørsmålet i
+ * to: hvordan måloppnåelse gjøres opp, og hvor målene er satt» — so asking
+ * «simuler avvist nøkkel» and opening «Tenkte» explained a question nobody
+ * had asked. Brukerblikk runde 3, funn 4.
+ *
+ * The repair is the reader's own words: `queries` carries what they actually
+ * typed, so the panel cannot describe someone else's question whatever the
+ * code turns out to be.
+ *
+ * `no-hits` is the one code that says what came back, and that is the
+ * difference the model file draws: the search RAN and found nothing, which is
+ * an answer with an empty source list rather than a failure. The others
+ * stopped somewhere inside this step, and the `error` frame is what says
+ * where — a step that also said it would be doing the view's job a second
+ * time, in the mock's wording instead of the view's.
+ *
+ * `thinkingMs` is the wait this mock is about to perform, not a number
+ * written down beside it. It has to be, and that is the second half of funn 4:
+ * a failed turn has no first token, so the view's own clock never closes and
+ * the summary falls back to what the steps reported. A constant would have
+ * said «Tenkte i 2 sekunder» after the 4,9 s the realistic speed actually
+ * waits, and «Tenkte i 2 sekunder» after the 0,8 s the fast one does. Taken
+ * from the delays it is true at every speed — and the turns that used to say
+ * «Tenkte» with no number now say the same kind of thing a finished answer
+ * does, which is the rest of that finding.
+ *
+ * Nothing here for `aborted`. That is the reader pressing stop, never one of
+ * these queries, and a turn they stopped keeps the steps it had already been
+ * shown.
+ */
+function failureThinkingStep(code: ChatErrorCode, query: string, thinkingMs: number): ThinkingStep {
+  return {
+    id: 'mock-feil-1',
+    kind: 'search',
+    label: 'Jeg søker i korpuset',
+    queries: [query],
+    ...(code === 'no-hits' ? { detail: 'Ingen utdrag kom over relevansterskelen.' } : {}),
+    durationMs: thinkingMs,
+  };
+}
+
+/**
+ * The thinking step behind the question back.
+ *
+ * Its own, and not the failure one: a clarification is not a turn that broke.
+ * The agent read the question, saw that it has two answers in two different
+ * places, and decided that picking one for the reader would look like an
+ * answer. That is what `clarificationMarkdown` above says in the answer, and
+ * this is the same reasoning one step earlier.
+ *
+ * This turn does reach a first token, so the view measures the wait itself
+ * while the reader watches. `durationMs` is what is left after a reload, and
+ * it comes from the same delay for the same reason as above: the two readings
+ * should not disagree about a turn that has not changed.
+ */
+function clarificationThinkingStep(thinkingMs: number): ThinkingStep {
+  return {
+    id: 'mock-avklaring-1',
+    kind: 'reasoning',
+    label: 'Jeg leser spørsmålet',
+    detail:
+      'Måloppnåelse står både i årsrapportene og i tildelingsbrevene, og de to svarene er ikke det samme. Jeg spør heller enn å velge for leseren.',
+    durationMs: thinkingMs,
+  };
+}
+
 /** Resolves after `ms`, or rejects with the abort reason if the signal fires. */
 function wait(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -261,8 +330,9 @@ export class MockChatClient implements ChatClient {
         // first, and the thinking panel is what says so.
         await wait(this.#delays.thinkingStepMs, signal);
         thinkingStartedAt = Date.now();
-        stepsSent.push(nkomThinkingSteps[0]!);
-        yield { type: 'thinking-step', step: nkomThinkingSteps[0]! };
+        const failureStep = failureThinkingStep(simulated, params.query, this.#delays.firstTokenMs);
+        stepsSent.push(failureStep);
+        yield { type: 'thinking-step', step: failureStep };
         await wait(this.#delays.firstTokenMs, signal);
         // No `message`: the whole point is that the text comes from the code,
         // so a mock that wrote its own would be testing the mock's wording.
@@ -277,8 +347,9 @@ export class MockChatClient implements ChatClient {
         // with sources behind it would be a different thing entirely.
         await wait(this.#delays.thinkingStepMs, signal);
         thinkingStartedAt = Date.now();
-        stepsSent.push(nkomThinkingSteps[0]!);
-        yield { type: 'thinking-step', step: nkomThinkingSteps[0]! };
+        const clarificationStep = clarificationThinkingStep(this.#delays.firstTokenMs);
+        stepsSent.push(clarificationStep);
+        yield { type: 'thinking-step', step: clarificationStep };
 
         await wait(this.#delays.firstTokenMs, signal);
         const clarificationThought = thoughtMs();
