@@ -4,6 +4,7 @@ import {
   type FilterSelection,
   type StreamEvent,
   type Thread,
+  type ThinkingStep,
 } from '../../model';
 import { KICKSTARTERS } from '../../views/chat/text';
 import { scriptedFor } from './conversations';
@@ -41,6 +42,49 @@ describe('MockChatClient og de simulerte feilene', () => {
       expect(last, query).toMatchObject({ type: 'error', error: { code } });
       expect(Date.parse((last as { createdAt: string }).createdAt), query).not.toBeNaN();
     }
+  });
+
+  it('tenker på spørsmålet som faktisk ble stilt', async () => {
+    /*
+     * Alle seks kodene sendte `nkomThinkingSteps[0]` — «Jeg deler spørsmålet i
+     * to: hvordan måloppnåelse gjøres opp, og hvor målene er satt» — så
+     * «Tenkte» på en feilskjerm forklarte et spørsmål ingen hadde stilt.
+     * Brukerblikk runde 3, funn 4. Feilskjermene er nettopp der feiltekstene
+     * vurderes, så det sto midt i det noen skulle lese.
+     */
+    for (const [query, code] of Object.entries(MOCK_ERROR_QUERIES)) {
+      const [first] = await collect(client.ask({ query }));
+
+      expect(first, query).toMatchObject({ type: 'thinking-step' });
+      const { step } = first as { step: ThinkingStep };
+
+      // Leserens egne ord, så steget ikke kan handle om noe annet.
+      expect(step.queries, query).toEqual([query]);
+      expect(step.label, query).not.toContain('måloppnåelse');
+
+      /*
+       * «ingen treff» er den ene koden som kan si hva som kom tilbake: søket
+       * ble ferdig og fant ingenting. De andre stanset inne i steget, og
+       * `error`-ramma er det som sier hvor.
+       */
+      if (code === 'no-hits') expect(step.detail, query).toBeDefined();
+      else expect(step.detail, query).toBeUndefined();
+    }
+  });
+
+  it('melder ventetiden mocken faktisk bruker, ikke et tall skrevet ved siden av', async () => {
+    /*
+     * Andre halvdel av funn 4. En feilet tur når aldri et første token, så
+     * viewets egen klokke lukkes ikke og oppsummeringen faller tilbake på det
+     * steget selv meldte: uten et tall sto det «Tenkte», der et ferdig svar
+     * sier «Tenkte i 2 sekunder». Et fast tall ville gjort det verre, ikke
+     * bedre — «realistic» venter 3,8 s og «fast» 0,3 s på nøyaktig det samme
+     * steget, så ett tall måtte vært galt for minst én av dem.
+     */
+    const treig = new MockChatClient({ thinkingStepMs: 0, firstTokenMs: 4200, tokenMs: 0 });
+    const [first] = await collect(treig.ask({ query: 'simuler tidsavbrudd' }));
+
+    expect((first as { step: ThinkingStep }).step.durationMs).toBe(4200);
   });
 
   it('er eksakte treff, ikke ord inni et ekte spørsmål', async () => {
@@ -177,6 +221,21 @@ describe('MockChatClient og avklaring', () => {
     // ville vært noe helt annet enn en avklaring.
     expect(events.map((event) => event.type)).not.toContain('sources');
     expect(events.some((event) => event.type === 'token')).toBe(true);
+  });
+
+  it('har sitt eget tenkesteg, ikke feilstien sitt og ikke NKOM-fixturens', async () => {
+    // En avklaring er ikke en tur som brøt sammen, og steget sier hvorfor den
+    // spør: svaret står to steder, og å velge for leseren ville sett ut som
+    // et svar. Samme resonnement som teksten, ett steg tidligere.
+    const [first] = await collect(client.ask({ query: MOCK_CLARIFICATION_QUERY }));
+
+    expect(first).toMatchObject({ type: 'thinking-step' });
+    const { step } = first as { step: ThinkingStep };
+
+    expect(step.kind).toBe('reasoning');
+    expect(step.detail).toContain('tildelingsbrevene');
+    // Ikke søkesteget feilstien bruker: ingenting ble søkt etter her.
+    expect(step.queries).toBeUndefined();
   });
 
   it('bryr seg ikke om store bokstaver eller mellomrom rundt', async () => {
