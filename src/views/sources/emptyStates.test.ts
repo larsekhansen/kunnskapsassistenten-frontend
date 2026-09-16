@@ -52,4 +52,18 @@ describe('emptyStateFor', () => {
     expect(new Set(titles).size).toBe(titles.length);
     expect(titles).not.toContain(NO_ANSWER_YET.title);
   });
+
+  it('lover ikke det samme som den avbrutte, siden det ikke er det samme', () => {
+    /*
+     * Andre setning var ordrett den avbrutte sin — «for å se hvilke
+     * dokumenter det bygger på» — og det er feil løfte her. Den avbrutte fikk
+     * aldri kilder; denne fikk dem og mistet dem, og et nytt spørsmål gir
+     * ikke bare innsyn i de gamle, det gir utdrag som faktisk kan åpnes.
+     * Funnet av #4 i anmeldelsen av #84.
+     */
+    const notStored = emptyStateFor('complete', 4);
+
+    expect(notStored.description).not.toBe(emptyStateFor('aborted').description);
+    expect(notStored.description).toContain('kilder du kan åpne');
+  });
 });

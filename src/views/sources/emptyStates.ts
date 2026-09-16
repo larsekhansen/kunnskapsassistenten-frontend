@@ -65,7 +65,7 @@ const BY_STATUS: Record<Exclude<MessageStatus, 'streaming'>, SourcesEmptyState> 
 const NOT_STORED: SourcesEmptyState = {
   title: 'Kildene er ikke lagret for denne samtalen',
   description:
-    'Svaret viser til utdrag, men de ble ikke lagret sammen med samtalen. Still spørsmålet på nytt for å se hvilke dokumenter det bygger på.',
+    'Svaret viser til utdrag, men de ble ikke lagret sammen med samtalen. Still spørsmålet på nytt for å få et svar med kilder du kan åpne.',
 };
 
 /**
