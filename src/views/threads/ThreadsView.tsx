@@ -1,4 +1,4 @@
-import { Button, Link, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
+import { Button, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink } from 'react-router';
 import { FilterIcon, NewThreadIcon } from '../../components/icons';
@@ -7,6 +7,7 @@ import { useOpenThread } from '../../layout/useOpenThread';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { Thread } from '../../model';
 import { groupThreads } from './grouping';
+import { ThreadLink } from './ThreadLink';
 import { useThreadList } from './useThreadList';
 import './threads.css';
 
@@ -167,26 +168,11 @@ export function ThreadsView({
               return (
                 <li key={thread.id} className="threads-view__item">
                   {/*
-                    `aria-current="page"` — not the colour — is what makes the
-                    open thread available to a screen reader, and the style
-                    hangs off the same attribute so the two can never drift.
-
-                    It came from `NavLink`, which reads the router's location,
-                    until 2026-09-15. That missed the commonest way in: a
-                    conversation the reader starts on `/` gets its address from
-                    `history.replaceState`, which the router never sees, so the
-                    thread they had just made stayed unmarked until a reload
-                    (KA CC). The shell knows which conversation is on screen
-                    however the address got there; see openThreadContext.ts.
+                    Its own component because it measures itself: a title cut
+                    off after two lines carries the whole text in a tooltip,
+                    and a title that fits does not. See ThreadLink.tsx.
                   */}
-                  <Link asChild data-size="sm" className="threads-view__thread">
-                    <RouterLink
-                      aria-current={thread.id === openThreadId ? 'page' : undefined}
-                      to={`/threads/${thread.id}`}
-                    >
-                      {thread.title}
-                    </RouterLink>
-                  </Link>
+                  <ThreadLink thread={thread} current={thread.id === openThreadId} />
                   {/*
                     Beside the link and not inside it. Inside, the time would
                     join the link's accessible name, and every row would be
