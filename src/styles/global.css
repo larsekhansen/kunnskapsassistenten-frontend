@@ -516,6 +516,31 @@ body {
   display: none;
 }
 
+/*
+ * The answer column pins its head at the top of the window, not 32 px down.
+ *
+ * A sticky element's offsets are measured against the scrollport SHRUNK BY
+ * the scroll container's own padding, so `inset-block-start: 0` in a region
+ * with `padding-block-start: 32px` pins 32 px below the top — and the answer
+ * goes on scrolling through those 32 px, in front of nothing, beside a head
+ * that is supposed to be covering it. Measured by #3 and confirmed here at
+ * 1440 with an answer on screen: the strip held `ka-message` at scroll 200
+ * and a paragraph at scroll 600.
+ *
+ * The sidebars do not have it. Their scrolling region carries no block-start
+ * padding — the panel box above it does — so 0 already means the top there.
+ * That is the shape this rule restores for the one region built differently.
+ *
+ * Cancelling the padding rather than removing it keeps the 32 px of air above
+ * the head while the reader is at the top, and costs nothing once it pins.
+ * Moving the spacing into the head instead would have pinned 32 px of air for
+ * as long as the reader scrolls, which is the height budget funn 7 and 8 are
+ * already about.
+ */
+.main > .view-head {
+  inset-block-start: calc(-1 * var(--ds-size-8));
+}
+
 .main {
   flex: 1 0 0;
   min-inline-size: var(--ka-main-min-width);
