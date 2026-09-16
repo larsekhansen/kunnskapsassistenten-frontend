@@ -42,6 +42,7 @@ eier bare denne mappa.
 | [`fix-mock-error-thinking-step-2026-09-16.md`](fix-mock-error-thinking-step-2026-09-16.md)     | PR #81, feilstien tenker på spørsmålet som ble stilt: runde 3 funn 4 lukket                            |
 | [`feat-live-conversations-2026-09-16.md`](feat-live-conversations-2026-09-16.md)               | PR #84, trådliste og lagring i live: løkka målt mot kjørende stack, og tomtilstanden som ikke er nåbar |
 | [`chore-tenkesteg-kan-2026-09-16.md`](chore-tenkesteg-kan-2026-09-16.md)                       | PR #86, de to «kan» fra #81 tatt: kommentaren myknet, pushene testet                                   |
+| [`fix-chatview-test-flake-2026-09-16.md`](fix-chatview-test-flake-2026-09-16.md)               | PR #89, fire venteløse lesninger i ChatView-testene: rasen er lest i koden, ikke gjenskapt             |
 
 ## Sånn går en review
 
