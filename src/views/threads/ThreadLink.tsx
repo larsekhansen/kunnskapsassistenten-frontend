@@ -44,14 +44,45 @@ export function ThreadLink({ thread, current }: ThreadLinkProps) {
     const measure = () => setClipped(element.scrollHeight - element.clientHeight > 1);
     measure();
 
+    /*
+     * Again when the web font has arrived.
+     *
+     * Inter is loaded from altinncdn, and `document.fonts.status` is still
+     * `loading` while these rows first measure themselves — so the first
+     * answer is about the fallback face, whose metrics are not Inter's. A row
+     * that fits in the fallback and not in Inter kept its tooltip off, and
+     * the reader had no way to the rest of the question (KA CC on #80).
+     *
+     * `document.fonts` is absent in jsdom, so this is read as optional.
+     */
+    let live = true;
+    const fonts: FontFaceSet | undefined = document.fonts;
+    void fonts?.ready.then(() => {
+      if (live) measure();
+    });
+
     // jsdom has no ResizeObserver, and nothing there has a layout to measure
     // in the first place. Same guard as the shell's region head.
-    if (typeof ResizeObserver === 'undefined') return;
+    if (typeof ResizeObserver === 'undefined') {
+      return () => {
+        live = false;
+      };
+    }
 
     const observer = new ResizeObserver(measure);
     observer.observe(element);
-    return () => observer.disconnect();
-  }, [thread.title]);
+    return () => {
+      live = false;
+      observer.disconnect();
+    };
+    /*
+     * `current` is in here for a reason a resize cannot cover: the open row is
+     * drawn semibold (see threads.css), which makes the same title about 6 px
+     * wider without changing the box it is drawn in. `ResizeObserver` watches
+     * the box, so it stays silent through exactly the change that can push a
+     * title onto a third line. Measured by KA CC on #80.
+     */
+  }, [thread.title, current]);
 
   return (
     <Link asChild data-size="sm" className="threads-view__thread">

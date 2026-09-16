@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Thread } from '../../model';
@@ -32,14 +32,26 @@ afterEach(() => {
   for (const name of ['scrollHeight', 'clientHeight']) {
     delete (HTMLAnchorElement.prototype as unknown as Record<string, unknown>)[name];
   }
+  // jsdom has no FontFaceSet, so the font test installs one. Anything left
+  // behind would make the next file's rows measure themselves twice.
+  delete (document as unknown as Record<string, unknown>).fonts;
 });
 
-function renderLink(current = false) {
-  return render(
+function view(current: boolean) {
+  return (
     <MemoryRouter>
       <ThreadLink thread={thread} current={current} />
-    </MemoryRouter>,
+    </MemoryRouter>
   );
+}
+
+function renderLink(current = false) {
+  return render(view(current));
+}
+
+/** The link, whatever it is called this instant. */
+function link() {
+  return screen.getByRole('link', { name: thread.title });
 }
 
 describe('ThreadLink', () => {
@@ -88,5 +100,47 @@ describe('ThreadLink', () => {
 
     renderLink(false);
     expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+  });
+
+  it('måler på nytt når raden blir den åpne', () => {
+    /*
+     * The open row is drawn semibold, which makes the same title wider
+     * without changing the box it is drawn in — so `ResizeObserver` never
+     * fires, and the row that has just been pushed onto a third line keeps
+     * saying it fits. KA CC on #80.
+     */
+    withHeights(44, 44);
+    const { rerender } = renderLink(false);
+    expect(link().getAttribute('title')).toBeNull();
+
+    withHeights(72, 44);
+    rerender(view(true));
+
+    expect(link().getAttribute('title')).toBe(thread.title);
+  });
+
+  it('måler på nytt når skriften er lastet', async () => {
+    /*
+     * Inter comes from altinncdn, and the first measurement happens in the
+     * fallback face. Its metrics are not Inter's, so a row that fits before
+     * the font arrives can be cut off after it.
+     */
+    let arrive = () => {};
+    const ready = new Promise<void>((resolve) => {
+      arrive = resolve;
+    });
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { ready } });
+
+    withHeights(44, 44);
+    renderLink();
+    expect(link().getAttribute('title')).toBeNull();
+
+    withHeights(72, 44);
+    await act(async () => {
+      arrive();
+      await ready;
+    });
+
+    expect(link().getAttribute('title')).toBe(thread.title);
   });
 });
