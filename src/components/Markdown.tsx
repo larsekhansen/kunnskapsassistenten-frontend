@@ -266,8 +266,14 @@ export function Markdown({
         // Chrome and Firefox now focus scroll containers on their own, Safari
         // does not, so the tabIndex stays. The rule below assumes tabIndex on
         // a non-interactive element is a mistake; here it is the fix.
+        //
+        // `ds-focus` draws the ring on :focus-visible. NOT `ds-focus--visible`,
+        // which is the forced-on variant and painted a 3 px ring around every
+        // table in every answer at rest — worst in dark mode, where it read as
+        // a border nobody had drawn (brukerblikk 3, funn 3). The same note is
+        // in src/views/filters/DocumentsList.tsx, which got the choice right.
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-        <section className="markdown__table ds-focus--visible" aria-label="Tabell" tabIndex={0}>
+        <section className="markdown__table ds-focus" aria-label="Tabell" tabIndex={0}>
           <Table data-size="sm">{content}</Table>
         </section>
       ),

@@ -12,6 +12,16 @@ const steps: ThinkingStep[] = [
   { id: 's2', kind: 'search', label: 'Jeg søker i årsrapportene.', durationMs: 2000 },
 ];
 
+/** Søket eies av `MessageList`; disse testene handler om noe annet. */
+const utenSok = {
+  searchOpen: false,
+  searchQuery: '',
+  onSearchQueryChange: () => {},
+  onToggleSearch: () => {},
+  onCloseSearch: () => {},
+  searchLabel: 'Søk i svaret',
+};
+
 function answerWith(thoughtMs?: number): Message {
   return {
     id: 'a1',
@@ -29,6 +39,7 @@ function show(message: Message) {
   return render(
     <ol>
       <AnswerMessage
+        {...utenSok}
         canScrollToBottom={false}
         message={message}
         onRegenerate={() => {}}

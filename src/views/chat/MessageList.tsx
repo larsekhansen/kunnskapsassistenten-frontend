@@ -1,4 +1,5 @@
 import { Paragraph } from '@digdir/designsystemet-react';
+import { useState } from 'react';
 import type { Message } from '../../model';
 import { AnswerMessage } from './AnswerMessage';
 import { Clarification } from './Clarification';
@@ -42,6 +43,14 @@ type MessageListProps = {
  * brings its own headings from the model, and a heading per message on top of
  * those would give the page two competing outlines.
  *
+ * It also owns which answer the search strip belongs to, and that is not a
+ * detail of bookkeeping. The strip is drawn in the shell's view-head, pinned
+ * to the top of the column, and a region has one of those — so «which answer
+ * is being searched» is a fact about the conversation and cannot live inside
+ * each answer. Before it moved, every answer held its own and two could be
+ * open at once; now opening one closes the other, which is also what a single
+ * pinned strip looks like to a reader.
+ *
  * Three kinds of turn, and this file is the choice between them. A question
  * is a paragraph. A turn that came back as `needs-clarification` is a question
  * to the reader and not an answer, so the sender line says «spurte» and the
@@ -58,6 +67,33 @@ export function MessageList({
   filterSummary,
   foundNothing,
 }: MessageListProps) {
+  // The answer whose search strip is in the view-head, and what is typed in
+  // it. One strip, one query: switching answers starts a fresh search rather
+  // than carrying the last one over to a different text.
+  const [searchingId, setSearchingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  /*
+   * «Svar 2 av 3», for the strip to say what it is searching now that it is
+   * no longer drawn inside the answer. Counted over the assistant turns in
+   * the order they were given, which is the order the reader sees.
+   */
+  const answerIds = messages.filter((message) => message.role === 'assistant').map((m) => m.id);
+  const searchLabelFor = (messageId: string) => {
+    if (answerIds.length < 2) return 'Søk i svaret';
+    return `Søk i svar ${answerIds.indexOf(messageId) + 1} av ${answerIds.length}`;
+  };
+
+  function openSearch(messageId: string) {
+    setSearchingId(messageId);
+    setSearchQuery('');
+  }
+
+  function closeSearch() {
+    setSearchingId(null);
+    setSearchQuery('');
+  }
+
   return (
     <ol className="ka-messages">
       {messages.map((message) => {
@@ -105,9 +141,15 @@ export function MessageList({
             key={message.id}
             message={message}
             narrowedTo={filterSummary?.(message.id)}
+            onCloseSearch={closeSearch}
             onRegenerate={onRegenerate}
             onScrollToBottom={onScrollToBottom}
+            onSearchQueryChange={setSearchQuery}
             onSelectSource={onSelectSource}
+            onToggleSearch={() => openSearch(message.id)}
+            searchLabel={searchLabelFor(message.id)}
+            searchOpen={searchingId === message.id}
+            searchQuery={searchQuery}
           />
         );
       })}

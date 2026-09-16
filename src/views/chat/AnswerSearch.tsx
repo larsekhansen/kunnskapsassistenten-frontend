@@ -14,6 +14,16 @@ export type AnswerSearchProps = {
   /** Escape, and the close button. */
   onClose: () => void;
   fieldRef: RefObject<HTMLInputElement | null>;
+  /**
+   * Which answer is being searched: «Søk i svar 2 av 3», or «Søk i svaret»
+   * in a conversation with one.
+   *
+   * It matters because the strip is pinned to the top of the column and not
+   * to the answer it belongs to. Detached from its card it has to say what it
+   * is searching, the same way the sources panel's pinned head says «Kilder
+   * til svar 1 av 2».
+   */
+  label: string;
 };
 
 /**
@@ -46,6 +56,7 @@ export function AnswerSearch({
   onStep,
   onClose,
   fieldRef,
+  label,
 }: AnswerSearchProps) {
   const fieldId = useId();
 
@@ -88,8 +99,11 @@ export function AnswerSearch({
           onClose();
         }}
       >
-        <Label htmlFor={fieldId} className="ds-sr-only">
-          Søk i svaret
+        {/* Visible, because the strip no longer sits in the card it searches.
+            It is the label of the field as well as the title of the strip, so
+            it is one element and not two. */}
+        <Label htmlFor={fieldId} data-size="sm" className="ka-answer-search__label">
+          {label}
         </Label>
 
         <Search data-size="sm" className="ka-answer-search__field">

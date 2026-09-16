@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Message } from '../../model';
-import { AnswerMessage } from './AnswerMessage';
+import { MessageList } from './MessageList';
 import { CLOSING_QUESTION } from './text';
 
 /*
@@ -28,18 +28,22 @@ const answer: Message = {
   status: 'complete',
 };
 
+/*
+ * Gjennom `MessageList`, fordi det er der søket bor nå. Stripa tegnes i
+ * skallets view-hode og det finnes ett per region, så hvilket svar som søkes
+ * er en opplysning om samtalen og ikke om det enkelte svaret. Å rendre
+ * `AnswerMessage` alene her ville testet en knapp uten noe bak seg.
+ */
 function show(message: Message = answer, foundNothing?: boolean) {
   return render(
-    <ol>
-      <AnswerMessage
-        canScrollToBottom={false}
-        foundNothing={foundNothing}
-        message={message}
-        onRegenerate={() => {}}
-        onScrollToBottom={() => {}}
-        onSelectSource={() => {}}
-      />
-    </ol>,
+    <MessageList
+      canScrollToBottom={false}
+      foundNothing={() => foundNothing ?? false}
+      messages={[message]}
+      onRegenerate={() => {}}
+      onScrollToBottom={() => {}}
+      onSelectSource={() => {}}
+    />,
   );
 }
 
