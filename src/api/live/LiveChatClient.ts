@@ -10,6 +10,14 @@ import {
   toSourceDocuments,
 } from './mcp';
 import { createSseDecoder } from './sse';
+import {
+  agentIdFromToolName,
+  threadDetailFrom,
+  threadFromConversation,
+  type ApiConversation,
+  type ApiMessage,
+} from './conversations';
+import { currentUserId } from './userId';
 
 export type LiveChatClientOptions = {
   /** Where the proxy lives. Relative on purpose: same origin, no CORS. */
@@ -25,6 +33,12 @@ export type LiveChatClientOptions = {
    */
   tenant?: string;
   datasetConfigKey?: string;
+  /**
+   * Which agent owns a conversation this client creates. Derived from the
+   * tool name when left out; see `agentIdFromToolName` for why the two are
+   * spelled differently and why deriving beats a second setting.
+   */
+  agentId?: string;
 };
 
 /**
@@ -72,6 +86,7 @@ export class LiveChatClient implements ChatClient {
   readonly #basePath: string;
   readonly #toolName: string;
   readonly #dataset: Record<string, string>;
+  readonly #agentId: string;
 
   constructor(options: LiveChatClientOptions = {}) {
     this.#basePath = options.basePath ?? '/api';
@@ -79,10 +94,60 @@ export class LiveChatClient implements ChatClient {
     // Resolved once, in the constructor, so a misconfiguration is reported
     // when the client is built rather than once per question asked.
     this.#dataset = datasetArguments(options.tenant, options.datasetConfigKey);
+    this.#agentId = options.agentId ?? agentIdFromToolName(this.#toolName);
+  }
+
+  /**
+   * The conversation store. Every call needs `X-User-Id`; the API key is the
+   * proxy's business and never appears here.
+   */
+  async #conversations(path: string, init?: RequestInit): Promise<Response> {
+    return fetch(`${this.#basePath}/conversations${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': currentUserId(),
+        ...init?.headers,
+      },
+    });
+  }
+
+  /**
+   * Make the conversation before asking, so it belongs to this reader.
+   *
+   * `tools/call` would make one for free, and that is the trap: it stores the
+   * API key's client id as the owner, and `/api/conversations` lists by
+   * `X-User-Id`. The cheaper path produces threads nobody can ever list, in a
+   * bucket shared with every other user of the key. See conversations.ts.
+   *
+   * Returns undefined if it fails. A thread that cannot be created is a
+   * reason to answer without one, not a reason not to answer: the turn still
+   * streams, and `tools/call` falls back to making its own.
+   */
+  async #createConversation(title: string, signal?: AbortSignal): Promise<string | undefined> {
+    try {
+      const response = await this.#conversations('', {
+        method: 'POST',
+        signal,
+        body: JSON.stringify({
+          title: title.trim().replace(/\s+/g, ' '),
+          'agent-id': this.#agentId,
+        }),
+      });
+      if (!response.ok) return undefined;
+      const body = (await response.json()) as { conversation?: ApiConversation };
+      return body.conversation?.id;
+    } catch {
+      return undefined;
+    }
   }
 
   async *ask(params: AskParams): AsyncIterable<StreamEvent> {
     const state = new McpStreamState();
+    // The first turn of a thread makes the conversation; every later one
+    // already has the id and goes straight to the tool call.
+    const conversationId =
+      params.conversationId ?? (await this.#createConversation(params.query, params.signal));
     const body = {
       jsonrpc: '2.0',
       id: 1,
@@ -92,7 +157,7 @@ export class LiveChatClient implements ChatClient {
         arguments: {
           query: params.query,
           ...this.#dataset,
-          ...(params.conversationId ? { conversation_id: params.conversationId } : {}),
+          ...(conversationId ? { conversation_id: conversationId } : {}),
         },
         _meta: {
           'io.modelcontextprotocol/protocolVersion': MCP_PROTOCOL_VERSION,
@@ -151,7 +216,7 @@ export class LiveChatClient implements ChatClient {
         const frames = done ? decoder.flush() : decoder.push(value ?? '');
 
         for (const frame of frames) {
-          yield* readFrame(frame.data, state, params.conversationId);
+          yield* readFrame(frame.data, state, conversationId);
         }
 
         if (done) return;
@@ -169,16 +234,49 @@ export class LiveChatClient implements ChatClient {
   }
 
   /**
-   * backend: mangler — a conversation created by `tools/call` carries no
-   * owner and is not readable through `/api/conversations`. Thread history
-   * needs either a different route into the backend or our own store.
+   * The reader's own conversations, newest first.
+   *
+   * The comment that stood here said a conversation created by `tools/call`
+   * carries no owner and cannot be read back. It carries one — the API key's
+   * client id — which is not the reader's, and that is what made it look like
+   * none. Creating the conversation ourselves is what fixed it; see
+   * `#createConversation`.
+   *
+   * An empty list on failure, and no throw: the thread list is chrome around
+   * the answer, and a panel that cannot load its rows must not take the page
+   * with it. `page_size` is the backend's maximum (100).
    */
   async listThreads(): Promise<Thread[]> {
-    return [];
+    try {
+      const response = await this.#conversations('?page_size=100');
+      if (!response.ok) return [];
+      const body = (await response.json()) as { conversations?: ApiConversation[] };
+      return (body.conversations ?? []).map(threadFromConversation);
+    } catch {
+      return [];
+    }
   }
 
-  async getThread(): Promise<ThreadDetail | null> {
-    return null;
+  /**
+   * One conversation with its turns, or null when there is none to show.
+   *
+   * Null covers «no such conversation» and «could not ask», because the route
+   * does the same thing with both: it draws «Fant ikke tråden» rather than an
+   * empty conversation the reader could type into.
+   */
+  async getThread(threadId: string): Promise<ThreadDetail | null> {
+    try {
+      const response = await this.#conversations(`/${encodeURIComponent(threadId)}`);
+      if (!response.ok) return null;
+      const body = (await response.json()) as {
+        conversation?: ApiConversation;
+        messages?: ApiMessage[];
+      };
+      if (!body.conversation) return null;
+      return threadDetailFrom(body.conversation, body.messages);
+    } catch {
+      return null;
+    }
   }
 
   /**
