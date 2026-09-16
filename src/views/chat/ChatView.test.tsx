@@ -313,11 +313,21 @@ describe('ChatView', () => {
     expect(screen.getByRole('alert').textContent).toBe('');
     expect(screen.queryByRole('button', { name: 'Prøv igjen' })).toBeNull();
 
-    // The sources panel is told it is a finished answer with nothing behind
-    // it, which is what stops it waiting on «Henter kilder …».
-    const last = reported.at(-1);
-    expect(last?.status).toBe('complete');
-    expect(last?.documents).toEqual([]);
+    /*
+     * The sources panel is told it is a finished answer with nothing behind
+     * it, which is what stops it waiting on «Henter kilder …».
+     *
+     * Waited for, and not read the moment the text appears. The text and the
+     * report are two different settlements: the words come from the message,
+     * the report from the effect that compares this thread against what the
+     * shell is holding, and that effect runs after the render the words
+     * landed in. Read synchronously, the last report is whatever had been
+     * sent by then — measured once as `['streaming']`, which is the report
+     * from before the turn finished, and the test went red in a full run and
+     * green on its own (#5, 2026-09-16).
+     */
+    await waitFor(() => expect(reported.at(-1)?.status).toBe('complete'));
+    expect(reported.at(-1)?.documents).toEqual([]);
   });
 
   it('keeps what the reader is typing while the thread is still loading', async () => {
@@ -773,10 +783,10 @@ describe('ChatView', () => {
     expect(screen.getByText(ABORTED_BEFORE_ANSWER)).toBeTruthy();
 
     // And the panel is told what became of it, as it is for a turn stopped
-    // after the first word.
-    const last = reported.at(-1);
-    expect(last?.status).toBe('aborted');
-    expect(last?.documents).toEqual([]);
+    // after the first word. Waited for: the button appearing is one render,
+    // the report is the effect after it.
+    await waitFor(() => expect(reported.at(-1)?.status).toBe('aborted'));
+    expect(reported.at(-1)?.documents).toEqual([]);
   });
 
   it('puts focus on «Prøv igjen» when a failure arrives after a mouse click', async () => {
@@ -1030,10 +1040,10 @@ describe('ChatView', () => {
     // One id all the way through, and the status travels with the sources:
     // an empty `documents` means four different things, and only the answer
     // knows which (#4, brukerreiser punkt 5).
+    await waitFor(() => expect(reported.at(-1)?.status).toBe('complete'));
     const ids = new Set(reported.map((answer) => answer.messageId));
     expect(ids.size).toBe(1);
     expect(reported.at(0)).toMatchObject({ documents: [], status: 'streaming' });
-    expect(reported.at(-1)?.status).toBe('complete');
     expect(reported.at(-1)?.documents).toHaveLength(1);
   });
 
@@ -1105,7 +1115,9 @@ describe('ChatView', () => {
 
     // Six tokens, two states: writing, then finished. The shell is told
     // about the second, not about the words.
-    expect(reported.map((answer) => answer.status)).toEqual(['streaming', 'complete']);
+    await waitFor(() =>
+      expect(reported.map((answer) => answer.status)).toEqual(['streaming', 'complete']),
+    );
   });
 
   it('tells the shell which answer a marker sits in', async () => {
