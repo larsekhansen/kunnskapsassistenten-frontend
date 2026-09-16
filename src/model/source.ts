@@ -97,6 +97,24 @@ export type AnswerSources = {
   /** Grouped per document (answer 57). Empty until they arrive, or if none. */
   documents: SourceDocument[];
   status: MessageStatus;
+  /**
+   * How many `[n]` markers the answer itself carries.
+   *
+   * It exists to tell two empty panels apart, and they are not the same
+   * thing: an answer that cited nothing has nothing to show, while an answer
+   * that cited four and arrived with no excerpts has lost them somewhere.
+   * Measured in live mode 2026-09-16 — the backend stores no chunks, so a
+   * thread read back has an answer full of markers and an empty panel telling
+   * the reader «svaret viser ikke til noen utdrag», which they can disprove
+   * by looking at it.
+   *
+   * The count and not a flag, because the count is what the answer says and a
+   * flag would be somebody's reading of it. `emptyStateFor` does the reading.
+   *
+   * Optional while the chat view still has to start sending it. Undefined
+   * means «not known», and the panel then says what it said before.
+   */
+  citationCount?: number;
 };
 
 /**

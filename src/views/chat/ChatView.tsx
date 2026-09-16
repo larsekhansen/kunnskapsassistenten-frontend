@@ -218,6 +218,15 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         messageId: message.id,
         documents: message.sources ?? [],
         status: message.status,
+        /*
+         * How many `[n]` the answer's own text carries, which is not the same
+         * as how many excerpts came with it. A conversation restored from the
+         * live backend has the markers and no chunks behind them, and without
+         * this the panel says «Svaret viser ikke til noen utdrag» beside an
+         * answer showing four. Only a stored turn sets it; a streamed one
+         * resolves its markers as they arrive and leaves this undefined.
+         */
+        ...(message.citationCount === undefined ? {} : { citationCount: message.citationCount }),
       });
     }
   }, [messages, reported, setAnswerSources, clearAnswerSources, setDocuments]);

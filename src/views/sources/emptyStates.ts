@@ -52,6 +52,34 @@ const BY_STATUS: Record<Exclude<MessageStatus, 'streaming'>, SourcesEmptyState> 
   },
 };
 
-export function emptyStateFor(status: Exclude<MessageStatus, 'streaming'>): SourcesEmptyState {
+/**
+ * An answer whose excerpts were never stored, which is not an answer without
+ * sources.
+ *
+ * Live mode, measured 2026-09-16: the backend keeps the conversation but not
+ * the chunks behind it, so a thread opened from the list has an answer with
+ * `[1]`–`[4]` in it and nothing behind them. «Svaret viser ikke til noen
+ * utdrag fra dokumentene» is then a sentence the reader can disprove by
+ * looking at the answer beside it.
+ */
+const NOT_STORED: SourcesEmptyState = {
+  title: 'Kildene er ikke lagret for denne samtalen',
+  description:
+    'Svaret viser til utdrag, men de ble ikke lagret sammen med samtalen. Still spørsmålet på nytt for å få et svar med kilder du kan åpne.',
+};
+
+/**
+ * @param citationCount how many `[n]` the answer carries, when that is known.
+ *   A finished answer that cited something and has no excerpts lost them; one
+ *   that cited nothing never had any. Undefined keeps the older wording, so
+ *   nothing changes until the chat view starts counting.
+ */
+export function emptyStateFor(
+  status: Exclude<MessageStatus, 'streaming'>,
+  citationCount?: number,
+): SourcesEmptyState {
+  if (status === 'complete' && citationCount !== undefined && citationCount > 0) {
+    return NOT_STORED;
+  }
   return BY_STATUS[status];
 }

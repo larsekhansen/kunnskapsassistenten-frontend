@@ -874,6 +874,45 @@ konsollen. Se `datasetArguments()` i `src/api/live/mcp.ts`.
 På tråden sendes de som `tenant` og `dataset_config_key` i `tools/call`-
 argumentene, ved siden av `query`.
 
+### Tråder i live-modus
+
+Trådlista og lagringen kommer fra `/api/conversations`, målt mot kjørende
+stack 2026-09-16.
+
+**Frontenden oppretter samtalen selv** før den spør, og det er ikke det
+billigste. `tools/call` lager en samtale på egen hånd hvis den ikke får en
+`conversation_id` — men den eier den med **API-nøkkelens `client-id`**, mens
+`GET /api/conversations` lister på `X-User-Id`. En tråd laget den veien blir
+altså aldri synlig i lista, og ligger i en bøtte delt med alle andre som
+bruker nøkkelen. Opprettet av oss bærer den vår id og vår tittel, og
+`tools/call` skriver turene inn i den når den får id-en med. Målt: eier og
+emne overlevde turen.
+
+**Bruker-id-en er en plassholder.** Det finnes ingen innlogging, så
+`src/api/live/userId.ts` lager en tilfeldig id og husker den i `localStorage`
+under `ka.user.v1`. Den er ikke en hemmelighet og beviser ingenting: hvem som
+helst med API-nøkkelen kan sende hvilken som helst id og lese den brukerens
+samtaler. Den finnes for at én nettleser skal se sine egne tråder og ikke alle
+trådene nøkkelen har laget. Den dagen det finnes innlogging kommer id-en
+derfra og fila kan gå.
+
+**Agent-id-en utledes av verktøynavnet.** Samme agent har to skrivemåter, og
+bare én virker hvert sted: `builtin.agent-rag-agent__agent-rag-graph-bundled`
+navngir verktøyet, `builtin/agent-rag-agent` navngir agenten. `POST
+/api/conversations` krever `agent-id` så snart nøkkelen når mer enn én agent.
+Se `agentIdFromToolName()`.
+
+**Dette mangler backenden, og frontenden later ikke som noe annet:**
+
+- **Ingen utdrag lagres.** Et svar lest tilbake kom med `chunks: []` selv om
+  turen hadde hentet fem. Feltet finnes i API-et, men er tomt. Tråden viser
+  derfor teksten uten kilder — og `[n]`-markørene i den peker på ingenting.
+- **Ingen `updated`.** Samtalen har bare `created`, så trådlista grupperer på
+  da den ble laget. En samtale besvart i dag, men startet forrige måned,
+  havner under forrige måned.
+- **Systemledeteksten lagres som en melding.** «You are a helpful assistant.»
+  er første melding i hver samtale og filtreres bort.
+
 ### Nøkkelen
 
 `KA_API_URL` og `KA_API_KEY` har **ikke** `VITE_`-prefiks, og det er poenget:

@@ -136,7 +136,9 @@ function panelContentFor(
   if (answers === undefined) return { kind: 'loading' };
   if (active === undefined) return { kind: 'empty', state: NO_ANSWER_YET };
   if (active.status === 'streaming') return { kind: 'loading' };
-  if (active.documents.length === 0) return { kind: 'empty', state: emptyStateFor(active.status) };
+  if (active.documents.length === 0) {
+    return { kind: 'empty', state: emptyStateFor(active.status, active.citationCount) };
+  }
   return { kind: 'sources' };
 }
 

@@ -22,7 +22,15 @@ async function askAndReadBody(client: LiveChatClient, fetchMock: ReturnType<type
   for await (const _event of client.ask({ query: 'Hva rapporterer Nkom?' })) {
     // drained on purpose
   }
-  const init = fetchMock.mock.calls[0][1] as RequestInit;
+  /*
+   * Found by address and not by position. A first turn now makes the
+   * conversation before it asks — see `#createConversation` — so the tool
+   * call is the second request, and it would be the first again the day that
+   * `POST` is dropped or moved. What this test is about is what reaches
+   * `tools/call`, so that is what it looks for.
+   */
+  const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/mcp'));
+  const init = call?.[1] as RequestInit;
   return JSON.parse(String(init.body)) as {
     params: { arguments: Record<string, unknown> };
   };

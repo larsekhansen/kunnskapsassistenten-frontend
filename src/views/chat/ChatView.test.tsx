@@ -1037,6 +1037,54 @@ describe('ChatView', () => {
     expect(reported.at(-1)?.documents).toHaveLength(1);
   });
 
+  it('lar markørtallet fra en gjenopprettet tråd nå kildepanelet', async () => {
+    /*
+     * En samtale hentet tilbake fra live-backenden har svarteksten med
+     * `[1]`–`[4]` i seg og ingen utdrag bak dem: backenden lagrer samtalen,
+     * men ikke chunkene. Uten at tallet følger med hit sier panelet «Svaret
+     * viser ikke til noen utdrag» ved siden av et svar som viser til fire,
+     * og den nye tomtilstanden blir aldri tegnet. Målt i live-modus 2026-09-16.
+     */
+    const reported: AnswerSources[] = [];
+    const restored: ThreadDetail = {
+      ...threadWith('Hva er Norge kjent for?'),
+      messages: [
+        {
+          id: 'u9',
+          role: 'user',
+          content: 'Hva er Norge kjent for?',
+          createdAt: '2026-09-16T09:00:00Z',
+          citations: [],
+          status: 'complete',
+        },
+        {
+          id: 'a9',
+          role: 'assistant',
+          content: 'Kysten [2]. Olje [3]. Vannkraft [4]. Navnet [1].',
+          createdAt: '2026-09-16T09:00:01Z',
+          // Tomme, fordi ingenting kunne løses opp mot utdrag.
+          citations: [],
+          citationCount: 4,
+          status: 'complete',
+        },
+      ],
+    };
+
+    render(
+      <Shell onAnswerSources={(answer) => reported.push(answer)}>
+        <ChatView client={clientYielding([])} thread={restored} />
+      </Shell>,
+    );
+
+    await waitFor(() => expect(reported.length).toBeGreaterThan(0));
+    expect(reported.at(-1)).toMatchObject({
+      messageId: 'a9',
+      documents: [],
+      status: 'complete',
+      citationCount: 4,
+    });
+  });
+
   it('reports once per real change, not once per token', async () => {
     const reported: AnswerSources[] = [];
     const manyTokens: StreamEvent[] = [
