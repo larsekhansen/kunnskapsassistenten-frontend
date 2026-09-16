@@ -58,9 +58,13 @@ describe('MockChatClient og de simulerte feilene', () => {
       expect(first, query).toMatchObject({ type: 'thinking-step' });
       const { step } = first as { step: ThinkingStep };
 
-      // Leserens egne ord, så steget ikke kan handle om noe annet.
-      expect(step.queries, query).toEqual([query]);
+      /*
+       * Etiketten er den som betyr noe: den er det panelet tegner, og det var
+       * den som beskrev et annet spørsmål i detalj. `queries` bærer leserens
+       * egne ord ved siden av, men ingen visning tegner dem ennå.
+       */
       expect(step.label, query).not.toContain('måloppnåelse');
+      expect(step.queries, query).toEqual([query]);
 
       /*
        * «ingen treff» er den ene koden som kan si hva som kom tilbake: søket
@@ -288,6 +292,54 @@ describe('MockChatClient husker samtalen', () => {
     // «id, tittel, meldinger, kilder» — the sources are what the sources panel
     // draws again on the other side of the reload.
     expect(thread?.messages[1]?.sources?.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * Hvorfor stegene pushes til `stepsSent` på de to nye stiene.
+   *
+   * Feilstien og avklaringsstien lagrer ingenting selv — de ender uten
+   * `done`. Det eneste stedet `stepsSent` leses er den stoppede turen: rekker
+   * leseren å trykke stopp mellom tenkesteget og enden, er det den lista som
+   * gir kortet sitt tenkepanel tilbake etter en oppfriskning (#82, funn 6).
+   * Uten pushene ser det ut til å virke helt til noen stopper akkurat der.
+   */
+  async function stopEtterTenkesteget(query: string): Promise<void> {
+    // Vindu nok til å rekke det: `firstTokenMs` er hele tenkefasen her.
+    const sakte = new MockChatClient({ thinkingStepMs: 0, firstTokenMs: 400, tokenMs: 0 });
+    const controller = new AbortController();
+
+    try {
+      for await (const event of sakte.ask({ query, signal: controller.signal })) {
+        if (event.type === 'thinking-step') controller.abort();
+      }
+    } catch {
+      // `wait` avviser med avbruddsgrunnen. Turen er lagret i generatorens
+      // egen catch før det, og det er den som er under test.
+    }
+  }
+
+  it('lar en stoppet feiltur beholde tenkesteget sitt', async () => {
+    client.openThread(started);
+    await stopEtterTenkesteget('simuler ingen treff');
+
+    const reloaded = new MockChatClient({ requestMs: 0 });
+    const answer = (await reloaded.getThread(started.id))?.messages.at(-1);
+
+    expect(answer?.status).toBe('aborted');
+    expect(answer?.thinkingSteps).toHaveLength(1);
+    expect(answer?.thinkingSteps?.[0]?.label).toBe('Jeg søker i korpuset');
+  });
+
+  it('lar en stoppet avklaring beholde sitt', async () => {
+    client.openThread(started);
+    await stopEtterTenkesteget('simuler avklaring');
+
+    const reloaded = new MockChatClient({ requestMs: 0 });
+    const answer = (await reloaded.getThread(started.id))?.messages.at(-1);
+
+    expect(answer?.status).toBe('aborted');
+    // Avklaringens eget steg, ikke feilstien sitt.
+    expect(answer?.thinkingSteps?.[0]?.label).toBe('Jeg leser spørsmålet');
   });
 
   it('viser den i trådlista', async () => {

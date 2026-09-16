@@ -157,9 +157,15 @@ const clarificationMarkdown = [
  * «simuler avvist nøkkel» and opening «Tenkte» explained a question nobody
  * had asked. Brukerblikk runde 3, funn 4.
  *
- * The repair is the reader's own words: `queries` carries what they actually
- * typed, so the panel cannot describe someone else's question whatever the
- * code turns out to be.
+ * What repairs it is the LABEL. «Jeg søker i korpuset» is true of whatever was
+ * asked, where the old one described one particular question in detail.
+ *
+ * `queries` carries the reader's own words beside it, and nothing draws them
+ * today — `ThinkingPanel` renders `label` and `detail` and stops there (KA CC,
+ * 2026-09-16). It is here because it is the field the words belong in when a
+ * view does draw them, and because the stream is read by more than the panel;
+ * it is not what makes the screen right, and this comment used to claim it
+ * was.
  *
  * `no-hits` is the one code that says what came back, and that is the
  * difference the model file draws: the search RAN and found nothing, which is
