@@ -221,39 +221,84 @@ test.describe('panelbredder', () => {
     await expect(wider(page, 'tråder og filter')).toHaveCount(0);
   });
 
-  test('på 1440 er skillene ute av tab-rekkefølgen, for da kan de ingenting', async ({
-    page,
-  }, testInfo) => {
+  test('på 1440 finnes ingen breddekontroller i det hele tatt', async ({ page }, testInfo) => {
     covers(testInfo, 'panelbredde: ingen tomme tabbstopp');
     await page.setViewportSize({ width: 1440, height: HEIGHT });
     await page.goto('/');
     await showSources(page);
 
-    // 400 + 32 + 640 + 32 + 336 er vinduet nøyaktig: ingen av kantene kan
-    // flytte seg, og et tabbstopp som ikke kan gjøre noe er et tabbstopp i
-    // veien. Linjene står fortsatt; det er kanten, den kan bare ikke flyttes.
+    // 400 + 32 + 640 + 32 + 336 er vinduet nøyaktig: gulv, tak og bredden på
+    // skjermen er ett og samme tall for begge sidekolonnene, og ingen av de
+    // seks kontrollene kan gjøre noe uansett hva leseren trykker på.
+    //
+    // Brukerblikk 3, funn 2: fire varig avslåtte knapper på den bredden alle
+    // Figma-rammene er tegnet i. Avslått er noe som går over — dette gjør det
+    // ikke, og da er det ingen kontroll, bare noe som ser ødelagt ut. Lars
+    // 17.09, beslutning 9 alternativ (c).
     for (const panel of ['tråder og filter', 'kilder'] as const) {
-      const handle = separator(page, panel);
-      await expect(handle).toHaveCount(1);
-      await expect(handle).toHaveAttribute('tabindex', '-1');
-      await expect(handle).toHaveAttribute('aria-disabled', 'true');
-
-      // Og knappene sier det samme: det er vinduet som er fullt, ikke
-      // panelet som står på sitt eget tak. De går ut av tab-rekkefølgen med
-      // skillet, siden ingen av dem kan gjøre noe herfra uansett hvilken av
-      // dem leseren trykker på.
-      for (const button of [wider(page, panel), narrower(page, panel)]) {
-        await expect(button).toHaveAttribute('aria-disabled', 'true');
-        await expect(button).toHaveAttribute('tabindex', '-1');
-      }
+      await expect(separator(page, panel)).toHaveCount(0);
+      await expect(wider(page, panel)).toHaveCount(0);
+      await expect(narrower(page, panel)).toHaveCount(0);
     }
 
-    // Ingen av de seks dukker opp i en Tab-vandring.
+    // Og ingen av dem dukker opp i en Tab-vandring, som er den andre måten å
+    // møte dem på.
     const steps = await walkWithTab(page);
     expect(
       steps.filter((step) => /^(Endre bredde på|Gjør )/.test(step.name)),
-      'breddekontrollene skal ikke være tabbstopp når de ikke kan gjøre noe',
+      'breddekontrollene skal ikke finnes når de ikke kan gjøre noe',
     ).toEqual([]);
+
+    // Panelkanten står der fortsatt. Det er gripeflata som er borte, ikke
+    // grensa mellom panelet og svarkolonnen: den tegnes av panelets egen
+    // ramme.
+    const border = await page.evaluate(
+      () =>
+        getComputedStyle(document.querySelector('.primary-sidebar .panel')!).borderInlineEndWidth,
+    );
+    expect(border, 'panelets egen ramme tegner kanten').not.toBe('0px');
+  });
+
+  test('på 1680 er alle fire knappene og begge skillene tilbake', async ({ page }, testInfo) => {
+    covers(testInfo, 'panelbredde: ingen tomme tabbstopp');
+    // 1680: 400 + 32 + 640 + 32 + 432 = 1536, så det er 144 px å fordele og
+    // begge kantene kan flyttes. Kontrollene kommer tilbake av seg selv når
+    // vinduet vokser — det er den samme `fixed` som tok dem bort.
+    await page.setViewportSize({ width: 1680, height: HEIGHT });
+    await page.goto('/');
+    await showSources(page);
+
+    for (const panel of ['tråder og filter', 'kilder'] as const) {
+      await expect(separator(page, panel)).toHaveCount(1);
+      await expect(separator(page, panel)).toHaveAttribute('tabindex', '0');
+      await expect(wider(page, panel)).toHaveCount(1);
+      await expect(narrower(page, panel)).toHaveCount(1);
+    }
+
+    // Og de virker: en knapp som er tegnet skal kunne gjøre noe.
+    await wider(page, 'tråder og filter').click();
+    await expectPanelWidth(
+      page,
+      '.primary-sidebar',
+      NAV_DEFAULT + STEP,
+      'etter ett klikk ved 1680',
+    );
+  });
+
+  test('kontrollene forsvinner og kommer tilbake med vinduet', async ({ page }, testInfo) => {
+    covers(testInfo, 'panelbredde: ingen tomme tabbstopp');
+    await page.setViewportSize({ width: 1680, height: HEIGHT });
+    await page.goto('/');
+    await showSources(page);
+    await expect(wider(page, 'kilder')).toHaveCount(1);
+
+    await page.setViewportSize({ width: 1440, height: HEIGHT });
+    await expect(wider(page, 'kilder')).toHaveCount(0);
+    await expect(separator(page, 'kilder')).toHaveCount(0);
+
+    await page.setViewportSize({ width: 1680, height: HEIGHT });
+    await expect(wider(page, 'kilder')).toHaveCount(1);
+    await expect(separator(page, 'kilder')).toHaveCount(1);
   });
 
   test('piltastene gjør det samme som musa, 16 px og 64 med Shift', async ({ page }, testInfo) => {
@@ -362,12 +407,19 @@ test.describe('panelbredder', () => {
 
     await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, 'navigasjonspanelet ved 1440');
     await expectPanelWidth(page, '.secondary-sidebar', SOURCES_FLOOR, 'kildepanelet ved 1440');
-    // aria-valuenow er det eneste som sier hvor kanten står til en som ikke
-    // ser den. En verdi på 480 over et panel som tegnes på 400 er en løgn
-    // fortalt til nettopp den leseren.
+    // Og skillet er borte, for det er ingen kant å flytte. Den lagrede 480-en
+    // står igjen i modellen og skal verken tegnes eller meldes.
+    await expect(separator(page, 'tråder og filter')).toHaveCount(0);
+
+    // Så på 1680, der det er noe å gi igjen: aria-valuenow er det eneste som
+    // sier hvor kanten står til en som ikke ser den, og det skal være bredden
+    // på skjermen, ikke den lagrede. 400 + 32 + 640 + 32 + 432 = 1536, så de
+    // 144 som er igjen tar navigasjonspanelet helt opp til sitt eget tak.
+    await page.setViewportSize({ width: 1680, height: HEIGHT });
+    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'navigasjonspanelet ved 1680');
     await expect(separator(page, 'tråder og filter')).toHaveAttribute(
       'aria-valuenow',
-      String(NAV_DEFAULT),
+      String(NAV_MAX),
     );
   });
 
@@ -406,7 +458,14 @@ test.describe('panelbredder', () => {
         for (const key of ['End', 'Home'] as const) {
           const handles = page.getByRole('separator');
           const count = await handles.count();
-          expect(count, `skiller ved ${width}, ${sources}`).toBeGreaterThan(0);
+          // Skrevet ut per tilstand og ikke `> 0`, for antallet er ikke det
+          // samme overalt lenger og et løkketrinn som drar ingenting skal
+          // ikke kunne bli stille: ved 1440 med begge sidekolonner åpne står
+          // alt på gulvet sitt og det finnes ingen kant å flytte, mens ved
+          // 1536 er det bare kildepanelets kant som kan gi noe.
+          expect(count, `skiller ved ${width}, ${sources}`).toBe(
+            width === 1440 && sources === 'open' ? 0 : 1,
+          );
 
           for (let index = 0; index < count; index += 1) {
             await handles.nth(index).focus();

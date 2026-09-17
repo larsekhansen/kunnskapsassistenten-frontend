@@ -46,18 +46,38 @@ export function PanelWidthButtons({ slot }: { slot: SidebarSlot }) {
   const WiderIcon = direction === 1 ? InlineEndIcon : InlineStartIcon;
   const NarrowerIcon = direction === 1 ? InlineStartIcon : InlineEndIcon;
 
+  /*
+    Gone, not greyed out, when the window has nothing to give: floor, ceiling
+    and the width on screen are one number, and no press on either button can
+    change anything from here. That is not a control at a limit, it is a
+    control with no job in this window at all, and a permanently unavailable
+    control says nothing except that something is broken.
+
+    Brukerblikk 3, funn 2: at 1440 × 900 with both sidebars open the answer
+    column is on its 640 floor and the navigation panel on its 400, so ALL
+    FOUR buttons and both separators stood permanently off — and 1440 is the
+    width every Figma frame is drawn in. `aria-disabled` with `tabIndex={-1}`
+    (PR #50) took them out of the tab order but left four dead glyphs in the
+    panel heads. Lars 17.09, decision 9 option (c).
+
+    They come back on their own when the window grows: `usePanelWidth` reads
+    `useViewportWidth`, so a resize past 1440 renders them again. Focus is the
+    one thing lost — a button that disappears under the pointer drops focus to
+    the body — and the only way to lose it is to resize the window, which is a
+    deliberate act that relays out the whole page anyway.
+  */
+  if (fixed) return null;
+
   return (
     <div className="panel-width-buttons">
       <WidthButton
         atLimit={width <= range.min}
-        dead={fixed}
         icon={<NarrowerIcon aria-hidden />}
         name={`Gjør ${label} smalere`}
         onPress={() => step(-1)}
       />
       <WidthButton
         atLimit={width >= range.max}
-        dead={fixed}
         icon={<WiderIcon aria-hidden />}
         name={`Gjør ${label} bredere`}
         onPress={() => step(1)}
@@ -68,18 +88,12 @@ export function PanelWidthButtons({ slot }: { slot: SidebarSlot }) {
 
 function WidthButton({
   atLimit,
-  dead,
   icon,
   name,
   onPress,
 }: {
   /** At the end of its travel right now. Says so, keeps its tab stop. */
   atLimit: boolean;
-  /**
-   * There is no travel at all in this window, so the button can never do
-   * anything from here. Then it leaves the tab order as well.
-   */
-  dead: boolean;
   icon: ReactNode;
   name: string;
   onPress: () => void;
@@ -107,21 +121,15 @@ function WidthButton({
           keyboard out of the control it was working in. Designsystemet draws
           `[aria-disabled='true']` exactly like `:disabled`, and the handler
           is what makes it inert, since the browser still delivers the click.
+
+          This is the one silence left here, and it is temporary by nature:
+          `atLimit` is where the edge happens to stand, so one press on the
+          other button makes this one work again. The permanent silence — a
+          window with no room in it — is not drawn at all; see `fixed` above.
         */
         onClick={() => {
           if (!atLimit) onPress();
         }}
-        /*
-          Two different silences, and only one of them is permanent.
-          `atLimit` is where the edge happens to stand — press the other
-          button once and this one works again, so it keeps its tab stop and
-          the reader keeps their place. `dead` is the window: at 1440 the
-          three slots are at their floors and their sum is the window, so
-          neither button can ever do anything from here, and four tab stops
-          that cannot is four tab stops in the way. Same `fixed` the separator
-          leaves the tab order on. KA CC, reviewing PR #50.
-        */
-        tabIndex={dead ? -1 : 0}
         variant="tertiary"
       >
         {icon}

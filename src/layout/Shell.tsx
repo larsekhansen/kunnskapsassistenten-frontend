@@ -568,6 +568,12 @@ function Sidebar({
         a rail has a fixed width and nothing to drag, and a tab stop that
         cannot do anything is a tab stop in the way.
 
+        An open panel is not on its own enough — the separator drops itself
+        when the WINDOW has no room to give either, which is the state at
+        1440 with both sidebars open. That test needs the width range, so it
+        lives in the component rather than here. Same for the width buttons
+        above. See PanelSeparator.tsx.
+
         Inside the landmark, beside the panel box rather than in it. What it
         resizes is this slot, so this is where it belongs — and it is also
         what the `region` rule asks: a control outside every landmark is
