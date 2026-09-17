@@ -233,8 +233,8 @@ avslutningskoden.
 
 ## Feller i målingen selv
 
-Feller som har kostet tid, og to til fra 16.09. En måling som lyver er verre
-enn ingen måling, fordi den blir stående i en rapport.
+Feller som har kostet tid, to til fra 16.09 og to fra 17.09. En måling som
+lyver er verre enn ingen måling, fordi den blir stående i en rapport.
 
 - **`.first()` og `.last()` på en knapp som alt finnes.** «Vent til svar
   nummer to er ferdig» skrevet som
@@ -280,6 +280,30 @@ enn ingen måling, fordi den blir stående i en rapport.
   bygges appen opp over noen hundre millisekunder, og et panel som er tomt ved
   170 ms har innhold ved 490 ms. Prøv over tid før du skriver at noe «står»
   tomt. Det kostet #3 fem forsøk på et funn som ikke fantes (#57).
+- **`element.focus()` slår ikke på `:focus-visible`.** Fokuser en rad fra
+  skriptet og les av stilen, og du får `outline-style: none` med
+  `outline-offset: 0` — på en regel som virker. Et øyeblikk ser det ut som om
+  den ikke gjør det. Bare ekte `Tab` til elementet slår på tilstanden. Målt
+  16.09 i anmeldelsen av #91, der første måling av fokusringen i trådlista
+  leste den avslåtte tilstanden.
+- **Å blurre før en måling lukker det som lever på fokus.** `settle()` i
+  `tests/e2e/a11y.ts` blurret før hver axe-kjøring, fordi en tooltip fanget
+  midt i innfasingen melder kontrastbrudd. Men et nedtrekk finnes bare mens
+  feltet har fokus: målt 17.09 på en åpen fasettliste med en rad framhevet av
+  ArrowDown, 259 synlige options og én åpen `u-datalist` før blurringen, null
+  og null etter, med fokus på `<body>`. Testen som var skrevet for nettopp den
+  tilstanden hadde kjørt axe på en lukket liste siden den ble laget. Bruk
+  `expectNoAxeViolations(page, what, { keepFocus: true })`, og påstå etterpå at
+  tilstanden fortsatt står — ellers er det ingenting som sier at kjøringen
+  målte den.
+
+  Og selv med lista åpen **avstår axe på de radene**: `color-contrast` kommer
+  tilbake som `incomplete` og aldri som `violations` — elleve uavklarte i den
+  tilstanden, fire av dem options, den framhevede blant dem, og null options i
+  `passes`. Meldingen er «Element's background color could not be determined
+  because it is overlapped by another element». `expectNoAxeViolations` leser
+  `violations`, så axe alene kan ikke bli rød der. Tallene må måles selv;
+  `contrastAgainstBackdrop` i samme fil gjør det.
 
 ## Verktøyet
 
