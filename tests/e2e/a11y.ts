@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page, type TestInfo } from '@playwright/test';
+import { expect, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { SCREENSHOTS } from './paths';
@@ -52,9 +52,27 @@ const DISABLED_RULES: string[] = [];
  * move `saveScreenshot` makes below, for the same kind of reason — and then we
  * wait for it to finish going. A page that never had one moves straight on.
  */
-async function settle(page: Page): Promise<void> {
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  await page.mouse.move(0, 0);
+async function settle(page: Page, keepFocus = false): Promise<void> {
+  /*
+   * The blur is the default because a focused control shows a tooltip, and a
+   * tooltip caught mid-fade reads as a contrast violation — see above.
+   *
+   * But it CLOSES anything that lives on focus, and then axe measures a state
+   * nobody is in. Measured 2026-09-17 on an open `Suggestion` list with a row
+   * highlighted by ArrowDown: before the blur, 259 visible options, one open
+   * `u-datalist` and an `aria-activedescendant` on the input; after it, zero,
+   * zero and none, with focus on `<body>`. The test that was meant to cover
+   * exactly that state had been running axe on a shut list since the day it
+   * was written.
+   *
+   * So a caller that is measuring a state held open by focus passes
+   * `keepFocus`. It keeps the tooltip wait, which is the other half of the
+   * job.
+   */
+  if (!keepFocus) {
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.mouse.move(0, 0);
+  }
 
   await page
     .waitForFunction(
@@ -68,11 +86,52 @@ async function settle(page: Page): Promise<void> {
     // A tooltip that will not go away is a finding in its own right, but it is
     // not this helper's to report: let axe run and say what it sees.
     .catch(() => {});
+
+  /*
+   * And no colour is still on its way from one value to another.
+   *
+   * Same class as the tooltip, found the same way. Measured 2026-09-17 on a
+   * facet list one keystroke after ArrowDown: axe reported `color-contrast`
+   * 1,04:1 on the highlighted row, `#f9fafb` on `#ffffff` — the highlight's
+   * text colour against a background that had not finished arriving. Two
+   * hundred milliseconds later it was gone, and it stayed gone at 400, 800 and
+   * 1500 ms. Nothing was wrong with the colours; the measurement was early.
+   *
+   * Anything that will END is waited for. The list's entrance is a
+   * `CSSAnimation` and not a transition, so «transitions only» would have
+   * waited for nothing in exactly the case this was written for — measured in
+   * that state: zero running transitions, one running animation, and it is the
+   * one that matters. What is skipped is anything that LOOPS: a skeleton
+   * shimmer never finishes, and waiting for one would cost every axe call the
+   * full timeout.
+   */
+  await page
+    .waitForFunction(
+      () =>
+        !document.getAnimations().some((animation) => {
+          if (animation.playState !== 'running') return false;
+          const timing = animation.effect?.getComputedTiming();
+          return timing !== undefined && timing.iterations !== Infinity;
+        }),
+      undefined,
+      { timeout: 2000 },
+    )
+    .catch(() => {});
 }
 
-/** Runs axe on whatever is on screen and fails the test on any violation. */
-export async function expectNoAxeViolations(page: Page, what: string): Promise<void> {
-  await settle(page);
+/**
+ * Runs axe on whatever is on screen and fails the test on any violation.
+ *
+ * `keepFocus` for a state that only exists while something has focus — an open
+ * dropdown, a highlighted row. Without it the state is gone before axe looks;
+ * see `settle`.
+ */
+export async function expectNoAxeViolations(
+  page: Page,
+  what: string,
+  { keepFocus = false }: { keepFocus?: boolean } = {},
+): Promise<void> {
+  await settle(page, keepFocus);
 
   const results = await new AxeBuilder({ page })
     .withTags(RULE_SETS)
@@ -141,6 +200,69 @@ export async function expectAllContentInLandmarks(page: Page, what: string): Pro
   );
 
   expect(outside, `innhold utenfor alle landemerker i ${what}`).toEqual([]);
+}
+
+/**
+ * What an element's text and its focus ring actually measure against the
+ * surface behind them, as contrast ratios.
+ *
+ * Measured here rather than left to axe, because axe ABSTAINS on exactly the
+ * rows this exists for. An option inside an open `Suggestion` list comes back
+ * under `incomplete`, never `violations`, with «Element's background color
+ * could not be determined because it is overlapped by another element» —
+ * measured 2026-09-17 in both modes: eleven incomplete nodes in that state,
+ * four of them options, the highlighted row among them, and not one option in
+ * `passes`. `expectNoAxeViolations` reads `violations`, so it cannot fail on a
+ * row axe never judged.
+ *
+ * Two numbers, because a highlighted row has two things to check and they have
+ * different thresholds: the text is 4,5:1 (WCAG 1.4.3) and the ring around it
+ * is a non-text indicator at 3:1 (1.4.11).
+ *
+ * The background is the first opaque ancestor, since the option itself is
+ * transparent, and the walk crosses shadow roots — the list is a `u-datalist`
+ * with one of its own, and `parentElement` stops at the boundary.
+ */
+export async function contrastAgainstBackdrop(
+  locator: Locator,
+): Promise<{ text: number; ring: number; background: string }> {
+  return locator.evaluate((element) => {
+    const channels = (color: string): number[] =>
+      (color.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+
+    const luminance = (color: string): number => {
+      const [r, g, b] = channels(color).map((value) => {
+        const channel = value / 255;
+        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+
+    const ratio = (a: string, b: string): number => {
+      const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return Math.round(((lighter + 0.05) / (darker + 0.05)) * 100) / 100;
+    };
+
+    const opaqueBehind = (start: Element): string => {
+      let node: Element | null = start;
+      while (node) {
+        const color = getComputedStyle(node).backgroundColor;
+        if (color && !/rgba\(0, 0, 0, 0\)|transparent/.test(color)) return color;
+        const root = node.getRootNode();
+        node = node.parentElement ?? (root instanceof ShadowRoot ? root.host : null);
+      }
+      // The page itself, if nothing on the way said otherwise.
+      return getComputedStyle(document.documentElement).backgroundColor;
+    };
+
+    const style = getComputedStyle(element);
+    const background = opaqueBehind(element);
+    return {
+      text: ratio(style.color, background),
+      ring: ratio(style.outlineColor, background),
+      background,
+    };
+  });
 }
 
 /** Marks a test as covering one line in docs/review/funksjonssjekk.md. */
