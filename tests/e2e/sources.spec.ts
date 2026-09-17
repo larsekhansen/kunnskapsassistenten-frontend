@@ -256,6 +256,32 @@ test.describe('kildepanelet', () => {
     await expect(counter).toHaveText('Ingen treff');
   });
 
+  test('ingen to lenker i panelet heter det samme', async ({ page }, testInfo) => {
+    covers(testInfo, 'lenkenavn i kildepanelet er unike');
+    await openSources(page, 1);
+
+    // Utdragene må åpnes først: en lenke inne i et lukket `details` er ikke i
+    // tilgjengelighetstreet, og da ramser ingen skjermleser den opp. Det er
+    // den åpne tilstanden påstanden gjelder. Bare de lukkede klikkes — markøren
+    // over åpnet allerede sitt eget, og et klikk til ville lukket det igjen.
+    for (const details of await page.locator('.source-excerpt details').all()) {
+      if (await details.evaluate((element: HTMLDetailsElement) => element.open)) continue;
+      await details.locator('summary').click();
+    }
+
+    // Alle lenkene ut til Kudos viser de samme fire ordene, så en skjermleser
+    // som ramser opp lenkene leste samme rad én gang per utdrag og én gang per
+    // dokument (WCAG 2.4.9, KA CC på #70). Navnet, ikke den synlige teksten,
+    // er det som må skille dem.
+    const links = page.locator('[aria-label="Kilder"] a:visible');
+    const names = await links.evaluateAll((all) =>
+      all.map((link) => (link.textContent ?? '').replace(/\s+/g, ' ').trim()),
+    );
+
+    expect(names.length).toBeGreaterThan(1);
+    expect(names.filter((name, index) => names.indexOf(name) !== index)).toEqual([]);
+  });
+
   test('Tab gjennom kildepanelet i lys og mørk', async ({ page }, testInfo) => {
     covers(testInfo, 'tastatur: Tab gjennom viewet');
     await openSources(page, 1);
