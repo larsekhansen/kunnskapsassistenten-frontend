@@ -458,23 +458,38 @@ describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
     }));
   }
 
-  function kudosLinkNames(): string[] {
-    return screen
-      .getAllByRole('link')
-      .map((link) => link.textContent ?? '')
-      .filter((name) => name.includes('på Kudos'))
-      .map((name) => name.replace(/\s+/g, ' ').trim());
-  }
+  /**
+   * The names as an assistive technology computes them, not `textContent`.
+   *
+   * `getByRole` runs the accessible name computation, so a generic
+   * `aria-label` on the link would override the text and fail here — reading
+   * `textContent` would have passed it (KA CC on #92).
+   */
+  const LINK_NAMES = [
+    'Årsrapport Nkom 2025',
+    'Tildelingsbrev Nkom 2026',
+    'Les dokumentet på Kudos, utdrag 1, Årsrapport Nkom 2025 (åpnes i ny fane)',
+    'Les dokumentet på Kudos, utdrag 2, Årsrapport Nkom 2025 (åpnes i ny fane)',
+    'Les dokumentet på Kudos, Årsrapport Nkom 2025 (åpnes i ny fane)',
+    'Les dokumentet på Kudos, utdrag 3, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
+    'Les dokumentet på Kudos, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
+  ];
 
   it('navngir hver lenke med utdraget og dokumentet den hører til', () => {
     render(<SourcesView documents={withKudosLinks()} />);
 
-    expect(kudosLinkNames()).toContain(
-      'Les dokumentet på Kudos, utdrag 1, Årsrapport Nkom 2025 (åpnes i ny fane)',
-    );
-    expect(kudosLinkNames()).toContain(
-      'Les dokumentet på Kudos, utdrag 3, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
-    );
+    // `getByRole` kaster både når ingen og når flere treffer, så dette er
+    // navnet og entydigheten i samme påstand.
+    expect(
+      screen.getByRole('link', {
+        name: 'Les dokumentet på Kudos, utdrag 1, Årsrapport Nkom 2025 (åpnes i ny fane)',
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('link', {
+        name: 'Les dokumentet på Kudos, utdrag 3, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
+      }),
+    ).toBeTruthy();
   });
 
   it('gir ingen to lenker i panelet samme navn', () => {
@@ -484,10 +499,10 @@ describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
     // tellingen, for den står i samme liste.
     render(<SourcesView documents={withKudosLinks()} />);
 
-    const names = screen.getAllByRole('link').map((link) => link.textContent);
-    const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
-    expect(names.length).toBeGreaterThan(1);
-    expect(duplicates).toEqual([]);
+    expect(screen.getAllByRole('link')).toHaveLength(LINK_NAMES.length);
+    for (const name of LINK_NAMES) {
+      expect(screen.getAllByRole('link', { name })).toHaveLength(1);
+    }
   });
 
   it('lar den synlige teksten være i fred', () => {
