@@ -47,6 +47,7 @@ eier bare denne mappa.
 | [`feat-filter-chips-2026-09-17.md`](feat-filter-chips-2026-09-17.md)                           | PR #91, chip-navnet målt i tilgjengelighetstreet, og ringen som bare flyttet halvparten                |
 | [`fix-sources-link-names-2026-09-17.md`](fix-sources-link-names-2026-09-17.md)                 | PR #92, ni unike lenkenavn, og fire påstander som leser tekst i stedet for navn                        |
 | [`feat-sidebar-drawers-2026-09-17.md`](feat-sidebar-drawers-2026-09-17.md)                     | PR #97, skuffer under 1139: alt målt, og regelen ingen test vokter                                     |
+| [`brukerblikk-4-2026-09-17.md`](brukerblikk-4-2026-09-17.md)                                   | Brukerblikk runde 4 etter dagens bølge: fem funn, og alle ni fra runde 3 målt på nytt                  |
 
 ## Sånn går en review
 
