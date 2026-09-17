@@ -191,7 +191,14 @@ test.describe('panelbredder', () => {
     // den blir stående i tab-rekkefølgen, for ett trykk på «bredere» gjør
     // den nyttig igjen.
     await expect(narrower(page, 'tråder og filter')).toHaveAttribute('aria-disabled', 'true');
-    await expect(narrower(page, 'tråder og filter')).toHaveAttribute('tabindex', '0');
+    // Ingen `tabindex` i det hele tatt, som er sterkere enn `tabindex="0"`:
+    // en `<button>` er et tabbstopp av seg selv, og attributtet sto der før
+    // bare for å kunne settes til -1 når vinduet var fullt. Den tilstanden
+    // finnes ikke lenger — da tegnes knappen ikke. Så måles det som betyr
+    // noe: at tastaturet faktisk når den.
+    await expect(narrower(page, 'tråder og filter')).not.toHaveAttribute('tabindex');
+    await narrower(page, 'tråder og filter').focus();
+    await expect(narrower(page, 'tråder og filter')).toBeFocused();
 
     for (let press = 0; press < 5; press += 1) await wider(page, 'tråder og filter').click();
     await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter fem klikk');
