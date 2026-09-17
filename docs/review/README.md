@@ -43,6 +43,7 @@ eier bare denne mappa.
 | [`feat-live-conversations-2026-09-16.md`](feat-live-conversations-2026-09-16.md)               | PR #84, trådliste og lagring i live: løkka målt mot kjørende stack, og tomtilstanden som ikke er nåbar |
 | [`chore-tenkesteg-kan-2026-09-16.md`](chore-tenkesteg-kan-2026-09-16.md)                       | PR #86, de to «kan» fra #81 tatt: kommentaren myknet, pushene testet                                   |
 | [`fix-chatview-test-flake-2026-09-16.md`](fix-chatview-test-flake-2026-09-16.md)               | PR #89, fire venteløse lesninger i ChatView-testene: rasen er lest i koden, ikke gjenskapt             |
+| [`fix-width-controls-when-fixed-2026-09-17.md`](fix-width-controls-when-fixed-2026-09-17.md)   | PR #93, kontrollene tegnes ikke når vinduet er fullt: README henger etter, e2e-test uten tenner        |
 
 ## Sånn går en review
 
