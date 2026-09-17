@@ -102,6 +102,23 @@ describe('under brytepunktet', () => {
     ).toBe('true');
   });
 
+  it('lar railknappen stå som rail-knapp mens skuffa er åpen', () => {
+    // Målt i nettleseren 17.09: knappen tegnet seg med hele teksten sin mens
+    // skuffa sto åpen, ble 100 px bred i en rail på 67, og dyttet sida 46 px
+    // forbi vindusranda — en vannrett rullelist fra nettopp den regelen som
+    // skulle fjerne en.
+    //
+    // «Står det en rail her» og «er panelet åpent» var det samme spørsmålet
+    // fram til skuff-modus. Presentasjonen følger det første, `aria-expanded`
+    // og Vis/Skjul-ordet det andre.
+    open({ width: 1024 });
+    act(() => show('tråder og filter').click());
+
+    const rail = screen.getByRole('button', { name: 'Skjul tråder og filter' });
+    expect(rail.textContent).toBe('');
+    expect(rail.getAttribute('aria-label')).toBe('Skjul tråder og filter');
+  });
+
   it('har verken skille eller breddeknapper: en skuff har ingen kant å dele', () => {
     open({ width: 1024 });
     act(() => show('tråder og filter').click());

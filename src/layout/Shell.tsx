@@ -407,6 +407,27 @@ function Sidebar({
   const toggleLabel = `${state.collapsed ? 'Vis' : 'Skjul'} ${(label ?? views[state.activeView].label).toLocaleLowerCase('nb-NO')}`;
 
   /**
+   * Whether what stands on the ROW here is a rail.
+   *
+   * True when the panel is collapsed, and true in drawer mode whether the
+   * drawer is open or not — an open drawer is drawn over the answer column and
+   * leaves a rail behind.
+   *
+   * This is the question every DRAWN thing beside the panel turns on: the
+   * width buttons, the separator, and how the toggle button itself is drawn.
+   * `state.collapsed` is a different question — whether the panel is OPEN —
+   * and it is the one `aria-expanded` and the «Vis»/«Skjul» wording answer.
+   * The two were the same thing until drawer mode, and telling them apart is
+   * most of what this file had to learn.
+   *
+   * Measured the day they were confused: with the sources drawer open at
+   * 1024, the button in its 67 px rail was still drawn with its full text,
+   * came out 100 px wide, and pushed the page 46 px past the window — a
+   * horizontal scrollbar from the very rule that was meant to remove one.
+   */
+  const railed = state.collapsed || drawer;
+
+  /**
    * How many documents the folded-away view is holding, for the badge.
    *
    * Keyed on the VIEW and not on the slot: the count belongs to the sources,
@@ -415,7 +436,7 @@ function Sidebar({
    */
   const { documents } = useAnswerSources();
   const sourceCount = state.activeView === 'sources' ? (documents?.length ?? 0) : 0;
-  const showBadge = state.collapsed && sourceCount > 0;
+  const showBadge = railed && sourceCount > 0;
 
   /**
    * «Vis kilder, 3 dokumenter».
@@ -444,16 +465,6 @@ function Sidebar({
    * reader user hears «Vis tråder og filter» in both states, and only the
    * sighted presentation changes.
    */
-  /**
-   * Whether what stands on the ROW here is a rail.
-   *
-   * True when the panel is collapsed, and true in drawer mode whether it is
-   * open or not — an open drawer is drawn over the answer column and leaves a
-   * rail behind. Everything that belongs beside a panel on the row hangs on
-   * this: the width buttons, the separator, the rail's own head.
-   */
-  const railed = state.collapsed || drawer;
-
   /**
    * Everything below the head: the view head box and the view itself.
    *
@@ -508,14 +519,14 @@ function Sidebar({
       variant="tertiary"
       data-color="neutral"
       data-size="sm"
-      icon={state.collapsed || undefined}
-      aria-label={state.collapsed ? toggleName : undefined}
+      icon={railed || undefined}
+      aria-label={railed ? toggleName : undefined}
       aria-expanded={!state.collapsed}
       aria-controls={contentId}
       onClick={() => toggleCollapsed(slot)}
     >
       <Icon aria-hidden />
-      {state.collapsed ? null : toggleLabel}
+      {railed ? null : toggleLabel}
     </Button>
   );
 
