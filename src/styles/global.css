@@ -492,6 +492,24 @@ body {
  * than push the drawer taller than the screen.
  */
 .drawer > .panel {
+  /*
+   * The ground the sticky view head is painted on, and the reason this line
+   * exists at all: `--ka-region-surface` is declared by each region WHERE it
+   * declares its own background, so the head cannot drift from the surface
+   * behind it. A drawer is a region the variable had never heard of — the
+   * declaration sits on `.primary-sidebar > .panel`, and the panel inside a
+   * drawer is a child of the `<dialog>`, not of the landmark. So it inherited
+   * the page tint from `:root` and painted a grey band across a white drawer.
+   *
+   * Measured before the fix, brukerblikk 4 funn 1: head #f3f4f4 on a #ffffff
+   * drawer in light, #192029 on rgb(32 40 52) in dark, at both 1024 and 720.
+   *
+   * From `--dsc-dialog-background` rather than from the token it happens to
+   * hold today, so the head follows the drawer if Designsystemet ever repaints
+   * it. That is the same reason the variable exists.
+   */
+  --ka-region-surface: var(--dsc-dialog-background);
+
   flex: 1 1 auto;
   block-size: auto;
   min-block-size: 0;
