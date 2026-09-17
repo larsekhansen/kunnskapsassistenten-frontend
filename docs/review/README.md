@@ -46,6 +46,7 @@ eier bare denne mappa.
 | [`fix-width-controls-when-fixed-2026-09-17.md`](fix-width-controls-when-fixed-2026-09-17.md)   | PR #93, kontrollene tegnes ikke når vinduet er fullt: README henger etter, e2e-test uten tenner        |
 | [`feat-filter-chips-2026-09-17.md`](feat-filter-chips-2026-09-17.md)                           | PR #91, chip-navnet målt i tilgjengelighetstreet, og ringen som bare flyttet halvparten                |
 | [`fix-sources-link-names-2026-09-17.md`](fix-sources-link-names-2026-09-17.md)                 | PR #92, ni unike lenkenavn, og fire påstander som leser tekst i stedet for navn                        |
+| [`feat-sidebar-drawers-2026-09-17.md`](feat-sidebar-drawers-2026-09-17.md)                     | PR #97, skuffer under 1139: alt målt, og regelen ingen test vokter                                     |
 
 ## Sånn går en review
 
