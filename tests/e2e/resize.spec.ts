@@ -32,6 +32,16 @@ const SOURCES_DEFAULT = 432;
 const SOURCES_FLOOR = 336;
 const SOURCES_MAX = 560;
 
+/**
+ * Navigasjonspanelet ved 1480 når 480 er lagret.
+ *
+ * 480 + 32 + 640 + 32 + 432 = 1616, og vinduet er 1480: kildepanelet gir 96
+ * ned til gulvet sitt, dette panelet de siste 40. Den ene bredden der tegnet
+ * og lagret er forskjellige tall samtidig som skillet finnes — som er det
+ * «taket er vinduets» må ha for å kunne bli rød.
+ */
+const NAV_AT_1480 = 440;
+
 /** Arrow keys move the edge this far; Shift makes it a stride. */
 const STEP = 16;
 const STRIDE = 64;
@@ -418,10 +428,27 @@ test.describe('panelbredder', () => {
     // står igjen i modellen og skal verken tegnes eller meldes.
     await expect(separator(page, 'tråder og filter')).toHaveCount(0);
 
-    // Så på 1680, der det er noe å gi igjen: aria-valuenow er det eneste som
-    // sier hvor kanten står til en som ikke ser den, og det skal være bredden
-    // på skjermen, ikke den lagrede. 400 + 32 + 640 + 32 + 432 = 1536, så de
-    // 144 som er igjen tar navigasjonspanelet helt opp til sitt eget tak.
+    // Så på 1480, som er den ene bredden der spørsmålet i det hele tatt kan
+    // stilles: skillet finnes, og tegnet (440) og lagret (480) er forskjellige
+    // tall. aria-valuenow er det eneste som sier hvor kanten står til en som
+    // ikke ser den, og en verdi på 480 over et panel tegnet på 440 er en løgn
+    // fortalt til nettopp den leseren.
+    //
+    // 1680 under her duger ikke til den målingen: der er det plass til alt, så
+    // tegnet og lagret er det samme tallet og påstanden kan ikke bli rød.
+    // Målt av KA CC på #93 ved å sette aria-valuenow til den lagrede bredden —
+    // grønn på 1680, rød på 1480.
+    await page.setViewportSize({ width: 1480, height: HEIGHT });
+    await expectPanelWidth(page, '.primary-sidebar', NAV_AT_1480, 'navigasjonspanelet ved 1480');
+    await expect(separator(page, 'tråder og filter')).toHaveAttribute(
+      'aria-valuenow',
+      String(NAV_AT_1480),
+    );
+
+    // Og på 1680 er det plass til den lagrede bredden igjen: 400 + 32 + 640 +
+    // 32 + 432 = 1536, så de 144 som er til overs tar navigasjonspanelet helt
+    // opp til sitt eget tak. Den lagrede bredden var aldri borte, bare ikke
+    // tegnbar.
     await page.setViewportSize({ width: 1680, height: HEIGHT });
     await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'navigasjonspanelet ved 1680');
     await expect(separator(page, 'tråder og filter')).toHaveAttribute(
@@ -462,6 +489,12 @@ test.describe('panelbredder', () => {
       for (const sources of ['collapsed', 'open'] as const) {
         if (sources === 'open') await showSources(page);
 
+        // Rekkefølgen er ikke fri: `Home` sist legger hvert panel tilbake på
+        // gulvet sitt, og det er den tilstanden antallet skiller under her er
+        // skrevet for. Snus den til ['Home', 'End'], går navigasjonspanelet
+        // inn i `sources === 'open'` stående på 480, og da finnes det to
+        // skiller ved 1536 i stedet for ett. Det ryker høylytt på tallet, ikke
+        // stille — men det er en avhengighet og ikke en smakssak. KA CC på #93.
         for (const key of ['End', 'Home'] as const) {
           const handles = page.getByRole('separator');
           const count = await handles.count();
@@ -526,8 +559,9 @@ test.describe('panelbredder', () => {
   }, testInfo) => {
     covers(testInfo, 'panelbredde: tilgjengelig i begge moduser');
     // 1920 og ikke 1536: på 1536 med begge panelene åpne står navigasjons-
-    // panelet på gulvet og taket sitt samtidig, og da er skillet ute av
-    // tab-rekkefølgen med vilje. Fokusringen måles der det er noe å gjøre.
+    // panelet på gulvet og taket sitt samtidig, og da er skillet ikke tegnet
+    // i det hele tatt — det er ingen fokusring å måle. Valget er det samme
+    // som før #93, begrunnelsen er ny.
     await page.setViewportSize({ width: 1920, height: HEIGHT });
     await page.goto('/');
     await showSources(page);

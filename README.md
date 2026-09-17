@@ -305,13 +305,19 @@ gjøre et panel bredere er noe man gjør ved å trykke på den samme knappen fle
 ganger, og en `disabled`-knapp slipper fokus til `body` i det den slår seg av.
 Samme par som i utdragssøket.
 
-**Skillet er ikke et tabbstopp når det ikke kan flytte seg.** Ved 1440 med
-begge sidekolonner åpne er 400 + 32 + 640 + 32 + 336 nøyaktig vinduet, og da er
-`aria-valuemin`, `aria-valuemax` og `aria-valuenow` det samme tallet. Linja
-står fortsatt — kanten er der — men `tabIndex` er −1 og `aria-disabled` er
-satt, for det er den samme regelen skallet alt følger om et sammenlagt panel:
-et tabbstopp som ikke kan gjøre noe er et tabbstopp i veien. 1440 er bredden
-alle Figma-rammene er tegnet i, så det er bredden flest møter.
+**Kan ingen kant flyttes, tegnes ingen breddekontroller.** Ved 1440 med begge
+sidekolonner åpne er 400 + 32 + 640 + 32 + 336 nøyaktig vinduet, og da er
+`aria-valuemin`, `aria-valuemax` og `aria-valuenow` det samme tallet: begge
+skillene og alle fire knappene forsvinner helt, ikke bare ut av
+tab-rekkefølgen. Avslått er en tilstand som går over, og denne gjør det ikke —
+en kontroll som aldri kan gjøre noe herfra ser bare ødelagt ut. 1440 er
+bredden alle Figma-rammene er tegnet i, så det er bredden flest møter.
+Kontrollene kommer tilbake av seg selv når vinduet vokser, gjennom
+`useViewportWidth`.
+
+Grensa mellom panelet og svaret blir stående: den tegnes av panelets egen
+ramme, ikke av skillet. Det som går er gripeflata og `col-resize`-pekeren,
+altså løftet om en draging vinduet ikke kan innfri.
 
 Skillet er `role="separator"` med tab-stopp, som er splitter-rollen i ARIA
 1.2, med `aria-orientation="vertical"`, `aria-valuenow/min/max` i piksler og
