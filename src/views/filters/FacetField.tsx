@@ -25,7 +25,6 @@ const SCREEN_READER_TEXTS = {
   'data-sr-items': 'Valgte verdier',
   'data-sr-empty': 'Ingen verdier er valgt',
   'data-sr-found': '%d valgt, naviger bakover for å endre',
-  'data-sr-remove': 'Trykk for å fjerne',
   'data-sr-added': 'Lagt til',
   'data-sr-removed': 'Fjernet',
   'data-sr-invalid': 'Ugyldig verdi',
@@ -75,6 +74,20 @@ export function FacetField({ facet, selected, onChange }: FacetFieldProps) {
     value,
     label: facet.values.find((candidate) => candidate.value === value)?.label ?? value,
   }));
+
+  /*
+   * Which dimension a chip is removed from, in the chip's own name.
+   *
+   * u-combobox builds a chip's accessible name as `label`, then
+   * `data-sr-remove`: «Årsrapport, Trykk for å fjerne». Three fields hold
+   * chips, and a reader walking them heard the same four words after every
+   * value with nothing saying which filter they were in. Naming the dimension
+   * here puts it where the chip is read rather than in a second live region.
+   */
+  const screenReaderTexts = {
+    ...SCREEN_READER_TEXTS,
+    'data-sr-remove': `Trykk for å fjerne fra ${facet.label.toLocaleLowerCase('nb-NO')}`,
+  };
 
   /*
    * The label for the selected state (question 4, which Lars has not
@@ -176,7 +189,7 @@ export function FacetField({ facet, selected, onChange }: FacetFieldProps) {
         multiple
         selected={selectedItems}
         onSelectedChange={(items) => change(items.map((item) => item.value))}
-        {...SCREEN_READER_TEXTS}
+        {...screenReaderTexts}
       >
         {/*
           The placeholder names the dimension. All three fields had the bare

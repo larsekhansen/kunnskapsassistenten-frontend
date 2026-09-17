@@ -122,6 +122,30 @@
 }
 
 /*
+ * The focus ring inside the row instead of around it.
+ *
+ * Designsystemet draws it at `outline-offset: 0`, which paints the ring in
+ * the pixels immediately below the link — and the timestamp starts there: the
+ * link's bottom edge and the time's top edge are the same line, measured 0.0
+ * px apart. The ring cut through «09:14» on every row a keyboard user passed
+ * (brukerblikk runde 3).
+ *
+ * Moving it in rather than adding air, because air here is not free: the
+ * panel is already over its height budget, and 4 px under twelve rows is
+ * another 48 px of it. The row's 4 px of vertical padding is where the ring
+ * goes instead.
+ *
+ * A whole ring width, not a guess: an outline is drawn OUTWARD from the
+ * offset edge, so `-2px` on a 3 px ring still left 1 px over the timestamp
+ * (measured). One ring width inward puts its outer edge exactly on the
+ * border box. Colour, width and style stay Designsystemet's — only the offset
+ * is ours, and it is written from the same token the width comes from.
+ */
+.threads-view__thread:focus-visible {
+  outline-offset: calc(-1 * var(--ds-border-width-focus));
+}
+
+/*
  * The selected thread. aria-current is the semantics; this is only the paint,
  * and it is bound to the same attribute so the two cannot disagree.
  *
