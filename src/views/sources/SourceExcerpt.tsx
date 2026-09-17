@@ -3,6 +3,7 @@ import { HighlightedText, type SearchHit } from '../../components';
 import { BackIcon } from '../../components/icons';
 import { excerptDomId, relevanceLabels, type Excerpt } from '../../model';
 import { kudosLinkLabel } from './kudosLink';
+import { excerptName } from './excerptName';
 import { relevanceTagColor } from './relevance';
 
 /** How much of the quote is shown before the user opens it. */
@@ -28,8 +29,12 @@ function previewOf(text: string): string {
 
 type SourceExcerptProps = {
   excerpt: Excerpt;
-  /** The document this excerpt came from, for the toggle's accessible name. */
+  /** The document this excerpt came from, for the accessible names. */
   documentTitle: string;
+  /** 1-based place of this excerpt among the document's, for naming it. */
+  position: number;
+  /** How many excerpts the document has, for naming an uncited one. */
+  total: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Search hits inside this excerpt, in position order. */
@@ -83,6 +88,8 @@ type SourceExcerptProps = {
 export function SourceExcerpt({
   excerpt,
   documentTitle,
+  position,
+  total,
   open,
   onOpenChange,
   hits,
@@ -94,9 +101,9 @@ export function SourceExcerpt({
   const cited = citationNumber !== undefined;
 
   // Unique per excerpt, so a screen reader reading the list of controls does
-  // not meet five buttons called «Åpne». An uncited excerpt has no number to
-  // name it by, so it is named by the document it came from.
-  const excerptName = cited ? `utdrag ${citationNumber}` : `utdrag fra ${documentTitle}`;
+  // not meet five buttons called «Åpne». See `excerptName.ts` for why a cited
+  // and an uncited excerpt are named by different numbers.
+  const name = excerptName(citationNumber, position, total);
 
   // The first line of the quote in Figma: the section heading from the source
   // document, in bold, with the page after it. Rendered in whichever of the two
@@ -163,7 +170,7 @@ export function SourceExcerpt({
           {open ? 'Lukk' : 'Åpne'}
           {/* The visible label is the one word Figma uses; the accessible name
               says which excerpt it belongs to. */}
-          <span className="ds-sr-only"> {excerptName}</span>
+          <span className="ds-sr-only"> {name}</span>
         </Details.Summary>
         <Details.Content>
           {quoteHeading}
@@ -185,7 +192,22 @@ export function SourceExcerpt({
           {kudosUrl !== undefined && (
             <Link href={kudosUrl} target="_blank" rel="noreferrer" data-size="sm">
               {kudosLinkLabel(kudosUrl, page)}
-              <span className="ds-sr-only"> (åpnes i ny fane)</span>
+              {/* Every one of these links says the same visible words, so the
+                  accessible name carries what tells them apart: which excerpt,
+                  and which document. A screen reader listing the panel's links
+                  otherwise reads «Les dokumentet på Kudos» once per excerpt
+                  (WCAG 2.4.9, found by KA CC on #70). The title comes last
+                  because the excerpt is what the reader is standing in.
+
+                  The computed name comes out as «… på Kudos , utdrag 1 …»:
+                  accname joins a text node and an element with a space, and
+                  the only way to drop it is to make the whole name one
+                  `aria-label`. Measured with CDP 2026-09-17. It is silent in
+                  speech, so it stays. */}
+              <span className="ds-sr-only">
+                {', '}
+                {name}, {documentTitle} (åpnes i ny fane)
+              </span>
             </Link>
           )}
 

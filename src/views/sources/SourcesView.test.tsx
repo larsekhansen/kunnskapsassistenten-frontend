@@ -442,3 +442,68 @@ describe('SourcesView, the shell as it is today', () => {
     expect(screen.getByText('Henter kilder …')).toBeTruthy();
   });
 });
+
+describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
+  /** Two documents whose excerpts all link out, which is the ordinary case. */
+  function withKudosLinks(): SourceDocument[] {
+    const url = (id: string) => `https://kudos.dfo.no/dokument/${id}`;
+
+    return [
+      { ...documentWith('doc-a', 'Årsrapport Nkom 2025', [1, 2]) },
+      { ...documentWith('doc-b', 'Tildelingsbrev Nkom 2026', [3]) },
+    ].map((source) => ({
+      ...source,
+      url: url(source.id),
+      excerpts: source.excerpts.map((excerpt) => ({ ...excerpt, kudosUrl: url(source.id) })),
+    }));
+  }
+
+  function kudosLinkNames(): string[] {
+    return screen
+      .getAllByRole('link')
+      .map((link) => link.textContent ?? '')
+      .filter((name) => name.includes('på Kudos'))
+      .map((name) => name.replace(/\s+/g, ' ').trim());
+  }
+
+  it('navngir hver lenke med utdraget og dokumentet den hører til', () => {
+    render(<SourcesView documents={withKudosLinks()} />);
+
+    expect(kudosLinkNames()).toContain(
+      'Les dokumentet på Kudos, utdrag 1, Årsrapport Nkom 2025 (åpnes i ny fane)',
+    );
+    expect(kudosLinkNames()).toContain(
+      'Les dokumentet på Kudos, utdrag 3, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
+    );
+  });
+
+  it('gir ingen to lenker i panelet samme navn', () => {
+    // Det var funnet: alle lenkene het «Les dokumentet på Kudos», så en
+    // skjermleser som ramser opp lenkene leste samme rad én gang per utdrag
+    // (WCAG 2.4.9, KA CC på #70). Dokumentoverskriftens egen lenke er med i
+    // tellingen, for den står i samme liste.
+    render(<SourcesView documents={withKudosLinks()} />);
+
+    const names = screen.getAllByRole('link').map((link) => link.textContent);
+    const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
+    expect(names.length).toBeGreaterThan(1);
+    expect(duplicates).toEqual([]);
+  });
+
+  it('lar den synlige teksten være i fred', () => {
+    // Tillegget er `ds-sr-only`: en seende leser skal fortsatt se de fire
+    // ordene Figma har, ikke dokumenttittelen om igjen under hvert sitat.
+    const { container } = render(<SourcesView documents={withKudosLinks()} />);
+
+    const link = [...container.querySelectorAll('a')].find((a) =>
+      a.textContent?.includes('på Kudos'),
+    );
+    const visible = [...(link?.childNodes ?? [])]
+      .filter((node) => !(node instanceof HTMLElement && node.className.includes('ds-sr-only')))
+      .map((node) => node.textContent)
+      .join('')
+      .trim();
+
+    expect(visible).toBe('Les dokumentet på Kudos');
+  });
+});
