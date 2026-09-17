@@ -45,6 +45,7 @@ eier bare denne mappa.
 | [`fix-chatview-test-flake-2026-09-16.md`](fix-chatview-test-flake-2026-09-16.md)               | PR #89, fire venteløse lesninger i ChatView-testene: rasen er lest i koden, ikke gjenskapt             |
 | [`fix-width-controls-when-fixed-2026-09-17.md`](fix-width-controls-when-fixed-2026-09-17.md)   | PR #93, kontrollene tegnes ikke når vinduet er fullt: README henger etter, e2e-test uten tenner        |
 | [`feat-filter-chips-2026-09-17.md`](feat-filter-chips-2026-09-17.md)                           | PR #91, chip-navnet målt i tilgjengelighetstreet, og ringen som bare flyttet halvparten                |
+| [`fix-sources-link-names-2026-09-17.md`](fix-sources-link-names-2026-09-17.md)                 | PR #92, ni unike lenkenavn, og fire påstander som leser tekst i stedet for navn                        |
 
 ## Sånn går en review
 
