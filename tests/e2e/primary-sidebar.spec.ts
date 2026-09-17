@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { covers, expectNoAxeViolations, setColorScheme } from './a11y';
+import { contrastAgainstBackdrop, covers, expectNoAxeViolations, setColorScheme } from './a11y';
 import {
   ask,
   chooseFacetValue,
@@ -469,16 +469,30 @@ test.describe('navigasjonspanelet', () => {
   });
 
   /**
-   * Den ene tilstanden ingen hadde målt.
+   * Den ene tilstanden ingen hadde målt — og som axe heller ikke måler.
    *
-   * En påstand om 4,05:1 på option-teksten sto åpen i to dager. Både #2 og
-   * jeg målte den uavhengig og fant 14,11:1 i lys og 12,6:1 i mørk over 275
-   * options — men begge målingene leste `getComputedStyle`, og en framheving
-   * tegnet med et pseudoelement eller en `box-shadow` ville ingen av oss sett.
-   * axe ser den.
+   * En påstand om 4,05:1 på option-teksten sto åpen i to dager. Både #2 og jeg
+   * målte den uavhengig og fant 14,11:1 i lys og 12,6:1 i mørk over 275
+   * options, men begge målingene leste `getComputedStyle`. Testen her ble
+   * skrevet for å legge axe oppå, med den begrunnelsen at axe ser det
+   * `getComputedStyle` ikke ser.
    *
-   * Så: lista åpen, en rad framhevet med tastaturet, axe på hele siden, i
-   * begge moduser. Det er tilstanden en tastaturbruker faktisk står i.
+   * **Det gjør den ikke.** Målt 2026-09-17, i begge moduser: i denne tilstanden
+   * gir axe elleve `incomplete` på `color-contrast`, fire av dem options, den
+   * framhevede raden blant dem, og null options i `passes`. Meldingen er
+   * «Element's background color could not be determined because it is
+   * overlapped by another element» — nedtrekket ligger over resten av panelet,
+   * og da avstår axe. `expectNoAxeViolations` leser `violations`, så den kan
+   * ikke bli rød av en rad axe aldri dømte.
+   *
+   * Derfor måles tallene her i tillegg. `expectNoAxeViolations` blir stående,
+   * for den fanger alt det andre i tilstanden.
+   *
+   * Og framhevingen er ikke en flatefarge: målt er den Designsystemets ring,
+   * `outline: solid 3px` med en innfelt `box-shadow` i motsatt tone, satt på
+   * raden gjennom `data-activedescendant`. Teksten på en framhevet rad har
+   * altså samme farge som på en rad ved siden av, og det som er nytt å måle er
+   * ringen — et ikke-tekstlig element med 3:1 som krav, ikke 4,5:1.
    */
   for (const mode of ['light', 'dark'] as const) {
     test(`en åpen fasettliste med framhevet rad er kontrastsjekket i ${mode}`, async ({
@@ -490,15 +504,54 @@ test.describe('navigasjonspanelet', () => {
       const field = facetField(page, 'Virksomheter');
       await field.click();
       // ArrowDown åpner lista og framhever første rad. Designsystemets
-      // Suggestion holder fokus på inputen og peker med
-      // `aria-activedescendant`, så framhevingen er en tilstand på raden og
-      // ikke en fokusring.
+      // Suggestion holder fokus på inputen og peker på raden med
+      // `aria-activedescendant`.
       await page.keyboard.press('ArrowDown');
       // `:visible`, fordi alle tre listene har options i DOM-en hele tiden og
       // bare den åpne er synlig.
       await expect(page.locator('[role="option"]:visible').first()).toBeVisible();
 
-      await expectNoAxeViolations(page, `åpen fasettliste med framhevet rad i ${mode}`);
+      // Raden som faktisk er framhevet, hentet gjennom `aria-activedescendant`
+      // og ikke som `.first()`: 275 options ligger i DOM-en samtidig, og en
+      // måling på feil rad er verre enn ingen måling.
+      const highlighted = await field.getAttribute('aria-activedescendant');
+      expect(highlighted, 'ArrowDown skal ha framhevet en rad').toBeTruthy();
+
+      // `keepFocus`, ellers måler axe en lukket liste: standarden i `settle`
+      // blurrer, og nedtrekket lever på fokus. Se `a11y.ts`.
+      // `keepFocus`, ellers måler axe en lukket liste: standarden i `settle`
+      // blurrer, og nedtrekket lever på fokus. Se `a11y.ts`.
+      await expectNoAxeViolations(page, `åpen fasettliste med framhevet rad i ${mode}`, {
+        keepFocus: true,
+      });
+
+      // Og lista sto faktisk åpen mens axe så på den. Uten denne påstanden er
+      // det ingenting som sier at kjøringen over målte tilstanden testen
+      // heter etter — som er nøyaktig slik den kunne stå grønn i to dager.
+      await expect(
+        page.locator('[role="option"]:visible'),
+        'lista skal fortsatt være åpen etter axe-kjøringen',
+      ).not.toHaveCount(0);
+      await expect(field, 'raden skal fortsatt være framhevet etter axe-kjøringen').toHaveAttribute(
+        'aria-activedescendant',
+        highlighted ?? '',
+      );
+
+      // Som attributt og ikke som `#id`: Suggestion sine id-er begynner med
+      // kolon (`:u-option8`), som ikke er en gyldig id-selektor, og `CSS.escape`
+      // finnes ikke her — testen kjører i Node, ikke i sida.
+      const row = page.locator(`[id="${highlighted}"]`);
+      await expect(row).toBeVisible();
+
+      const contrast = await contrastAgainstBackdrop(row);
+      expect(
+        contrast.text,
+        `teksten i den framhevede raden mot ${contrast.background} i ${mode}`,
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrast.ring,
+        `framhevingsringen mot ${contrast.background} i ${mode}`,
+      ).toBeGreaterThanOrEqual(3);
 
       // Og en liste som er filtrert av det leseren har skrevet, i et annet
       // felt: rekkefølgen er skriv først, framhev etterpå, fordi ArrowDown
@@ -511,7 +564,13 @@ test.describe('navigasjonspanelet', () => {
         page.locator('[role="option"]').filter({ hasText: 'Årsrapport' }).first(),
       ).toBeVisible();
       await page.keyboard.press('ArrowDown');
-      await expectNoAxeViolations(page, `filtrert fasettliste med framhevet rad i ${mode}`);
+      await expectNoAxeViolations(page, `filtrert fasettliste med framhevet rad i ${mode}`, {
+        keepFocus: true,
+      });
+      await expect(
+        page.locator('[role="option"]:visible'),
+        'den filtrerte lista skal også stå åpen etter axe-kjøringen',
+      ).not.toHaveCount(0);
     });
   }
 
