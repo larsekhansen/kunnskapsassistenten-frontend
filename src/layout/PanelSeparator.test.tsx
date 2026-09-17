@@ -1,9 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetViewport, setViewportWidth } from '../test/matchMedia';
 import { LayoutProvider } from './LayoutProvider';
 import { PanelSeparator } from './PanelSeparator';
 import { LAYOUT_STORAGE_KEY } from './persistence';
+import { widthRange } from './resize';
 import { defaultLayout, withCollapsed, type Layout, type SidebarSlot } from './viewModel';
 
 /**
@@ -27,13 +29,17 @@ type Options = {
   restore?: boolean;
 };
 
-function open(slot: SidebarSlot, { width = 1920, restore = false }: Options = {}) {
+function draw(slot: SidebarSlot, { width = 1920, restore = false }: Options = {}) {
   setViewportWidth(width);
   render(
     <LayoutProvider initialLayout={restore ? undefined : bothOpen}>
       <PanelSeparator slot={slot} />
     </LayoutProvider>,
   );
+}
+
+function open(slot: SidebarSlot, options: Options = {}) {
+  draw(slot, options);
   return screen.getByRole('separator');
 }
 
@@ -75,17 +81,13 @@ describe('the separator as a control', () => {
     expect(separator.getAttribute('aria-valuetext')).toBe('416 piksler');
   });
 
-  it('is a tab stop while there is something to do, and not while there is not', () => {
-    expect(open('primary-sidebar').getAttribute('tabindex')).toBe('0');
-    document.body.innerHTML = '';
-
-    // 1440 is the three slots at their floors exactly. Every key on the
-    // separator then does nothing, and a tab stop that cannot do anything is
-    // a tab stop in the way — the rule the shell already keeps about a
-    // collapsed panel. The line stays drawn: the edge is still there.
-    const stuck = open('primary-sidebar', { width: 1440 });
-    expect(stuck.getAttribute('tabindex')).toBe('-1');
-    expect(stuck.getAttribute('aria-disabled')).toBe('true');
+  it('is a tab stop, and is only there while there is something to do', () => {
+    // No `aria-disabled` state to be in: a separator that cannot move is not
+    // rendered at all, so the one on screen always works. See the last
+    // describe in this file.
+    const separator = open('primary-sidebar');
+    expect(separator.getAttribute('tabindex')).toBe('0');
+    expect(separator.getAttribute('aria-disabled')).toBeNull();
   });
 });
 
@@ -188,21 +190,45 @@ describe('Home, End and Enter', () => {
 });
 
 describe('a window with no room in it', () => {
-  it('reports one number for the floor, the ceiling and where it is', () => {
-    // 1440 is the three slots at their floors exactly. There is nothing to
-    // drag, and saying so is better than moving an edge that springs back.
-    const separator = open('primary-sidebar', { width: 1440 });
+  it('draws no separator at all, because there is no edge to move', () => {
+    // 1440 is the three slots at their floors exactly: 400 + 32 + 640 + 32 +
+    // 336 is the window. Floor, ceiling and the width on screen are one
+    // number, so every key and every drag here does nothing.
+    //
+    // PR #50 left it drawn, out of the tab order and `aria-disabled`, on the
+    // argument that the line is the edge. The line is not this element — the
+    // panel's own border draws it, and `.panel-separator::before` only lights
+    // up under the pointer, under focus and while dragging. What goes is the
+    // grip and the `col-resize` cursor, which promised a drag this window
+    // cannot deliver. Brukerblikk 3, funn 2; Lars 17.09.
+    draw('primary-sidebar', { width: 1440 });
+    expect(screen.queryByRole('separator')).toBeNull();
 
-    expect(separator.getAttribute('aria-valuemin')).toBe('400');
-    expect(separator.getAttribute('aria-valuemax')).toBe('400');
-    expect(width(separator)).toBe(400);
+    // The width arithmetic itself is unchanged and measured in resize.test.ts:
+    // `widthRange` still answers { min: 400, max: 400 } here. What changed is
+    // only what is drawn for it.
+    expect(widthRange(bothOpen, 'primary-sidebar', 1440)).toEqual({ min: 400, max: 400 });
+  });
 
-    fireEvent.keyDown(separator, { key: 'ArrowRight' });
+  it('draws none for the panel after the answer column either', () => {
+    draw('secondary-sidebar', { width: 1440 });
+    expect(screen.queryByRole('separator')).toBeNull();
+  });
+
+  it('draws it again when the window grows, reporting the width on screen', () => {
+    draw('primary-sidebar', { width: 1440 });
+    expect(screen.queryByRole('separator')).toBeNull();
+
+    act(() => setViewportWidth(1920));
+
+    const separator = screen.getByRole('separator');
     expect(width(separator)).toBe(400);
+    expect(separator.getAttribute('aria-valuemax')).toBe('480');
+    expect(separator.getAttribute('tabindex')).toBe('0');
   });
 
   it('reports the width on screen, not the one the reader asked for elsewhere', () => {
-    // Widened in a window with room, then met at 1440. `aria-valuenow` is the
+    // Widened in a window with room, then met at 1480. `aria-valuenow` is the
     // only thing that tells a screen reader user where the edge is; a value
     // that says 480 over a panel drawn at 400 is a lie told to the one reader
     // who cannot see the difference.
@@ -215,10 +241,12 @@ describe('a window with no room in it', () => {
       }),
     );
 
-    // 480 + 32 + 640 + 32 + 432 is 1616 and the window is 1440: the sources
-    // panel gives 96 and this panel the last 80, so what is drawn is 400.
-    const separator = open('primary-sidebar', { restore: true, width: 1440 });
-    expect(width(separator)).toBe(400);
-    expect(separator.getAttribute('aria-valuemax')).toBe('400');
+    // 1480 and not 1440: at 1440 there is nothing to drag and no separator to
+    // read. 480 + 32 + 640 + 32 + 432 is 1616 and the window is 1480, so the
+    // sources panel gives 96 and this panel the last 40 — drawn at 440, which
+    // is neither the stored 480 nor the default 400.
+    const separator = open('primary-sidebar', { restore: true, width: 1480 });
+    expect(width(separator)).toBe(440);
+    expect(separator.getAttribute('aria-valuemax')).toBe('440');
   });
 });

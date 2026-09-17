@@ -102,52 +102,53 @@ describe('når kanten står på grensa', () => {
     expect(width()).toBe(480);
   });
 
-  it('er av i begge ender når vinduet ikke har noe å gi', () => {
-    // 1440: de tre plassene står på gulvet sitt og summen er vinduet.
-    open('primary-sidebar', { width: 1440 });
-
-    expect(narrower('tråder og filter').getAttribute('aria-disabled')).toBe('true');
-    expect(wider('tråder og filter').getAttribute('aria-disabled')).toBe('true');
-  });
-});
-
-describe('de to stillhetene er ikke den samme', () => {
-  it('beholder tabbstoppet når kanten bare står på gulvet akkurat nå', () => {
+  it('beholder tabbstoppet, for ett trykk på den andre knappen gjør den nyttig igjen', () => {
     // 1920: panelet står på 400, som er gulvet, men taket er 480. «Smalere»
     // sier fra at den ikke kan gå lenger — og blir stående i tab-rekkefølgen,
-    // for ett trykk på «bredere» gjør den nyttig igjen, og et tabbstopp som
-    // forsvinner under fingeren tar leseren ut av kontrollen de jobbet i.
+    // for et tabbstopp som forsvinner under fingeren tar leseren ut av
+    // kontrollen de jobbet i.
     open('primary-sidebar');
 
     expect(narrower('tråder og filter').getAttribute('aria-disabled')).toBe('true');
-    expect(narrower('tråder og filter').getAttribute('tabindex')).toBe('0');
+    expect(narrower('tråder og filter').getAttribute('tabindex')).toBeNull();
 
     fireEvent.click(wider('tråder og filter'));
     expect(narrower('tråder og filter').getAttribute('aria-disabled')).toBeNull();
   });
+});
 
-  it('går ut av tab-rekkefølgen når vinduet aldri kan gi noe', () => {
-    // 1440: ingen av knappene kan gjøre noe herfra, uansett hva leseren
-    // trykker på. Fire tomme tabbstopp på den bredden alle Figma-rammene er
-    // tegnet i. Samme `fixed` som skillet forlater tab-rekkefølgen på.
+describe('et vindu som ikke har noe å gi', () => {
+  it('tegner ingen breddekontroller i det hele tatt', () => {
+    // 1440: de tre plassene står på gulvet sitt og summen er vinduet. Ingen
+    // av knappene kan gjøre noe herfra uansett hva leseren trykker på, og en
+    // kontroll som aldri kan gjøre noe er ikke en kontroll på grensa — den
+    // har ingen jobb i dette vinduet. Brukerblikk 3, funn 2: på 1440 × 900
+    // sto alle fire varig avslått, og 1440 er bredden alle Figma-rammene er
+    // tegnet i. Skillet går samme vei, så her er det ingen separator å lese
+    // bredden av heller.
     open('primary-sidebar', { width: 1440 });
 
-    for (const button of [narrower('tråder og filter'), wider('tråder og filter')]) {
-      expect(button.getAttribute('tabindex')).toBe('-1');
-      // Fortsatt aria-disabled: en skjermleser navigerer ikke etter
-      // tab-rekkefølgen, og den som når knappen en annen vei skal få vite at
-      // den ikke gjør noe.
-      expect(button.getAttribute('aria-disabled')).toBe('true');
-    }
+    expect(screen.queryByRole('button', { name: /Gjør .* smalere/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Gjør .* bredere/ })).toBeNull();
+    expect(screen.queryByRole('separator')).toBeNull();
   });
 
-  it('kommer tilbake i tab-rekkefølgen når vinduet igjen har plass', () => {
+  it('gjør det for begge sidekolonnene', () => {
+    // Kildepanelet står på sitt gulv på 336 på den samme bredden.
+    open('secondary-sidebar', { width: 1440 });
+
+    expect(screen.queryByRole('button', { name: /Gjør/ })).toBeNull();
+    expect(screen.queryByRole('separator')).toBeNull();
+  });
+
+  it('tegner dem igjen når vinduet vokser', () => {
     open('primary-sidebar', { width: 1440 });
-    expect(wider('tråder og filter').getAttribute('tabindex')).toBe('-1');
+    expect(screen.queryByRole('button', { name: /Gjør/ })).toBeNull();
 
     act(() => setViewportWidth(1920));
 
-    expect(wider('tråder og filter').getAttribute('tabindex')).toBe('0');
-    expect(wider('tråder og filter').getAttribute('aria-disabled')).toBeNull();
+    expect(wider('tråder og filter')).toBeDefined();
+    expect(narrower('tråder og filter')).toBeDefined();
+    expect(width()).toBe(400);
   });
 });

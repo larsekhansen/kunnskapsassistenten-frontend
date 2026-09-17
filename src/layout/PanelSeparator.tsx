@@ -128,6 +128,27 @@ export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
     resize(next);
   }
 
+  /*
+   * Not drawn at all when the window has nothing to give: floor, ceiling and
+   * the width on screen are one number, so every key and every drag on this
+   * edge does nothing.
+   *
+   * PR #50 kept it, out of the tab order and `aria-disabled`, on the argument
+   * that the line is the edge and removing it would remove the boundary too.
+   * The line is not this element: the panel's own `border-inline-end` draws
+   * the edge, and `.panel-separator::before` only lights up under the pointer,
+   * under focus and while dragging — none of which can happen here. So what
+   * goes is the grip and the `col-resize` cursor over it, both of which
+   * promised a drag this window cannot deliver. The boundary stays.
+   *
+   * Brukerblikk 3, funn 2, Lars 17.09 decision 9 option (c). It is the state
+   * at 1440 × 900 with both sidebars open — the width every Figma frame is
+   * drawn in — so it is not a corner case.
+   *
+   * It comes back when the window grows, through `useViewportWidth`.
+   */
+  if (fixed) return null;
+
   return (
     // The rule wants an `<hr>` for anything with `role="separator"`, and an
     // `<hr>` is the wrong element here twice: it is a thematic break between
@@ -159,22 +180,12 @@ export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
       onPointerUp={endDrag}
       role="separator"
       /*
-        Out of the tab order when the window has nothing to give — floor,
-        ceiling and current width one number — because then every key on it
-        does nothing. It is the rule the shell already keeps four lines away,
-        about a collapsed panel: a tab stop that cannot do anything is a tab
-        stop in the way. And the width it is true at is 1440, which is what
-        every Figma frame is drawn in and what the e2e suite runs in, so it is
-        the width most readers meet.
-
-        `aria-disabled` says the same thing to anyone who reaches it another
-        way — a screen reader's own navigation does not use the tab order.
-        The line itself stays drawn: the edge is still there, it just cannot
-        move, and removing it would take away the boundary as well as the
-        control. KA CC, reviewing PR #50.
+        Always a tab stop, because this element only exists while there is
+        something to do with it. The window with no room in it takes the whole
+        control away rather than leaving a silent one; see the `fixed` return
+        above.
       */
-      aria-disabled={fixed || undefined}
-      tabIndex={fixed ? -1 : 0}
+      tabIndex={0}
     />
   );
 }
