@@ -51,6 +51,19 @@ describe('FacetField', () => {
     expect(screen.getByPlaceholderText('Søk i dokumenttype')).toBeTruthy();
   });
 
+  it('sier hvilken dimensjon en chip fjernes fra', () => {
+    /*
+     * u-combobox names a chip `label`, then `data-sr-remove`: «Årsrapport,
+     * Trykk for å fjerne fra dokumenttype». Three fields hold chips, and the
+     * bare «Trykk for å fjerne» said the same four words in all three.
+     */
+    const { container } = render(<Harness partial />);
+
+    expect(container.querySelector('ds-suggestion')?.getAttribute('data-sr-remove')).toBe(
+      'Trykk for å fjerne fra dokumenttype',
+    );
+  });
+
   it('keeps focus in the field when «Velg alle» removes itself', () => {
     render(<Harness />);
 
