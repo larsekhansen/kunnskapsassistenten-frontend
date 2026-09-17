@@ -32,6 +32,44 @@ if (typeof document.getAnimations !== 'function') {
 }
 
 /**
+ * jsdom implements no part of `<dialog>` beyond the element: `showModal`,
+ * `show` and `close` are all missing, and the drawer below 1139 is a
+ * Designsystemet `Dialog` — so any test that renders the shell in a narrow
+ * window throws on the first open.
+ *
+ * What this shim gives is the `open` attribute and the `close` event, which is
+ * what React and Designsystemet drive the component with. What it deliberately
+ * does NOT give is the thing a modal dialog is FOR: the top layer, the focus
+ * trap, the inert background, and Escape. jsdom has no layout and no top
+ * layer, so a shim could only pretend, and a unit test that passed on the
+ * pretence would be worse than no test — it would report a focus trap that
+ * the browser, not us, is supposed to provide.
+ *
+ * Those four are measured in a real browser instead, in
+ * tests/e2e/drawers.spec.ts. Here the shim only keeps the component mountable
+ * so the state around it can be measured at all.
+ */
+if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.showModal) {
+  // `show` and `showModal` are the same two lines here, and that is the point:
+  // the difference between them is the top layer, which jsdom does not have.
+  function open(this: HTMLDialogElement) {
+    if (!this.open) this.setAttribute('open', '');
+  }
+
+  HTMLDialogElement.prototype.showModal = open;
+  HTMLDialogElement.prototype.show = open;
+  HTMLDialogElement.prototype.close = function close(
+    this: HTMLDialogElement,
+    returnValue?: string,
+  ) {
+    if (!this.open) return;
+    if (returnValue !== undefined) this.returnValue = returnValue;
+    this.removeAttribute('open');
+    this.dispatchEvent(new Event('close'));
+  };
+}
+
+/**
  * Testing Library normally registers its own afterEach, but only when vitest
  * runs with globals. This project imports describe/it/expect explicitly, so
  * the cleanup is registered here instead — without it the DOM from one test

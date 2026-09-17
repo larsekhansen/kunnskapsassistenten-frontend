@@ -9,7 +9,13 @@ import { useCitation } from './useCitation';
 import { useFilterSelection } from './useFilterSelection';
 import { useLayout } from './useLayout';
 import type { SourceDocument } from '../model';
-import { bothSidebarsMinViewport, defaultLayout, withCollapsed, type Layout } from './viewModel';
+import {
+  bothSidebarsMinViewport,
+  defaultLayout,
+  drawerMaxViewport,
+  withCollapsed,
+  type Layout,
+} from './viewModel';
 
 /**
  * Reads the signal a view uses to decide whether to take focus on mount, and
@@ -324,6 +330,37 @@ describe('kildepanelet åpner seg selv', () => {
 
   it('åpner under brytepunktet når navigasjonspanelet alt er kollapset', () => {
     setViewportWidth(bothSidebarsMinViewport - 1);
+    renderSources();
+    click('Skjul tråder og filter');
+
+    click('Svar med kilder');
+
+    expect(screen.getByTestId('secondary').textContent).toBe('åpen');
+  });
+
+  it('lar være i skuff-modus, der panelet ville vært en modal over svaret', () => {
+    // Under 1139 er et åpent panel en skuff: en modal, med fokusfelle og
+    // inert bakgrunn. Den ville lagt seg over svaret som nettopp kom og tatt
+    // tastaturet fra leseren midt i at de leser det.
+    //
+    // Og den kommer seg forbi de andre vaktene: skuff-modus folder begge
+    // sidekolonnene bort, så `roomForBoth` er sann fordi navigasjonspanelet
+    // er kollapset. «Er det plass» har ikke noe svar her — det finnes ingen
+    // ved siden av.
+    setViewportWidth(drawerMaxViewport - 1);
+    renderSources();
+    expect(screen.getByTestId('primary').textContent).toBe('kollapset');
+
+    click('Svar med kilder');
+
+    expect(screen.getByTestId('secondary').textContent).toBe('kollapset');
+  });
+
+  it('åpner igjen så snart vinduet er over skuff-grensa', () => {
+    // Den andre halvdelen av den samme regelen: det er skuff-modus som er
+    // grunnen, ikke bredden i seg selv. På 1139 er det plass ved siden av, og
+    // da er et svar med kilder fortsatt god nok grunn til å åpne panelet.
+    setViewportWidth(drawerMaxViewport);
     renderSources();
     click('Skjul tråder og filter');
 

@@ -418,10 +418,84 @@ body {
  * A rail is narrower than the container query's 400 px, so it would otherwise
  * be handed the narrow-panel padding. It has its own, and it is the 24 in
  * `railWidth`.
+ *
+ * Only the head that stands ON the row, hence `> .panel`. In drawer mode the
+ * landmark is drawn as a rail while holding an open drawer, and a descendant
+ * selector would reach into the drawer and give a 400 px panel the padding
+ * meant for a 67 px one.
  */
-.primary-sidebar[data-collapsed] .sidebar-header,
-.secondary-sidebar[data-collapsed] .sidebar-header {
+.primary-sidebar[data-collapsed] > .panel .sidebar-header,
+.secondary-sidebar[data-collapsed] > .panel .sidebar-header {
   padding-inline: var(--ka-rail-padding-inline);
+}
+
+/* ── Drawers, below 1139 ───────────────────────────────────────────────── */
+
+/*
+ * An open sidebar below `drawerMaxViewport` is drawn OVER the answer column
+ * instead of beside it. Designsystemet's `Dialog` with `placement` set to the
+ * edge the slot stands at is a drawer already — full height, no radius on the
+ * outer edge, slide-in, backdrop, and `body:has(.ds-dialog:modal)` stopping
+ * the page behind it from scrolling. What is left here is our width and our
+ * padding.
+ *
+ * The `[open]` is load-bearing and not tidiness. `display` written on a
+ * `<dialog>` without it beats the browser's own `dialog:not([open]) { display:
+ * none }`, and the drawer would stand open on the page for ever. Same pair
+ * `.sidebar-content` needs for `[hidden]`, a hundred lines up.
+ */
+.drawer[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer {
+  padding: 0;
+  /*
+   * Its own container, so the panel inside asks about the DRAWER's width and
+   * not the rail's. The landmark around it is 67 px in drawer mode, and
+   * `@container (width < 380px)` would hand a 400 px drawer the padding meant
+   * for a narrow panel.
+   */
+  container-type: inline-size;
+}
+
+/*
+ * How wide the drawer is drawn. The number comes from `drawerWidth` through
+ * the shell's inline style, which reads `defaultLayout` rather than the width
+ * the reader may have dragged — a width chosen for a column standing beside
+ * the answer says nothing about one lying over it.
+ */
+.drawer[data-slot='primary-sidebar'] {
+  --dsc-dialog-placement-inline-max-width: var(--ka-primary-sidebar-drawer-width);
+}
+
+.drawer[data-slot='secondary-sidebar'] {
+  --dsc-dialog-placement-inline-max-width: var(--ka-secondary-sidebar-drawer-width);
+}
+
+/*
+ * The close button Designsystemet draws. It floats in the component's own
+ * stylesheet, which is meant for a `display: block` dialog; in this flex
+ * column a float does nothing, so it is placed as a flex item instead.
+ */
+.drawer > button[command='close'] {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  margin: var(--ds-size-3) var(--ds-size-3) 0 0;
+}
+
+/*
+ * `.panel` is `block-size: 100%`, which is the whole dialog — and the close
+ * button above it already took some. As a flex item it takes what is left.
+ * `min-block-size: 0` is what lets `.sidebar-content` inside it scroll rather
+ * than push the drawer taller than the screen.
+ */
+.drawer > .panel {
+  flex: 1 1 auto;
+  block-size: auto;
+  min-block-size: 0;
+  padding-block-start: 0;
 }
 
 /*
