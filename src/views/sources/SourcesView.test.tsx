@@ -442,3 +442,83 @@ describe('SourcesView, the shell as it is today', () => {
     expect(screen.getByText('Henter kilder …')).toBeTruthy();
   });
 });
+
+describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
+  /** Two documents whose excerpts all link out, which is the ordinary case. */
+  function withKudosLinks(): SourceDocument[] {
+    const url = (id: string) => `https://kudos.dfo.no/dokument/${id}`;
+
+    return [
+      { ...documentWith('doc-a', 'Årsrapport Nkom 2025', [1, 2]) },
+      { ...documentWith('doc-b', 'Tildelingsbrev Nkom 2026', [3]) },
+    ].map((source) => ({
+      ...source,
+      url: url(source.id),
+      excerpts: source.excerpts.map((excerpt) => ({ ...excerpt, kudosUrl: url(source.id) })),
+    }));
+  }
+
+  /**
+   * The names as an assistive technology computes them, not `textContent`.
+   *
+   * `getByRole` runs the accessible name computation, so a generic
+   * `aria-label` on the link would override the text and fail here — reading
+   * `textContent` would have passed it (KA CC on #92).
+   */
+  const LINK_NAMES = [
+    'Årsrapport Nkom 2025',
+    'Tildelingsbrev Nkom 2026',
+    'Les dokumentet på Kudos, utdrag 1, Årsrapport Nkom 2025 (åpnes i ny fane)',
+    'Les dokumentet på Kudos, utdrag 2, Årsrapport Nkom 2025 (åpnes i ny fane)',
+    'Les dokumentet på Kudos, Årsrapport Nkom 2025 (åpnes i ny fane)',
+    'Les dokumentet på Kudos, utdrag 3, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
+    'Les dokumentet på Kudos, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
+  ];
+
+  it('navngir hver lenke med utdraget og dokumentet den hører til', () => {
+    render(<SourcesView documents={withKudosLinks()} />);
+
+    // `getByRole` kaster både når ingen og når flere treffer, så dette er
+    // navnet og entydigheten i samme påstand.
+    expect(
+      screen.getByRole('link', {
+        name: 'Les dokumentet på Kudos, utdrag 1, Årsrapport Nkom 2025 (åpnes i ny fane)',
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('link', {
+        name: 'Les dokumentet på Kudos, utdrag 3, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
+      }),
+    ).toBeTruthy();
+  });
+
+  it('gir ingen to lenker i panelet samme navn', () => {
+    // Det var funnet: alle lenkene het «Les dokumentet på Kudos», så en
+    // skjermleser som ramser opp lenkene leste samme rad én gang per utdrag
+    // (WCAG 2.4.9, KA CC på #70). Dokumentoverskriftens egen lenke er med i
+    // tellingen, for den står i samme liste.
+    render(<SourcesView documents={withKudosLinks()} />);
+
+    expect(screen.getAllByRole('link')).toHaveLength(LINK_NAMES.length);
+    for (const name of LINK_NAMES) {
+      expect(screen.getAllByRole('link', { name })).toHaveLength(1);
+    }
+  });
+
+  it('lar den synlige teksten være i fred', () => {
+    // Tillegget er `ds-sr-only`: en seende leser skal fortsatt se de fire
+    // ordene Figma har, ikke dokumenttittelen om igjen under hvert sitat.
+    const { container } = render(<SourcesView documents={withKudosLinks()} />);
+
+    const link = [...container.querySelectorAll('a')].find((a) =>
+      a.textContent?.includes('på Kudos'),
+    );
+    const visible = [...(link?.childNodes ?? [])]
+      .filter((node) => !(node instanceof HTMLElement && node.className.includes('ds-sr-only')))
+      .map((node) => node.textContent)
+      .join('')
+      .trim();
+
+    expect(visible).toBe('Les dokumentet på Kudos');
+  });
+});

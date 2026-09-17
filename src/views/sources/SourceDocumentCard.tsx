@@ -73,7 +73,7 @@ export function SourceDocumentCard({
         </Paragraph>
       </Card.Block>
 
-      {source.excerpts.map((excerpt) => {
+      {source.excerpts.map((excerpt, index) => {
         const active =
           excerpt.citationNumber !== undefined && excerpt.citationNumber === activeCitationNumber;
 
@@ -82,6 +82,10 @@ export function SourceDocumentCard({
             key={excerpt.id}
             excerpt={excerpt}
             documentTitle={source.title}
+            // The place in the document, for naming an excerpt the answer
+            // never cited: the same count the card prints above them.
+            position={index + 1}
+            total={source.excerpts.length}
             open={openExcerptIds.has(excerpt.id)}
             onOpenChange={(open) => onExcerptOpenChange(excerpt.id, open)}
             hits={hitsFor(hits, excerpt.id)}
@@ -102,9 +106,23 @@ export function SourceDocumentCard({
         ) : (
           <Link href={source.url} target="_blank" rel="noreferrer" data-size="sm">
             Les dokumentet på Kudos
-            {/* Designsystemet says not to mark an external link with an icon
-                alone, so the fact that it leaves the app is said in words. */}
-            <span className="ds-sr-only"> (åpnes i ny fane)</span>
+            {/* The title, because every document card ends in these same four
+                words: without it a screen reader listing the panel's links
+                reads «Les dokumentet på Kudos» once per document and cannot
+                tell which one leads where (WCAG 2.4.9, KA CC on #70).
+
+                Designsystemet also says not to mark an external link with an
+                icon alone, so leaving the app is said in words too.
+
+                The computed name comes out as «… på Kudos , Årsrapport …»:
+                accname joins a text node and an element with a space, and the
+                only way to drop it is to make the whole name one `aria-label`.
+                Measured with CDP 2026-09-17. It is silent in speech, so it
+                stays — and this note is here so nobody chases it twice. */}
+            <span className="ds-sr-only">
+              {', '}
+              {source.title} (åpnes i ny fane)
+            </span>
           </Link>
         )}
       </Card.Block>
