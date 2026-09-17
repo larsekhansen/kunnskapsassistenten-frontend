@@ -268,6 +268,50 @@ test.describe('skuffer under 1139', () => {
     expect((await box(page, 'dialog[open]')).width).toBe(NAV_DRAWER);
   });
 
+  test('hodet i skuffa står på skuffas egen flate, i begge moduser', async ({ page }, testInfo) => {
+    covers(testInfo, 'skuffer: hodet deler flate med skuffa');
+
+    // `--ka-region-surface` skal deklareres der flata deklareres, så det
+    // klebrige hodet ikke driver fra grunnen det er malt på. En skuff var en
+    // region variabelen ikke visste om: panelet inne i den er barn av
+    // `<dialog>`, ikke av landemerket, så det arvet sidas tone fra `:root` og
+    // malte et grått bånd tvers over en hvit skuff.
+    //
+    // Målt før fiksen, brukerblikk 4 funn 1: hode #f3f4f4 på en #ffffff skuff
+    // i lys, #192029 på rgb(32 40 52) i mørk, på både 1024 og 720.
+    for (const size of [NARROW, ZOOMED]) {
+      await page.setViewportSize(size);
+      await page.goto('/threads/nkom-maaloppnaaelse');
+
+      for (const scheme of ['light', 'dark'] as const) {
+        await setColorScheme(page, scheme);
+
+        for (const panel of ['tråder og filter', 'kilder'] as const) {
+          await openDrawer(page, panel);
+
+          const ground = await page.evaluate(() => {
+            const dialog = document.querySelector('dialog[open]')!;
+            const head = dialog.querySelector('.view-head');
+            return {
+              // Et tomt hode tegner ingen linje og ingen flate, så det ville
+              // bestått denne uansett. `fylt` er vakta på at målingen faktisk
+              // hadde noe å måle.
+              fylt: (head?.children.length ?? 0) > 0,
+              skuff: getComputedStyle(dialog).backgroundColor,
+              hode: head ? getComputedStyle(head).backgroundColor : 'fant ikke hodet',
+            };
+          });
+
+          expect(ground.fylt, `${panel} ved ${size.width} i ${scheme} skal ha et hode`).toBe(true);
+          expect(ground.hode, `hodet i ${panel} ved ${size.width} i ${scheme}`).toBe(ground.skuff);
+
+          await page.keyboard.press('Escape');
+          await expect(page.getByRole('dialog')).toBeHidden();
+        }
+      }
+    }
+  });
+
   test('null axe-brudd i lys og mørk, på begge bredder', async ({ page }, testInfo) => {
     covers(testInfo, 'skuffer: tilgjengelig i begge moduser');
 
