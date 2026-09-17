@@ -17,12 +17,14 @@ import {
   writeStoredFilter,
   writeStoredLayout,
 } from './persistence';
+import { useDrawerMode } from './useDrawerMode';
 import { useNarrowViewport } from './useNarrowViewport';
 import {
   defaultLayout,
   otherSidebar,
   withActiveView,
   withCollapsed,
+  withAllSidebarsCollapsed,
   withOneSidebarOpen,
   withViewMoved,
   withWidth,
@@ -72,6 +74,13 @@ export function LayoutProvider({
     withStoredWidths(withStoredCollapse(initialLayout ?? defaultLayout, restored), restored),
   );
   const narrow = useNarrowViewport();
+  /*
+   * Below 1139 an open sidebar becomes a modal drawer over the answer
+   * column. The provider needs to know, because two things about STATE
+   * change down there and state is what it owns: both sidebars start shut,
+   * and an arriving answer does not open one. See useDrawerMode.ts.
+   */
+  const drawer = useDrawerMode();
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | undefined>(undefined);
   const [selection, setSelection] = useState<FilterSelection>(
     () => readStoredFilter() ?? emptyFilterSelection,
@@ -157,6 +166,24 @@ export function LayoutProvider({
     }
   }
 
+  /**
+   * Entering drawer mode folds both sidebars away.
+   *
+   * The same shape as the rule above, and for the same reason it is not an
+   * effect: a drawer is MODAL, so a panel carried across the breakpoint open
+   * would be a dialog over the answer, holding the keyboard, that the reader
+   * never asked for. Painting it for a frame and then closing it would be
+   * worse than not painting it at all.
+   *
+   * Crossing back does not reopen anything, for the reason the one-sidebar
+   * rule gives: a panel that opens itself undoes a choice the user made.
+   */
+  const [appliedForDrawer, setAppliedForDrawer] = useState(false);
+  if (drawer !== appliedForDrawer) {
+    setAppliedForDrawer(drawer);
+    if (drawer) setLayout(withAllSidebarsCollapsed);
+  }
+
   /** A collapse or an open that the user asked for, by name. */
   const remember = useCallback((slot: Slot, collapsed: boolean) => {
     if (slot === yieldingSidebar) setSourcesDismissed(collapsed);
@@ -202,11 +229,18 @@ export function LayoutProvider({
     setSourcesSeen(answerDocuments);
 
     const roomForBoth = !narrow || layout.slots['primary-sidebar'].collapsed;
+    /*
+     * Never in drawer mode. Down there the panel is a modal: it would cover
+     * the answer that just arrived and take the keyboard off the reader, in
+     * the middle of them reading it. «Somewhere to put it» has no answer
+     * below 1139 — there is no beside.
+     */
     if (
       (answerDocuments?.length ?? 0) > 0 &&
       !sourcesDismissed &&
       layout.slots[yieldingSidebar].collapsed &&
-      roomForBoth
+      roomForBoth &&
+      !drawer
     ) {
       setLayout((current) => fitted(current, yieldingSidebar, false));
     }

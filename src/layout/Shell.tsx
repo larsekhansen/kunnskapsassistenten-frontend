@@ -1,4 +1,11 @@
-import { Badge, BadgePosition, Button, SkipLink, Tooltip } from '@digdir/designsystemet-react';
+import {
+  Badge,
+  BadgePosition,
+  Button,
+  Dialog,
+  SkipLink,
+  Tooltip,
+} from '@digdir/designsystemet-react';
 import {
   useEffect,
   useId,
@@ -21,11 +28,12 @@ import { useNoAnswers } from './useNoAnswers';
 import { useOpenThreadRegistry } from './useOpenThread';
 import { useCitation } from './useCitation';
 import { useComposerRegistry } from './useComposerPresence';
+import { useDrawerMode } from './useDrawerMode';
 import { useLayout } from './useLayout';
 import { useViewportWidth } from './useViewportWidth';
 import { ViewHeadContext, type ViewHeadContextValue } from './viewHeadContext';
 import { viewComponents } from './viewComponents';
-import { layoutStyle, slotLabel, views } from './viewModel';
+import { drawerPlacement, layoutStyle, slotLabel, views } from './viewModel';
 
 export type ShellProps = {
   /**
@@ -64,6 +72,13 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
    * `fittedWidths` in viewModel.ts.
    */
   const viewport = useViewportWidth();
+  /*
+   * Below 1139 an open sidebar is drawn over the answer column instead of
+   * beside it, so the row becomes rail + answer + rail. The shell asks once
+   * and hands the answer down; two slots reading the same media query would
+   * be two subscriptions to the same fact.
+   */
+  const drawer = useDrawerMode();
   // The main slot owns the scroll, so the element is handed to the views
   // rather than looked up from inside them. See scrollContext.ts.
   const mainScroll = useRef<HTMLElement | null>(null);
@@ -130,8 +145,12 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
 
       <ComposerContext value={composerPresence}>
         <OpenThreadContext value={openThread}>
-          <div className="shell" style={layoutStyle(layout, viewport)}>
-            <Sidebar slot="primary-sidebar" element="nav" />
+          <div
+            className="shell"
+            data-drawer={drawer || undefined}
+            style={layoutStyle(layout, viewport, drawer)}
+          >
+            <Sidebar slot="primary-sidebar" element="nav" drawer={drawer} />
 
             <main id="main-content" className="main" ref={mainScroll}>
               {/*
@@ -165,7 +184,7 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
               </ViewHeadContext>
             </main>
 
-            <Sidebar slot="secondary-sidebar" element="aside" />
+            <Sidebar slot="secondary-sidebar" element="aside" drawer={drawer} />
           </div>
         </OpenThreadContext>
       </ComposerContext>
@@ -272,9 +291,12 @@ function MainSlot() {
 function Sidebar({
   slot,
   element: Element,
+  drawer,
 }: {
   slot: 'primary-sidebar' | 'secondary-sidebar';
   element: 'nav' | 'aside';
+  /** Draw an open panel over the answer column rather than beside it. */
+  drawer: boolean;
 }) {
   const { layout, toggleCollapsed, setCollapsed, setActiveView, isSwitchedByUser } = useLayout();
   const { activeCitation } = useCitation();
@@ -422,6 +444,64 @@ function Sidebar({
    * reader user hears «Vis tråder og filter» in both states, and only the
    * sighted presentation changes.
    */
+  /**
+   * Whether what stands on the ROW here is a rail.
+   *
+   * True when the panel is collapsed, and true in drawer mode whether it is
+   * open or not — an open drawer is drawn over the answer column and leaves a
+   * rail behind. Everything that belongs beside a panel on the row hangs on
+   * this: the width buttons, the separator, the rail's own head.
+   */
+  const railed = state.collapsed || drawer;
+
+  /**
+   * Everything below the head: the view head box and the view itself.
+   *
+   * One definition for both places it can be drawn — in the panel on the row,
+   * or inside the drawer — so the view is the same element in both and keeps
+   * its state when the window crosses the breakpoint.
+   *
+   * `hidden` only matters on the row. Inside a drawer the `<dialog>` is what
+   * shows and hides it, and a closed one is `display: none` already.
+   */
+  const panelContent = (
+    <div
+      id={contentId}
+      ref={content}
+      hidden={(state.collapsed && !drawer) || undefined}
+      className="sidebar-content"
+    >
+      {/*
+        The view head, and it is FIRST in the scrolling region on purpose.
+
+        A pinned head covers whatever is above it in the same scrolling
+        box, and «above» includes the tab order: the browser scrolls a
+        focused control into view at the top of the region, which is
+        precisely where the head is. That is what #55 measured — a head
+        pinned under the «Tråder» button took the clicks meant for it —
+        and it is why the place is the shell's rather than each view's.
+        Put the head first and there is nothing above it to cover; a view
+        that wants its own button to stay put puts the button IN the head.
+
+        Empty until a view fills it, and an empty head draws no line.
+      */}
+      <div className="view-head" ref={viewHeadRef} />
+
+      <ViewHeadContext value={viewHead}>
+        <ActiveView
+          view={state.activeView}
+          collapsed={state.collapsed}
+          onCollapsedChange={(collapsed) => setCollapsed(slot, collapsed)}
+          activeCitationNumber={activeCitation?.number}
+          activeCitationNonce={activeCitation?.nonce}
+          siblingViews={state.views.filter((id) => id !== state.activeView)}
+          onShowView={(view) => setActiveView(slot, view)}
+          switchedByUser={isSwitchedByUser(slot)}
+        />
+      </ViewHeadContext>
+    </div>
+  );
+
   const toggleButton = (
     <Button
       ref={toggle}
@@ -444,7 +524,15 @@ function Sidebar({
       ref={element}
       aria-label={label}
       className={slot}
-      data-collapsed={state.collapsed || undefined}
+      /*
+        A drawer leaves a rail behind on the row, so the landmark is drawn as
+        one whether the drawer is open or shut. `data-collapsed` is about what
+        stands HERE; `aria-expanded` on the button below is still about
+        whether the panel is open, and in drawer mode those stop being the
+        same question.
+      */
+      data-collapsed={state.collapsed || drawer || undefined}
+      data-drawer={drawer || undefined}
       /*
         React's focusin and focusout, which bubble, so this pair answers «does
         the focus sit anywhere inside me». Here to observe, not to handle an
@@ -498,14 +586,14 @@ function Sidebar({
         grip goes. So the landmark holds both, and this element is what makes
         that possible.
       */}
+      {/*
+        The rail head. In drawer mode this is ALL that stands on the row: the
+        panel itself is drawn over the answer column, and what is left here is
+        the button that opens it.
+      */}
       <div className="panel">
         <div className="sidebar-header">
-          {/*
-          The collapse button, and — while the panel is open — the two buttons
-          that move its edge a step at a time. Those are the pointer path WCAG
-          2.5.7 asks for beside the drag; see PanelWidthButtons.tsx.
-        */}
-          {state.collapsed ? (
+          {railed ? (
             /*
             BadgePosition is rendered whether or not there is a badge, on
             purpose. It is a `<span>` wrapper, and a wrapper appearing around
@@ -528,40 +616,49 @@ function Sidebar({
           ) : (
             toggleButton
           )}
-          {state.collapsed ? null : <PanelWidthButtons slot={slot} />}
+          {railed ? null : <PanelWidthButtons slot={slot} />}
         </div>
 
-        <div id={contentId} ref={content} hidden={state.collapsed} className="sidebar-content">
-          {/*
-            The view head, and it is FIRST in the scrolling region on purpose.
-
-            A pinned head covers whatever is above it in the same scrolling
-            box, and «above» includes the tab order: the browser scrolls a
-            focused control into view at the top of the region, which is
-            precisely where the head is. That is what #55 measured — a head
-            pinned under the «Tråder» button took the clicks meant for it —
-            and it is why the place is the shell's rather than each view's.
-            Put the head first and there is nothing above it to cover; a view
-            that wants its own button to stay put puts the button IN the head.
-
-            Empty until a view fills it, and an empty head draws no line.
-          */}
-          <div className="view-head" ref={viewHeadRef} />
-
-          <ViewHeadContext value={viewHead}>
-            <ActiveView
-              view={state.activeView}
-              collapsed={state.collapsed}
-              onCollapsedChange={(collapsed) => setCollapsed(slot, collapsed)}
-              activeCitationNumber={activeCitation?.number}
-              activeCitationNonce={activeCitation?.nonce}
-              siblingViews={state.views.filter((id) => id !== state.activeView)}
-              onShowView={(view) => setActiveView(slot, view)}
-              switchedByUser={isSwitchedByUser(slot)}
-            />
-          </ViewHeadContext>
-        </div>
+        {drawer ? null : panelContent}
       </div>
+
+      {/*
+        The drawer, below 1139, where an open panel no longer fits beside the
+        answer column.
+
+        Designsystemet's own `Dialog` with `placement` set to the edge this
+        slot stands at — the component has a drawer mode, checked against the
+        1.21.0 export list and written up in
+        design/designsystemet/behov-til-komponent.md. `modal` is its default,
+        so this is a native `showModal()`: the browser traps the focus, makes
+        everything outside it `inert`, answers Escape, and returns the focus
+        to whatever opened it — the rail button. Four of the things this had
+        to do, none of them ours to write. WCAG 2.4.3.
+
+        `onClose` fires only when the USER closed it — Escape or the close
+        button — and not when React closed it by setting `open` to false. So
+        this is the one direction that has to be told back to the provider,
+        and it cannot loop: the state it sets is the state the dialog is
+        already in.
+
+        Rendered whether open or shut, and a shut `<dialog>` is `display:
+        none`, so nothing inside it is reachable or in the accessibility tree.
+        It stays mounted so the view inside keeps its state across an open and
+        a close.
+      */}
+      {drawer ? (
+        <Dialog
+          aria-label={label}
+          className="drawer"
+          closeButton={`Lukk ${(label ?? '').toLocaleLowerCase('nb-NO')}`}
+          data-slot={slot}
+          onClose={() => setCollapsed(slot, true)}
+          open={!state.collapsed}
+          placement={drawerPlacement(slot)}
+        >
+          <div className="panel">{panelContent}</div>
+        </Dialog>
+      ) : null}
 
       {/*
         The edge this panel shares with the answer column. One per OPEN panel:
@@ -574,12 +671,15 @@ function Sidebar({
         lives in the component rather than here. Same for the width buttons
         above. See PanelSeparator.tsx.
 
+        A drawer has no edge to share: it lies over the answer column rather
+        than beside it, and there is nothing between them to move.
+
         Inside the landmark, beside the panel box rather than in it. What it
         resizes is this slot, so this is where it belongs — and it is also
         what the `region` rule asks: a control outside every landmark is
         content nobody can navigate to by landmark.
       */}
-      {state.collapsed ? null : <PanelSeparator slot={slot} />}
+      {railed ? null : <PanelSeparator slot={slot} />}
     </Element>
   );
 }

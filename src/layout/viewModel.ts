@@ -84,6 +84,15 @@ export function slotFloor(sizing: SlotSizing): number {
 }
 
 /**
+ * What a slot takes up folded away — the rail — which is the other number the
+ * breakpoints are summed from. The answer column cannot be folded, so it
+ * answers with its floor and never reaches the sums that use this.
+ */
+export function slotRail(sizing: SlotSizing): number {
+  return sizing.mode === 'flexible' ? slotFloor(sizing) : sizing.collapsedWidth;
+}
+
+/**
  * What the shell hands a view. Every view takes the same props, so a view can
  * be mounted in any slot without the shell knowing what it is.
  *
@@ -355,6 +364,76 @@ export const bothSidebarsMinViewport =
  */
 export const narrowViewportQuery = `(width < ${bothSidebarsMinViewport}px)`;
 
+/**
+ * The narrowest window where an open sidebar still fits BESIDE the answer
+ * column.
+ *
+ * Summed the same way as `bothSidebarsMinViewport`, and from the same model,
+ * but for the widest state that survives the one-sidebar rule: the navigation
+ * panel open, the sources panel folded to its rail, and one gap between the
+ * open panel and the answer column.
+ *
+ *   400 + 32 + 640 + 67 = 1139
+ *
+ * The other two states are narrower and come along for free — the sources
+ * panel open beside the navigation rail needs 67 + 640 + 32 + 336 = 1075, and
+ * two rails need 67 + 640 + 67 = 774. So 1139 is where the first of the three
+ * stops fitting, which is where the drawers have to start.
+ *
+ * Below it an open sidebar is drawn OVER the answer column instead of beside
+ * it. Nothing else changes: the rails stay, the toggle buttons keep their
+ * place, and `aria-expanded` still means what it meant. Measured in PR #39;
+ * decision Lars 17.09, beslutning 13.
+ */
+export const drawerMaxViewport =
+  slotFloor(defaultLayout.slots['primary-sidebar'].sizing) +
+  slotGap +
+  slotFloor(defaultLayout.slots.main.sizing) +
+  slotRail(defaultLayout.slots['secondary-sidebar'].sizing);
+
+/**
+ * True while an open sidebar has to be drawn as a drawer.
+ *
+ * Range syntax for the reason `narrowViewportQuery` gives: the rule is
+ * «narrower than the sum», and `max-width` cannot say that without leaving
+ * the fractional widths a zoomed window produces on the wrong side of it.
+ * A zoomed window is exactly what this breakpoint is for — 1440 at 200 % is
+ * 720 CSS-px — so the fractions are not a corner case here.
+ */
+export const drawerViewportQuery = `(width < ${drawerMaxViewport}px)`;
+
+/**
+ * Which edge a drawer slides in from, in Designsystemet's own words.
+ *
+ * `left` and `right` are the vendor's values for `Dialog`'s `placement`, and
+ * a vendor identifier is the exception to the naming rule — the same
+ * exception `ArrowLeft` and `padding-inline-start` sit under. This function
+ * is the one place in our code that says either word, so a layout that moved
+ * a panel to the other side would move this with it rather than disagree with
+ * it. Read off `slotOrder`, like `growthDirection` in resize.ts.
+ */
+export function drawerPlacement(slot: SidebarSlot): 'left' | 'right' {
+  return slotOrder.indexOf(slot) < slotOrder.indexOf('main') ? 'left' : 'right';
+}
+
+/**
+ * How wide a drawer is drawn, ignoring any width the reader has dragged.
+ *
+ * From `defaultLayout` and not from the layout in hand, which is the whole
+ * point: a width dragged in a wide window is a statement about a column
+ * standing BESIDE the answer, and a drawer stands over it. Carrying the
+ * number across would let a panel dragged to 480 cover an answer column that
+ * is only 586 px wide at 200 % zoom.
+ *
+ * Capped by the window, so the drawer can never be wider than the screen it
+ * is drawn on.
+ */
+export function drawerWidth(slot: SidebarSlot, viewport: number): number {
+  const sizing = defaultLayout.slots[slot].sizing;
+  const wanted = sizing.mode === 'flexible' ? sizing.minWidth : sizing.width;
+  return Math.min(wanted, viewport);
+}
+
 /** The two slots that can be collapsed, in layout order. */
 export const sidebarSlots = ['primary-sidebar', 'secondary-sidebar'] as const;
 
@@ -388,6 +467,20 @@ export function otherSidebar(slot: SidebarSlot): SidebarSlot {
 export function withOneSidebarOpen(layout: Layout, keepOpen: SidebarSlot): Layout {
   if (layout.slots[keepOpen].collapsed) return layout;
   return withCollapsed(layout, otherSidebar(keepOpen), true);
+}
+
+/**
+ * Fold both sidebars away. The state a window enters drawer mode in.
+ *
+ * A drawer is modal, so an open one covers the answer and holds the keyboard.
+ * Carrying «open» across the breakpoint would mean a reader who shrinks the
+ * window — or lands on a narrow one — is handed a modal they never asked for,
+ * over content they came to read. Crossing back does not reopen anything, for
+ * the reason the one-sidebar rule gives: a panel that opens itself undoes a
+ * choice the user made.
+ */
+export function withAllSidebarsCollapsed(layout: Layout): Layout {
+  return sidebarSlots.reduce((next, slot) => withCollapsed(next, slot, true), layout);
 }
 
 /**
@@ -570,9 +663,21 @@ export function fittedWidths(layout: Layout, viewport: number): Record<SidebarSl
  * `viewport` is the window's inner width, because an open panel's width is no
  * longer a property of the layout alone: see `fittedWidths`.
  */
-export function layoutStyle(layout: Layout, viewport: number): Record<string, string> {
+export function layoutStyle(
+  layout: Layout,
+  viewport: number,
+  drawer = false,
+): Record<string, string> {
   const style: Record<string, string> = {};
   const fitted = fittedWidths(layout, viewport);
+
+  /*
+   * In drawer mode every sidebar is a rail on the row, open or not: what is
+   * open is drawn over the answer column and takes no part in this
+   * arithmetic. So the row is rail + answer + rail, and `collapsed` stops
+   * being a question the widths turn on.
+   */
+  const railed = (state: SlotState) => drawer || state.collapsed;
 
   // The answer column and the sidebars separately, rather than one loop over
   // `slotOrder`: `flexible` is the answer column's mode and `sized` is the
@@ -580,7 +685,21 @@ export function layoutStyle(layout: Layout, viewport: number): Record<string, st
   // otherwise only makes the types lie about which slot can be collapsed.
   const main = layout.slots.main.sizing;
   if (main.mode === 'flexible') {
-    style['--ka-main-min-width'] = `${main.minWidth}px`;
+    /*
+     * The 640 px floor gives way when the window cannot hold it, and only
+     * then. It exists so an excerpt can be read BESIDE the answer (svar 46,
+     * 49 and 59) — and in drawer mode nothing is beside the answer, so
+     * holding on to it would buy nothing and cost a horizontal scrollbar.
+     * WCAG 1.4.10 and 1.4.4: 1440 at 200 % zoom is 720 CSS-px, and 67 + 640 +
+     * 67 needs 774. Under the floor the column simply gets what is left and
+     * the text wraps; nothing is clipped and nothing scrolls sideways.
+     */
+    const rails = sidebarSlots.reduce(
+      (total, slot) => total + slotRail(layout.slots[slot].sizing),
+      0,
+    );
+    const room = Math.max(0, viewport - rails);
+    style['--ka-main-min-width'] = `${drawer ? Math.min(main.minWidth, room) : main.minWidth}px`;
     style['--ka-main-max-width'] = `${main.maxWidth}px`;
   }
 
@@ -589,12 +708,15 @@ export function layoutStyle(layout: Layout, viewport: number): Record<string, st
     const sizing = state.sizing;
     if (sizing.mode === 'flexible') continue;
 
-    style[`--ka-${slot}-width`] = `${state.collapsed ? sizing.collapsedWidth : fitted[slot]}px`;
+    style[`--ka-${slot}-width`] = `${railed(state) ? sizing.collapsedWidth : fitted[slot]}px`;
     // Collapsed, the floor is the collapsed width itself. A button is not
     // something to squeeze: the slot stops giving the moment it is down to
     // the one control it still shows.
     style[`--ka-${slot}-min-width`] =
-      `${state.collapsed ? sizing.collapsedWidth : sizing.minWidth}px`;
+      `${railed(state) ? sizing.collapsedWidth : sizing.minWidth}px`;
+    // What the drawer itself is drawn at, for the dialog's max width. The
+    // stored width is deliberately not consulted; see `drawerWidth`.
+    if (drawer) style[`--ka-${slot}-drawer-width`] = `${drawerWidth(slot, viewport)}px`;
   }
 
   return style;
