@@ -93,14 +93,30 @@ test.describe('brukerblikk-funnene holder', () => {
     expect([...h4sizes], 'alle h4 i panelet har samme størrelse').toHaveLength(1);
   });
 
-  test('funn 13: ingenting lover «Ny» på noe som ikke er bygget', async ({ page }, testInfo) => {
+  test('funn 13: «Ny» står bare der funksjonen virker', async ({ page }, testInfo) => {
     covers(testInfo, 'brukerblikk 13: ingen Ny-merke på ubygd funksjon');
     await page.goto('/');
 
+    /*
+     * Funnet var at merket ikke skal love noe som ikke er bygget: det sto
+     * over en boks som sa at opplasting ikke var klar. Opplasting ER bygget
+     * nå (#117, #124), så påstanden er snudd til det funnet egentlig sier —
+     * merket og invitasjonen følger hverandre.
+     *
+     * Her måles mock-halvdelen, fordi suiten bygges med `VITE_API_MODE=mock`
+     * og live ikke finnes i en nettleser på denne porten. Live-halvdelen —
+     * ingen merkelapp, ingen filvelger, bare setningen om at opplasting ikke
+     * er tilgjengelig — står i `OwnDocuments.test.tsx`, «live: sonen står,
+     * men inviterer ikke til noe tjenesten ikke kan».
+     *
+     * Unntak fra dirigenten for denne ene påstanden, 21.09.
+     */
     const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
-    await expect(panel.getByText('Opplasting er ikke klar ennå.', { exact: false })).toBeVisible();
-    // The badge sat directly above that sentence.
-    await expect(panel.getByText('Ny', { exact: true })).toHaveCount(0);
+    await expect(panel.getByText('Ny', { exact: true })).toHaveCount(1);
+    await expect(panel.getByText('Velg filer')).toBeVisible();
+
+    // Og setningen om at det ikke er klar er borte, fordi det er klart.
+    await expect(panel.getByText('Opplasting er ikke klar ennå.', { exact: false })).toHaveCount(0);
   });
 
   test('funn 16: hvert søkefelt sier hva det søker i', async ({ page }, testInfo) => {
