@@ -23,6 +23,7 @@ import {
   CLARIFICATION_TAG,
   CLOSING_QUESTION,
   COMPOSE_PLACEHOLDER,
+  DISCLAIMER,
   FOLLOW_UP_QUESTIONS,
   NO_HITS_WHOLE_CORPUS,
   REGENERATE,
@@ -848,11 +849,11 @@ describe('ChatView', () => {
     // turn fails — so the rescue must leave it alone. The rescue is about the
     // one control that changed meaning, not about the area it sits in
     // (KA CC on #59).
-    // Found by position, not by name: the paperclip is named by
-    // Designsystemet's `data-tooltip`, and the custom element that turns that
-    // into an accessible name is never upgraded in jsdom. The e2e suite finds
-    // it by name, where the name exists.
-    const paperclip = document.querySelector<HTMLButtonElement>('.ka-composer__buttons button');
+    // Found by class, not by name: the paperclip is named by Designsystemet's
+    // `data-tooltip`, and the custom element that turns that into an
+    // accessible name is never upgraded in jsdom. The e2e suite finds it by
+    // name, where the name exists.
+    const paperclip = document.querySelector<HTMLButtonElement>('.ka-composer__attach');
     paperclip?.focus();
 
     expect(paperclip?.getAttribute('aria-disabled')).toBe('true');
@@ -1020,20 +1021,66 @@ describe('ChatView', () => {
     host.remove();
   });
 
-  it('says how to reach the field, on screen and to a screen reader', () => {
+  it('says how to reach the field, to a pointer and to a screen reader', () => {
     render(
       <Shell>
         <ChatView client={clientYielding(answer)} />
       </Shell>,
     );
 
-    expect(screen.getByText(shortcutHint())).toBeTruthy();
+    /*
+     * On the field rather than in a line of grey text under it. The hint used
+     * to share the footer with the disclaimer and wrapped it onto two lines,
+     * which cost 24 px of the sticky bottom on every screen (høydebudsjett
+     * 2026-09-21, H3). A tooltip is where a pointer user looks for what a
+     * control does, and the field is the thing the shortcut acts on.
+     */
+    expect(field().getAttribute('title')).toBe(shortcutHint());
+    expect(screen.queryByText(shortcutHint())).toBeNull();
 
     // The field itself carries the spelled-out version: «/» read aloud is
     // «skråstrek» in some voices and silence in others.
     const described = field().getAttribute('aria-describedby');
     expect(described).toBeTruthy();
     expect(document.getElementById(described!)?.textContent).toBe(SHORTCUT_DESCRIPTION);
+  });
+
+  it('har ingen egen knapperad under feltet', () => {
+    /*
+     * Bindersen og send sto på en rad for seg under feltet, 48 px av den
+     * klebrige bunnen på hver eneste skjerm for to knapper som får plass ved
+     * siden av det (høydebudsjett 2026-09-21, H1). Nå står de i feltraden:
+     * binders først, send sist.
+     */
+    const { container } = render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    expect(container.querySelector('.ka-composer__buttons')).toBeNull();
+
+    const row = container.querySelector('.ka-composer')!;
+    const inRow = [...row.children];
+    const attach = row.querySelector('.ka-composer__attach')!;
+    const send = row.querySelector('.ka-composer__send')!;
+    // Begge er barn av feltraden, ikke av en rad under den.
+    expect(inRow).toContain(attach);
+    expect(inRow).toContain(send);
+    // Og rekkefølgen er binders, felt, send.
+    expect(inRow.indexOf(attach)).toBeLessThan(inRow.indexOf(send));
+    expect(row.querySelector('.ka-composer__field')).toBeTruthy();
+  });
+
+  it('lar bunnteksten være forbeholdet alene', () => {
+    render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    const footer = document.querySelector('.ka-composer__disclaimer')!;
+    expect(footer.textContent).toBe(DISCLAIMER);
   });
 
   it('reports every answer under its own message id', async () => {

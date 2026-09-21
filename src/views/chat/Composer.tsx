@@ -108,6 +108,18 @@ export function Composer({
   return (
     <div className="ka-composer-area" ref={ref}>
       <div className="ka-composer">
+        <Button
+          aria-disabled="true"
+          className="ka-composer__attach"
+          data-color="neutral"
+          data-tooltip="Vedlegg kommer"
+          icon
+          onClick={(event) => event.preventDefault()}
+          variant="tertiary"
+        >
+          <PaperclipIcon aria-hidden />
+        </Button>
+
         <Textfield
           aria-describedby={descriptionId}
           aria-label="Spørsmål til Kunnskapsassistenten"
@@ -119,43 +131,41 @@ export function Composer({
           placeholder={placeholder}
           ref={fieldRef}
           rows={1}
+          /* The shortcut for anyone using a pointer. It used to be a line of
+             grey text under the field; the footer is one line now, and the
+             hint belongs on the thing it acts on. Screen readers get the
+             spelled-out version through `aria-describedby`. */
+          title={shortcutHint()}
           value={value}
         />
 
-        <div className="ka-composer__buttons">
+        {busy ? (
           <Button
-            aria-disabled="true"
-            data-color="neutral"
-            data-tooltip="Vedlegg kommer"
-            icon
-            onClick={(event) => event.preventDefault()}
-            variant="tertiary"
+            // The one control in the row while an answer is on its way, so
+            // this is where «busy» belongs: the send button does not exist
+            // during sending, it has become this one.
+            aria-busy="true"
+            aria-label="Avbryt genereringen"
+            className="ka-composer__send"
+            onClick={onCancel}
+            ref={sendRef}
+            variant="secondary"
           >
-            <PaperclipIcon aria-hidden />
+            <StopIcon aria-hidden />
+            Avbryt
           </Button>
-
-          {busy ? (
-            <Button
-              aria-label="Avbryt genereringen"
-              onClick={onCancel}
-              ref={sendRef}
-              variant="secondary"
-            >
-              <StopIcon aria-hidden />
-              Avbryt
-            </Button>
-          ) : (
-            <Button
-              aria-label="Send spørsmålet"
-              disabled={value.trim().length === 0}
-              icon
-              onClick={onSubmit}
-              ref={sendRef}
-            >
-              <PaperplaneIcon aria-hidden />
-            </Button>
-          )}
-        </div>
+        ) : (
+          <Button
+            aria-label="Send spørsmålet"
+            className="ka-composer__send"
+            disabled={value.trim().length === 0}
+            icon
+            onClick={onSubmit}
+            ref={sendRef}
+          >
+            <PaperplaneIcon aria-hidden />
+          </Button>
+        )}
       </div>
 
       {showFollowUps ? (
@@ -173,15 +183,19 @@ export function Composer({
       </p>
 
       {/*
-        The disclaimer first. Both sentences share the line, and the order
-        says which one matters: the design puts «Kunnskapsassistenten kan
-        gjøre feil» under the field in all four chatInput variants, and the
-        shortcut is a convenience that arrived later (brukerblikk runde 2,
-        funn 6). It had taken the front of the line.
+        One line, and only the disclaimer on it.
+        «Kunnskapsassistenten kan gjøre feil» is what the design puts under
+        the field in all four chatInput variants. The shortcut used to share
+        the line and wrapped it onto two on both measured widths, which cost
+        24 px of the sticky bottom on every screen to say something a reader
+        needs once (høydebudsjett 2026-09-21, H3).
+
+        It is not gone: it is on the field as a tooltip, on the field as a
+        description for screen readers, and in the skip link that does the
+        same jump.
       */}
       <Paragraph className="ka-composer__disclaimer" data-size="sm">
         {DISCLAIMER}
-        <span className="ka-composer__shortcut">{shortcutHint()}</span>
       </Paragraph>
     </div>
   );
