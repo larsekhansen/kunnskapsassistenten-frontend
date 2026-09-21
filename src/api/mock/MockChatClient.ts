@@ -3,6 +3,7 @@ import {
   type ChatErrorCode,
   type FilterFacet,
   type FilterSelection,
+  type SourceDocument,
   type StreamEvent,
   type Thread,
   type ThinkingStep,
@@ -21,7 +22,46 @@ import {
   nkomSources,
   nkomThinkingSteps,
   threads,
+  userDocumentSource,
 } from './fixtures';
+import { userDocuments } from '../userDocuments';
+
+/**
+ * The reader's own documents this question was asked with, as sources.
+ *
+ * Read from the store rather than passed in, because `AskParams.attachments`
+ * carries ids and the names live with the documents. An id the store does not
+ * know is skipped in silence: it is a document removed between the question
+ * being typed and sent, and a mock that threw there would fail a turn a real
+ * backend would simply answer without it.
+ */
+function attachedSources(attachments: string[] | undefined): SourceDocument[] {
+  if (!attachments?.length) return [];
+  const known = new Map(userDocuments().map((document) => [document.id, document]));
+
+  return attachments
+    .map((id) => known.get(id))
+    .filter((document) => document !== undefined)
+    .map((document, index) => userDocumentSource(document, index + 1));
+}
+
+/**
+ * Renumber every excerpt by its position in the flat list.
+ *
+ * A citation number IS that position — `[3]` means the third excerpt of the
+ * answer — so putting documents in front of others moves the rest along. Only
+ * excerpts that carry a number are renumbered: one the answer never cited
+ * keeps having none.
+ */
+function renumber(documents: SourceDocument[]): SourceDocument[] {
+  let next = 1;
+  return documents.map((document) => ({
+    ...document,
+    excerpts: document.excerpts.map((excerpt) =>
+      excerpt.citationNumber === undefined ? excerpt : { ...excerpt, citationNumber: next++ },
+    ),
+  }));
+}
 
 export interface MockDelays {
   /** Between thinking steps. */
@@ -431,7 +471,20 @@ export class MockChatClient implements ChatClient {
        * and a control that quietly stops working on eleven of the questions is
        * worse than one that never worked at all.
        */
-      const documents = narrowToSelection(scripted?.documents ?? nkomSources, params.filters);
+      /*
+       * A question asked WITH the reader's own documents cites at least one
+       * of them. The attached ones come first, so `[1]` in the answer points
+       * at the reader's own file — which is what a reader who just attached
+       * something expects the first marker to be.
+       *
+       * The corpus documents are renumbered after them, because a citation
+       * number is a position in the answer's flat excerpt list and inserting
+       * at the front moves everything else along. Renumbering here rather
+       * than in the fixture keeps the fixture a fixture.
+       */
+      const attached = attachedSources(params.attachments);
+      const fromCorpus = narrowToSelection(scripted?.documents ?? nkomSources, params.filters);
+      const documents = attached.length === 0 ? fromCorpus : renumber([...attached, ...fromCorpus]);
       const cited = citedNumbers(documents);
 
       const steps = scripted?.thinkingSteps ?? nkomThinkingSteps;

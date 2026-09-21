@@ -8,6 +8,19 @@ export interface AskParams {
   conversationId?: string;
   /** Which documents to search in. Empty selection means the whole corpus. */
   filters?: FilterSelection;
+  /**
+   * Ids of the reader's own uploaded documents this question was asked with.
+   *
+   * Separate from `filters`, because they answer different questions. The
+   * filter narrows the CORPUS and belongs to the reader across questions;
+   * this says which of their own documents THIS question is about, and a
+   * follow-up may well be about none of them.
+   *
+   * backend: mangler, se API-bestilling A3 — nothing on the wire carries
+   * this yet. The mock honours it, and the live client has nowhere to send
+   * it; see src/api/live/LiveUploadClient.ts.
+   */
+  attachments?: string[];
   /** Cancels the answer (answer 34). */
   signal?: AbortSignal;
 }

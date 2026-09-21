@@ -69,6 +69,20 @@ export interface SourceDocument {
   /** The organisation that published the document. */
   organisation?: string;
   year?: number;
+  /**
+   * Where the document came from: the corpus, or the reader's own upload.
+   *
+   * On the MODEL and not read off the title, which is what #4 asked for: a
+   * document called «Årsrapport 2025.pdf» that the reader uploaded is not the
+   * corpus's «Årsrapport Nasjonal kommunikasjonsmyndighet 2025», and the
+   * panel has to be able to say so — an uploaded document has no Kudos link
+   * and nobody else can open it.
+   *
+   * Optional, and absent means `corpus`. Every document that existed before
+   * uploads did came from the corpus, so a default keeps the sources panel
+   * and every fixture working without a field they have no opinion about.
+   */
+  origin?: 'corpus' | 'user';
   excerpts: Excerpt[];
 }
 

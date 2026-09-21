@@ -23,4 +23,11 @@ export { citationAccessibleName, citationTargets, excerptDomId, relevanceLabels 
 export { chatErrorCode } from './stream';
 export type { ChatError, ChatErrorCode, StreamEvent } from './stream';
 export { threadFromQuestion } from './thread';
+export { MAX_UPLOAD_BYTES, UPLOAD_ACCEPT, uploadErrorCode, userDocumentType } from './userDocument';
+export type {
+  UploadErrorCode,
+  UserDocument,
+  UserDocumentStatus,
+  UserDocumentType,
+} from './userDocument';
 export type { Thread, ThreadDetail } from './thread';
