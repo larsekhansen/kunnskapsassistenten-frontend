@@ -25,9 +25,31 @@ function fileOf(name: string, size = 1024): File {
   return file;
 }
 
+/**
+ * Kjører en opplasting ferdig med falsk tid.
+ *
+ * Håndtereren festes FØR tida spoles, og det er hele poenget med
+ * rekkefølgen her. `runAllTimersAsync` lar opplastingen bli ferdig — eller
+ * avvist — mens ingen ennå lytter på `work`, og en avvist promise som går
+ * gjennom en mikrotask uten feilhåndterer blir en uhåndtert rejection. Den
+ * feller hele kjøringa med exit-kode 1 selv om hver eneste test står som
+ * bestått, som er nettopp den formen en slik feil kommer i: grønn
+ * summeringslinje, rød CI. Funnet av KA CC på main etter #117.
+ *
+ * `then` med begge grenene og ikke `catch`: det som skal videre er både
+ * verdien og feilen, uendret, og bare etter at tida er spolt.
+ */
 async function settle<T>(work: Promise<T>): Promise<T> {
+  const settled = work.then(
+    (value) => ({ value }),
+    (error: unknown) => ({ error }),
+  );
+
   await vi.runAllTimersAsync();
-  return work;
+
+  const outcome = await settled;
+  if ('error' in outcome) throw outcome.error;
+  return outcome.value;
 }
 
 beforeEach(() => {
