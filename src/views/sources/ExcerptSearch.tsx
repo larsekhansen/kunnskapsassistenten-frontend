@@ -7,7 +7,7 @@ type ExcerptSearchProps = {
    * The element this field is described by: the Kudos disclaimer.
    *
    * Passed in rather than owned here, because the disclaimer is drawn outside
-   * the sticky head while the field is inside it. See `KudosDisclaimer`.
+   * the sticky head while the field is inside it. See `CorpusDisclaimer`.
    */
   descriptionId: string;
   query: string;

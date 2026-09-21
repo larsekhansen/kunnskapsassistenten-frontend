@@ -7,7 +7,7 @@ import { ViewHead } from '../../layout/ViewHead';
 import { excerptDomId, type AnswerSources, type Excerpt, type SourceDocument } from '../../model';
 import { AnswerSwitcher } from './AnswerSwitcher';
 import { ExcerptSearch } from './ExcerptSearch';
-import { KudosDisclaimer } from './KudosDisclaimer';
+import { CorpusDisclaimer } from './CorpusDisclaimer';
 import { corpusKeyFor, isOwnDocument } from './origin';
 import { SourceDocumentCard } from './SourceDocumentCard';
 import { SourcesOverview } from './SourcesOverview';
@@ -515,7 +515,7 @@ export function SourcesView({
       </ViewHead>
 
       {content.kind !== 'empty' && (
-        <KudosDisclaimer
+        <CorpusDisclaimer
           id={disclaimerId}
           corpusName={corpusName}
           hasOwnDocument={documentList.some(isOwnDocument)}

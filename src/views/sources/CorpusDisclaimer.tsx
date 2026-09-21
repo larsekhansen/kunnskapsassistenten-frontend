@@ -29,7 +29,7 @@ export function sourcesDisclaimer(corpusName: string, hasOwnDocument: boolean): 
   return `All tekst er sitater fra ${source}. Ikke generert av kunstig intelligens.`;
 }
 
-type KudosDisclaimerProps = {
+type CorpusDisclaimerProps = {
   /** `aria-describedby` on the search field points here. */
   id: string;
   /** What to call the corpus, from `corpusDisplayName`. */
@@ -52,7 +52,11 @@ type KudosDisclaimerProps = {
  * `aria-describedby` resolves by id, not by position, so the search field
  * still carries this as its description wherever it sits.
  */
-export function KudosDisclaimer({ id, corpusName, hasOwnDocument = false }: KudosDisclaimerProps) {
+export function CorpusDisclaimer({
+  id,
+  corpusName,
+  hasOwnDocument = false,
+}: CorpusDisclaimerProps) {
   return (
     <Paragraph id={id} data-size="xs" className="sources-search__description">
       {sourcesDisclaimer(corpusName, hasOwnDocument)}
