@@ -278,6 +278,32 @@ body {
   justify-content: space-between;
 }
 
+/*
+ * The place a view may put a control of the PANEL's on the panel's own row —
+ * «Tråder» is the one that asked for it. See panelHeadContext.ts.
+ *
+ * `margin-inline-end: auto` rather than a wrapper around the collapse button:
+ * the row is `space-between`, and three items would put this one in the
+ * middle. The auto margin takes the free space after it instead, so the
+ * collapse button and this sit together at the start and the width buttons
+ * stay at the end.
+ *
+ * Empty draws nothing at all, so a panel no view has filled is the row it was
+ * before this existed — including the `space-between` with two items. `:empty`
+ * is exact: React renders nothing into an unused portal target, not even
+ * whitespace.
+ */
+.panel-head-slot {
+  display: flex;
+  gap: var(--ds-size-2);
+  align-items: center;
+  margin-inline-end: auto;
+}
+
+.panel-head-slot:empty {
+  display: none;
+}
+
 .panel-width-buttons {
   display: flex;
   gap: var(--ds-size-1);

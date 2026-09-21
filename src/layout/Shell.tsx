@@ -22,7 +22,9 @@ import { COMPOSER_ID } from './ids';
 import { PanelSeparator } from './PanelSeparator';
 import { PanelWidthButtons } from './PanelWidthButtons';
 import { OpenThreadContext } from './openThreadContext';
+import { PanelHeadContext } from './panelHeadContext';
 import { MainScrollContext } from './scrollContext';
+import { shortcutModifier } from './shortcutModifier';
 import { useAnswerSources } from './useAnswerSources';
 import { useNoAnswers } from './useNoAnswers';
 import { useOpenThreadRegistry } from './useOpenThread';
@@ -138,9 +140,18 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
 
         `COMPOSER_ID` comes from ids.ts rather than from the chat view, so the
         shell never imports a view to build its own chrome.
+
+        The shortcut is named in the link because it is the one place a reader
+        who tabs here will look for it, and because the hint by the field
+        itself is going away — H3 in
+        design/hoydebudsjett-forslag-2026-09-21.md buys 24 px of reading
+        window by taking it out of the footer, and Lars said yes on 21.09. The
+        modifier is the one this machine has; see shortcutModifier.ts.
       */}
       {composerPresence.hasComposer ? (
-        <SkipLink href={`#${COMPOSER_ID}`}>Hopp til skrivefeltet</SkipLink>
+        <SkipLink href={`#${COMPOSER_ID}`}>
+          Hopp til skrivefeltet ({shortcutModifier()} + /)
+        </SkipLink>
       ) : null}
 
       <ComposerContext value={composerPresence}>
@@ -204,6 +215,21 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
 }
 
 /**
+ * A box the shell offers and a view fills, as state rather than a ref.
+ *
+ * State and not a ref, because the view has to render again once the box
+ * exists. React runs the ref callback during the commit and flushes the state
+ * it sets before paint, so the extra render costs a render and not a frame.
+ *
+ * Both heads use it: the pinned one at the top of the scrolling region, and
+ * the panel's own row beside the collapse button.
+ */
+function useHeadBox(): [HTMLElement | null, (element: HTMLDivElement | null) => void] {
+  const [element, setElement] = useState<HTMLElement | null>(null);
+  return [element, setElement];
+}
+
+/**
  * The shell's end of the view head: the box, and the context a view renders
  * into it through.
  *
@@ -217,7 +243,7 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
 function useViewHeadBox(
   scroller: RefObject<HTMLElement | null>,
 ): [ViewHeadContextValue, (element: HTMLDivElement | null) => void] {
-  const [element, setElement] = useState<HTMLElement | null>(null);
+  const [element, setElement] = useHeadBox();
   const value = useMemo(() => ({ element }), [element]);
 
   /*
@@ -327,6 +353,13 @@ function Sidebar({
    * view that mounts finds the place already there.
    */
   const [viewHead, viewHeadRef] = useViewHeadBox(content);
+
+  /**
+   * This slot's panel-head place. Plain box state: it neither pins nor
+   * scrolls, so it needs none of what `useViewHeadBox` adds on top.
+   */
+  const [panelHeadElement, panelHeadRef] = useHeadBox();
+  const panelHead = useMemo(() => ({ element: panelHeadElement }), [panelHeadElement]);
 
   /**
    * Whether the keyboard focus is anywhere inside this slot — the toggle
@@ -510,16 +543,18 @@ function Sidebar({
       <div className="view-head" ref={viewHeadRef} />
 
       <ViewHeadContext value={viewHead}>
-        <ActiveView
-          view={state.activeView}
-          collapsed={state.collapsed}
-          onCollapsedChange={(collapsed) => setCollapsed(slot, collapsed)}
-          activeCitationNumber={activeCitation?.number}
-          activeCitationNonce={activeCitation?.nonce}
-          siblingViews={state.views.filter((id) => id !== state.activeView)}
-          onShowView={(view) => setActiveView(slot, view)}
-          switchedByUser={isSwitchedByUser(slot)}
-        />
+        <PanelHeadContext value={panelHead}>
+          <ActiveView
+            view={state.activeView}
+            collapsed={state.collapsed}
+            onCollapsedChange={(collapsed) => setCollapsed(slot, collapsed)}
+            activeCitationNumber={activeCitation?.number}
+            activeCitationNonce={activeCitation?.nonce}
+            siblingViews={state.views.filter((id) => id !== state.activeView)}
+            onShowView={(view) => setActiveView(slot, view)}
+            switchedByUser={isSwitchedByUser(slot)}
+          />
+        </PanelHeadContext>
       </ViewHeadContext>
     </div>
   );
@@ -638,6 +673,18 @@ function Sidebar({
           ) : (
             toggleButton
           )}
+          {/*
+            What the view wants on the panel's own row, beside the collapse
+            button. Empty until a view fills it, and an empty slot draws
+            nothing — `:empty` in global.css, so the row is exactly what it
+            was before this existed.
+
+            Not drawn on a rail at all: a rail is one button wide, and a
+            second control there would have nowhere to go. `PanelHead` then
+            finds no place and draws nothing, which is the same path it takes
+            outside a shell. See panelHeadContext.ts.
+          */}
+          {railed ? null : <div className="panel-head-slot" ref={panelHeadRef} />}
           {railed ? null : <PanelWidthButtons slot={slot} />}
         </div>
 

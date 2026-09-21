@@ -1,0 +1,148 @@
+import { render, screen } from '@testing-library/react';
+import { act } from 'react';
+import { MemoryRouter } from 'react-router';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { resetViewport, setViewportWidth } from '../test/matchMedia';
+import { LayoutProvider } from './LayoutProvider';
+import { PanelHead } from './PanelHead';
+import { Shell } from './Shell';
+import { viewComponents } from './viewComponents';
+import type { SlotViewProps } from './viewModel';
+
+/**
+ * The place a view may put a control of the PANEL's on the panel's own row.
+ *
+ * What is measured is where it lands and when it exists: beside the collapse
+ * button rather than in the scrolling region, nothing at all when no view
+ * fills it, and nothing on a rail — a rail is one button wide.
+ *
+ * `shortcutModifier` is not exercised here. It reads `navigator.userAgent`,
+ * which the test environment answers for, and what it decides is one word;
+ * the skip link's own text is measured in src/App.test.tsx.
+ */
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
+/** A view that puts one button on the panel row, the way ThreadsView will. */
+function FillingView(_props: SlotViewProps) {
+  return (
+    <>
+      <PanelHead>
+        <button type="button">Tråder</button>
+      </PanelHead>
+      <p>Innholdet i visningen</p>
+    </>
+  );
+}
+
+function openShell({ filled = true, width = 1440 } = {}) {
+  const original = viewComponents.filters;
+  if (filled) viewComponents.filters = FillingView;
+
+  setViewportWidth(width);
+  render(
+    <MemoryRouter initialEntries={['/']}>
+      <LayoutProvider>
+        <Shell routeOwnsMain />
+      </LayoutProvider>
+    </MemoryRouter>,
+  );
+
+  return () => {
+    viewComponents.filters = original;
+  };
+}
+
+const slot = () => document.querySelector('.panel-head-slot');
+const railToggle = () => screen.getByRole('button', { name: 'Skjul tråder og filter' });
+
+beforeEach(() => {
+  localStorage.clear();
+  resetViewport();
+});
+
+describe('plassen i panelhodet', () => {
+  it('tegner det viewet fyller den med, på panelets egen rad', () => {
+    const restore = openShell();
+    try {
+      const button = screen.getByRole('button', { name: 'Tråder' });
+
+      // I panelhodet, ved siden av «Skjul …» — ikke i den rullende regionen.
+      expect(slot()?.contains(button)).toBe(true);
+      expect(button.closest('.sidebar-header')).not.toBeNull();
+      expect(button.closest('.sidebar-content')).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+
+  it('står ved siden av knappen som legger sammen panelet', () => {
+    const restore = openShell();
+    try {
+      const header = railToggle().closest('.sidebar-header')!;
+      expect(header.contains(screen.getByRole('button', { name: 'Tråder' }))).toBe(true);
+    } finally {
+      restore();
+    }
+  });
+
+  it('er tom når ingen view fyller den, og en tom plass tegner ingenting', () => {
+    // `:empty` i CSS-en gjør den usynlig; her måles at React ikke legger noe
+    // i den i det hele tatt, som er det `:empty` hviler på.
+    //
+    // Ikke målt på fravær av en «Tråder»-knapp: den ekte filtervisningen har
+    // fortsatt sin egen, i det klebrige hodet, og det er nettopp den #2 skal
+    // flytte hit. Plassen er tom til de gjør det.
+    const restore = openShell({ filled: false });
+    try {
+      expect(slot()).not.toBeNull();
+      expect(slot()?.childElementCount).toBe(0);
+    } finally {
+      restore();
+    }
+  });
+
+  it('finnes ikke på en rail, for der er det ingen plass til en knapp til', () => {
+    const restore = openShell();
+    try {
+      act(() => railToggle().click());
+
+      expect(slot()).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Tråder' })).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+
+  it('kommer tilbake når panelet åpnes igjen', () => {
+    const restore = openShell();
+    try {
+      act(() => railToggle().click());
+      act(() => screen.getByRole('button', { name: 'Vis tråder og filter' }).click());
+
+      expect(screen.getByRole('button', { name: 'Tråder' })).toBeDefined();
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe('utenfor et skall', () => {
+  it('tegner ingenting, i stedet for å legge knappen midt i en forhåndsvisning', () => {
+    // Motsatt av `ViewHead`, som tegner seg der den står når det ikke finnes
+    // noe skall. Det er riktig for et klebrig hode — en forhåndsvisning uten
+    // det ville løyet om panelet — og galt her: dette er skallets krom, og en
+    // «Tråder»-knapp løs i en forhåndsvisning står et sted appen aldri setter
+    // den.
+    render(
+      <PanelHead>
+        <button type="button">Tråder</button>
+      </PanelHead>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Tråder' })).toBeNull();
+  });
+});
