@@ -1,4 +1,4 @@
-import { Button, Field, Label, Paragraph, Select, Skeleton } from '@digdir/designsystemet-react';
+import { Button, Field, Label, Select, Skeleton } from '@digdir/designsystemet-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createChatClient } from '../../api';
 import { BackIcon } from '../../components/icons';
@@ -10,7 +10,7 @@ import { ViewHead } from '../../layout/ViewHead';
 import type { SlotViewProps } from '../../layout/viewModel';
 import { emptyFilterSelection, isEmptySelection, type FilterFacet } from '../../model';
 import { KudosDocuments, OwnDocuments } from './DocumentsList';
-import { corpusSummary } from './corpusSummary';
+import { CorpusLine } from './CorpusLine';
 import { FacetField } from './FacetField';
 import './filters.css';
 
@@ -259,14 +259,12 @@ export function FiltersView({
                 </Select.Option>
               ))}
             </Select>
-            <Field.Description data-size="xs" className="filters-view__corpus">
-              {corpusSummary(corpus, option)}
+            <Field.Description>
+              <CorpusLine facets={corpus} corpus={option} />
             </Field.Description>
           </Field>
         ) : (
-          <Paragraph data-size="xs" className="filters-view__corpus">
-            {corpusSummary(corpus, option)}
-          </Paragraph>
+          <CorpusLine facets={corpus} corpus={option} />
         )}
       </ViewHead>
 

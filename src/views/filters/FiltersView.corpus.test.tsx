@@ -72,12 +72,15 @@ describe('korpusvelgeren', () => {
 
   it('viser beskrivelsen av korpuset under velgeren', () => {
     // Live har ingen fasetter å regne ut en setning fra (A2), så korpusets
-    // egne ord er det linja har.
-    const { container } = renderView();
+    // egne ord er det linja har. Navnet står, resten ligger bak «Vis mer»
+    // (N2).
+    renderView();
 
-    expect(container.querySelector('.filters-view__corpus')?.textContent).toBe(
-      'Dokumenter fra Wikipedia (NorQuAD): 351 artikler.',
-    );
+    expect(screen.getByText('Dokumenter fra Wikipedia (NorQuAD)')).toBeTruthy();
+    // `hidden`, ikke fjernet: `aria-controls` peker på det, og et element
+    // som ikke er i dokumentet kan ingen skjermleser følge pekeren til.
+    expect(screen.getByText('351 artikler.').hasAttribute('hidden')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Vis mer' })).toBeTruthy();
   });
 
   it('ber skallet bytte, og annonserer hvilket korpus det ble', () => {
@@ -96,12 +99,11 @@ describe('korpusvelgeren', () => {
 
   it('tegner ingen velger når det bare finnes ett korpus', () => {
     corpus.choosable = false;
-    const { container } = renderView();
+    renderView();
 
     expect(screen.queryByRole('combobox', { name: 'Korpus' })).toBeNull();
-    // Linja står som før, med korpusets egne ord.
-    expect(container.querySelector('.filters-view__corpus')?.textContent).toBe(
-      'Dokumenter fra Wikipedia (NorQuAD): 351 artikler.',
-    );
+    // Linja står som før: navnet på én linje, resten bak «Vis mer».
+    expect(screen.getByText('Dokumenter fra Wikipedia (NorQuAD)')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Vis mer' })).toBeTruthy();
   });
 });
