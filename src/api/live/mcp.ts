@@ -87,10 +87,34 @@ type ToolCall = {
 type McpChunk = {
   chunk_id?: string;
   doc_num?: string;
+  /**
+   * The document's title, under whichever of three names the path in question
+   * happens to use.
+   *
+   * Measured 21.09: a live `tools/call` against `kudos-pilot` sends `title`,
+   * and stored messages read back from `/api/conversations` send `docTitle`.
+   * `doc_title` is the third spelling the backend uses elsewhere. Nothing
+   * downstream can tell the difference between «no title» and «a title under
+   * a name we did not read», so all three are read here rather than in the
+   * caller. API-bestilling: one name would be better than three.
+   */
   title?: string;
+  doc_title?: string;
+  docTitle?: string;
   url?: string | null;
   metadata?: string;
 };
+
+/**
+ * The document title a chunk carries, whichever name it arrived under.
+ *
+ * Blank is treated as missing: a title of `'   '` draws an empty line in the
+ * sources panel, which reads as a bug rather than as an untitled document.
+ */
+function chunkTitle(chunk: McpChunk): string {
+  const title = chunk.title?.trim() || chunk.doc_title?.trim() || chunk.docTitle?.trim();
+  return title || 'Uten tittel';
+}
 
 /**
  * The heading path inside a document.
@@ -156,7 +180,7 @@ export function toSourceDocuments(chunks: McpChunk[]): SourceDocument[] {
 
     documents.set(documentId, {
       id: documentId,
-      title: chunk.title ?? 'Uten tittel',
+      title: chunkTitle(chunk),
       url: chunk.url ?? undefined,
       excerpts: [excerpt],
     });
