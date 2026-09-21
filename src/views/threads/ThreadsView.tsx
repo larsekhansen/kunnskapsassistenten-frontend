@@ -43,6 +43,13 @@ export function ThreadsView({
    * more than one to tell apart. With a single corpus the label would be the
    * same word under every row in the list, which is noise rather than
    * information, and the panel pays for it in height.
+   *
+   * The WHOLE label, not the short name the corpus line above uses: the row
+   * and the chooser name the same corpora, and a reader who picked «Kudos,
+   * 938 dokumenter (mock)» should find those words again under the thread. It
+   * costs a second line when the label is long — see `.threads-view__meta` in
+   * threads.css, which wraps — and that cost belongs to whoever writes the
+   * label in `VITE_KA_DATASETS`.
    */
   const { options, choosable } = useCorpus();
   const corpusLabel = (key?: string) =>

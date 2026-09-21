@@ -7,8 +7,15 @@ import { emptyFilterSelection } from '../../model';
 import { FiltersView } from './FiltersView';
 
 /**
- * The corpus chooser, which is the corpus line when there is more than one
- * corpus to search.
+ * The corpus chooser in `FiltersView`: the corpus line, when there is more
+ * than one corpus to search.
+ *
+ * Its own file rather than more tests in `FiltersView.test.tsx`, because
+ * `vi.mock` is per file: the hook has to be replaced here, and the other file
+ * should keep testing the view against the real corpus store. Named after the
+ * component it mounts — there is no `CorpusSelect.tsx`, and a test file that
+ * names a component nobody can open sends the next reader looking for it
+ * (KA CC on #106).
  *
  * `useCorpus` is the shell's (#5), and it reads a module store fixed at
  * startup from the environment — so the only way to see both states in a test

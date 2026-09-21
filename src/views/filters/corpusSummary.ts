@@ -118,11 +118,25 @@ function yearRange(facets: FilterFacet[]): string {
  * that then counts the documents itself must not repeat. What comes before
  * the first comma is the name; «Wikipedia (NorQuAD)» has none and survives
  * whole.
+ *
+ * Undefined when no corpus is known.
  */
-function corpusName(corpus?: CorpusOption): string {
+function corpusName(corpus?: CorpusOption): string | undefined {
   const label = corpus?.label.split(',')[0]?.trim();
-  return label && label !== '' ? label : 'Kudos';
+  return label === '' ? undefined : label;
 }
+
+/**
+ * What to call the corpus when nothing names it.
+ *
+ * Live with neither `VITE_KA_DATASETS` nor `VITE_KA_DATASET_CONFIG_KEY` set
+ * is a configuration #103 supports on purpose: no list, no chooser, and the
+ * backend picks the dataset. Nothing on this side knows which one it picked,
+ * so the line says that rather than «Kudos» — which was the claim this file
+ * was changed to stop making, left standing in the one case where no corpus
+ * is known (KA CC on #106).
+ */
+const UNNAMED_CORPUS = 'standardkorpuset';
 
 /**
  * @param facets The unconditional facets, or undefined while they load.
@@ -141,7 +155,7 @@ export function corpusSummary(facets?: FilterFacet[], corpus?: CorpusOption): st
       : []
   ).filter((clause) => clause !== '');
 
-  const source = `Dokumenter fra ${corpusName(corpus)}`;
+  const source = `Dokumenter fra ${corpusName(corpus) ?? UNNAMED_CORPUS}`;
   if (clauses.length > 0) return `${source}: ${clauses.join(', ')}`;
 
   /*
