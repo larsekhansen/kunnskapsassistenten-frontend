@@ -57,19 +57,16 @@ test.describe('korpuset følger svaret', () => {
   });
 
   /*
-   * Rød til #4 har tatt sin del av runden.
+   * Dette er halvdelen som ikke fantes da vakta ble skrevet.
    *
-   * Målt på `main 3bbaf51`, som er #135 og ikke mer: åpner man Kudos-tråden
-   * mens «Wikipedia (mock)» står valgt, sier panelet «All tekst er sitater
-   * fra dokumentene fra Wikipedia (mock)» over kildekortet «Årsrapport
-   * Nasjonal kommunikasjonsmyndighet 2025». `SourcesView` leser fortsatt
-   * korpuset fra butikken (`activeCorpusKey`), ikke fra svaret — feltet
-   * `AnswerSources.corpusKey` finnes etter #135, men ingen skriver det ennå.
-   *
-   * Når #3 skriver korpuset på svaret og #4 leser det: bytt `test.fixme` til
-   * `test`. Ingenting annet i denne fila trenger å endres.
+   * Målt rød på `main 3bbaf51`, som var #135 og ikke mer: åpner man
+   * Kudos-tråden mens «Wikipedia (mock)» står valgt, sto det «All tekst er
+   * sitater fra dokumentene fra Wikipedia (mock)» over kildekortet
+   * «Årsrapport Nasjonal kommunikasjonsmyndighet 2025» — `SourcesView` leste
+   * korpuset fra butikken og ikke fra svaret. #138 skriver nøkkelen på svaret
+   * og #139 leser den, og da ble den grønn uten at noe annet i fila ble rørt.
    */
-  test.fixme('en eldre tråd navngir sitt eget korpus, ikke det som står valgt', async ({
+  test('en eldre tråd navngir sitt eget korpus, ikke det som står valgt', async ({
     page,
   }, testInfo) => {
     covers(testInfo, 'korpus per svar: fraskrivelsen navngir svarets korpus (#135)');
