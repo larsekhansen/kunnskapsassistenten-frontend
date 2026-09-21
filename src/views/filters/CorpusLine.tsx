@@ -2,7 +2,7 @@ import { Link, Paragraph } from '@digdir/designsystemet-react';
 import { useId, useState } from 'react';
 import type { CorpusOption } from '../../api';
 import type { FilterFacet } from '../../model';
-import { corpusLine } from './corpusSummary';
+import { corpusLine } from './corpusText';
 
 export type CorpusLineProps = {
   /** The unconditional facets, or undefined while they load. */

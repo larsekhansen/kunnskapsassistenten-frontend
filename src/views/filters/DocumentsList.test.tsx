@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import type { SourceDocument } from '../../model';
-import { KudosDocuments, OwnDocuments } from './DocumentsList';
+import { KudosDocuments } from './DocumentsList';
 
 /**
  * Seven documents, as the `active` variant in Figma draws. The mock corpus
@@ -121,18 +121,5 @@ describe('KudosDocuments', () => {
 
     expect(screen.getAllByRole('listitem')).toHaveLength(5);
     expect(screen.getByRole('button', { name: 'Vis flere dokumenter' })).toBeTruthy();
-  });
-});
-
-describe('OwnDocuments', () => {
-  it('is its own section, so the panel can put it last', () => {
-    // It used to share a heading with the Kudos list at the foot of the
-    // panel. Splitting them is what lets the Kudos list move above the facets
-    // without dragging an upload placeholder up there with it (brukerblikk
-    // runde 2, funn 4).
-    renderInApp(<OwnDocuments />);
-
-    expect(screen.getByRole('heading', { name: 'Dine dokumenter' })).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: 'Fra Kudos' })).toBeNull();
   });
 });

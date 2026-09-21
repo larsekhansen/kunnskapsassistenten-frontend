@@ -2,7 +2,7 @@ import { Button, Heading, Link, List, Paragraph } from '@digdir/designsystemet-r
 import { useEffect, useId, useRef, useState } from 'react';
 import { useCorpus } from '../../layout/useCorpus';
 import type { SourceDocument } from '../../model';
-import { corpusDisplayName } from './corpusSummary';
+import { corpusDisplayName } from './corpusText';
 
 /**
  * How many documents are listed before «Vis flere dokumenter».
@@ -203,48 +203,6 @@ export function KudosDocuments({ documents }: KudosDocumentsProps) {
           )}
         </>
       )}
-    </section>
-  );
-}
-
-/**
- * «Dine dokumenter»: the user's own uploads, when there are any to have.
- *
- * It stays at the foot of the panel. Nothing here changes with the answer —
- * upload does not exist anywhere in the stack yet (API-bestilling A3) — so it
- * is the one thing in the panel that has no claim on the space above the
- * fold. Separated from {@link KudosDocuments} for that reason; see funn 4.
- */
-export function OwnDocuments() {
-  return (
-    <section className="documents-list">
-      {/*
-          Level 4, a sibling of «Fra Kudos», and the same `2xs` as that one.
-          The spec draws DocumentsList as one column with «Dokumenter» over
-          both sources; level 3 here made this a sibling of «Dokumenter»
-          instead, and the outline stopped matching the picture. The size used
-          to be `xs`, which made two h4 in the panel different sizes and one of
-          them as big as the h3 above (brukerblikk, funn 12).
-
-          The Tag «Ny» that stood beside it is gone. It promised something new
-          to try, directly above a box saying upload does not work yet
-          (brukerblikk, funn 13). It comes back when upload does.
-        */}
-      <Heading level={4} data-size="2xs">
-        Dine dokumenter
-      </Heading>
-      <div className="documents-list__upload">
-        <Paragraph data-size="sm">Last opp egne dokumenter</Paragraph>
-        {/*
-            The spec reads «Kun PDF og .docx for øyeblikket». Deliberate
-            deviation: that sentence describes a limit on something the user
-            can do, and there is nothing to do here yet, so it would promise a
-            control that does not exist. The formats are kept.
-          */}
-        <Paragraph data-size="xs">
-          Opplasting er ikke klar ennå. Når den kommer, tar den PDF og .docx.
-        </Paragraph>
-      </div>
     </section>
   );
 }

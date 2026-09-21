@@ -213,3 +213,77 @@
 .documents-list__upload[hidden] {
   display: none;
 }
+
+/*
+ * «Dine dokumenter»: the heading row, the zone and the list.
+ *
+ * The zone itself is Designsystemet's `ds-file-upload` — dashed border,
+ * tinted ground, the file input laid over the whole surface — so nothing here
+ * redraws it. What is here is the heading with its Tag beside it, and the
+ * rows under it.
+ */
+.own-documents__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-size-2);
+}
+
+.own-documents__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+  inline-size: 100%;
+}
+
+.own-documents__list[hidden] {
+  display: none;
+}
+
+/*
+ * One row: what the file is on the left, the way to remove it on the right.
+ * The text column may shrink — `min-inline-size: 0` — so a long file name
+ * wraps inside the row instead of pushing «Fjern» out of the panel, the same
+ * call the filter chips make.
+ */
+.own-documents__item {
+  display: flex;
+  align-items: start;
+  gap: var(--ds-size-2);
+  inline-size: 100%;
+}
+
+.own-documents__item[hidden] {
+  display: none;
+}
+
+.own-documents__text {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  flex: 1;
+}
+
+.own-documents__text[hidden] {
+  display: none;
+}
+
+.own-documents__name {
+  overflow-wrap: anywhere;
+}
+
+.own-documents__meta {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+/*
+ * A failed upload says why in the colour the rest of the app says trouble in.
+ * `danger` and not `warning`: the file is not there, and nothing about it
+ * will change on its own.
+ */
+.own-documents__error {
+  color: var(--ds-color-danger-text-default);
+}
