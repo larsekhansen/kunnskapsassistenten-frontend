@@ -50,6 +50,8 @@ eier bare denne mappa.
 | [`brukerblikk-4-2026-09-17.md`](brukerblikk-4-2026-09-17.md)                                   | Brukerblikk runde 4 etter dagens bølge: fem funn, og alle ni fra runde 3 målt på nytt                  |
 | [`brukerblikk-5-2026-09-22.md`](brukerblikk-5-2026-09-22.md)                                   | Brukerblikk runde 5: korpusvalget når linja, men ikke overskriften under den                           |
 | [`feat-corpus-choice-2026-09-21.md`](feat-corpus-choice-2026-09-21.md)                         | PR #103, korpus som kjøretidsvalg: nøkkelen målt på wire, og 401 på svaret                             |
+| [`feat-corpus-line-one-line-2026-09-21.md`](feat-corpus-line-one-line-2026-09-21.md)           | PR #114, korpuslinja på én linje: 42 px og ikke 32, og en funksjon uten kallere                        |
+| [`feat-panel-head-slot-2026-09-21.md`](feat-panel-head-slot-2026-09-21.md)                     | PR #116, plass i panelhodet: plassen fantes ikke i skuffa, og en tom rad kostet 16 px                  |
 
 ## Sånn går en review
 
