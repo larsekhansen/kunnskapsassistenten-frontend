@@ -47,6 +47,17 @@ opp og lagt ved.», det andre sier fortsatt «Vent til vedlegget er lastet opp.�
 En instruksjon som ikke er sann lenger, i et område som finnes for å si hva
 som er sant nå.
 
+## Runde 3: beskjeden går når grunnen går
+
+| Øyeblikk                                | Live-området sier                                             |
+| --------------------------------------- | ------------------------------------------------------------- |
+| Rett etter Enter, chip under opplasting | «Laster opp notat.pdf.» + «Vent til vedlegget er lastet opp.» |
+| Etter at opplastingen falt til ro       | bare «notat.pdf er lastet opp og lagt ved.»                   |
+
+Avledet under render i stedet for holdt i state, som er den riktige formen: en
+beskjed som skal være sann akkurat nå, skal ikke overleve sin egen grunn. Og
+andre Enter virker — turen starter, og meldinga har «Med vedlegg».
+
 ## Målt, og riktig
 
 - **Vedlegget når spørsmålet:** «Med vedlegg: notat.pdf» på leserens egen
