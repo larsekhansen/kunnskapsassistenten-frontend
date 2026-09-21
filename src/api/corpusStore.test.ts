@@ -59,11 +59,26 @@ describe('hvilket korpus som er aktivt ved oppstart', () => {
     expect(corpus.activeCorpusKey()).toBe('norquad-docs');
   });
 
-  it('har ett korpus og ingen velger i mock', async () => {
+  it('har to korpus og en velger i mock, uten env', async () => {
+    // Mock hadde ett korpus, og en velger med én oppføring tegner ingenting —
+    // så korpusbytte kunne ikke ses i mock eller måles i e2e (KA CC på #129).
+    // To oppføringer uten en eneste miljøvariabel er hele poenget.
     const corpus = await load({ mode: 'mock', datasets: '' });
-    expect(corpus.corpusOptions).toEqual([corpus.MOCK_CORPUS]);
-    expect(corpus.corpusIsChoosable).toBe(false);
+
+    expect(corpus.corpusOptions).toEqual([corpus.MOCK_CORPUS, corpus.MOCK_WIKIPEDIA_CORPUS]);
+    expect(corpus.corpusIsChoosable).toBe(true);
+    // Kudos først: det er korpuset mock åpner på, og det de elleve scriptede
+    // samtalene er skrevet mot.
     expect(corpus.activeCorpusKey()).toBe('mock');
+  });
+
+  it('lar leseren bytte til det andre mock-korpuset', async () => {
+    const corpus = await load({ mode: 'mock', datasets: '' });
+
+    corpus.setActiveCorpusKey(corpus.MOCK_WIKIPEDIA_CORPUS.key);
+
+    expect(corpus.activeCorpusKey()).toBe('norquad-mock');
+    expect(corpus.corpusOption('norquad-mock')?.label).toBe('Wikipedia (mock)');
   });
 
   it('har ingen velger når live bare har ett korpus', async () => {

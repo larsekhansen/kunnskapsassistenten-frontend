@@ -1,4 +1,5 @@
 import corpus from './kudos-korpus.json' with { type: 'json' };
+import { WIKIPEDIA_MOCK_KEY, wikipediaDocuments } from './wikipedia';
 
 /**
  * One document in the mock corpus.
@@ -61,4 +62,16 @@ const byId = new Map(corpusDocuments.map((document) => [document.id, document]))
 
 export function corpusDocument(id: string): CorpusDocument | undefined {
   return byId.get(id);
+}
+
+/**
+ * The documents behind whichever corpus is selected.
+ *
+ * The facets are counted from this, so a switch changes what the filter
+ * panel offers — which is half of what makes a corpus switch visible at all.
+ * Anything that is not the Wikipedia mock answers with Kudos, including an
+ * unset key: Kudos is what mock mode opens on.
+ */
+export function corpusDocumentsFor(key: string | undefined): CorpusDocument[] {
+  return key === WIKIPEDIA_MOCK_KEY ? wikipediaDocuments : corpusDocuments;
 }

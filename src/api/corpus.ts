@@ -159,10 +159,30 @@ export const MOCK_CORPUS: CorpusOption = {
     'Årsrapporter, strategi og plan, tildelingsbrev, statusrapporter og evalueringer, 2020–2027.',
 };
 
+/**
+ * The second mock corpus, so there is something to switch TO.
+ *
+ * Mock mode had one corpus, and a chooser with one entry draws nothing — so
+ * switching could not be seen in mock or measured in e2e (KA CC on #129).
+ * Two entries make the chooser appear without any environment variable, and
+ * make the suggestions, the corpus line, the facets and the answer visibly
+ * different on either side of a switch.
+ *
+ * Modelled on `norquad-docs`, the 351 Wikipedia articles the live stack
+ * holds, and marked `(mock)` like its neighbour so nobody reads a fabricated
+ * corpus as the real one. Its documents are in corpus/wikipedia.ts, which
+ * says at length that they are invented.
+ */
+export const MOCK_WIKIPEDIA_CORPUS: CorpusOption = {
+  key: 'norquad-mock',
+  label: 'Wikipedia (mock)',
+  description: 'Åtte artikler fra norsk Wikipedia, satt sammen for å vise korpusbytte.',
+};
+
 const { options: corpusOptions, fallback } =
   (import.meta.env.VITE_API_MODE ?? 'mock') === 'live'
     ? resolveCorpus(import.meta.env.VITE_KA_DATASETS, import.meta.env.VITE_KA_DATASET_CONFIG_KEY)
-    : { options: [MOCK_CORPUS], fallback: MOCK_CORPUS.key };
+    : { options: [MOCK_CORPUS, MOCK_WIKIPEDIA_CORPUS], fallback: MOCK_CORPUS.key };
 
 export { corpusOptions };
 

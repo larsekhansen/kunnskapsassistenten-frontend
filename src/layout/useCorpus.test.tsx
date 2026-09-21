@@ -10,9 +10,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * Modules are reset per test and the environment stubbed before importing,
  * the same way src/api/corpusStore.test.ts does it, and for the same reason:
  * the store resolves its list from `import.meta.env` once at import time. It
- * is also the only way to get TWO corpora in here — the test environment is
- * mock mode, which has one — and a hook about choosing is not worth much
- * measured where there is nothing to choose.
+ * is also what lets each case say which corpora exist: live mode gets the two
+ * from the stubbed variable, mock mode gets its own two. A hook about
+ * choosing is not worth much measured where there is nothing to choose.
  */
 const CORPORA = 'norquad-docs=Wikipedia (NorQuAD)|351 artikler;kudos-pilot=Kudos-pilot';
 
@@ -78,12 +78,13 @@ describe('hva et view får vite', () => {
     expect(read('count')).toBe('2');
   });
 
-  it('sier at det ikke er det i mock, som har ett', async () => {
-    // Ett korpus har ingen velger. Nøkkelen går likevel med på hvert kall.
+  it('sier at det er noe å velge i mock også, uten env', async () => {
+    // Mock har to korpus siden #129: en velger med én oppføring tegner
+    // ingenting, og da kunne bytte verken ses i mock eller måles i e2e.
     await mount({ mode: 'mock', datasets: '' });
 
-    expect(read('choosable')).toBe('false');
-    expect(read('count')).toBe('1');
+    expect(read('choosable')).toBe('true');
+    expect(read('count')).toBe('2');
     expect(read('active')).toBe('mock');
   });
 });
