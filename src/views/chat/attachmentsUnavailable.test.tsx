@@ -9,7 +9,7 @@ import { FilterContext } from '../../layout/filterContext';
 import { MainScrollContext } from '../../layout/scrollContext';
 import { ThreadContext } from '../../layout/threadContext';
 import { emptyFilterSelection, threadFromQuestion } from '../../model';
-import { ATTACH_LABEL, uploadErrorText } from './attachmentText';
+import { ATTACH_UNAVAILABLE_LABEL, uploadErrorText } from './attachmentText';
 import { ChatView } from './ChatView';
 
 /**
@@ -69,12 +69,25 @@ function Shell({ children }: { children: ReactNode }) {
 }
 
 describe('vedlegg der tjenesten ikke har opplasting', () => {
-  it('sier det ærlig i stedet for å åpne en velger som ikke fører noe sted', () => {
+  it('sier hvorfor i knappens eget navn, før noen velger en fil', () => {
     /*
-     * Knappen står — en kontroll som kommer er verdt å vite om — men den
-     * åpner ingen filvelger. Setningen er den samme som en avvist fil får, så
-     * leseren leser én slags setning om vedlegg og ikke to.
+     * Grunnen står i navnet, ikke bak et klikk: en kontroll som tar imot en
+     * fil og deretter sier at den ikke kan, har fått leseren til å gjøre
+     * arbeid for ingenting (KA CC på #125). `aria-disabled` og ikke
+     * `disabled`, så kontrollen er fortsatt nåbar og kan si det den sier.
      */
+    render(
+      <Shell>
+        <ChatView client={idleClient} />
+      </Shell>,
+    );
+
+    const paperclip = screen.getByRole('button', { name: ATTACH_UNAVAILABLE_LABEL });
+    expect(paperclip.getAttribute('aria-disabled')).toBe('true');
+    expect(ATTACH_UNAVAILABLE_LABEL).toContain(uploadErrorText('unavailable'));
+  });
+
+  it('åpner ingen filvelger, og lager ingen chip', () => {
     upload.calls = 0;
     render(
       <Shell>
@@ -82,7 +95,7 @@ describe('vedlegg der tjenesten ikke har opplasting', () => {
       </Shell>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: ATTACH_LABEL }));
+    fireEvent.click(screen.getByRole('button', { name: ATTACH_UNAVAILABLE_LABEL }));
 
     expect(screen.getByText(uploadErrorText('unavailable'))).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Fjern vedlegget/u })).toBeNull();

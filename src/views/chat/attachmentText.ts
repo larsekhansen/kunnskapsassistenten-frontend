@@ -44,6 +44,24 @@ export function uploadRetryable(code: UploadErrorCode): boolean {
 /** The paperclip. It says what it takes, since the picker filters silently. */
 export const ATTACH_LABEL = 'Legg ved dokument (PDF eller .docx)';
 
+/**
+ * The paperclip where there is nothing to upload to.
+ *
+ * The reason is IN the name, so it is known before a file is picked rather
+ * than after one is refused. A control that takes a file and then says it
+ * cannot have made the reader do work for nothing (KA CC on #125).
+ */
+export const ATTACH_UNAVAILABLE_LABEL = `Legg ved dokument. ${UPLOAD_ERROR_TEXT.unavailable}`;
+
+/**
+ * Why a question did not go while a file was still on its way.
+ *
+ * Only ready documents are sent, so sending now would drop the file the
+ * reader just attached. Saying so beats a send button that does nothing, and
+ * beats sending the question without the thing it was about.
+ */
+export const WAIT_FOR_UPLOADS = 'Vent til vedlegget er lastet opp.';
+
 /** What the attachment strip is called, for the list that holds the chips. */
 export const ATTACHMENTS_LABEL = 'Vedlegg til spørsmålet';
 
@@ -61,13 +79,14 @@ export function retryAttachmentLabel(name: string): string {
 }
 
 /**
- * What the polite region says while a file is on its way.
+ * What the polite region says when a file starts on its way.
  *
- * Whole percentages, and only when the number changes: a region that spoke
- * on every frame of the bar would still be reading when the file was ready.
+ * Once, and without a number. The percentage is drawn in the chip for anyone
+ * watching it; read aloud it is eighteen sentences that say the same thing
+ * eighteen times and end on a stale one.
  */
-export function uploadProgressAnnouncement(name: string, progress: number): string {
-  return `Laster opp ${name}, ${Math.round(progress)} %.`;
+export function uploadStartedAnnouncement(name: string): string {
+  return `Laster opp ${name}.`;
 }
 
 export function uploadReadyAnnouncement(name: string): string {

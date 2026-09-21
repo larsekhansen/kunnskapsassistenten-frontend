@@ -6,7 +6,7 @@ import {
   retryAttachmentLabel,
   uploadErrorText,
   uploadFailedAnnouncement,
-  uploadProgressAnnouncement,
+  uploadStartedAnnouncement,
   uploadReadyAnnouncement,
   uploadRetryable,
 } from './attachmentText';
@@ -93,21 +93,32 @@ export function Attachments({ items, onRemove, onRetry }: AttachmentsProps) {
 /**
  * What the polite region should say at this moment.
  *
+ * Three moments per file and no more: it started, it is ready, it failed.
+ *
+ * It used to speak on every whole percent, which is eighteen sentences for
+ * one 1,5-second upload — a region still reading «12 %» while the file has
+ * been ready for a second. Worse, the last of them was «0 %»: between the
+ * store swapping the pending row for the finished document and this slot
+ * learning about it, there is a render with no row to read a number from, and
+ * the fallback nought was announced as though the upload had started over
+ * (KA CC on #125). Saying less is not a workaround for that render — a
+ * percentage nobody can act on was never worth a sentence — but it does take
+ * the wrong number out of the reader's ear. Same as #2 landed in #124.
+ *
  * Held as state and written from an effect rather than computed during
- * render, because a live region only announces a CHANGE: recomputing the same
- * sentence on every render is silent, and recomputing a different one on
- * every frame of the bar is a region that never stops talking. So it changes
- * when the whole percentage does, and when a file settles.
+ * render, because a live region announces a CHANGE: the same sentence
+ * recomputed is silence.
  */
 function useUploadAnnouncement(items: AttachmentView[]): string {
   const [announcement, setAnnouncement] = useState('');
+  /** The last thing said about each file, so nothing is said twice. */
   const said = useRef(new Map<string, string>());
 
   useEffect(() => {
     for (const item of items) {
       const now =
         item.status === 'uploading'
-          ? uploadProgressAnnouncement(item.name, item.progress)
+          ? uploadStartedAnnouncement(item.name)
           : item.status === 'ready'
             ? uploadReadyAnnouncement(item.name)
             : item.errorCode

@@ -19,7 +19,13 @@ import {
   shortcutHint,
 } from './text';
 import { Attachments } from './Attachments';
-import { ATTACH_LABEL, DROP_HINT, uploadErrorText } from './attachmentText';
+import {
+  ATTACH_LABEL,
+  ATTACH_UNAVAILABLE_LABEL,
+  DROP_HINT,
+  WAIT_FOR_UPLOADS,
+  uploadErrorText,
+} from './attachmentText';
 import type { Attachments as AttachmentsState } from './useAttachments';
 import type { ChatStatus } from './useChat';
 
@@ -122,23 +128,65 @@ export function Composer({
    * one nobody had time to read.
    */
   const [refusal, setRefusal] = useState('');
+  const { unavailable } = attachments;
   // Generated, not a constant: two chat views in two slots would otherwise
   // share one id and the description would describe the wrong field.
   const descriptionId = useId();
+
+  /**
+   * The one way a question leaves this field.
+   *
+   * Every way of sending goes through here — Enter, the send button, a
+   * follow-up chip — because the rule about attachments is about SENDING and
+   * not about one control. It was on the send button's `disabled` alone, and
+   * Enter walked straight past it: the question went, the file that was still
+   * uploading did not, and nothing said so (KA CC on #125). That is the
+   * silent drop the rule exists to prevent, arriving through the door the
+   * rule was not on.
+   *
+   * It refuses rather than queues. Waiting would send a question the reader
+   * has stopped watching, seconds later, with no way to call it back — and
+   * the wait is a second or two, with the bar in plain sight.
+   */
+  function trySubmit(send: () => void) {
+    if (busy) return;
+    if (attachments.busy) {
+      setRefusal(WAIT_FOR_UPLOADS);
+      fieldRef?.current?.focus();
+      return;
+    }
+    setRefusal('');
+    send();
+  }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== 'Enter' || event.shiftKey) return;
     if (event.nativeEvent.isComposing) return;
     event.preventDefault();
-    if (!busy) onSubmit();
+    trySubmit(onSubmit);
   }
 
   return (
     <div className="ka-composer-area" ref={ref}>
+      {/*
+        Both handlers put focus back in the field, because both take the
+        control the reader is standing on out of the page: removing a chip
+        unmounts its button, and retrying one takes «Prøv igjen» away the
+        moment the file goes back to uploading. A control that vanishes
+        without saying where focus should land drops a keyboard user on
+        `<body>`, at the top of the document (WCAG 2.4.3). The field is where
+        they were heading anyway.
+      */}
       <Attachments
         items={attachments.items}
-        onRemove={attachments.remove}
-        onRetry={attachments.retry}
+        onRemove={(key) => {
+          attachments.remove(key);
+          fieldRef?.current?.focus();
+        }}
+        onRetry={(key) => {
+          attachments.retry(key);
+          fieldRef?.current?.focus();
+        }}
       />
 
       {/*
@@ -165,8 +213,8 @@ export function Composer({
           setDragDepth(0);
           if (!hasFiles(event)) return;
           event.preventDefault();
-          if (attachments.unavailable) {
-            setRefusal(uploadErrorText(attachments.unavailable));
+          if (unavailable) {
+            setRefusal(uploadErrorText(unavailable));
             return;
           }
           setRefusal('');
@@ -207,20 +255,22 @@ export function Composer({
           type="file"
         />
 
+        {/*
+          Where there is nothing to upload to, the reason is in the button's
+          own name — known before a file is picked rather than after one is
+          refused. `aria-disabled` and not `disabled`, so the control stays
+          reachable and can still say what it says; a control that is coming
+          is worth knowing about.
+        */}
         <Button
-          aria-label={ATTACH_LABEL}
+          aria-disabled={unavailable ? 'true' : undefined}
+          aria-label={unavailable ? ATTACH_UNAVAILABLE_LABEL : ATTACH_LABEL}
           className="ka-composer__attach"
           data-color="neutral"
           icon
           onClick={() => {
-            /*
-             * A service with no upload endpoint says so instead of opening a
-             * picker that leads nowhere. The refusal goes through the same
-             * chip the other three do, so the reader reads one kind of
-             * sentence about attachments and not two.
-             */
-            if (attachments.unavailable) {
-              setRefusal(uploadErrorText(attachments.unavailable));
+            if (unavailable) {
+              setRefusal(uploadErrorText(unavailable));
               return;
             }
             fileInputRef.current?.click();
@@ -268,14 +318,15 @@ export function Composer({
           <Button
             aria-label="Send spørsmålet"
             className="ka-composer__send"
-            /*
-             * Waits for the files too. Only ready documents are sent, so
-             * sending mid-upload would drop the very file the reader attached
-             * — silently, which is the one thing an attachment must never do.
-             */
-            disabled={value.trim().length === 0 || attachments.busy}
+            disabled={value.trim().length === 0}
             icon
-            onClick={onSubmit}
+            /*
+             * Through `trySubmit`, like every other way of sending. The
+             * button used to be `disabled` while a file was uploading, which
+             * stopped the click and said nothing about why — and did not stop
+             * Enter at all.
+             */
+            onClick={() => trySubmit(onSubmit)}
             ref={sendRef}
           >
             <PaperplaneIcon aria-hidden />
@@ -295,7 +346,9 @@ export function Composer({
         <ul className="ka-follow-ups">
           {FOLLOW_UP_QUESTIONS.map((question) => (
             <li key={question}>
-              <Chip.Button onClick={() => onFollowUp(question)}>{question}</Chip.Button>
+              <Chip.Button onClick={() => trySubmit(() => onFollowUp(question))}>
+                {question}
+              </Chip.Button>
             </li>
           ))}
         </ul>

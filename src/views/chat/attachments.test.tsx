@@ -10,7 +10,7 @@ import { FilterContext } from '../../layout/filterContext';
 import { MainScrollContext } from '../../layout/scrollContext';
 import { ThreadContext } from '../../layout/threadContext';
 import { emptyFilterSelection, threadFromQuestion, type StreamEvent } from '../../model';
-import { uploadErrorText } from './attachmentText';
+import { WAIT_FOR_UPLOADS, uploadErrorText } from './attachmentText';
 import { ChatView } from './ChatView';
 
 /**
@@ -83,8 +83,13 @@ const field = () => screen.getByRole('textbox', { name: 'Spørsmål til Kunnskap
 /* `toBeDisabled` er jest-dom, som dette repoet ikke bruker. */
 const sendButton = () =>
   screen.getByRole('button', { name: 'Send spørsmålet' }) as HTMLButtonElement;
-const waitForReady = () =>
-  waitFor(() => expect(sendButton().disabled).toBe(false), { timeout: 8000 });
+const chipText = () =>
+  screen
+    .getAllByRole('button', { name: /Fjern vedlegget/u })
+    .map((chip) => chip.textContent ?? '')
+    .join(' ');
+/** Klar = ingen chip sier prosent lenger. */
+const waitForReady = () => waitFor(() => expect(chipText()).not.toMatch(/%/u), { timeout: 8000 });
 
 function ask(question: string) {
   fireEvent.change(field(), { target: { value: question } });
@@ -119,19 +124,97 @@ describe('vedlegg i skrivefeltet', { timeout: 20000 }, () => {
     expect(chip().textContent).toContain('rapport.pdf');
   });
 
-  it('venter med å sende til filen er klar', async () => {
+  it('sender ikke med Enter mens en fil er på vei, og sier hvorfor', async () => {
     /*
-     * Bare klare dokumenter sendes, så et spørsmål sendt midt i opplastinga
-     * ville droppet nettopp den filen leseren la ved — stille, som er det ene
-     * et vedlegg aldri skal gjøre.
+     * Vakta lå på send-knappens `disabled` alene, og Enter gikk rett forbi:
+     * spørsmålet gikk, filen som fortsatt lastet opp gjorde ikke, og
+     * ingenting sa fra (KA CC på #125). Det er nettopp det stille tapet
+     * regelen finnes for, gjennom døra regelen ikke sto ved.
      */
-    show();
+    show(answer);
     fireEvent.change(field(), { target: { value: 'Hva står i rapporten?' } });
     pick(file('rapport.pdf'));
 
-    expect(sendButton().disabled).toBe(true);
+    fireEvent.keyDown(field(), { key: 'Enter' });
+
+    expect(asked).toHaveLength(0);
+    expect(screen.getByText(WAIT_FOR_UPLOADS)).toBeTruthy();
+
+    // Og når filen er klar, går den samme tasten gjennom.
+    await waitForReady();
+    fireEvent.keyDown(field(), { key: 'Enter' });
+    await waitFor(() => expect(asked).toHaveLength(1));
+    expect(asked[0].attachments).toHaveLength(1);
+  });
+
+  it('sender ikke med knappen heller mens en fil er på vei', async () => {
+    show(answer);
+    fireEvent.change(field(), { target: { value: 'Hva står i rapporten?' } });
+    pick(file('rapport.pdf'));
+
+    fireEvent.click(sendButton());
+
+    expect(asked).toHaveLength(0);
+    expect(screen.getByText(WAIT_FOR_UPLOADS)).toBeTruthy();
 
     await waitForReady();
+  });
+
+  it('gir fokus tilbake til skrivefeltet når et vedlegg fjernes', async () => {
+    /*
+     * Chipen er en knapp, og den forsvinner i det den trykkes. En kontroll
+     * som blir borte uten å si hvor fokus skal, slipper tastaturet ned på
+     * body, øverst i dokumentet (WCAG 2.4.3).
+     */
+    show();
+    pick(file('rapport.pdf'));
+
+    const chip = screen.getByRole('button', { name: /Fjern vedlegget rapport\.pdf/u });
+    chip.focus();
+    fireEvent.click(chip);
+
+    expect(document.activeElement).toBe(field());
+  });
+
+  it('gir fokus tilbake til skrivefeltet når et vedlegg prøves på nytt', async () => {
+    // Samme sak: «Prøv igjen» er borte i det filen går tilbake til å laste
+    // opp, så knappen som ble trykket finnes ikke lenger.
+    show();
+    pick(file('feil-rapport.pdf'));
+
+    const retry = await screen.findByRole(
+      'button',
+      { name: /Prøv å laste opp feil-rapport\.pdf på nytt/u },
+      { timeout: 8000 },
+    );
+    retry.focus();
+    fireEvent.click(retry);
+
+    expect(document.activeElement).toBe(field());
+  });
+
+  it('annonserer start og ferdig, ikke hvert prosentsteg', async () => {
+    /*
+     * Atten setninger for én fil på halvannet sekund, og den siste av dem
+     * var «0 %»: mellom at lageret bytter den ventende raden mot det ferdige
+     * dokumentet og at slottet får vite om det, finnes det en render uten
+     * noen rad å lese et tall fra (KA CC på #125).
+     */
+    const { container } = show();
+    const region = () => container.querySelector('[aria-live="polite"]')!;
+
+    pick(file('rapport.pdf'));
+    const heard: string[] = [];
+    await waitFor(() => expect(region().textContent).toContain('Laster opp'), { timeout: 8000 });
+    heard.push(region().textContent ?? '');
+
+    await waitFor(() => expect(region().textContent).toContain('lastet opp og lagt ved'), {
+      timeout: 8000,
+    });
+    heard.push(region().textContent ?? '');
+
+    expect(heard[0]).toBe('Laster opp rapport.pdf.');
+    expect(heard.join(' ')).not.toMatch(/%/u);
   });
 
   it('sender id-ene med spørsmålet, og navnene står på meldingen', async () => {
