@@ -65,6 +65,8 @@ eier bare denne mappa.
 | [`feat-sources-own-documents-2026-09-21.md`](feat-sources-own-documents-2026-09-21.md)           | PR #123, eget dokument som kilde: to setninger som må si forskjellige ting                             |
 | [`feat-your-documents-upload-2026-09-21.md`](feat-your-documents-upload-2026-09-21.md)           | PR #124, «Dine dokumenter»: to AA-funn axe ikke ser                                                    |
 | [`feat-composer-attachments-2026-09-21.md`](feat-composer-attachments-2026-09-21.md)             | PR #125, vedlegg i skrivefeltet: vakta sto på knappen, ikke på handlingen                              |
+| [`feat-chat-corpus-per-turn-2026-09-21.md`](feat-chat-corpus-per-turn-2026-09-21.md)             | PR #138, korpuset per tur i hovedkolonnen: stedfortrederen som ble et navn                             |
+| [`fix-sources-answer-corpus-2026-09-21.md`](fix-sources-answer-corpus-2026-09-21.md)             | PR #139, kildepanelet leser svarets korpus: setningen fulgte med, tomtilstanden ikke                   |
 
 ## Sånn går en review
 
