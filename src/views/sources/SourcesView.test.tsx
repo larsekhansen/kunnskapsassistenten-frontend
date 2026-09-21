@@ -689,7 +689,10 @@ describe('SourcesView, korpuset følger svaret og ikke valget', () => {
 
     render(<SourcesView answers={[withLink]} />);
 
-    expect(screen.getAllByRole('link', { name: /på standardkorpuset/ }).length).toBeGreaterThan(0);
+    // Ukjent korpus: fraskrivelsen tar stedfortrederen, lenka navngir
+    // ingenting og sier bare hva den gjør.
+    expect(screen.getAllByRole('link', { name: /^Les dokumentet,/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: /på standardkorpuset/ })).toBeNull();
     expect(screen.queryByRole('link', { name: /på Kudos/ })).toBeNull();
   });
 });

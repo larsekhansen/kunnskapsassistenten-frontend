@@ -1,6 +1,6 @@
 import { Heading } from '@digdir/designsystemet-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { corpusDisplayNameFor } from '../../api';
+import { corpusDisplayNameFor, corpusOption } from '../../api';
 import { EmptyState, findHits, stepHit, type SearchHit } from '../../components';
 import { useActiveCorpus } from '../../layout/useActiveCorpus';
 import { ViewHead } from '../../layout/ViewHead';
@@ -408,9 +408,19 @@ export function SourcesView({
    * Router, `preview/` included.
    */
   const activeCorpus = useActiveCorpus();
-  const corpusName = corpusDisplayNameFor(
-    corpusKeyToName(activeAnswer?.corpusKey, activeCorpus.key),
-  );
+  const corpusKey = corpusKeyToName(activeAnswer?.corpusKey, activeCorpus.key);
+  const corpusName = corpusDisplayNameFor(corpusKey);
+
+  /*
+   * The same corpus, but undefined when nothing actually names it.
+   *
+   * The disclaimer is a sentence about where the text came from and has to
+   * say something, so it takes the “standardkorpuset” stand-in. A link label
+   * is not a sentence, and «Les dokumentet på standardkorpuset» is a clumsy
+   * name for a control — there the link says only what it does (dirigenten,
+   * 21.09). `corpusOption` is the lookup the stand-in hides.
+   */
+  const linkCorpusName = corpusOption(corpusKey) === undefined ? undefined : corpusName;
 
   const content = panelContentFor(answerList, activeAnswer);
 
@@ -526,7 +536,7 @@ export function SourcesView({
               <SourceDocumentCard
                 key={source.id}
                 source={source}
-                corpusName={corpusName}
+                corpusName={linkCorpusName}
                 openExcerptIds={openExcerptIds}
                 onExcerptOpenChange={setExcerptOpen}
                 hits={hits}

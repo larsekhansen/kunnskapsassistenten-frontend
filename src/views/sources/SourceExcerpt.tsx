@@ -31,8 +31,8 @@ type SourceExcerptProps = {
   excerpt: Excerpt;
   /** The document this excerpt came from, for the accessible names. */
   documentTitle: string;
-  /** What to call the corpus this excerpt came from, in the link text. */
-  corpusName: string;
+  /** What to call the corpus, or undefined when nothing names it. */
+  corpusName: string | undefined;
   /** 1-based place of this excerpt among the document's, for naming it. */
   position: number;
   /** How many excerpts the document has, for naming an uncited one. */

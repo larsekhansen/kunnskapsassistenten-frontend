@@ -39,6 +39,12 @@ export function reachesPage(kudosUrl: string, page: number): boolean {
  * The name is the answer's corpus, so it does not change under a reader who
  * moves the chooser while an old thread is open.
  *
+ * `undefined` when nothing names the corpus, and then the link says only what
+ * it does. The disclaimer can fall back to «standardkorpuset» because it is a
+ * sentence about where the text came from and has to say something; a link
+ * label is not, and «Les dokumentet på standardkorpuset» would be a clumsy
+ * name for a control (dirigenten, 21.09).
+ *
  * The page half stays as it was. That is about the shape of the address and
  * not about whose corpus it is: only a file URL with `#page=N` opens a page,
  * whoever serves it, and anything else honestly says «dokumentet».
@@ -46,9 +52,15 @@ export function reachesPage(kudosUrl: string, page: number): boolean {
 export function kudosLinkLabel(
   kudosUrl: string,
   page: number | undefined,
-  corpusName: string,
+  corpusName: string | undefined,
 ): string {
-  return page !== undefined && reachesPage(kudosUrl, page)
-    ? `Les side ${page} på ${corpusName}`
-    : `Les dokumentet på ${corpusName}`;
+  const what =
+    page !== undefined && reachesPage(kudosUrl, page) ? `Les side ${page}` : 'Les dokumentet';
+
+  return corpusName === undefined ? what : `${what} på ${corpusName}`;
+}
+
+/** The same, for a document card's own link, which never names a page. */
+export function documentLinkLabel(corpusName: string | undefined): string {
+  return corpusName === undefined ? 'Les dokumentet' : `Les dokumentet på ${corpusName}`;
 }

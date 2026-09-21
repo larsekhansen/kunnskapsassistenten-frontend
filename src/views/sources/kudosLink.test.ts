@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { kudosLinkLabel, reachesPage } from './kudosLink';
+import { documentLinkLabel, kudosLinkLabel, reachesPage } from './kudosLink';
 
 const LANDING = 'https://kudos.dfo.no/dokument/a1c3a188-a28d-4d96-b95a-2ab7cd0cf565';
 const FILE = `${LANDING}/filer/a1c3a18b-d573-447e-bbf9-5fffa9b38bc9.pdf`;
@@ -47,5 +47,19 @@ describe('kudosLinkLabel navngir korpuset', () => {
       'Les dokumentet på Wikipedia (NorQuAD)',
     );
     expect(kudosLinkLabel(`${FILE}#page=7`, 7, 'Kudos-pilot')).toBe('Les side 7 på Kudos-pilot');
+  });
+});
+
+describe('lenketeksten uten et korpus å navngi', () => {
+  test('sier bare hva den gjør', () => {
+    // «Les dokumentet på standardkorpuset» er et klossete navn på en kontroll.
+    // Fraskrivelsen tar stedfortrederen, lenka gjør det ikke (dirigenten 21.09).
+    expect(kudosLinkLabel(LANDING, undefined, undefined)).toBe('Les dokumentet');
+    expect(kudosLinkLabel(`${FILE}#page=41`, 41, undefined)).toBe('Les side 41');
+  });
+
+  test('documentLinkLabel følger samme regel', () => {
+    expect(documentLinkLabel('Kudos')).toBe('Les dokumentet på Kudos');
+    expect(documentLinkLabel(undefined)).toBe('Les dokumentet');
   });
 });

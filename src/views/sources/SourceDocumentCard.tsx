@@ -3,13 +3,14 @@ import { hitsFor, type SearchHit } from '../../components';
 import type { SourceDocument } from '../../model';
 import { SourceExcerpt } from './SourceExcerpt';
 import { documentDomId } from './ids';
+import { documentLinkLabel } from './kudosLink';
 import { documentSubtitle, isOwnDocument, OWN_DOCUMENT_NO_LINK } from './origin';
 
 type SourceDocumentCardProps = {
   /** Named `source`, not `document`: the DOM global is used in this view. */
   source: SourceDocument;
-  /** What to call the corpus this answer came from, in the link texts. */
-  corpusName: string;
+  /** What to call the corpus, or undefined when nothing names it. */
+  corpusName: string | undefined;
   /** Ids of the excerpts that are currently open. */
   openExcerptIds: ReadonlySet<string>;
   onExcerptOpenChange: (excerptId: string, open: boolean) => void;
@@ -114,7 +115,7 @@ export function SourceDocumentCard({
           <Paragraph data-size="xs">Dokumentet har ingen offentlig lenke.</Paragraph>
         ) : (
           <Link href={source.url} target="_blank" rel="noreferrer" data-size="sm">
-            Les dokumentet på {corpusName}
+            {documentLinkLabel(corpusName)}
             {/* The title, because every document card ends in these same
                 words: without it a screen reader listing the panel's links
                 reads them once per document and cannot tell which one leads
