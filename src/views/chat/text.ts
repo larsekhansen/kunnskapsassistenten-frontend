@@ -20,12 +20,58 @@ export const CLOSING_QUESTION = 'Er det noe mer jeg kan hjelpe deg med?';
 /**
  * Three suggestions on the empty state. They fill the compose field, they do
  * not send (answer 40).
+ *
+ * These three are about Kudos: annual reports from DSS, an Udir evaluation,
+ * letters of allocation from Digdir. They are the right three over the Kudos
+ * pilot and over the mock corpus, and they were shown over every corpus until
+ * today — including 351 Wikipedia articles, which can answer none of them.
+ * That is not a claim that reads oddly, it is an invitation to ask three
+ * questions the corpus cannot answer (brukerblikk 5, funn 2). See
+ * `kickstartersFor`.
  */
 export const KICKSTARTERS = [
   'Hva rapporteres om regnskap, kostnader og bevilgning i DSS sine årsrapporter for 2022 og 2023?',
   'Hvilke utfordringer rapporterer Udir om i evaluering om lærerspesialtordningen?',
   'Hva rapporterer Digdir om prioriteringene i tildelingsbrevene fra 2022 og 2023 sammenlignet med årsrapportene?',
 ] as const;
+
+/**
+ * The three for a corpus nobody has written suggestions for.
+ *
+ * Deliberately about the documents rather than about anything in them: these
+ * have to hold over a corpus this code has never seen, so every one of them
+ * asks what is there rather than assuming what is. A suggestion that named a
+ * subject would be the same mistake again, one corpus further along.
+ *
+ * Whole questions, and not «Hvilke dokumenter finnes om …?» with the subject
+ * left for the reader. A kickstarter fills the field and leaves the caret
+ * there, so an unfinished one would work — but it reads as a broken label on
+ * the button before it is picked, and the button is the thing the reader
+ * judges first.
+ */
+export const GENERAL_KICKSTARTERS = [
+  'Hva handler dokumentene i dette korpuset om?',
+  'Gi meg en oversikt over de viktigste temaene.',
+  'Oppsummer det viktigste i noen få punkter.',
+] as const;
+
+/**
+ * The corpora the Kudos questions are written for.
+ *
+ * The mock corpus is 938 Kudos documents, so it gets them for the same reason
+ * the pilot does. Anything else gets the general three until somebody writes
+ * a list for it — which is the safe direction to be wrong in: a general
+ * question over Kudos still works, and a Kudos question over Wikipedia does
+ * not.
+ */
+const KUDOS_CORPORA: readonly string[] = ['kudos-pilot', 'mock'];
+
+/** The three suggestions to offer over `corpusKey`. */
+export function kickstartersFor(corpusKey: string | undefined): readonly string[] {
+  return corpusKey !== undefined && KUDOS_CORPORA.includes(corpusKey)
+    ? KICKSTARTERS
+    : GENERAL_KICKSTARTERS;
+}
 
 /**
  * Fixed in the first version, model generated in the second (answer 29).
