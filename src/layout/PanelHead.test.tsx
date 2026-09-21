@@ -26,7 +26,19 @@ globalThis.ResizeObserver ??= class {
   disconnect() {}
 };
 
-/** A view that puts one button on the panel row, the way ThreadsView will. */
+/**
+ * A view that puts nothing on the panel row, the way `ThreadsView` does.
+ *
+ * The two cases below used to measure the empty place with the real
+ * `FiltersView`, because that one kept its «Tråder» button in the pinned view
+ * head. It moved to this row in #119, so the empty case needs a view that
+ * really fills nothing — which the thread list is, in the running app.
+ */
+function QuietView(_props: SlotViewProps) {
+  return <p>Innholdet i visningen</p>;
+}
+
+/** A view that puts one button on the panel row, the way FiltersView does. */
 function FillingView(_props: SlotViewProps) {
   return (
     <>
@@ -40,7 +52,7 @@ function FillingView(_props: SlotViewProps) {
 
 function openShell({ filled = true, width = 1440 } = {}) {
   const original = viewComponents.filters;
-  if (filled) viewComponents.filters = FillingView;
+  viewComponents.filters = filled ? FillingView : QuietView;
 
   setViewportWidth(width);
   render(
@@ -93,9 +105,9 @@ describe('plassen i panelhodet', () => {
     // `:empty` i CSS-en gjør den usynlig; her måles at React ikke legger noe
     // i den i det hele tatt, som er det `:empty` hviler på.
     //
-    // Ikke målt på fravær av en «Tråder»-knapp: den ekte filtervisningen har
-    // fortsatt sin egen, i det klebrige hodet, og det er nettopp den #2 skal
-    // flytte hit. Plassen er tom til de gjør det.
+    // Med et view som ikke fyller plassen, og det er ikke et kunstig
+    // tilfelle: filtervisningen flyttet knappen sin hit i #119, trådlista
+    // setter ingenting der, og da skal raden være tom på ordentlig.
     const restore = openShell({ filled: false });
     try {
       expect(slot()).not.toBeNull();

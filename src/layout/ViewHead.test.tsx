@@ -132,17 +132,26 @@ describe('view-hodet i skallet', () => {
     expect(main?.querySelector('.main-column')?.firstElementChild?.className).toBe('view-head');
   });
 
-  it('holder «Tråder», overskriften og korpuslinja i navigasjonspanelets hode', () => {
+  it('holder overskriften og korpuslinja i navigasjonspanelets hode', () => {
     openFrontPage();
 
-    const head = document
-      .querySelector('nav.primary-sidebar')
-      ?.querySelector('.view-head') as HTMLElement;
+    const sidebar = document.querySelector('nav.primary-sidebar');
+    const head = sidebar?.querySelector('.view-head') as HTMLElement;
 
     expect(head).toBeTruthy();
-    expect(head.contains(screen.getByRole('button', { name: 'Tråder' }))).toBe(true);
     expect(head.contains(screen.getByRole('heading', { name: 'Filtrering' }))).toBe(true);
     expect(head.textContent).toContain('Kudos');
+
+    /*
+     * «Tråder» sto her til #119. Den hører til PANELET og ikke til det som er
+     * i det — den sier hvilken av de to visningene panelet viser, slik
+     * «Skjul tråder og filter» ved siden av sier om panelet er åpent — så den
+     * flyttet til panelraden, og tok 48 px ut av et hode som tok 137 av
+     * rullevinduet. Se PanelHead.test.tsx for hva som måles der.
+     */
+    const threads = screen.getByRole('button', { name: 'Tråder' });
+    expect(head.contains(threads)).toBe(false);
+    expect(threads.closest('.panel-head-slot')).not.toBeNull();
   });
 
   it('lar hodet i kildepanelet stå tomt før det finnes et svar', () => {

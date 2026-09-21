@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, PanelHeader } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useCorpus } from '../../layout/useCorpus';
 import { useFilterSelection } from '../../layout/useFilterSelection';
+import { PanelHead } from '../../layout/PanelHead';
 import { ViewHead } from '../../layout/ViewHead';
 import type { SlotViewProps } from '../../layout/viewModel';
 import { emptyFilterSelection, isEmptySelection, type FilterFacet } from '../../model';
@@ -194,34 +195,40 @@ export function FiltersView({
 
         The box is the shell's; see src/layout/viewHeadContext.ts.
       */}
-      <ViewHead>
-        {/*
-          The way back to the thread list. The slot tells the view which other
-          views it holds, so the button appears only when there is somewhere to
-          go. A Button and not a Link: it changes what the panel shows, not the
-          address. See design/designsystemet/behov-til-komponent.md.
-        */}
-        {siblingViews.includes('threads') && (
+      {/*
+        The way back to the thread list, on the PANEL's row rather than in the
+        view's pinned head.
+
+        It belongs to the panel and not to what is in it: it says which of the
+        two views the panel shows, the way «Skjul tråder og filter» beside it
+        says whether the panel is open at all. Sitting in the view head it
+        also cost 48 px of a head that took 137 of the scrolling window, and
+        the panel scrolls at every width we draw — N1 in
+        design/hoydebudsjett-forslag-2026-09-21.md, Lars said yes on 21.09.
+
+        Written first in this view so the tab order matches what the reader
+        sees: the head row is drawn above the scrolling region, and a portal
+        moves the DOM but not the order the browser tabs in. See PanelHead.
+
+        On a rail there is no room for a second control, and `PanelHead` draws
+        nothing there — so the rail is exactly as it was.
+      */}
+      {siblingViews.includes('threads') && (
+        <PanelHead>
           <Button
             ref={backRef}
             variant="tertiary"
             data-color="neutral"
-            /*
-              Its own class, because the rule that used to give it the panel's
-              full width — `.filters-view > .ds-btn` — no longer reaches it:
-              the button is drawn in the shell's head now. It is full width
-              today either way, since the head stretches its children, but
-              that is the head's default and the head belongs to somebody
-              else. #2 asked for the width to be said where the button lives.
-            */
             className="filters-view__back"
             onClick={() => onShowView('threads')}
           >
             <BackIcon aria-hidden="true" />
             Tråder
           </Button>
-        )}
+        </PanelHead>
+      )}
 
+      <ViewHead>
         <PanelHeader title="Filtrering" size="sm" />
 
         {/*
