@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
-import { chooseFacetValue, composer, expectEveryStepReachable, walkWithTab } from './helpers';
+import { ask, chooseFacetValue, composer, expectEveryStepReachable, walkWithTab } from './helpers';
 
 /**
  * The shell: the three slots, the routes, the skip link and dark mode.
@@ -341,6 +341,50 @@ test.describe('skallet', () => {
     expect(steps[0]?.name).toBe('Hopp til hovedinnhold');
     expect(steps[1]?.name).toBe('Hopp til skrivefeltet');
     expect(steps[2]?.name).toBe('Skjul tråder og filter');
+  });
+
+  test('dokumentet ruller aldri, uansett hvor mange svar tråden har', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'skallet: bare regionene ruller, aldri sida');
+
+    /*
+     * Det er `<main>` og de to panelene som ruller. Sida selv skal aldri gjøre
+     * det: skallet fyller vinduet, og en rullelist på dokumentet betyr at noe
+     * har lagt seg utenfor regionen sin.
+     *
+     * Målt 21.09, og det tok to svar å se det: `.ds-sr-only` er
+     * `position: absolute`, og i en `overflow: auto`-region som selv er
+     * `static` blir containing block hele dokumentet. Skjermlesertekst langt
+     * nede i det andre svaret havnet da på y 1916 og 1983 i et vindu på 900,
+     * og `scrollHeight` ble 1984. Hvitt felt under `html`, som Lars så.
+     *
+     * To svar og ikke ett, fordi ett svar ikke er høyt nok til å skyve teksten
+     * forbi vindusbunnen. Testen måler nettopp det tilfellet som var rødt.
+     */
+    await page.goto('/');
+    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+    await ask(page, 'Hva mer sier rapporten?');
+    await expect(page.locator('.ka-message--assistant')).toHaveCount(2);
+
+    const room = await page.evaluate(() => ({
+      scrollHeight: document.scrollingElement!.scrollHeight,
+      innerHeight: window.innerHeight,
+      scrollY: window.scrollY,
+    }));
+
+    expect(room.scrollHeight, 'dokumentet skal ikke være høyere enn vinduet').toBe(
+      room.innerHeight,
+    );
+    expect(room.scrollY, 'og det skal ikke stå rullet').toBe(0);
+
+    // Og svaret er fortsatt der å rulle i — det er regionen som ruller, ikke
+    // sida. Uten dette ville et `overflow: hidden` bestått testen over.
+    const main = await page.evaluate(() => {
+      const element = document.querySelector('.main')!;
+      return { kanRulle: element.scrollHeight > element.clientHeight };
+    });
+    expect(main.kanRulle, 'hovedkolonnen skal ha noe å rulle i').toBe(true);
   });
 
   test('skjermbilder av rutene i lys og mørk modus', async ({ page }, testInfo) => {
