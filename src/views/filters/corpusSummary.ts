@@ -153,11 +153,23 @@ export function corpusDisplayName(corpus?: CorpusOption): string {
 }
 
 /**
- * @param facets The unconditional facets, or undefined while they load.
- * @param corpus The corpus being searched, when one is known.
- * @returns A Norwegian sentence, always non-empty.
+ * The line, in the two parts the panel draws it in.
+ *
+ * `source` names the corpus and is always there; `detail` is what is in it,
+ * and is what «Vis mer» holds. Split because the sentence whole is two lines
+ * in a 327 px panel — 63 px of a filter head that was 179 (measured at 1440)
+ * — and the panel is over its height budget (hoydebudsjett-forslag,
+ * 2026-09-21, N2). The name is the half that changes when a reader switches
+ * corpus (#103, #106), so it is the half that stays on screen.
  */
-export function corpusSummary(facets?: FilterFacet[], corpus?: CorpusOption): string {
+export type CorpusLine = {
+  /** «Dokumenter fra Wikipedia (NorQuAD)». Never empty. */
+  source: string;
+  /** «351 artikler …» or the counted clauses. Absent when nothing is known. */
+  detail?: string;
+};
+
+export function corpusLine(facets?: FilterFacet[], corpus?: CorpusOption): CorpusLine {
   const total = facets ? totalDocuments(facets) : undefined;
   const clauses = (
     facets
@@ -170,22 +182,17 @@ export function corpusSummary(facets?: FilterFacet[], corpus?: CorpusOption): st
   ).filter((clause) => clause !== '');
 
   const source = `Dokumenter fra ${corpusDisplayName(corpus)}`;
-  if (clauses.length > 0) return `${source}: ${clauses.join(', ')}`;
+  if (clauses.length > 0) return { source, detail: clauses.join(', ') };
 
   /*
    * Nothing to count, so the corpus says what it is in its own words — the
-   * description from the environment, after the same “Dokumenter fra X”
-   * opening the counted line uses.
+   * description from the environment. The opening stays either way, because
+   * it carries the one thing the description cannot be trusted to: where the
+   * documents come from. That was the whole reason the line exists
+   * (brukerreiser punkt 11), and a description written in a deployment's
+   * environment may well name only what is inside.
    *
-   * The opening stays because it carries the one thing the description
-   * cannot be trusted to: where the documents come from. That was the whole
-   * reason the line exists (brukerreiser punkt 11), and a description written
-   * in a deployment's environment may well name only what is inside.
-   *
-   * This is the live path — there is no facet aggregation there (A2) — and it
-   * is where the sentence used to be the constant «Dokumenter fra Kudos»,
-   * which said «Kudos» over NorQuAD's articles as soon as a reader could
-   * choose the corpus (measured by KA CC, 21.09).
+   * This is the live path — there is no facet aggregation there (A2).
    */
-  return corpus?.description ? `${source}: ${corpus.description}` : source;
+  return corpus?.description ? { source, detail: corpus.description } : { source };
 }

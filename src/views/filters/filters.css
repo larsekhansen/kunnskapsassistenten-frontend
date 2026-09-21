@@ -52,8 +52,31 @@
  * The corpus line under «Filtrering». Muted, because it is context for the
  * controls below rather than one of them.
  */
+/*
+ * The corpus line: the name, «Vis mer», and the detail under them.
+ *
+ * A flex row rather than running text, so the button sits at the end of the
+ * name's line instead of starting one of its own — the 32 px this exists to
+ * save (hoydebudsjett-forslag 2026-09-21, N2). It wraps: a long corpus name
+ * is information and is not cut, the same call as the filter chips.
+ *
+ * The detail takes a whole row of its own when it opens, which is what
+ * `flex-basis: 100%` says here.
+ */
 .filters-view__corpus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--ds-size-2);
   color: var(--ds-color-neutral-text-subtle);
+}
+
+.filters-view__corpus[hidden] {
+  display: none;
+}
+
+.filters-view__corpus-detail {
+  flex-basis: 100%;
 }
 
 .filters-view__loading {

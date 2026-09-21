@@ -329,16 +329,28 @@ test.describe('navigasjonspanelet', () => {
     covers(testInfo, 'korpuslinja under «Filtrering»');
 
     const corpus = page.locator('.filters-view__corpus');
+    const detail = corpus.locator('.filters-view__corpus-detail');
     await expect(corpus).toBeVisible();
-    await expect(corpus).toHaveText(/^Dokumenter fra Kudos/);
+
+    /*
+     * Navnet står på linja, resten ligger bak «Vis mer» (#114, N2 i
+     * høydebudsjettet): hele setningen brøt til to linjer i et 327 px panel.
+     * Det korpuset heter er det som endrer seg ved bytte, så det er halvdelen
+     * som blir stående.
+     */
+    await expect(corpus.locator('.filters-view__corpus-source')).toHaveText('Dokumenter fra Kudos');
+    await expect(detail).toBeHidden();
+
+    await corpus.getByRole('button', { name: 'Vis mer' }).click();
+    await expect(detail).toBeVisible();
     // Tall og årsspenn, hentet fra fasettene og ikke skrevet inn: at det står
     // et antall og et spenn er påstanden, ikke hvilke.
-    await expect(corpus).toHaveText(/\d[\d\s\u00a0]* dokumenter/);
-    await expect(corpus).toHaveText(/\d{4}(–\d{4})?$/);
+    await expect(detail).toHaveText(/\d[\d\s\u00a0]* dokumenter/);
+    await expect(detail).toHaveText(/\d{4}(–\d{4})?$/);
 
-    const before = await corpus.textContent();
+    const before = await detail.textContent();
     await pickAndSeeChip(page, 'Dokumenttyper', 'Årsrapport');
-    await expect(corpus, 'korpuslinja følger korpuset, ikke utvalget').toHaveText(before ?? '');
+    await expect(detail, 'korpuslinja følger korpuset, ikke utvalget').toHaveText(before ?? '');
   });
 
   test('søk i tråder filtrerer lista og sier hvor mange treff', async ({ page }, testInfo) => {
