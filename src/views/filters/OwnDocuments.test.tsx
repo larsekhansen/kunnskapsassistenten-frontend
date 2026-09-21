@@ -136,4 +136,85 @@ describe('Dine dokumenter', () => {
     expect(document.querySelector('input[type="file"]')).toBeNull();
     expect(screen.queryByText('Ny')).toBeNull();
   });
+  it('sier fra i en live-region når en fil kommer inn, blir klar og feiler', () => {
+    /*
+     * WCAG 4.1.3: raden byttet tekst i stillhet, så en skjermleserbruker fikk
+     * ingen kvittering på at fila kom inn og ingen beskjed om at den ble
+     * avvist (KA CC på #124). Regionen står montert hele tida — en som dukker
+     * opp sammen med teksten sin blir aldri lest opp.
+     */
+    const { container, rerender } = render(<OwnDocuments />);
+    const region = container.querySelector('output.ds-sr-only') as HTMLElement;
+    expect(region).toBeTruthy();
+    expect(region.textContent).toBe('');
+
+    hook.documents = [doc({ status: 'uploading', progress: 0 })];
+    rerender(<OwnDocuments />);
+    expect(region.textContent).toBe('Laster opp Årsrapport 2025.pdf');
+
+    // Prosenten sier den ikke: den endrer seg tjue ganger og ville begravd
+    // setningen som betyr noe.
+    hook.documents = [doc({ status: 'uploading', progress: 60 })];
+    rerender(<OwnDocuments />);
+    expect(region.textContent).toBe('Laster opp Årsrapport 2025.pdf');
+
+    hook.documents = [doc({ status: 'ready' })];
+    rerender(<OwnDocuments />);
+    expect(region.textContent).toBe('Årsrapport 2025.pdf er lastet opp');
+
+    hook.documents = [doc({ status: 'failed', errorCode: 'failed' })];
+    rerender(<OwnDocuments />);
+    expect(region.textContent).toBe(
+      'Årsrapport 2025.pdf ble ikke lastet opp. Opplastingen mislyktes. Prøv igjen.',
+    );
+  });
+
+  it('sier ingenting om dokumenter som alt lå der da panelet ble tegnet', () => {
+    // Filer hentet fra lageret ved lasting er ikke nyheter, og «er lastet
+    // opp» om tre av dem ville vært en påstand om noe som skjer nå.
+    hook.documents = [doc(), doc({ id: 'b', name: 'Notat.docx', type: 'docx' })];
+    const { container } = render(<OwnDocuments />);
+
+    expect(container.querySelector('output.ds-sr-only')?.textContent).toBe('');
+  });
+
+  it('flytter fokus til raden under når en fil fjernes', () => {
+    /*
+     * WCAG 2.4.3: knappen avmonterer seg selv, og uten dette faller
+     * tastaturet til `<body>`, som er over hopp-lenka. Målt av KA CC med ekte
+     * Tab og Enter; samme felle som ga fire funn i PR #3.
+     */
+    hook.documents = [doc(), doc({ id: 'b', name: 'Notat.docx', type: 'docx' })];
+    const { rerender } = render(<OwnDocuments />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fjern Årsrapport 2025.pdf' }));
+    hook.documents = [doc({ id: 'b', name: 'Notat.docx', type: 'docx' })];
+    rerender(<OwnDocuments />);
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fjern Notat.docx' }));
+  });
+
+  it('flytter fokus oppover når den siste raden fjernes', () => {
+    hook.documents = [doc(), doc({ id: 'b', name: 'Notat.docx', type: 'docx' })];
+    const { rerender } = render(<OwnDocuments />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fjern Notat.docx' }));
+    hook.documents = [doc()];
+    rerender(<OwnDocuments />);
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Fjern Årsrapport 2025.pdf' }),
+    );
+  });
+
+  it('flytter fokus til filvelgeren når lista blir tom', () => {
+    hook.documents = [doc()];
+    const { rerender } = render(<OwnDocuments />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fjern Årsrapport 2025.pdf' }));
+    hook.documents = [];
+    rerender(<OwnDocuments />);
+
+    expect(document.activeElement).toBe(document.querySelector('input[type="file"]'));
+  });
 });
