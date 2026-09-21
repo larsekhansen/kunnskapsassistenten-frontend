@@ -40,50 +40,51 @@ slik de ble anmeldt.
 
 ## Dekket nå
 
-| Det brukeren gjør                                          | Spec                       |
-| ---------------------------------------------------------- | -------------------------- |
-| Åpner `/` og `/threads/:id` med landemerker og én `h1`     | `shell.spec.ts`            |
-| Tabber til hopp-lenka og hopper                            | `shell.spec.ts`, to tester |
-| Skjuler og viser navigasjonspanelet                        | `shell.spec.ts`            |
-| Bytter fargemodus fra konsollen, uten reload               | `shell.spec.ts`            |
-| Møter filtreringen som førstegangsbruker                   | `primary-sidebar.spec.ts`  |
-| Velger en verdi og får en chip pluss «1 av 6 valgt»        | `primary-sidebar.spec.ts`  |
-| «Velg alle» og «Tøm» uten å miste tastaturet               | `primary-sidebar.spec.ts`  |
-| Veksler mellom filter og tråder                            | `primary-sidebar.spec.ts`  |
-| Ser trådene gruppert på tidsrom                            | `primary-sidebar.spec.ts`  |
-| Søker i tråder og får en treffteller                       | `primary-sidebar.spec.ts`  |
-| Åpner en tråd og ser den merket med `aria-current`         | `primary-sidebar.spec.ts`  |
-| Møter hilsenen og de tre kickstarterne                     | `chat.spec.ts`             |
-| Fyller feltet fra en kickstarter uten å sende              | `chat.spec.ts`             |
-| Stiller et spørsmål og får et strømmet svar med `[n]`      | `chat.spec.ts`             |
-| Avbryter, og beholder teksten som kom                      | `chat.spec.ts`             |
-| Kopierer svaret og får kvittering                          | `chat.spec.ts`             |
-| Trykker en oppfølgingschip                                 | `chat.spec.ts`             |
-| Åpner kildepanelet med en markør                           | `sources.spec.ts`          |
-| Klikker `[n]` og havner i riktig utdrag, to ganger på rad  | `sources.spec.ts`          |
-| Ser utdragene gruppert per dokument                        | `sources.spec.ts`          |
-| Hopper til et dokument fra snarveislista                   | `sources.spec.ts`          |
-| Søker i utdragene og stepper mellom treff                  | `sources.spec.ts`          |
-| Tabber gjennom hvert view i lys og mørk                    | alle fire spec-ene         |
-| Beholder filtervalget gjennom veksling filter ↔ tråder     | `primary-sidebar.spec.ts`  |
-| Beholder filtervalget gjennom et ruteskifte til en tråd    | `primary-sidebar.spec.ts`  |
-| Måler layouten på 1280, 1440 og 1536 i lys og mørk         | `layout.spec.ts`           |
-| Åpner og kollapser sidekolonnene i hver kombinasjon        | `layout.spec.ts`           |
-| Velger et filter og ser det nå spørringen                  | `samtale.spec.ts`          |
-| Får «Generer på nytt» etter et avbrudd, og et helt svar    | `samtale.spec.ts`          |
-| Starter en samtale på `/` og finner den igjen etter reload | `samtale.spec.ts`          |
-| Skriver en adresse som ikke finnes                         | `shell.spec.ts`            |
-| Åpner en tråd-lenke som er blitt gammel                    | `shell.spec.ts`            |
-| Finner panelet og filteret slik hen forlot dem             | `shell.spec.ts`            |
-| Hopper til skrivefeltet med Ctrl+/                         | `chat.spec.ts`             |
-| Ser når hver tråd sist ble rørt                            | `primary-sidebar.spec.ts`  |
-| Ser hva korpuset dekker, i én linje                        | `primary-sidebar.spec.ts`  |
-| Ser en ny tråd dukke opp i lista mens den står åpen        | `traadliste.spec.ts`       |
-| Ser en eldre tråd flytte seg til «I dag» etter et svar     | `traadliste.spec.ts`       |
-| Ser at tenketiden er målt og ikke summert                  | `chat.spec.ts`             |
-| Går tilbake til svaret fra et utdrag, med Escape og knapp  | `sources.spec.ts`          |
-| En lang filterchip holder seg i feltet, 1440 og i skuffa   | `filter-chip.spec.ts`      |
-| Når alle kontrollene i panelraden med peker                | `panel-head.spec.ts`       |
+| Det brukeren gjør                                          | Spec                        |
+| ---------------------------------------------------------- | --------------------------- |
+| Åpner `/` og `/threads/:id` med landemerker og én `h1`     | `shell.spec.ts`             |
+| Tabber til hopp-lenka og hopper                            | `shell.spec.ts`, to tester  |
+| Skjuler og viser navigasjonspanelet                        | `shell.spec.ts`             |
+| Bytter fargemodus fra konsollen, uten reload               | `shell.spec.ts`             |
+| Møter filtreringen som førstegangsbruker                   | `primary-sidebar.spec.ts`   |
+| Velger en verdi og får en chip pluss «1 av 6 valgt»        | `primary-sidebar.spec.ts`   |
+| «Velg alle» og «Tøm» uten å miste tastaturet               | `primary-sidebar.spec.ts`   |
+| Veksler mellom filter og tråder                            | `primary-sidebar.spec.ts`   |
+| Ser trådene gruppert på tidsrom                            | `primary-sidebar.spec.ts`   |
+| Søker i tråder og får en treffteller                       | `primary-sidebar.spec.ts`   |
+| Åpner en tråd og ser den merket med `aria-current`         | `primary-sidebar.spec.ts`   |
+| Møter hilsenen og de tre kickstarterne                     | `chat.spec.ts`              |
+| Fyller feltet fra en kickstarter uten å sende              | `chat.spec.ts`              |
+| Stiller et spørsmål og får et strømmet svar med `[n]`      | `chat.spec.ts`              |
+| Avbryter, og beholder teksten som kom                      | `chat.spec.ts`              |
+| Kopierer svaret og får kvittering                          | `chat.spec.ts`              |
+| Trykker en oppfølgingschip                                 | `chat.spec.ts`              |
+| Åpner kildepanelet med en markør                           | `sources.spec.ts`           |
+| Klikker `[n]` og havner i riktig utdrag, to ganger på rad  | `sources.spec.ts`           |
+| Ser utdragene gruppert per dokument                        | `sources.spec.ts`           |
+| Hopper til et dokument fra snarveislista                   | `sources.spec.ts`           |
+| Søker i utdragene og stepper mellom treff                  | `sources.spec.ts`           |
+| Tabber gjennom hvert view i lys og mørk                    | alle fire spec-ene          |
+| Beholder filtervalget gjennom veksling filter ↔ tråder     | `primary-sidebar.spec.ts`   |
+| Beholder filtervalget gjennom et ruteskifte til en tråd    | `primary-sidebar.spec.ts`   |
+| Måler layouten på 1280, 1440 og 1536 i lys og mørk         | `layout.spec.ts`            |
+| Åpner og kollapser sidekolonnene i hver kombinasjon        | `layout.spec.ts`            |
+| Velger et filter og ser det nå spørringen                  | `samtale.spec.ts`           |
+| Får «Generer på nytt» etter et avbrudd, og et helt svar    | `samtale.spec.ts`           |
+| Starter en samtale på `/` og finner den igjen etter reload | `samtale.spec.ts`           |
+| Skriver en adresse som ikke finnes                         | `shell.spec.ts`             |
+| Åpner en tråd-lenke som er blitt gammel                    | `shell.spec.ts`             |
+| Finner panelet og filteret slik hen forlot dem             | `shell.spec.ts`             |
+| Hopper til skrivefeltet med Ctrl+/                         | `chat.spec.ts`              |
+| Ser når hver tråd sist ble rørt                            | `primary-sidebar.spec.ts`   |
+| Ser hva korpuset dekker, i én linje                        | `primary-sidebar.spec.ts`   |
+| Ser en ny tråd dukke opp i lista mens den står åpen        | `traadliste.spec.ts`        |
+| Ser en eldre tråd flytte seg til «I dag» etter et svar     | `traadliste.spec.ts`        |
+| Ser at tenketiden er målt og ikke summert                  | `chat.spec.ts`              |
+| Går tilbake til svaret fra et utdrag, med Escape og knapp  | `sources.spec.ts`           |
+| En lang filterchip holder seg i feltet, 1440 og i skuffa   | `filter-chip.spec.ts`       |
+| Når alle kontrollene i panelraden med peker                | `panel-head.spec.ts`        |
+| Ser at et svar navngir korpuset det kom fra                | `corpus-per-answer.spec.ts` |
 
 ## Merget, men ikke dekket
 
