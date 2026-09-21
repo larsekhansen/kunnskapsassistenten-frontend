@@ -64,7 +64,34 @@ export function FiltersView({
 
   function chooseCorpus(key: string) {
     const picked = options.find((candidate) => candidate.key === key);
-    setCorpusAnnouncement(`Korpus: ${picked?.label ?? key}`);
+
+    /*
+     * The filter goes with the corpus it was made in.
+     *
+     * Its values are the keys the backend filters on, and they are the
+     * corpus's own: «Nasjonal kommunikasjonsmyndighet» is a Kudos value and
+     * means nothing in NorQuAD (persistence.ts says the same about the stored
+     * filter). Kept across a switch, it narrows the new corpus by values it
+     * has never heard of, and the narrowing travels with the next question.
+     *
+     * Cleared whole rather than value by value: keeping the few that happen
+     * to exist in both — a year, say — keeps a narrowing the reader chose for
+     * other documents, and the switch already starts a new thread. It is one
+     * fact to tell them, and the region below tells it.
+     *
+     * Here and not in an effect on `active`: the switch and the clearing are
+     * one event, so React commits them together and the fetch below is made
+     * once, with the empty selection, instead of once with each.
+     */
+    const hadFilter = !isEmptySelection(selection);
+    if (hadFilter) setSelection(emptyFilterSelection);
+
+    setCorpusAnnouncement(
+      hadFilter
+        ? `Korpus: ${picked?.label ?? key}. Filteret er nullstilt fordi korpuset ble byttet.`
+        : `Korpus: ${picked?.label ?? key}`,
+    );
+
     // The shell owns what a switch does — a new thread, and the address with
     // it. See useCorpus.ts.
     set(key);
@@ -96,6 +123,36 @@ export function FiltersView({
    */
   const [needsOwnCorpusFetch] = useState(() => !isEmptySelection(selection));
   const [failed, setFailed] = useState(false);
+
+  /*
+   * The corpus the facets on screen were counted from.
+   *
+   * They were counted once, when the page loaded, and then stayed: after a
+   * switch «Virksomheter» still offered Kudos's 259 values and «Vis mer»
+   * still said 938 documents, until a reload put it right (KA CC on #131).
+   * The reader could pick a value the corpus does not have, and it went with
+   * the question.
+   *
+   * Dropped rather than left standing while the new ones load: the old values
+   * belong to the other corpus, and a field that offers them is the bug. The
+   * fields go to skeleton for one request, which is what they do on a reload
+   * anyway. A selection change still keeps its counts on screen — see the
+   * fetch below; that is the same corpus and only a narrowing.
+   *
+   * Adjusted during render rather than in an effect, so the browser never
+   * paints the other corpus's numbers: React re-runs the component with the
+   * new state before it commits.
+   */
+  const [shownCorpus, setShownCorpus] = useState(active);
+  if (shownCorpus !== active) {
+    setShownCorpus(active);
+    // Back to what the view starts on, which is the override when a parent
+    // supplies one and nothing otherwise. A view handed its facets is not
+    // fetching, and clearing them would leave it loading forever.
+    setFacets(given);
+    setCorpus(given);
+    setFailed(false);
+  }
   const [attempt, setAttempt] = useState(0);
   const backRef = useRef<HTMLButtonElement>(null);
   const loading = !failed && !facets;
@@ -142,7 +199,14 @@ export function FiltersView({
       });
 
     return () => abort.abort();
-  }, [client, given, attempt, selection]);
+    /*
+     * `active` is in here for its side effect and not because the fetch reads
+     * it: the corpus travels on the wire from the store, which the client
+     * reads when it builds the request (src/api/corpus.ts), so a switch
+     * changes the answer to the same call. Without it the facets kept the
+     * corpus they were first counted from.
+     */
+  }, [client, given, attempt, selection, active]);
 
   /*
    * The unconditional facets, for the corpus line, when the conditional fetch
