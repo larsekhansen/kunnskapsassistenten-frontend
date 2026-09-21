@@ -319,59 +319,81 @@ export function useChat(
    * word, left both. So a stopped turn stays whatever phase it was in, and
    * the card says it was stopped and offers to run it again.
    */
-  const settleAnswer = useCallback((id: string, status: SettledStatus, createdAt?: string) => {
-    /*
-     * The answer is stamped here and not when its placeholder was made,
-     * because the time on an answer means «when the answer was finished»
-     * — that is what a reader refers back to, and it is what the turn is
-     * written down with.
-     *
-     * Stamping it at both ends is what made one answer carry two times:
-     * the placeholder was made when the question was sent and the stored
-     * copy when the turn was recorded, a whole answer apart. «14:32» on
-     * screen, «14:32:15» after a reload (KA CC on #71). Nothing draws the
-     * time until the turn settles, so moving it costs nothing on screen.
-     *
-     * The `done` frame's own time wins when there is one, so the message
-     * and the stored turn are the same string and not merely the same
-     * second. A stream that ends any other way — stopped, failed, or with
-     * no `done` at all — has no time to be given, and the local clock is
-     * that same instant give or take the trip home.
-     */
-    const settledAt = createdAt ?? new Date().toISOString();
-    setMessages((current) => {
-      const answer = current.find((message) => message.id === id);
+  const settleAnswer = useCallback(
+    (id: string, status: SettledStatus, settled?: { createdAt?: string; corpusKey?: string }) => {
       /*
-       * A turn with nothing to show is taken out again. «Nothing» is the
-       * point: an `<li>` whose whole content is the hidden «Kunnskapsassistenten
-       * svarte:» tells a screen reader that the assistant answered, when it
-       * did not.
+       * The answer is stamped here and not when its placeholder was made,
+       * because the time on an answer means «when the answer was finished»
+       * — that is what a reader refers back to, and it is what the turn is
+       * written down with.
        *
-       * What the agent DID is something to show. A failed turn used to be
-       * dropped on `content.length === 0` alone, and it took the thinking
-       * panel with it: «Tenker …» and «Jeg søker i korpuset» were on screen
-       * while the question ran, and the moment the error card arrived the
-       * reader had the question, the error, and nothing about what was tried
-       * — on the one path where that is worth most (brukerblikk 4, funn 3).
-       * A successful answer keeps its panel; this is the only path that
-       * cleared its own trace.
+       * Stamping it at both ends is what made one answer carry two times:
+       * the placeholder was made when the question was sent and the stored
+       * copy when the turn was recorded, a whole answer apart. «14:32» on
+       * screen, «14:32:15» after a reload (KA CC on #71). Nothing draws the
+       * time until the turn settles, so moving it costs nothing on screen.
        *
-       * A stopped turn stays whatever phase it was stopped in, panel or no
-       * panel, because its card is what says it was stopped and offers to run
-       * it again (#4, funn A).
+       * The `done` frame's own time wins when there is one, so the message
+       * and the stored turn are the same string and not merely the same
+       * second. A stream that ends any other way — stopped, failed, or with
+       * no `done` at all — has no time to be given, and the local clock is
+       * that same instant give or take the trip home.
        */
-      const hasNothingToShow =
-        answer !== undefined &&
-        answer.content.length === 0 &&
-        (answer.thinkingSteps?.length ?? 0) === 0;
-      if (hasNothingToShow && status !== 'aborted') {
-        return current.filter((message) => message.id !== id);
-      }
-      return current.map((message) =>
-        message.id === id ? { ...message, createdAt: settledAt, status } : message,
-      );
-    });
-  }, []);
+      const settledAt = settled?.createdAt ?? new Date().toISOString();
+      setMessages((current) => {
+        const answer = current.find((message) => message.id === id);
+        /*
+         * A turn with nothing to show is taken out again. «Nothing» is the
+         * point: an `<li>` whose whole content is the hidden «Kunnskapsassistenten
+         * svarte:» tells a screen reader that the assistant answered, when it
+         * did not.
+         *
+         * What the agent DID is something to show. A failed turn used to be
+         * dropped on `content.length === 0` alone, and it took the thinking
+         * panel with it: «Tenker …» and «Jeg søker i korpuset» were on screen
+         * while the question ran, and the moment the error card arrived the
+         * reader had the question, the error, and nothing about what was tried
+         * — on the one path where that is worth most (brukerblikk 4, funn 3).
+         * A successful answer keeps its panel; this is the only path that
+         * cleared its own trace.
+         *
+         * A stopped turn stays whatever phase it was stopped in, panel or no
+         * panel, because its card is what says it was stopped and offers to run
+         * it again (#4, funn A).
+         */
+        const hasNothingToShow =
+          answer !== undefined &&
+          answer.content.length === 0 &&
+          (answer.thinkingSteps?.length ?? 0) === 0;
+        if (hasNothingToShow && status !== 'aborted') {
+          return current.filter((message) => message.id !== id);
+        }
+        return current.map((message) =>
+          message.id === id
+            ? {
+                ...message,
+                createdAt: settledAt,
+                /*
+                 * Which corpus answered, from the frame that ended the
+                 * stream. The client is the only thing that knows: it is what
+                 * put `dataset_config_key` on the wire. Reading the store
+                 * instead would answer «which corpus is selected now», and
+                 * the reader may have moved since.
+                 *
+                 * Left alone when the frame says nothing. `undefined` means
+                 * «not known» and never «the default corpus» — a live stack
+                 * without a tenant lets the backend choose, and then nothing
+                 * on this side can name what answered.
+                 */
+                ...(settled?.corpusKey === undefined ? {} : { corpusKey: settled.corpusKey }),
+                status,
+              }
+            : message,
+        );
+      });
+    },
+    [],
+  );
 
   const run = useCallback(
     async (question: string, answerId: string, attachments?: string[]) => {
@@ -484,11 +506,7 @@ export function useChat(
               // `outcome` absent means the turn completed, which is what every
               // answer was before the field existed. See model/stream.ts.
               const clarifying = event.outcome === 'needs-clarification';
-              settleAnswer(
-                answerId,
-                clarifying ? 'needs-clarification' : 'complete',
-                event.createdAt,
-              );
+              settleAnswer(answerId, clarifying ? 'needs-clarification' : 'complete', event);
               if (isCurrentTurn()) {
                 setAnnouncement(clarifying ? CLARIFICATION_ANNOUNCEMENT : 'Svaret er ferdig.');
                 setStatus('idle');
@@ -498,7 +516,7 @@ export function useChat(
 
             case 'error':
               if (event.error.code === 'aborted') {
-                settleAnswer(answerId, 'aborted', event.createdAt);
+                settleAnswer(answerId, 'aborted', event);
                 if (isCurrentTurn()) {
                   setAnnouncement('Genereringen ble avbrutt.');
                   setStatus('idle');
@@ -529,7 +547,7 @@ export function useChat(
                   sources: [],
                   citations: [],
                 }));
-                settleAnswer(answerId, 'complete', event.createdAt);
+                settleAnswer(answerId, 'complete', event);
                 setNoHitsAnswers((current) => new Set(current).add(answerId));
                 if (isCurrentTurn()) {
                   setAnnouncement(NO_HITS_ANNOUNCEMENT);
@@ -538,7 +556,7 @@ export function useChat(
                 return;
               }
 
-              settleAnswer(answerId, 'error', event.createdAt);
+              settleAnswer(answerId, 'error', event);
               if (isCurrentTurn()) {
                 setError(event.error);
                 // The Alert has role="alert" and announces itself.
