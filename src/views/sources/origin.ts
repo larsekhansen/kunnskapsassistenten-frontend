@@ -48,3 +48,25 @@ export const OWN_DOCUMENT_LABEL = 'Ditt dokument';
  */
 export const OWN_DOCUMENT_NO_LINK =
   'Bare du har dette dokumentet, så det finnes ingen lenke til det.';
+
+/**
+ * Which corpus key the panel should name for the answer on screen.
+ *
+ * The answer's own, whenever it has one. Switching corpus starts a new
+ * thread, so the answer's corpus and the chooser agree while a reader moves
+ * forward — they part the moment an older thread is opened, and KA CC
+ * measured «fra Wikipedia (mock)» standing over the Nkom card of a Kudos
+ * thread (bør on #129). The excerpts do not change when the chooser moves, so
+ * nothing naming them may either.
+ *
+ * The active key is the fallback and only that: an answer from before the key
+ * travelled, or a turn where nothing said which corpus answered. Naming the
+ * current choice there is a guess, but it is the best one available and it is
+ * right in the common case, where nobody has switched.
+ */
+export function corpusKeyToName(
+  answerKey: string | undefined,
+  activeKey: string | undefined,
+): string | undefined {
+  return answerKey ?? activeKey;
+}

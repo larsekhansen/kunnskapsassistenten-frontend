@@ -1,13 +1,14 @@
 import { Heading } from '@digdir/designsystemet-react';
-import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { activeCorpusKey, corpusDisplayName, corpusOption, subscribeToCorpus } from '../../api';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { corpusDisplayNameFor } from '../../api';
 import { EmptyState, findHits, stepHit, type SearchHit } from '../../components';
+import { useActiveCorpus } from '../../layout/useActiveCorpus';
 import { ViewHead } from '../../layout/ViewHead';
 import { excerptDomId, type AnswerSources, type Excerpt, type SourceDocument } from '../../model';
 import { AnswerSwitcher } from './AnswerSwitcher';
 import { ExcerptSearch } from './ExcerptSearch';
 import { KudosDisclaimer } from './KudosDisclaimer';
-import { isOwnDocument } from './origin';
+import { corpusKeyToName, isOwnDocument } from './origin';
 import { SourceDocumentCard } from './SourceDocumentCard';
 import { SourcesOverview } from './SourcesOverview';
 import { SourcesPlaceholder } from './SourcesPlaceholder';
@@ -387,22 +388,29 @@ export function SourcesView({
   }
 
   /*
-   * The corpus's own name for the disclaimer.
+   * The corpus the ANSWER on screen came from, not the one the chooser stands
+   * on now.
    *
-   * Read straight from the store rather than through `useCorpus`, which also
-   * carries the setter and therefore `useNavigate` — switching corpus starts
-   * a new thread. This panel only reads, and a read that drags in a Router
-   * would make the view unmountable outside one, including in `preview/`.
-   * `useSyncExternalStore` is the same subscription `useCorpus` uses, minus
-   * the half this view has no business with.
+   * Switching corpus starts a new thread, so the two agree while a reader
+   * moves forward. They part the moment an older thread is opened: KA CC
+   * measured «fra Wikipedia (mock)» standing over the Nkom card of a Kudos
+   * thread (bør on #129). The excerpts under the line do not change when the
+   * chooser moves, so the line must not either.
    *
-   * `corpusDisplayName` is shared, in src/api: the filter panel and this one
-   * name the same corpus, and two ways of shortening one label, or two
-   * spellings of the fallback, would drift apart the first time somebody
-   * changed one of them.
+   * The active corpus is the fallback and only that — an answer from before
+   * the key travelled, or a turn where nothing said which corpus answered.
+   * Naming the current choice there is a guess, but it is the best one
+   * available and it is right in the common case, where nobody has switched.
+   *
+   * `useActiveCorpus` rather than the store by hand (#129): the hook is that
+   * subscription with the navigating half of `useCorpus` left out, so this
+   * view no longer has to know the store exists and still mounts outside a
+   * Router, `preview/` included.
    */
-  const corpusKey = useSyncExternalStore(subscribeToCorpus, activeCorpusKey, activeCorpusKey);
-  const corpusName = corpusDisplayName(corpusOption(corpusKey));
+  const activeCorpus = useActiveCorpus();
+  const corpusName = corpusDisplayNameFor(
+    corpusKeyToName(activeAnswer?.corpusKey, activeCorpus.key),
+  );
 
   const content = panelContentFor(answerList, activeAnswer);
 
@@ -518,6 +526,7 @@ export function SourcesView({
               <SourceDocumentCard
                 key={source.id}
                 source={source}
+                corpusName={corpusName}
                 openExcerptIds={openExcerptIds}
                 onExcerptOpenChange={setExcerptOpen}
                 hits={hits}

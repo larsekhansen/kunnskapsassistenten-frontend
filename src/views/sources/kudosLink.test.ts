@@ -26,15 +26,26 @@ describe('reachesPage', () => {
 
 describe('kudosLinkLabel', () => {
   test('lover en side bare når adressen kan holde løftet', () => {
-    expect(kudosLinkLabel(`${FILE}#page=41`, 41)).toBe('Les side 41 på Kudos');
+    expect(kudosLinkLabel(`${FILE}#page=41`, 41, 'Kudos')).toBe('Les side 41 på Kudos');
   });
 
   test('landingssiden lover dokumentet, ikke siden', () => {
-    expect(kudosLinkLabel(`${LANDING}#side-41`, 41)).toBe('Les dokumentet på Kudos');
-    expect(kudosLinkLabel(LANDING, 41)).toBe('Les dokumentet på Kudos');
+    expect(kudosLinkLabel(`${LANDING}#side-41`, 41, 'Kudos')).toBe('Les dokumentet på Kudos');
+    expect(kudosLinkLabel(LANDING, 41, 'Kudos')).toBe('Les dokumentet på Kudos');
   });
 
   test('uten sidetall lover den dokumentet', () => {
-    expect(kudosLinkLabel(LANDING, undefined)).toBe('Les dokumentet på Kudos');
+    expect(kudosLinkLabel(LANDING, undefined, 'Kudos')).toBe('Les dokumentet på Kudos');
+  });
+});
+
+describe('kudosLinkLabel navngir korpuset', () => {
+  test('lenketeksten følger korpuset, ikke ordet Kudos', () => {
+    // «Les dokumentet på Kudos» over en NorQuAD-artikkel er samme usanne
+    // setning som den fraskrivelsen sa (KA CC sin bør på #129).
+    expect(kudosLinkLabel(LANDING, undefined, 'Wikipedia (NorQuAD)')).toBe(
+      'Les dokumentet på Wikipedia (NorQuAD)',
+    );
+    expect(kudosLinkLabel(`${FILE}#page=7`, 7, 'Kudos-pilot')).toBe('Les side 7 på Kudos-pilot');
   });
 });

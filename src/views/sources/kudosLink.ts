@@ -30,9 +30,25 @@ export function reachesPage(kudosUrl: string, page: number): boolean {
   return kudosUrl.includes('#') && hash === `#page=${page}`;
 }
 
-/** The link text for an excerpt's «read it at the source» link. */
-export function kudosLinkLabel(kudosUrl: string, page: number | undefined): string {
+/**
+ * The link text for an excerpt's «read it at the source» link.
+ *
+ * The corpus is named rather than written in, for the same reason the
+ * disclaimer names it: «Les dokumentet på Kudos» over a NorQuAD article is
+ * the same false sentence KA CC measured on the line above it (bør on #129).
+ * The name is the answer's corpus, so it does not change under a reader who
+ * moves the chooser while an old thread is open.
+ *
+ * The page half stays as it was. That is about the shape of the address and
+ * not about whose corpus it is: only a file URL with `#page=N` opens a page,
+ * whoever serves it, and anything else honestly says «dokumentet».
+ */
+export function kudosLinkLabel(
+  kudosUrl: string,
+  page: number | undefined,
+  corpusName: string,
+): string {
   return page !== undefined && reachesPage(kudosUrl, page)
-    ? `Les side ${page} på Kudos`
-    : 'Les dokumentet på Kudos';
+    ? `Les side ${page} på ${corpusName}`
+    : `Les dokumentet på ${corpusName}`;
 }

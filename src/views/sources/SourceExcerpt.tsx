@@ -31,6 +31,8 @@ type SourceExcerptProps = {
   excerpt: Excerpt;
   /** The document this excerpt came from, for the accessible names. */
   documentTitle: string;
+  /** What to call the corpus this excerpt came from, in the link text. */
+  corpusName: string;
   /** 1-based place of this excerpt among the document's, for naming it. */
   position: number;
   /** How many excerpts the document has, for naming an uncited one. */
@@ -88,6 +90,7 @@ type SourceExcerptProps = {
 export function SourceExcerpt({
   excerpt,
   documentTitle,
+  corpusName,
   position,
   total,
   open,
@@ -191,11 +194,11 @@ export function SourceExcerpt({
               a file URL with `#page=N` can open a page. See `kudosLink.ts`. */}
           {kudosUrl !== undefined && (
             <Link href={kudosUrl} target="_blank" rel="noreferrer" data-size="sm">
-              {kudosLinkLabel(kudosUrl, page)}
+              {kudosLinkLabel(kudosUrl, page, corpusName)}
               {/* Every one of these links says the same visible words, so the
                   accessible name carries what tells them apart: which excerpt,
                   and which document. A screen reader listing the panel's links
-                  otherwise reads «Les dokumentet på Kudos» once per excerpt
+                  otherwise reads the same words once per excerpt
                   (WCAG 2.4.9, found by KA CC on #70). The title comes last
                   because the excerpt is what the reader is standing in.
 
