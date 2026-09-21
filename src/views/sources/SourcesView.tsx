@@ -12,7 +12,7 @@ import { corpusKeyToName, isOwnDocument } from './origin';
 import { SourceDocumentCard } from './SourceDocumentCard';
 import { SourcesOverview } from './SourcesOverview';
 import { SourcesPlaceholder } from './SourcesPlaceholder';
-import { NO_ANSWER_YET, emptyStateFor, type SourcesEmptyState } from './emptyStates';
+import { noAnswerYet, emptyStateFor, type SourcesEmptyState } from './emptyStates';
 import { documentDomId } from './ids';
 import { buildSearchIndex } from './search';
 import type { SourcesViewProps } from './types';
@@ -135,9 +135,11 @@ type PanelContent =
 function panelContentFor(
   answers: readonly AnswerSources[] | undefined,
   active: AnswerSources | undefined,
+  /** For the «nothing asked yet» state, which has no answer to read from. */
+  activeCorpusName: string,
 ): PanelContent {
   if (answers === undefined) return { kind: 'loading' };
-  if (active === undefined) return { kind: 'empty', state: NO_ANSWER_YET };
+  if (active === undefined) return { kind: 'empty', state: noAnswerYet(activeCorpusName) };
   if (active.status === 'streaming') return { kind: 'loading' };
   if (active.documents.length === 0) {
     return { kind: 'empty', state: emptyStateFor(active.status, active.citationCount) };
@@ -422,7 +424,7 @@ export function SourcesView({
    */
   const linkCorpusName = corpusOption(corpusKey) === undefined ? undefined : corpusName;
 
-  const content = panelContentFor(answerList, activeAnswer);
+  const content = panelContentFor(answerList, activeAnswer, activeCorpus.displayName);
 
   /**
    * The marker is active on the answer the reader was sent to, and nowhere

@@ -14,12 +14,19 @@ export type SourcesEmptyState = {
  * panel used to show it after a stopped answer too, which told a reader who
  * had just watched a question being answered that they had not asked one
  * (design/brukerreiser-2026-09-15.md, punkt 7).
+ *
+ * It names the corpus for the same reason everything else in this panel does:
+ * «et dokument på Kudos» over a NorQuAD deployment is a false promise about
+ * what the reader is about to search (KA CC on #139). The SELECTED corpus,
+ * not an answer's — there is no answer here, that is what this state is — so
+ * it is the one place in the panel where the chooser is the right source.
  */
-export const NO_ANSWER_YET: SourcesEmptyState = {
-  title: 'Ingen kilder ennå',
-  description:
-    'Kildene vises her når du har stilt et spørsmål. Hvert utdrag er et sitat fra et dokument på Kudos, med samme nummer som markøren i svaret.',
-};
+export function noAnswerYet(corpusName: string): SourcesEmptyState {
+  return {
+    title: 'Ingen kilder ennå',
+    description: `Kildene vises her når du har stilt et spørsmål. Hvert utdrag er et sitat fra et dokument på ${corpusName}, med samme nummer som markøren i svaret.`,
+  };
+}
 
 /**
  * What an answer with no sources means, per status.
