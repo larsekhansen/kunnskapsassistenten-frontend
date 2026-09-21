@@ -1,14 +1,13 @@
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import {
   activeCorpusKey,
   corpusIsChoosable,
-  corpusOption,
   corpusOptions,
   setActiveCorpusKey,
-  subscribeToCorpus,
   type CorpusOption,
 } from '../api';
+import { useActiveCorpus } from './useActiveCorpus';
 
 export type Corpus = {
   /** Every corpus this deployment can reach, in the order it named them. */
@@ -38,9 +37,8 @@ export type Corpus = {
  *
  * The state lives outside React, in src/api/corpus.ts, because the chat client
  * has to read it when it builds a request and the client is not a component.
- * This is the React end of it: `useSyncExternalStore` reads the store during
- * render, the same shape `useViewportWidth` uses for the window, so the first
- * paint after a change is already right.
+ * The React end of it is `useActiveCorpus`, which reads the store during
+ * render; this is that plus the setter.
  *
  * **Switching starts a new thread, and that is not a convenience.** A thread's
  * answers cite documents from the corpus it was asked of; continuing it
@@ -56,7 +54,13 @@ export type Corpus = {
  */
 export function useCorpus(): Corpus {
   const navigate = useNavigate();
-  const active = useSyncExternalStore(subscribeToCorpus, activeCorpusKey);
+  /*
+    Read through the shared hook, so the panel that changes the corpus and the
+    panels that only read it are subscribed the same way and settle in the
+    same paint. Everything below this line is the half `useActiveCorpus`
+    deliberately does not have.
+  */
+  const { key: active, option } = useActiveCorpus();
 
   const set = useCallback(
     (key: string) => {
@@ -81,10 +85,10 @@ export function useCorpus(): Corpus {
     () => ({
       options: corpusOptions,
       active,
-      option: corpusOption(active),
+      option,
       choosable: corpusIsChoosable,
       set,
     }),
-    [active, set],
+    [active, option, set],
   );
 }

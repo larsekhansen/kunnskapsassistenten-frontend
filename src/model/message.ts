@@ -57,6 +57,26 @@ export interface Message {
    * the end of the stream, so it is absent while the answer is streaming.
    */
   sources?: SourceDocument[];
+  /**
+   * Which corpus the answer was retrieved from — `dataset_config_key`.
+   *
+   * On the turn, and not read off the store when it is drawn: the store says
+   * which corpus is selected NOW. A reader who switches corpus with a
+   * finished answer on screen otherwise gets «fra Kudos» written over a
+   * Wikipedia source — the sentence follows the chooser while the sources
+   * stay whatever they were retrieved as (KA CC on #129).
+   *
+   * Set by the client that answered, because that is the only place that
+   * knows what went on the wire: the live client resolves the key once per
+   * question, the mock picks its fixtures by it. A thread read back takes it
+   * from the conversation's `corpus:` tag.
+   *
+   * Absent on turns from before there was a choice, and whenever nothing
+   * said which corpus answered — live with no tenant configured leaves the
+   * key out of the call and the backend picks (see `datasetArguments`).
+   * Undefined is «not known», never «the default one».
+   */
+  corpusKey?: string;
   /** «Fremgangsmåte»: what the search did. Placeholder data in v1 (answer 11). */
   retrieval?: RetrievalDetails;
   /** Progress from the agent, in arrival order. Shown while the answer builds. */

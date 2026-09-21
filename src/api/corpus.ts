@@ -240,6 +240,62 @@ export function corpusLabel(key: string | undefined): string | undefined {
 }
 
 /**
+ * The corpus's name, as a sentence or a heading can use it.
+ *
+ * A label is written for a row in a chooser and may carry more than a name:
+ * the mock corpus is «Kudos, 938 dokumenter (mock)», which is exactly what a
+ * reader picking between corpora wants to read and exactly what a sentence
+ * that then counts the documents itself must not repeat. What comes before
+ * the first comma is the name; «Wikipedia (NorQuAD)» has none and survives
+ * whole.
+ *
+ * Undefined when no corpus is known.
+ */
+function corpusName(corpus?: CorpusOption): string | undefined {
+  const label = corpus?.label.split(',')[0]?.trim();
+  return label === '' ? undefined : label;
+}
+
+/**
+ * What to call the corpus when nothing names it.
+ *
+ * Live with neither `VITE_KA_DATASETS` nor `VITE_KA_DATASET_CONFIG_KEY` set
+ * is a configuration #103 supports on purpose: no list, no chooser, and the
+ * backend picks the dataset. Nothing on this side knows which one it picked,
+ * so the line says that rather than «Kudos» — which was the claim the corpus
+ * line was changed to stop making, left standing in the one case where no
+ * corpus is known (KA CC on #106).
+ */
+const UNNAMED_CORPUS = 'standardkorpuset';
+
+/**
+ * What to call the corpus on screen: its short name, or the stand-in above.
+ *
+ * Here rather than in one of the panels because four places now name the
+ * same corpus — the corpus line and the document list in the filter panel,
+ * the disclaimer and the source cards in the sources panel — and two ways of
+ * shortening one label, or two spellings of the fallback, would drift apart
+ * the first time somebody changed one of them. It lived in
+ * `src/views/filters/corpusText.ts` until #4 had to reach across a folder
+ * boundary for it (KA CC on #129).
+ */
+export function corpusDisplayName(corpus?: CorpusOption): string {
+  return corpusName(corpus) ?? UNNAMED_CORPUS;
+}
+
+/**
+ * The same name, for callers that hold a key and not an entry.
+ *
+ * Which is now most of them: a corpus key travels with the answer, and
+ * anything naming the corpus an answer came from starts from that key rather
+ * than from whatever the chooser stands on. Undefined keys land on the
+ * stand-in, which is what «not known» has to read as.
+ */
+export function corpusDisplayNameFor(key: string | undefined): string {
+  return corpusDisplayName(corpusOption(key));
+}
+
+/**
  * Change the corpus. Nothing else here knows what that costs the reader —
  * the thread in progress was asked of the old corpus and cannot be continued
  * in the new one — so starting a new thread is the shell's job, in

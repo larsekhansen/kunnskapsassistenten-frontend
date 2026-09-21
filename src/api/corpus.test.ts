@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CORPUS_TAG_PREFIX, corpusKeyFromTags, parseCorpusOptions, resolveCorpus } from './corpus';
+import {
+  CORPUS_TAG_PREFIX,
+  corpusDisplayName,
+  corpusDisplayNameFor,
+  corpusKeyFromTags,
+  parseCorpusOptions,
+  resolveCorpus,
+} from './corpus';
 
 /**
  * The corpus list, which is configuration, and the tag, which is how a thread
@@ -133,5 +140,47 @@ describe('korpusmerket på en tråd', () => {
     expect(corpusKeyFromTags(null)).toBeUndefined();
     expect(corpusKeyFromTags([])).toBeUndefined();
     expect(corpusKeyFromTags([CORPUS_TAG_PREFIX])).toBeUndefined();
+  });
+});
+
+/**
+ * Hva korpuset heter på skjermen. Flyttet hit fra `src/views/filters/` fordi
+ * det nå er to paneler som navngir det samme korpuset (KA CC på #129); to
+ * måter å forkorte én etikett på, eller to stavemåter av reserveordet, ville
+ * skilt lag første gang noen endret den ene.
+ */
+describe('corpusDisplayName', () => {
+  it('tar navnet foran første komma, så setningen ikke teller dokumentene to ganger', () => {
+    // Etiketten er skrevet for en rad i en velger og bærer mer enn et navn.
+    expect(corpusDisplayName({ key: 'mock', label: 'Kudos, 938 dokumenter (mock)' })).toBe('Kudos');
+  });
+
+  it('lar en etikett uten komma stå hel', () => {
+    expect(corpusDisplayName({ key: 'norquad-docs', label: 'Wikipedia (NorQuAD)' })).toBe(
+      'Wikipedia (NorQuAD)',
+    );
+  });
+
+  it('sier «standardkorpuset» når ingenting navngir korpuset', () => {
+    // Live uten liste og uten nøkkel: backend velger datasett, og ingenting
+    // på denne sida vet hvilket. Da er det den ene tingen vi kan si.
+    expect(corpusDisplayName(undefined)).toBe('standardkorpuset');
+    expect(corpusDisplayName({ key: 'k', label: '   ' })).toBe('standardkorpuset');
+  });
+});
+
+describe('corpusDisplayNameFor', () => {
+  it('navngir korpuset en nøkkel peker på', () => {
+    // Nøkkelen er det svaret bærer, så det er nøkkelen de fleste kallerne har.
+    // Testmiljøet er mock-modus, så lista er de to mock-korpusene.
+    expect(corpusDisplayNameFor('mock')).toBe('Kudos');
+    expect(corpusDisplayNameFor('norquad-mock')).toBe('Wikipedia (mock)');
+  });
+
+  it('faller til reserveordet på en ukjent og på ingen nøkkel', () => {
+    // En tur uten nøkkel er en tur ingen sa korpuset til, og en nøkkel lista
+    // ikke har er et korpus som er tatt bort siden svaret kom.
+    expect(corpusDisplayNameFor(undefined)).toBe('standardkorpuset');
+    expect(corpusDisplayNameFor('borte-for-lenge-siden')).toBe('standardkorpuset');
   });
 });

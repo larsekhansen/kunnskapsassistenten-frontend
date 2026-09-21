@@ -369,6 +369,27 @@ export class MockChatClient implements ChatClient {
     let written = '';
 
     /*
+     * Which corpus this question is asked of, read once and used for
+     * everything below: which fixtures answer, what is written into the
+     * store, and what every exit frame reports.
+     *
+     * Once, and up here, for the reason the live client resolves its dataset
+     * once per question. The read used to sit down where the fixtures are
+     * picked — after the thinking steps have gone out — so a switch during a
+     * stream could have chosen one corpus's documents and filed the turn
+     * under the other's. Switching navigates away and cancels the stream
+     * today, but a turn whose sources do not match its label is not worth
+     * leaving to timing.
+     *
+     * Spread rather than assigned, so an unconfigured mock records no key at
+     * all: undefined means «not known», and a field that is absent says that
+     * where a field holding `undefined` would be written into
+     * `sessionStorage` as `null`.
+     */
+    const corpusKey = activeCorpusKey();
+    const askedOf = corpusKey ? { corpusKey } : {};
+
+    /*
      * The steps that have actually gone out, and the wait up to the first
      * word. Both live out here rather than inside the `try`, because the
      * `catch` is where a stopped turn is written down and it needs them.
@@ -428,12 +449,13 @@ export class MockChatClient implements ChatClient {
             citations: [],
             createdAt: failedAt,
             thinkingSteps: [...stepsSent],
+            ...askedOf,
             status: 'error',
           },
         });
         // No `message`: the whole point is that the text comes from the code,
         // so a mock that wrote its own would be testing the mock's wording.
-        yield { type: 'error', error: { code: simulated }, createdAt: failedAt };
+        yield { type: 'error', error: { code: simulated }, createdAt: failedAt, ...askedOf };
         return;
       }
 
@@ -471,6 +493,7 @@ export class MockChatClient implements ChatClient {
             citations: [],
             createdAt: clarificationAt,
             ...clarificationThought,
+            ...askedOf,
             status: 'needs-clarification',
           },
         });
@@ -480,6 +503,7 @@ export class MockChatClient implements ChatClient {
           conversationId: params.conversationId ?? 'conv-nkom-1',
           createdAt: clarificationAt,
           outcome: 'needs-clarification',
+          ...askedOf,
         };
         return;
       }
@@ -516,12 +540,13 @@ export class MockChatClient implements ChatClient {
        * than in the fixture keeps the fixture a fixture.
        */
       /*
-       * Which corpus the question is being asked of. The Wikipedia mock has
-       * one canonical answer with its own sources; everything else is Kudos,
-       * including the eleven scripted conversations, which were written
-       * against Kudos documents and only make sense there.
+       * Which fixtures the corpus resolved at the top of `ask` answers from.
+       * The Wikipedia mock has one canonical answer with its own sources;
+       * everything else is Kudos, including the eleven scripted
+       * conversations, which were written against Kudos documents and only
+       * make sense there.
        */
-      const wikipedia = activeCorpusKey() === WIKIPEDIA_MOCK_KEY;
+      const wikipedia = corpusKey === WIKIPEDIA_MOCK_KEY;
       const attached = attachedSources(params.attachments);
       const fromCorpus = narrowToSelection(
         wikipedia ? wikipediaMockSources : (scripted?.documents ?? nkomSources),
@@ -571,10 +596,11 @@ export class MockChatClient implements ChatClient {
             citations: [],
             createdAt: failedAt,
             thinkingSteps: [...stepsSent],
+            ...askedOf,
             status: 'error',
           },
         });
-        yield { type: 'error', error: scripted.failure, createdAt: failedAt };
+        yield { type: 'error', error: scripted.failure, createdAt: failedAt, ...askedOf };
         return;
       }
 
@@ -623,6 +649,7 @@ export class MockChatClient implements ChatClient {
             createdAt: scriptedAt,
             thinkingSteps: steps,
             ...thought,
+            ...askedOf,
             status: scripted.outcome ?? 'complete',
           },
         });
@@ -632,6 +659,7 @@ export class MockChatClient implements ChatClient {
           conversationId: params.conversationId ?? 'conv-nkom-1',
           createdAt: scriptedAt,
           ...(scripted.outcome ? { outcome: scripted.outcome } : {}),
+          ...askedOf,
         };
         return;
       }
@@ -664,6 +692,7 @@ export class MockChatClient implements ChatClient {
           retrieval,
           thinkingSteps: steps,
           ...thought,
+          ...askedOf,
           status: scripted?.outcome ?? 'complete',
         },
       });
@@ -673,6 +702,7 @@ export class MockChatClient implements ChatClient {
         conversationId: params.conversationId ?? 'conv-nkom-1',
         createdAt: answeredAt,
         ...(scripted?.outcome ? { outcome: scripted.outcome } : {}),
+        ...askedOf,
       };
     } catch {
       /*
@@ -710,6 +740,7 @@ export class MockChatClient implements ChatClient {
             // there is no panel to draw either way.
             ...(stepsSent.length > 0 ? { thinkingSteps: [...stepsSent] } : {}),
             ...(thoughtAtFirstToken ?? {}),
+            ...askedOf,
             status: 'aborted',
           },
         });
@@ -718,6 +749,7 @@ export class MockChatClient implements ChatClient {
         type: 'error',
         error: signal?.aborted ? { code: 'aborted' } : { code: 'unknown' },
         createdAt: stoppedAt,
+        ...askedOf,
       };
     }
   }

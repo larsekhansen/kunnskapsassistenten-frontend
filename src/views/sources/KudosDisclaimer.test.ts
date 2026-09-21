@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { corpusDisplayName } from '../filters/corpusText';
+import { corpusDisplayName } from '../../api';
 import { sourcesDisclaimer } from './KudosDisclaimer';
 
 describe('sourcesDisclaimer', () => {

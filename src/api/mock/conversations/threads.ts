@@ -1,4 +1,5 @@
 import type { Citation, Message, ThreadDetail } from '../../../model';
+import { MOCK_CORPUS } from '../../corpus';
 import { daysAgo } from '../clock';
 import { scriptedConversations } from './scripts';
 import type { ScriptedConversation } from './types';
@@ -68,6 +69,14 @@ function threadFor(conversation: ScriptedConversation): ThreadDetail {
     sources: conversation.documents,
     retrieval: conversation.retrieval,
     thinkingSteps: conversation.thinkingSteps,
+    /*
+     * The corpus these were written against. Every document in them is a
+     * Kudos document, so the answer says so rather than borrowing whatever
+     * the chooser stands on when it is read back — the same rule a turn the
+     * mock streams now follows, and the same one the live client follows off
+     * the conversation's tag.
+     */
+    corpusKey: MOCK_CORPUS.key,
     status: conversation.outcome === 'needs-clarification' ? 'needs-clarification' : 'complete',
   };
 
@@ -76,6 +85,14 @@ function threadFor(conversation: ScriptedConversation): ThreadDetail {
     title: conversation.threadTitle,
     createdAt: asked,
     updatedAt: answered,
+    /*
+     * On the thread as well as on the answer, because the thread list reads
+     * the thread. Without it the eleven scripted rows were the only ones in
+     * the list with no corpus on them while every row a reader had made
+     * carried one, which reads as «these belong to no corpus» rather than as
+     * «these are older» (KA CC kan 2 på #133).
+     */
+    corpusKey: MOCK_CORPUS.key,
     messages: [question, answer],
   };
 }

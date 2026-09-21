@@ -16,6 +16,8 @@ export {
 export type { CorpusOption } from './corpus';
 export {
   activeCorpusKey,
+  corpusDisplayName,
+  corpusDisplayNameFor,
   corpusIsChoosable,
   corpusOption,
   corpusOptions,

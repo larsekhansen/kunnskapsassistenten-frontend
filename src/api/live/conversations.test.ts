@@ -248,3 +248,44 @@ describe('threadDetailFrom', () => {
     expect(detail.messages).toEqual([]);
   });
 });
+
+/**
+ * En tråd lest tilbake bærer korpuset sitt ned på svarene.
+ *
+ * Butikka lagrer ikke korpus per melding og trenger ikke det: en tråd kan
+ * ikke fortsettes i et annet korpus — bytte starter en ny — så alle turene i
+ * den ble hentet fra det samme. Uten stempelet her ville et gjenopprettet
+ * svar lånt korpusnavnet fra velgeren i stedet (KA CC på #129).
+ */
+describe('korpuset på en tur lest tilbake', () => {
+  const tagged: ApiConversation = { ...RECORDED.conversation, tags: ['corpus:kudos-pilot'] };
+
+  it('stempler svarene med trådens korpus', () => {
+    const detail = threadDetailFrom(tagged, RECORDED.messages);
+    const answer = detail.messages.find((message) => message.role === 'assistant');
+
+    expect(detail.corpusKey).toBe('kudos-pilot');
+    expect(answer?.corpusKey).toBe('kudos-pilot');
+  });
+
+  it('lar spørsmålet være uten, for det ble ikke hentet noe sted', () => {
+    const detail = threadDetailFrom(tagged, RECORDED.messages);
+    const question = detail.messages.find((message) => message.role === 'user');
+
+    expect(question?.corpusKey).toBeUndefined();
+  });
+
+  it('stempler ingenting når tråden ikke bærer noe merke', () => {
+    // Hver tråd fra før det fantes et valg. «Ikke kjent» er svaret, og et
+    // gjettet korpus ville vært verre enn ingen.
+    const detail = threadDetailFrom(RECORDED.conversation, RECORDED.messages);
+
+    for (const message of detail.messages) expect(message.corpusKey).toBeUndefined();
+  });
+
+  it('gir messagesFromApi nøkkelen direkte, uten en samtale rundt', () => {
+    const turns = messagesFromApi(RECORDED.messages, 'norquad-docs');
+
+    expect(turns.find((turn) => turn.role === 'assistant')?.corpusKey).toBe('norquad-docs');
+  });
+});
