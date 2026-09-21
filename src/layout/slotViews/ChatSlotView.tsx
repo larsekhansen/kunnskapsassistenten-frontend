@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router';
-import { createChatClient } from '../../api';
+import { activeCorpusKey, createChatClient } from '../../api';
 import { NotFoundState } from '../../components';
 import { threadFromQuestion, type Thread, type ThreadDetail } from '../../model';
 import { ChatView } from '../../views/chat';
@@ -152,7 +152,13 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       const existing = startedRef.current ?? thread ?? undefined;
       if (existing) return existing;
 
-      const created = threadFromQuestion(question);
+      /*
+        Stamped with the corpus the question is about to be asked of, so a
+        thread minted here says the same thing as one read back from the
+        backend (which carries it as a `corpus:` tag). A thread belongs to one
+        corpus for good: switching starts a new one rather than moving this.
+      */
+      const created: Thread = { ...threadFromQuestion(question), corpusKey: activeCorpusKey() };
       startedRef.current = created;
       setStarted(created);
       // Before the address is written, so a client that remembers threads has

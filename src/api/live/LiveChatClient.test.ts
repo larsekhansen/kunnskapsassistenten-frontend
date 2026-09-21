@@ -72,6 +72,97 @@ describe('LiveChatClient og datasettvalg', () => {
     const body = await askAndReadBody(client, fetchMock);
 
     expect(body.params.arguments).toEqual({ query: 'Hva rapporterer Nkom?' });
+    vi.restoreAllMocks();
+  });
+});
+
+/**
+ * The body of the `POST /api/conversations` this turn sent, if it sent one.
+ *
+ * `vi.fn()` infers no argument types, so `mock.calls` comes back as empty
+ * tuples; the cast is here, once, rather than at each call site. It says what
+ * fetch is actually called with.
+ */
+function createdConversationBody(
+  fetchMock: ReturnType<typeof vi.fn>,
+): { tags?: string[] } | undefined {
+  const calls = fetchMock.mock.calls as unknown as [unknown, RequestInit | undefined][];
+  const created = calls.find(
+    ([url, init]) => String(url).endsWith('/conversations') && init?.method === 'POST',
+  );
+  const body = created?.[1]?.body;
+  return body === undefined ? undefined : (JSON.parse(String(body)) as { tags?: string[] });
+}
+
+describe('korpuset leseren har valgt, per spørsmål', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('leser valget på nytt for hvert spørsmål', async () => {
+    // Hele poenget med at korpus er et kjøretidsvalg. Klienten bygges én gang
+    // av `createChatClient()`, så en verdi løst i konstruktøren ville bundet
+    // appen til det som var valgt ved oppstart — og et bytte ville ikke nådd
+    // backend før sida ble lastet på nytt.
+    let valgt = 'norquad-docs';
+    const fetchMock = captureRequest();
+    const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: () => valgt });
+
+    const first = await askAndReadBody(client, fetchMock);
+    expect(first.params.arguments).toMatchObject({ dataset_config_key: 'norquad-docs' });
+
+    valgt = 'kudos-pilot';
+    fetchMock.mockClear();
+    const second = await askAndReadBody(client, fetchMock);
+    expect(second.params.arguments).toMatchObject({ dataset_config_key: 'kudos-pilot' });
+  });
+
+  it('merker den nye tråden med korpuset den ble startet i', async () => {
+    // Tråden bindes til korpuset sitt: svarene i den siterer dokumenter som
+    // bare finnes der. Målt mot den kjørende stacken 21.09 at backend tar
+    // imot `tags` på POST og gir dem tilbake på både liste og enkeltoppslag.
+    const fetchMock = captureRequest();
+    const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: () => 'kudos-pilot' });
+
+    await askAndReadBody(client, fetchMock);
+
+    const body = createdConversationBody(fetchMock);
+    expect(body?.tags).toEqual(['corpus:kudos-pilot']);
+  });
+
+  it('merker ingenting når det ikke er noe korpus å merke med', async () => {
+    // Uten tenant faller `datasetArguments` tilbake til ingenting, og da er
+    // det ingen nøkkel å skrive på tråden heller. En tom `corpus:`-tagg ville
+    // vært verre enn ingen: den ville sett ut som et korpus som het tomt.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetchMock = captureRequest();
+    const client = new LiveChatClient({ datasetConfigKey: () => 'kudos-pilot' });
+
+    await askAndReadBody(client, fetchMock);
+
+    const body = createdConversationBody(fetchMock);
+    expect(body?.tags).toBeUndefined();
+    vi.restoreAllMocks();
+  });
+
+  it('spør og merker med det samme korpuset, selv om valget endres underveis', async () => {
+    // Nøkkelen løses én gang per spørsmål og brukes til begge kallene. To
+    // oppslag kunne vært uenige, og en tråd som søkte i ett korpus men ble
+    // arkivert under et annet er en tråd der kildene ikke stemmer med
+    // merkelappen.
+    let valgt = 'norquad-docs';
+    const fetchMock = vi.fn(async (url: unknown) => {
+      // Byttet skjer mellom de to kallene, som er det verste tilfellet.
+      if (String(url).endsWith('/conversations')) valgt = 'kudos-pilot';
+      return new Response(null, { status: 503 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: () => valgt });
+    const body = await askAndReadBody(client, fetchMock);
+
+    const createdBody = createdConversationBody(fetchMock);
+
+    expect(createdBody?.tags).toEqual(['corpus:norquad-docs']);
+    expect(body.params.arguments).toMatchObject({ dataset_config_key: 'norquad-docs' });
   });
 });
 

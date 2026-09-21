@@ -44,6 +44,20 @@ export interface Thread {
   updatedAt: string;
   /** The backend conversation to continue on the next turn. */
   conversationId?: string;
+  /**
+   * Which corpus this thread was asked of — `dataset_config_key`.
+   *
+   * A thread belongs to the corpus it was started in, and cannot be continued
+   * in another: the answers in it cite documents that only exist there. So it
+   * is recorded when the thread is made rather than read from whatever is
+   * selected now, and changing corpus starts a new thread instead of moving
+   * this one.
+   *
+   * Undefined for threads made before there was a choice, and in mock mode,
+   * where there is one corpus. The thread list draws it only when more than
+   * one corpus exists (#2, del 2).
+   */
+  corpusKey?: string;
 }
 
 /** A thread with its messages, the shape a thread route needs. */

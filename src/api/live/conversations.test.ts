@@ -108,6 +108,23 @@ describe('threadFromConversation', () => {
   it('gir en samtale uten emne et navn likevel', () => {
     expect(threadFromConversation({ id: 'x', topic: '  ' }).title).toBe('Uten tittel');
   });
+
+  it('leser korpuset tråden ble startet i, ut av taggene', () => {
+    // Skrevet av `#createConversation` da tråden ble laget. Målt mot den
+    // kjørende stacken 21.09: backend tar imot `tags` og gir dem tilbake på
+    // både liste og enkeltoppslag, så en tråd lest på en annen maskin vet
+    // fortsatt hvilket korpus den hører til.
+    const thread = threadFromConversation({ id: 'x', tags: ['corpus:kudos-pilot'] });
+    expect(thread.corpusKey).toBe('kudos-pilot');
+  });
+
+  it('lar corpusKey være usatt for en tråd fra før det fantes et valg', () => {
+    // Ikke satt til det som er valgt nå: et korpus er et faktum om når
+    // tråden ble spurt, ikke om hva leseren har valgt i dag.
+    expect(threadFromConversation({ id: 'x' }).corpusKey).toBeUndefined();
+    expect(threadFromConversation({ id: 'x', tags: [] }).corpusKey).toBeUndefined();
+    expect(threadFromConversation({ id: 'x', tags: ['viktig'] }).corpusKey).toBeUndefined();
+  });
 });
 
 describe('messagesFromApi', () => {

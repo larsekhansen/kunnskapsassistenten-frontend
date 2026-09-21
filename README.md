@@ -880,6 +880,41 @@ konsollen. Se `datasetArguments()` i `src/api/live/mcp.ts`.
 På tråden sendes de som `tenant` og `dataset_config_key` i `tools/call`-
 argumentene, ved siden av `query`.
 
+### Flere korpus å velge mellom
+
+`VITE_KA_DATASETS` lister korpusene denne oppsettinga når, og gjør korpus til
+et **kjøretidsvalg**: leseren bytter uten at dev-serveren startes om.
+
+```sh
+VITE_KA_DATASETS="norquad-docs=Wikipedia (NorQuAD)|351 artikler;kudos-pilot=Kudos-pilot|5 årsrapporter"
+```
+
+Semikolon mellom oppføringene, `=` før navnet, og en valgfri `|` før en
+beskrivelse. Bare den første `=` deler, så navnet kan inneholde parenteser og
+mellomrom. En ugyldig oppføring hoppes over med en advarsel i konsollen i
+stedet for å ta hele lista med seg.
+
+`VITE_KA_DATASET_CONFIG_KEY` virker som før og betyr nå «hvilket av dem appen
+starter på». Er lista ikke satt, er det ett korpus og ingen velger — nøyaktig
+som før i dag. Peker nøkkelen på et korpus lista har glemt, legges det til
+likevel: en nøkkel som når backenden i dag skal ikke slutte å gjøre det fordi
+noen skrev en liste uten den.
+
+Valget ligger i `localStorage` under `ka.corpus.v1` og leses av klienten når
+den bygger hver forespørsel — ikke én gang ved oppstart, for da ville et bytte
+ikke nådd backenden før sida ble lastet på nytt.
+
+**En tråd hører til korpuset sitt.** Svarene i den siterer dokumenter som bare
+finnes der, så et bytte starter en ny tråd i stedet for å flytte den gamle.
+Korpuset lagres på selve tråden, som `corpus:<nøkkel>` i `tags` på samtalen —
+målt mot kjørende stack 21.09: backenden tar imot `tags` på `POST` og gir dem
+tilbake på både liste og enkeltoppslag.
+
+I mock-modus finnes ett korpus («Kudos, 938 dokumenter (mock)») og ingen
+velger. Views leser det hele gjennom `useCorpus()` i `src/layout/`:
+`{ options, active, option, choosable, set }`, der `option` bærer etikett og
+beskrivelse for det aktive korpuset.
+
 ### Tråder i live-modus
 
 Trådlista og lagringen kommer fra `/api/conversations`, målt mot kjørende

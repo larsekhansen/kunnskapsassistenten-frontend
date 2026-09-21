@@ -42,6 +42,43 @@ describe('toSourceDocuments', () => {
     { chunk_id: 'c3', doc_num: 'd1', title: 'Årsrapport 2022', url: null },
   ];
 
+  it('leser tittelen uansett hvilket av de tre navnene den kom under', () => {
+    /*
+     * Målt 21.09 og lest i backend-koden: et live `tools/call` mot
+     * kudos-pilot sender `title`, lagrede meldinger fra /api/conversations
+     * sender `docTitle`, og andre stier gir `doc_title`. Ingenting nedstrøms
+     * kan skille «ingen tittel» fra «en tittel under et navn vi ikke leste»,
+     * så alle tre leses her.
+     */
+    const [fraTitle, fraSnake, fraCamel] = toSourceDocuments([
+      { chunk_id: 'a', doc_num: 'd1', title: 'Fra title' },
+      { chunk_id: 'b', doc_num: 'd2', doc_title: 'Fra doc_title' },
+      { chunk_id: 'c', doc_num: 'd3', docTitle: 'Fra docTitle' },
+    ]);
+
+    expect(fraTitle.title).toBe('Fra title');
+    expect(fraSnake.title).toBe('Fra doc_title');
+    expect(fraCamel.title).toBe('Fra docTitle');
+  });
+
+  it('lar title vinne når flere navn står på samme chunk', () => {
+    const [document] = toSourceDocuments([
+      { chunk_id: 'a', doc_num: 'd1', title: 'Fra title', doc_title: 'Fra doc_title' },
+    ]);
+    expect(document.title).toBe('Fra title');
+  });
+
+  it('sier «Uten tittel» når ingen av dem har noe, også når feltet er blankt', () => {
+    // En tittel på «   » tegner en tom linje i kildepanelet, som leses som en
+    // feil heller enn som et dokument uten navn.
+    const [ingen, blank] = toSourceDocuments([
+      { chunk_id: 'a', doc_num: 'd1' },
+      { chunk_id: 'b', doc_num: 'd2', title: '   ', docTitle: '' },
+    ]);
+    expect(ingen.title).toBe('Uten tittel');
+    expect(blank.title).toBe('Uten tittel');
+  });
+
   it('groups excerpts per document and keeps the citation numbers', () => {
     const documents = toSourceDocuments(chunks);
 
