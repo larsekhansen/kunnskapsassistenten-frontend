@@ -1,4 +1,5 @@
 import type { Citation, Message, SourceDocument, Thread, ThreadDetail } from '../../model';
+import { corpusKeyFromTags } from '../corpus';
 
 /**
  * The conversation store behind `/api/conversations`.
@@ -110,6 +111,7 @@ function isoFrom(created: number | null | undefined, fallback: string): string {
 export function threadFromConversation(conversation: ApiConversation): Thread {
   const createdAt = isoFrom(conversation.created, new Date(0).toISOString());
   const topic = conversation.topic?.trim();
+  const corpusKey = corpusKeyFromTags(conversation.tags);
   return {
     id: conversation.id,
     title: topic === undefined || topic === '' ? 'Uten tittel' : topic,
@@ -117,6 +119,11 @@ export function threadFromConversation(conversation: ApiConversation): Thread {
     createdAt,
     updatedAt: createdAt,
     conversationId: conversation.id,
+    // Written by `#createConversation` when the thread was made. Absent on
+    // threads from before there was a choice, which is why it is optional
+    // rather than defaulted to whatever is selected now — a thread's corpus
+    // is a fact about when it was asked, not about the reader's current pick.
+    ...(corpusKey ? { corpusKey } : {}),
   };
 }
 

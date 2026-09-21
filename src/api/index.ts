@@ -1,8 +1,18 @@
 import type { ChatClient } from './chatClient';
+import { activeCorpusKey } from './corpus';
 import { LiveChatClient } from './live';
 import { defaultMockSpeed, MockChatClient, mockSpeeds } from './mock';
 
 export type { AskParams, ChatClient } from './chatClient';
+export type { CorpusOption } from './corpus';
+export {
+  activeCorpusKey,
+  corpusIsChoosable,
+  corpusOption,
+  corpusOptions,
+  setActiveCorpusKey,
+  subscribeToCorpus,
+} from './corpus';
 
 /**
  * Which backend the app talks to. One switch, `VITE_API_MODE`, default
@@ -22,11 +32,16 @@ export function createChatClient(): ChatClient {
     return new MockChatClient(mockSpeeds[speed] ?? mockSpeeds[defaultMockSpeed]);
   }
 
-  // Which corpus to ask, when somebody has said. Both or neither; the client
-  // drops a lone one and says so. Unset is the behaviour up to now: the
-  // backend picks, which on the local stack is the demo corpus.
+  // Which corpus to ask. Both or neither; the client drops a lone one and says
+  // so. Unset is the behaviour up to now: the backend picks, which on the
+  // local stack is the demo corpus.
+  //
+  // A function rather than a value, because the corpus is the reader's to
+  // change while the app runs. The client calls it when it builds a request,
+  // so the question goes to whatever is selected then — not to whatever was
+  // selected when this factory ran. See src/api/corpus.ts.
   return new LiveChatClient({
     tenant: import.meta.env.VITE_KA_TENANT,
-    datasetConfigKey: import.meta.env.VITE_KA_DATASET_CONFIG_KEY,
+    datasetConfigKey: activeCorpusKey,
   });
 }

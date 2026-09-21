@@ -13,6 +13,15 @@ interface ImportMetaEnv {
   readonly VITE_KA_TENANT?: string;
   readonly VITE_KA_DATASET_CONFIG_KEY?: string;
   /**
+   * The corpora this deployment can reach, for the runtime chooser:
+   * `"norquad-docs=Wikipedia (NorQuAD)|351 artikler;kudos-pilot=Kudos-pilot"`.
+   *
+   * Semicolons between entries, `=` before the name, an optional `|` before a
+   * description. Unset means one corpus and no chooser, which is how this
+   * worked before. See src/api/corpus.ts.
+   */
+  readonly VITE_KA_DATASETS?: string;
+  /**
    * How fast mock mode answers: `fast`, `realistic` (default) or `slow`.
    * See `mockSpeeds` in src/api/mock/MockChatClient.ts.
    */

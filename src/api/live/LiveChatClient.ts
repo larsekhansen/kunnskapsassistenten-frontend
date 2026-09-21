@@ -1,6 +1,7 @@
 import { chatErrorCode } from '../../model';
 import type { ChatError, FilterFacet, StreamEvent, Thread, ThreadDetail } from '../../model';
 import type { AskParams, ChatClient } from '../chatClient';
+import { CORPUS_TAG_PREFIX } from '../corpus';
 import {
   DEFAULT_TOOL_NAME,
   MCP_PROTOCOL_VERSION,
@@ -32,7 +33,19 @@ export type LiveChatClientOptions = {
    * entirely and stays with the proxy.
    */
   tenant?: string;
-  datasetConfigKey?: string;
+  /**
+   * Which corpus to ask — read on every call, not once.
+   *
+   * A function and not a string, because the corpus is a runtime choice now:
+   * the reader picks one, and the next question has to go to that one. The
+   * client is built once by `createChatClient()`, so a value resolved in the
+   * constructor would pin the app to whatever was selected at startup.
+   *
+   * `createChatClient` wires this to the store in src/api/corpus.ts. Tests
+   * pass a closure over a local variable, which is the whole reason it is an
+   * argument rather than a direct import.
+   */
+  datasetConfigKey?: string | (() => string | undefined);
   /**
    * Which agent owns a conversation this client creates. Derived from the
    * tool name when left out; see `agentIdFromToolName` for why the two are
@@ -90,16 +103,33 @@ function errorFromStatus(status: number): ChatError {
 export class LiveChatClient implements ChatClient {
   readonly #basePath: string;
   readonly #toolName: string;
-  readonly #dataset: Record<string, string>;
+  readonly #tenant: string | undefined;
+  readonly #corpusKey: () => string | undefined;
   readonly #agentId: string;
 
   constructor(options: LiveChatClientOptions = {}) {
     this.#basePath = options.basePath ?? '/api';
     this.#toolName = options.toolName ?? DEFAULT_TOOL_NAME;
-    // Resolved once, in the constructor, so a misconfiguration is reported
-    // when the client is built rather than once per question asked.
-    this.#dataset = datasetArguments(options.tenant, options.datasetConfigKey);
+    this.#tenant = options.tenant;
+    this.#corpusKey =
+      typeof options.datasetConfigKey === 'function'
+        ? options.datasetConfigKey
+        : () => options.datasetConfigKey as string | undefined;
     this.#agentId = options.agentId ?? agentIdFromToolName(this.#toolName);
+  }
+
+  /**
+   * The corpus arguments for the call about to be made.
+   *
+   * Resolved per call rather than in the constructor, which is the change
+   * runtime corpus choice asked for. `datasetArguments` still enforces the
+   * backend's both-or-neither rule and still warns; it now warns per question
+   * instead of once at startup, and that is the right trade — a reader who
+   * switches corpus mid-session should hear about a broken pair then, not
+   * only if they reload.
+   */
+  #dataset(): Record<string, string> {
+    return datasetArguments(this.#tenant, this.#corpusKey());
   }
 
   /**
@@ -129,7 +159,11 @@ export class LiveChatClient implements ChatClient {
    * reason to answer without one, not a reason not to answer: the turn still
    * streams, and `tools/call` falls back to making its own.
    */
-  async #createConversation(title: string, signal?: AbortSignal): Promise<string | undefined> {
+  async #createConversation(
+    title: string,
+    corpusKey: string | undefined,
+    signal?: AbortSignal,
+  ): Promise<string | undefined> {
     try {
       const response = await this.#conversations('', {
         method: 'POST',
@@ -137,6 +171,20 @@ export class LiveChatClient implements ChatClient {
         body: JSON.stringify({
           title: title.trim().replace(/\s+/g, ' '),
           'agent-id': this.#agentId,
+          /*
+            The corpus the thread belongs to, stored on the thread itself.
+
+            `tags` is the backend's own field and it keeps what it is given —
+            measured against the running stack on 21.09: a conversation
+            created with `["corpus:kudos-pilot"]` came back with it from both
+            `GET /api/conversations` and `GET /api/conversations/:id`. So the
+            brief's fallback of keeping this in local metadata is not needed;
+            a thread read on another machine still knows its corpus.
+
+            Prefixed, because `tags` is a shared list the conversation store
+            labels things with. `corpus:` is ours; see `corpusKeyFromTags`.
+          */
+          ...(corpusKey ? { tags: [`${CORPUS_TAG_PREFIX}${corpusKey}`] } : {}),
         }),
       });
       if (!response.ok) return undefined;
@@ -149,10 +197,21 @@ export class LiveChatClient implements ChatClient {
 
   async *ask(params: AskParams): AsyncIterable<StreamEvent> {
     const state = new McpStreamState();
+    /*
+      Resolved once per question and then used for both calls below, so the
+      conversation is tagged with the same corpus the tool call searches. Two
+      reads could disagree if the reader switched corpus between them — which
+      takes a deliberate act and starts a new thread anyway, but a question
+      that searched one corpus and was filed under another would be a thread
+      whose sources do not match its label, and that is not worth leaving to
+      timing.
+    */
+    const dataset = this.#dataset();
     // The first turn of a thread makes the conversation; every later one
     // already has the id and goes straight to the tool call.
     const conversationId =
-      params.conversationId ?? (await this.#createConversation(params.query, params.signal));
+      params.conversationId ??
+      (await this.#createConversation(params.query, dataset.dataset_config_key, params.signal));
     const body = {
       jsonrpc: '2.0',
       id: 1,
@@ -161,7 +220,7 @@ export class LiveChatClient implements ChatClient {
         name: this.#toolName,
         arguments: {
           query: params.query,
-          ...this.#dataset,
+          ...dataset,
           ...(conversationId ? { conversation_id: conversationId } : {}),
         },
         _meta: {
