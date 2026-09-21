@@ -270,7 +270,30 @@ export function useChat(
     const settledAt = createdAt ?? new Date().toISOString();
     setMessages((current) => {
       const answer = current.find((message) => message.id === id);
-      if (answer && answer.content.length === 0 && status !== 'aborted') {
+      /*
+       * A turn with nothing to show is taken out again. «Nothing» is the
+       * point: an `<li>` whose whole content is the hidden «Kunnskapsassistenten
+       * svarte:» tells a screen reader that the assistant answered, when it
+       * did not.
+       *
+       * What the agent DID is something to show. A failed turn used to be
+       * dropped on `content.length === 0` alone, and it took the thinking
+       * panel with it: «Tenker …» and «Jeg søker i korpuset» were on screen
+       * while the question ran, and the moment the error card arrived the
+       * reader had the question, the error, and nothing about what was tried
+       * — on the one path where that is worth most (brukerblikk 4, funn 3).
+       * A successful answer keeps its panel; this is the only path that
+       * cleared its own trace.
+       *
+       * A stopped turn stays whatever phase it was stopped in, panel or no
+       * panel, because its card is what says it was stopped and offers to run
+       * it again (#4, funn A).
+       */
+      const hasNothingToShow =
+        answer !== undefined &&
+        answer.content.length === 0 &&
+        (answer.thinkingSteps?.length ?? 0) === 0;
+      if (hasNothingToShow && status !== 'aborted') {
         return current.filter((message) => message.id !== id);
       }
       return current.map((message) =>

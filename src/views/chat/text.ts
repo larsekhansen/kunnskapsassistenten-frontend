@@ -58,6 +58,22 @@ export const ABORTED_NOTE = 'Svaret ble avbrutt, så kildene bak det kom aldri f
  */
 export const ABORTED_BEFORE_ANSWER = 'Du stoppet søket før svaret begynte.';
 
+/**
+ * Under a turn that failed, once the alert about it is gone.
+ *
+ * The live failure has the alert below it, which says what went wrong and
+ * offers the way on; a turn that carries this one has outlived that alert —
+ * it was restored from the store, or the reader has asked something since.
+ * Then the card is the only thing left to say why there is no answer under
+ * the question, and «Tenkte i 4 sekunder» over nothing is a riddle without
+ * it.
+ *
+ * It says less than the alert did on purpose. Which error it was is not
+ * written down with the turn, and a note that guessed would be worse than one
+ * that only says the turn did not finish.
+ */
+export const FAILED_NOTE = 'Dette spørsmålet fikk ikke noe svar. Noe gikk galt underveis.';
+
 /** The only action on a stopped answer: ask the same question again. */
 export const REGENERATE = 'Generer på nytt';
 

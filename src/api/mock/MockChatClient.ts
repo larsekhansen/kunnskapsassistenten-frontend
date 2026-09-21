@@ -340,9 +340,27 @@ export class MockChatClient implements ChatClient {
         stepsSent.push(failureStep);
         yield { type: 'thinking-step', step: failureStep };
         await wait(this.#delays.firstTokenMs, signal);
+        /*
+         * Written down like any other turn, with its thinking steps and the
+         * status that says it failed. Failures were the one kind of turn the
+         * store never saw, so a reload left the question with nothing under
+         * it at all — see the note on the other failure path below.
+         */
+        const failedAt = new Date().toISOString();
+        recordMockTurn({
+          question: params.query,
+          answerId: nextMessageId(),
+          answer: {
+            content: '',
+            citations: [],
+            createdAt: failedAt,
+            thinkingSteps: [...stepsSent],
+            status: 'error',
+          },
+        });
         // No `message`: the whole point is that the text comes from the code,
         // so a mock that wrote its own would be testing the mock's wording.
-        yield { type: 'error', error: { code: simulated }, createdAt: new Date().toISOString() };
+        yield { type: 'error', error: { code: simulated }, createdAt: failedAt };
         return;
       }
 
@@ -428,7 +446,27 @@ export class MockChatClient implements ChatClient {
       // real one does: an answer was under way and then it was not.
       if (scripted?.failure) {
         await wait(this.#delays.firstTokenMs, signal);
-        yield { type: 'error', error: scripted.failure, createdAt: new Date().toISOString() };
+        /*
+         * The same as the simulated codes above: the turn is remembered, so a
+         * reader who reloads still has the question, what was tried, and a
+         * card saying it did not finish. Which error it was is not written
+         * down — the wording belongs to the view, keyed on a code the store
+         * has no field for — so the restored card says less than the alert
+         * did, on purpose. See `FAILED_NOTE`.
+         */
+        const failedAt = new Date().toISOString();
+        recordMockTurn({
+          question: params.query,
+          answerId: nextMessageId(),
+          answer: {
+            content: '',
+            citations: [],
+            createdAt: failedAt,
+            thinkingSteps: [...stepsSent],
+            status: 'error',
+          },
+        });
+        yield { type: 'error', error: scripted.failure, createdAt: failedAt };
         return;
       }
 
