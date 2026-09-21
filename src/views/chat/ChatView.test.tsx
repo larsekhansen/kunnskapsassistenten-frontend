@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import type { AskParams, ChatClient } from '../../api';
 import { AnswerSourcesContext, inertAnswerSources } from '../../layout/answerSourcesContext';
@@ -66,34 +67,43 @@ type ShellProps = {
   onCitation?: (number: number, messageId?: string) => void;
 };
 
-/** The pieces of the shell the chat view reads. */
+/**
+ * The pieces of the shell the chat view reads.
+ *
+ * The router is here for the same reason it is in `FiltersView.test.tsx`: the
+ * view reads the active corpus to pick its three suggestions, and `useCorpus`
+ * navigates when the corpus is SET — so reading it needs a router the way it
+ * needs the contexts around it.
+ */
 function Shell({ children, startThread, selection, onAnswerSources, onCitation }: ShellProps) {
   const scrollRef = useRef<HTMLElement | null>(null);
   return (
-    <MainScrollContext value={scrollRef}>
-      <CitationContext
-        value={{ activeCitation: undefined, showCitation: onCitation ?? (() => {}) }}
-      >
-        <AnswerSourcesContext
-          value={{ ...inertAnswerSources, setAnswerSources: onAnswerSources ?? (() => {}) }}
+    <MemoryRouter>
+      <MainScrollContext value={scrollRef}>
+        <CitationContext
+          value={{ activeCitation: undefined, showCitation: onCitation ?? (() => {}) }}
         >
-          <ThreadContext
-            value={{
-              startThread: (question) => {
-                startThread?.();
-                return threadFromQuestion(question);
-              },
-            }}
+          <AnswerSourcesContext
+            value={{ ...inertAnswerSources, setAnswerSources: onAnswerSources ?? (() => {}) }}
           >
-            <FilterContext
-              value={{ selection: selection ?? emptyFilterSelection, setSelection: () => {} }}
+            <ThreadContext
+              value={{
+                startThread: (question) => {
+                  startThread?.();
+                  return threadFromQuestion(question);
+                },
+              }}
             >
-              {children}
-            </FilterContext>
-          </ThreadContext>
-        </AnswerSourcesContext>
-      </CitationContext>
-    </MainScrollContext>
+              <FilterContext
+                value={{ selection: selection ?? emptyFilterSelection, setSelection: () => {} }}
+              >
+                {children}
+              </FilterContext>
+            </ThreadContext>
+          </AnswerSourcesContext>
+        </CitationContext>
+      </MainScrollContext>
+    </MemoryRouter>
   );
 }
 

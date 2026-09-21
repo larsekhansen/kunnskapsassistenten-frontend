@@ -20,12 +20,71 @@ export const CLOSING_QUESTION = 'Er det noe mer jeg kan hjelpe deg med?';
 /**
  * Three suggestions on the empty state. They fill the compose field, they do
  * not send (answer 40).
+ *
+ * These three name documents: annual reports from DSS, an Udir evaluation,
+ * letters of allocation from Digdir. They belong to the mock corpus, which
+ * holds those 938 Kudos documents and can answer them.
+ *
+ * They were shown over every corpus until today — including 351 Wikipedia
+ * articles, which can answer none of them. That is not a claim that reads
+ * oddly, it is an invitation to ask three questions the corpus cannot answer
+ * (brukerblikk 5, funn 2). See `kickstartersFor`.
  */
 export const KICKSTARTERS = [
   'Hva rapporteres om regnskap, kostnader og bevilgning i DSS sine årsrapporter for 2022 og 2023?',
   'Hvilke utfordringer rapporterer Udir om i evaluering om lærerspesialtordningen?',
   'Hva rapporterer Digdir om prioriteringene i tildelingsbrevene fra 2022 og 2023 sammenlignet med årsrapportene?',
 ] as const;
+
+/**
+ * The three for a corpus nobody has written suggestions for.
+ *
+ * Deliberately about the documents rather than about anything in them: these
+ * have to hold over a corpus this code has never seen, so every one of them
+ * asks what is there rather than assuming what is. A suggestion that named a
+ * subject would be the same mistake again, one corpus further along.
+ *
+ * Whole questions, and not «Hvilke dokumenter finnes om …?» with the subject
+ * left for the reader. A kickstarter fills the field and leaves the caret
+ * there, so an unfinished one would work — but it reads as a broken label on
+ * the button before it is picked, and the button is the thing the reader
+ * judges first.
+ */
+export const GENERAL_KICKSTARTERS = [
+  'Hva handler dokumentene i dette korpuset om?',
+  'Gi meg en oversikt over de viktigste temaene.',
+  'Oppsummer det viktigste i noen få punkter.',
+] as const;
+
+/**
+ * The one corpus the three named questions belong to.
+ *
+ * The key is written out rather than imported from src/api/corpus.ts, so this
+ * module of words stays a module of words. `kickstartersPerCorpus.test.ts`
+ * ties the two together, so renaming it there turns that test red instead of
+ * quietly dropping mock down to the general three.
+ *
+ * `kudos-pilot` is NOT here, and that is measured rather than assumed. The
+ * name says Kudos and the mock corpus is Kudos, so the two looked like one
+ * case — but the pilot is five annual reports from 2025, from other agencies
+ * than the ones these questions name. Asked over it, «DSS sine årsrapporter»
+ * came back as «finner ikke DSS» with no sources at all, while the general
+ * three got real answers with sources (KA CC, målt live på #111). A corpus
+ * gets its own list when someone has written one against the documents that
+ * are actually in it.
+ */
+const CORPUS_WITH_OWN_KICKSTARTERS = 'mock';
+
+/**
+ * The three suggestions to offer over `corpusKey`.
+ *
+ * Everything else gets the general three, which is the safe direction to be
+ * wrong in: a general question over Kudos still works, and a named question
+ * over a corpus that does not hold those documents does not.
+ */
+export function kickstartersFor(corpusKey: string | undefined): readonly string[] {
+  return corpusKey === CORPUS_WITH_OWN_KICKSTARTERS ? KICKSTARTERS : GENERAL_KICKSTARTERS;
+}
 
 /**
  * Fixed in the first version, model generated in the second (answer 29).

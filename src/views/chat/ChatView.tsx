@@ -4,6 +4,7 @@ import { createChatClient, type ChatClient } from '../../api';
 import { ErrorState } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useCitation } from '../../layout/useCitation';
+import { useCorpus } from '../../layout/useCorpus';
 import { useFilterSelection } from '../../layout/useFilterSelection';
 import { useMainScroll } from '../../layout/useMainScroll';
 import { useThread } from '../../layout/useThread';
@@ -12,7 +13,7 @@ import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { chatErrorText } from './errorText';
 import { filterSummaryText } from './filterSummary';
-import { CLARIFICATION_PLACEHOLDER } from './text';
+import { CLARIFICATION_PLACEHOLDER, kickstartersFor } from './text';
 import { threadHeading } from './threadHeading';
 import { useAtBottom } from './useAtBottom';
 import { useComposerShortcut } from './useComposerShortcut';
@@ -58,6 +59,23 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   // The document filter is part of the question. The filter view writes it,
   // the shell holds it, and this view sends it — the two views never meet.
   const { selection } = useFilterSelection();
+
+  /*
+   * Which corpus is being searched, for the three suggestions on the empty
+   * state. They were three Kudos questions over every corpus, including 351
+   * Wikipedia articles that can answer none of them (brukerblikk 5, funn 2).
+   *
+   * Read here rather than in `Kickstarters`, so the suggestions stay a value
+   * handed down and the leaf stays a leaf. `useCorpus` navigates when the
+   * corpus is SET, so it needs a router — which this view has under the shell,
+   * and which the leaf would otherwise have to be given in every preview and
+   * unit test that draws a greeting.
+   *
+   * It switches on its own: `useCorpus` reads the store through
+   * `useSyncExternalStore`, so choosing another corpus re-renders this view
+   * with the new key and the list changes in the same paint.
+   */
+  const { active: corpusKey } = useCorpus();
 
   const {
     messages,
@@ -386,6 +404,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
 
       {messages.length === 0 ? (
         <Welcome
+          kickstarters={kickstartersFor(corpusKey)}
           onPickKickstarter={(question) => {
             // Fills the field, does not send (answer 40). The caret goes with
             // it, so the reader can edit before asking.

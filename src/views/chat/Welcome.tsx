@@ -5,6 +5,8 @@ type WelcomeProps = {
   /** The signed-in user's first name. Figma hardcodes «Simen»; this does not. */
   userName?: string;
   onPickKickstarter: (question: string) => void;
+  /** The three suggestions for the corpus on screen. */
+  kickstarters: readonly string[];
 };
 
 /**
@@ -26,7 +28,7 @@ type WelcomeProps = {
  * heading of its own put an entry in the outline with nothing under it, next
  * to the «Forslag» heading that does name something.
  */
-export function Welcome({ userName, onPickKickstarter }: WelcomeProps) {
+export function Welcome({ userName, onPickKickstarter, kickstarters }: WelcomeProps) {
   return (
     <>
       <div className="ka-chat-greeting">
@@ -37,7 +39,7 @@ export function Welcome({ userName, onPickKickstarter }: WelcomeProps) {
           Hva lurer du på?
         </Heading>
       </div>
-      <Kickstarters onPick={onPickKickstarter} />
+      <Kickstarters onPick={onPickKickstarter} questions={kickstarters} />
     </>
   );
 }
