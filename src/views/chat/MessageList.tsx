@@ -30,6 +30,8 @@ type MessageListProps = {
    * onward does not belong under it however many turns come after.
    */
   foundNothing?: (messageId: string) => boolean;
+  /** The turn the error alert under the conversation is about, if any. */
+  liveErrorId?: string;
 };
 
 /**
@@ -66,6 +68,7 @@ export function MessageList({
   onRegenerate,
   filterSummary,
   foundNothing,
+  liveErrorId,
 }: MessageListProps) {
   // The answer whose search strip is in the view-head, and what is typed in
   // it. One strip, one query: switching answers starts a fresh search rather
@@ -139,6 +142,7 @@ export function MessageList({
             canScrollToBottom={canScrollToBottom}
             foundNothing={foundNothing?.(message.id)}
             key={message.id}
+            liveErrorId={liveErrorId}
             message={message}
             narrowedTo={filterSummary?.(message.id)}
             onCloseSearch={closeSearch}

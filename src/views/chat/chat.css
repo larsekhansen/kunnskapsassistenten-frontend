@@ -127,7 +127,14 @@
 }
 
 /* Why a stopped answer has no sources under it. */
-.ka-aborted-note {
+/*
+ * The two notes a turn draws about itself when there is no answer to draw:
+ * one for a turn the reader stopped, one for a turn that failed and has
+ * outlived the alert that explained it. Subtle, because neither is the thing
+ * on the page to read first.
+ */
+.ka-aborted-note,
+.ka-failed-note {
   color: var(--ds-color-neutral-text-subtle);
 }
 

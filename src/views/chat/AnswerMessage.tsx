@@ -9,7 +9,13 @@ import { AnswerSearch } from './AnswerSearch';
 import { AnswerTime } from './AnswerTime';
 import { RetrievalPanel } from './RetrievalPanel';
 import { ThinkingPanel } from './ThinkingPanel';
-import { ABORTED_BEFORE_ANSWER, ABORTED_NOTE, CLOSING_QUESTION, REGENERATE } from './text';
+import {
+  ABORTED_BEFORE_ANSWER,
+  ABORTED_NOTE,
+  CLOSING_QUESTION,
+  FAILED_NOTE,
+  REGENERATE,
+} from './text';
 import { ANSWER_MARK_CLASS, useAnswerHits } from './useAnswerHits';
 
 type AnswerMessageProps = {
@@ -37,6 +43,17 @@ type AnswerMessageProps = {
   onCloseSearch: () => void;
   /** «Søk i svar 2 av 3» — which answer the pinned strip is searching. */
   searchLabel: string;
+  /**
+   * The turn the error alert below the conversation is about, if any.
+   *
+   * A failed turn keeps its thinking panel now, so it stays on screen after
+   * the alert has gone — restored from the store, or pushed up by a question
+   * asked since. Then nothing under the question says why there is no answer,
+   * and the card says it instead. While the alert IS about this turn, it says
+   * it better and with a way on, so the card stays quiet rather than saying
+   * the same thing twice.
+   */
+  liveErrorId?: string;
   /** «Avgrenset til …» over the answer. Absent means the whole corpus. */
   narrowedTo?: string;
   /**
@@ -103,6 +120,7 @@ export function AnswerMessage({
   onToggleSearch,
   onCloseSearch,
   searchLabel,
+  liveErrorId,
   narrowedTo,
   foundNothing,
 }: AnswerMessageProps) {
@@ -110,11 +128,13 @@ export function AnswerMessage({
   const aborted = message.status === 'aborted';
   const complete = message.status === 'complete';
   const empty = message.content.length === 0;
+  // Failed, and the alert is no longer speaking for it.
+  const failedQuietly = message.status === 'error' && message.id !== liveErrorId;
   // A failed turn with nothing in it gets no card: an empty bordered box
   // above the error says nothing. A stopped one gets one whatever phase it was
   // stopped in — the card is what says it was stopped and offers to run it
   // again (#4, funn A).
-  const showCard = !empty || streaming || aborted;
+  const showCard = !empty || streaming || aborted || failedQuietly;
 
   const searching = searchOpen;
   const query = searchQuery;
@@ -259,6 +279,12 @@ export function AnswerMessage({
               </Paragraph>
             ) : null}
 
+            {failedQuietly ? (
+              <Paragraph className="ka-failed-note" data-size="sm" variant="long">
+                {FAILED_NOTE}
+              </Paragraph>
+            ) : null}
+
             {complete && !empty && !foundNothing ? (
               <Paragraph variant="long">{CLOSING_QUESTION}</Paragraph>
             ) : null}
@@ -292,8 +318,15 @@ export function AnswerMessage({
             Nothing to copy from half an answer, and no thread link worth
             sharing yet. What the reader wants is the answer they stopped, so
             the row is the one way onward.
+
+            The same row on a turn that failed and has outlived its alert. The
+            alert carried «Prøv igjen» while it was up; once it is gone, a
+            restored failure would be the one turn in the thread with no way
+            on at all. `retry` finds the question in the conversation when the
+            session that asked it is gone (#76), so the button works in a
+            reloaded tab.
           */}
-          {aborted ? (
+          {aborted || failedQuietly ? (
             <Card.Block>
               <div className="ka-answer-actions">
                 <Button
@@ -308,7 +341,7 @@ export function AnswerMessage({
 
                 {/* A stopped answer is still an answer the reader can refer
                     back to, and it is in the thread with the same timestamp
-                    as any other. */}
+                    as any other. The same holds for one that failed. */}
                 <AnswerTime createdAt={message.createdAt} />
               </div>
             </Card.Block>

@@ -399,6 +399,10 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
           canScrollToBottom={!atBottom}
           filterSummary={filterSummary}
           foundNothing={(messageId) => noHitsAnswers.has(messageId)}
+          /* Which turn the alert below is speaking for. A failed turn keeps
+             its thinking panel, so it outlives the alert — and then its card
+             has to say why there is no answer under the question. */
+          liveErrorId={status === 'error' ? messages.at(-1)?.id : undefined}
           messages={messages}
           onRegenerate={() => {
             retry();
