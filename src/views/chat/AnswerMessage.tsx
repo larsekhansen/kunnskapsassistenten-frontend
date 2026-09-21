@@ -318,8 +318,15 @@ export function AnswerMessage({
             Nothing to copy from half an answer, and no thread link worth
             sharing yet. What the reader wants is the answer they stopped, so
             the row is the one way onward.
+
+            The same row on a turn that failed and has outlived its alert. The
+            alert carried «Prøv igjen» while it was up; once it is gone, a
+            restored failure would be the one turn in the thread with no way
+            on at all. `retry` finds the question in the conversation when the
+            session that asked it is gone (#76), so the button works in a
+            reloaded tab.
           */}
-          {aborted ? (
+          {aborted || failedQuietly ? (
             <Card.Block>
               <div className="ka-answer-actions">
                 <Button
@@ -334,7 +341,7 @@ export function AnswerMessage({
 
                 {/* A stopped answer is still an answer the reader can refer
                     back to, and it is in the thread with the same timestamp
-                    as any other. */}
+                    as any other. The same holds for one that failed. */}
                 <AnswerTime createdAt={message.createdAt} />
               </div>
             </Card.Block>

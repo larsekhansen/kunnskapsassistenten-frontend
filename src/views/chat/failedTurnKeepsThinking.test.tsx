@@ -1,4 +1,4 @@
-import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ChatClient } from '../../api';
 import { MockChatClient } from '../../api/mock/MockChatClient';
@@ -6,7 +6,7 @@ import { resetMockThreads } from '../../api/mock/sessionThreads';
 import { threads } from '../../api/mock/fixtures';
 import type { Message } from '../../model';
 import { MessageList } from './MessageList';
-import { FAILED_NOTE } from './text';
+import { FAILED_NOTE, REGENERATE } from './text';
 import { useChat } from './useChat';
 
 /**
@@ -159,5 +159,41 @@ describe('kortet på en feilet tur', () => {
 
     expect(screen.getByText(FAILED_NOTE)).toBeTruthy();
     expect(screen.getByText('Jeg søker i korpuset.')).toBeTruthy();
+  });
+
+  it('gir veien videre når varselet er borte, slik den stoppede turen har', () => {
+    /*
+     * Varselet bar «Prøv igjen» mens det sto. Uten knappen her ville en
+     * gjenopprettet feil vært den ene turen i tråden uten noen vei videre i
+     * det hele tatt. `retry` finner spørsmålet i samtalen når økta som stilte
+     * det er borte (#76), så den virker i en oppfrisket fane.
+     */
+    show(undefined);
+
+    expect(screen.getByRole('button', { name: REGENERATE })).toBeTruthy();
+  });
+
+  it('lar varselet beholde veien videre mens det står', () => {
+    // To «prøv igjen» om det samme, ett i varselet og ett i kortet, er ett
+    // for mye.
+    show('a1');
+
+    expect(screen.queryByRole('button', { name: REGENERATE })).toBeNull();
+  });
+
+  it('kaller onRegenerate når knappen trykkes', () => {
+    const kall: number[] = [];
+    render(
+      <MessageList
+        canScrollToBottom={false}
+        messages={[failed]}
+        onRegenerate={() => kall.push(1)}
+        onScrollToBottom={() => {}}
+        onSelectSource={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: REGENERATE }));
+    expect(kall).toHaveLength(1);
   });
 });
