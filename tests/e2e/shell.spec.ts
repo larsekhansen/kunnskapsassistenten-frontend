@@ -138,7 +138,7 @@ test.describe('skallet', () => {
      * én rød av 116 i anmeldelsen av #59, grønn alene tre ganger etterpå, ved
      * load average 9,4.
      */
-    const second = page.getByRole('link', { name: 'Hopp til skrivefeltet' });
+    const second = page.getByRole('link', { name: /^Hopp til skrivefeltet/ });
     await expect(second).toBeAttached();
 
     await page.keyboard.press('Tab');
@@ -234,7 +234,7 @@ test.describe('skallet', () => {
 
     // Ingen hopp-lenke til et felt som ikke er der, og steg to i
     // tabbrekkefølgen er en knapp som gjør noe.
-    await expect(page.getByRole('link', { name: 'Hopp til skrivefeltet' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /^Hopp til skrivefeltet/ })).toHaveCount(0);
     const steps = await walkWithTab(page);
     expect(steps[0]?.name).toBe('Hopp til hovedinnhold');
     expect(steps[1]?.name).toBe('Skjul tråder og filter');
@@ -323,7 +323,7 @@ test.describe('skallet', () => {
      * rød på rekkefølgen — målt i full suite 15.09, grønn alene rett etterpå.
      * Fjerde tilfelle av samme race i denne fila og i chat.spec.ts.
      */
-    await expect(page.getByRole('link', { name: 'Hopp til skrivefeltet' })).toBeAttached();
+    await expect(page.getByRole('link', { name: /^Hopp til skrivefeltet/ })).toBeAttached();
 
     const steps = await walkWithTab(page);
 
@@ -339,7 +339,12 @@ test.describe('skallet', () => {
     // does most often (reise 7 and 15, punkt 8 on the ranked list) — so it has
     // to be reachable before the navigation panel, not after it.
     expect(steps[0]?.name).toBe('Hopp til hovedinnhold');
-    expect(steps[1]?.name).toBe('Hopp til skrivefeltet');
+    // Navnet i klartekst her, og ikke som prefiks slik de tre oppslagene over
+    // er: denne testen handler nettopp om at hvert tabbsteg har et lesbart
+    // norsk navn, så det er navnet selv som er påstanden. Hurtigtasten står i
+    // lenketeksten fordi hintet ved feltet er på vei ut (H3 i
+    // design/hoydebudsjett-forslag-2026-09-21.md).
+    expect(steps[1]?.name).toBe('Hopp til skrivefeltet (Ctrl + /)');
     expect(steps[2]?.name).toBe('Skjul tråder og filter');
   });
 

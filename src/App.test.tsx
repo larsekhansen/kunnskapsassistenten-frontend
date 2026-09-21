@@ -69,7 +69,7 @@ describe('en adresse som ikke finnes', () => {
     // «Hopp til hovedinnhold» virker her, og er det 2.4.1 ber om. En andre
     // lenke til et felt sida ikke har ville vært en blindvei.
     expect(screen.getByRole('link', { name: 'Hopp til hovedinnhold' })).toBeDefined();
-    expect(screen.queryByRole('link', { name: 'Hopp til skrivefeltet' })).toBeNull();
+    expect(screen.queryByRole('link', { name: /^Hopp til skrivefeltet/ })).toBeNull();
   });
 
   it('har fortsatt sidens nivå 1', () => {
@@ -126,7 +126,7 @@ describe('en tråd som ikke finnes', () => {
     // et halvt sekund.
     expect(document.getElementById(COMPOSER_ID)).toBeNull();
     await waitFor(() =>
-      expect(screen.queryByRole('link', { name: 'Hopp til skrivefeltet' })).toBeNull(),
+      expect(screen.queryByRole('link', { name: /^Hopp til skrivefeltet/ })).toBeNull(),
     );
 
     // Den første lenka gjelder fortsatt: hovedinnholdet finnes, det er
@@ -229,9 +229,19 @@ describe('hopp-lenkene', () => {
     openAt('/');
 
     const links = screen.getAllByRole('link', { name: /^Hopp til/ });
+    /*
+     * Hurtigtasten står i lenketeksten, fordi det er der en som tabber seg
+     * hit vil lete etter den — og fordi hintet ved selve feltet er på vei ut
+     * (H3 i design/hoydebudsjett-forslag-2026-09-21.md kjøper 24 px
+     * leservindu ved å ta det ut av bunnteksten).
+     *
+     * `Ctrl` og ikke `Cmd` her: testmiljøet melder ikke Mac i `userAgent`.
+     * Hvilket ord som velges, er `shortcutModifier()` sitt, og den har sin
+     * egen test — dette er lenketeksten, ikke plattformvalget.
+     */
     expect(links.map((link) => link.textContent)).toEqual([
       'Hopp til hovedinnhold',
-      'Hopp til skrivefeltet',
+      'Hopp til skrivefeltet (Ctrl + /)',
     ]);
 
     // Målet må finnes, ellers er lenka en blindvei. Id-en kommer fra
@@ -244,7 +254,7 @@ describe('hopp-lenkene', () => {
   it('står også på en tråd som finnes, etter at klienten har svart', async () => {
     openAt('/threads/nkom-maaloppnaaelse');
 
-    expect(await screen.findByRole('link', { name: 'Hopp til skrivefeltet' })).toBeDefined();
+    expect(await screen.findByRole('link', { name: /^Hopp til skrivefeltet/ })).toBeDefined();
     expect(document.getElementById(COMPOSER_ID)).not.toBeNull();
   });
 });
