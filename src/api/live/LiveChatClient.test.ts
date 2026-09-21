@@ -331,3 +331,69 @@ describe('LiveChatClient og feilkoder', () => {
     expect(events.map((event) => event.type)).toEqual(['token', 'sources', 'done']);
   });
 });
+
+/**
+ * Hvilket korpus som svarte, rapportert av klienten.
+ *
+ * Klienten er det eneste som vet hva som gikk på tråden: nøkkelen løses én
+ * gang per spørsmål, og den som skriver turen ned skal ikke måtte lese
+ * butikka en gang til og risikere et annet svar (KA CC på #129).
+ */
+async function askForCorpus(
+  options: { tenant?: string; datasetConfigKey?: string },
+  response: () => Response,
+): Promise<StreamEvent[]> {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => response()),
+  );
+  const events: StreamEvent[] = [];
+  for await (const event of new LiveChatClient(options).ask({ query: 'Hva rapporterer Nkom?' })) {
+    events.push(event);
+  }
+  return events;
+}
+
+function endOf(events: StreamEvent[]): Extract<StreamEvent, { type: 'done' | 'error' }> {
+  const last = events.at(-1);
+  if (last?.type !== 'done' && last?.type !== 'error') {
+    throw new Error(`Strømmen endte på ${String(last?.type)}, ikke på done eller error.`);
+  }
+  return last;
+}
+
+describe('korpuset svaret ble hentet fra', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('står på done-ramma, lik nøkkelen kallet bar', async () => {
+    const events = await askForCorpus({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' }, () =>
+      finalFrame({}),
+    );
+
+    const end = endOf(events);
+    expect(end.type).toBe('done');
+    expect(end.corpusKey).toBe('kudos-pilot');
+  });
+
+  it('står på en feilramme også, for et stoppet svar blir liggende', async () => {
+    const events = await askForCorpus(
+      { tenant: 'demo', datasetConfigKey: 'norquad-docs' },
+      () => new Response(null, { status: 503 }),
+    );
+
+    const end = endOf(events);
+    expect(end.type).toBe('error');
+    expect(end.corpusKey).toBe('norquad-docs');
+  });
+
+  it('sier ingenting når kallet ikke sa noe: da valgte backend selv', async () => {
+    // Uten tenant utelater `datasetArguments` begge verdiene, og ingenting på
+    // denne sida vet hvilket datasett backend landet på. Undefined er «ikke
+    // kjent», ikke «standardkorpuset».
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const events = await askForCorpus({ datasetConfigKey: 'kudos-pilot' }, () => finalFrame({}));
+
+    expect(endOf(events).corpusKey).toBeUndefined();
+    vi.restoreAllMocks();
+  });
+});

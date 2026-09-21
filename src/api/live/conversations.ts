@@ -213,8 +213,18 @@ export function citationCountIn(text: string | null | undefined): number {
  * A message with no text is dropped too. A turn that failed leaves one
  * behind, and an empty bubble in the middle of a conversation reads as a
  * rendering fault rather than as what it is.
+ *
+ * `corpusKey` is the thread's, off its `corpus:` tag, and it is stamped on
+ * every answer in it. The store keeps no corpus per message and does not need
+ * to: a thread cannot be continued in another corpus — switching starts a new
+ * one — so every turn in it was asked of the same one. Stamping it here is
+ * what lets a restored answer say which corpus it came from instead of
+ * borrowing whatever the chooser stands on now (KA CC on #129).
  */
-export function messagesFromApi(messages: ApiMessage[] | null | undefined): Message[] {
+export function messagesFromApi(
+  messages: ApiMessage[] | null | undefined,
+  corpusKey?: string,
+): Message[] {
   return (messages ?? [])
     .filter((message) => message.role === 'user' || message.role === 'assistant')
     .filter((message) => (message.text ?? '').trim() !== '')
@@ -230,6 +240,11 @@ export function messagesFromApi(messages: ApiMessage[] | null | undefined): Mess
         // Only an answer cites. A question with brackets in it is a question
         // with brackets in it.
         ...(role === 'assistant' ? { citationCount: citationCountIn(message.text) } : {}),
+        // On the answer and not on the question, for the same reason: the
+        // corpus is where the answer was retrieved from, and a question was
+        // retrieved from nothing. Absent when the thread carries no tag,
+        // which is every thread from before there was a choice.
+        ...(role === 'assistant' && corpusKey ? { corpusKey } : {}),
         ...(sources ? { sources } : {}),
         status: 'complete' as const,
       };
@@ -241,7 +256,7 @@ export function threadDetailFrom(
   messages: ApiMessage[] | null | undefined,
 ): ThreadDetail {
   const thread = threadFromConversation(conversation);
-  const turns = messagesFromApi(messages);
+  const turns = messagesFromApi(messages, thread.corpusKey);
   return {
     ...thread,
     // The last turn is the best «last activity» available, and it is better

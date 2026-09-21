@@ -207,6 +207,15 @@ export class LiveChatClient implements ChatClient {
       timing.
     */
     const dataset = this.#dataset();
+    /*
+      The corpus this turn is asked of, as the call itself carries it — which
+      is why it is read off `dataset` and not off the store a second time.
+      Absent when the pair was not configured: `datasetArguments` then sends
+      neither value and the backend picks its own dataset, and nothing on this
+      side knows which one that was. Undefined is «not known», and every frame
+      below says so by leaving the field out.
+    */
+    const askedOf = dataset.dataset_config_key ? { corpusKey: dataset.dataset_config_key } : {};
     // The first turn of a thread makes the conversation; every later one
     // already has the id and goes straight to the tool call.
     const conversationId =
@@ -258,16 +267,21 @@ export class LiveChatClient implements ChatClient {
             // this can know, so the code stays `unknown` and the sentence
             // says the one thing that was observed.
             { code: 'unknown', message: 'Fikk ikke kontakt med tjenesten.' },
+        ...askedOf,
       };
       return;
     }
 
     if (!response.ok) {
-      yield { type: 'error', error: errorFromStatus(response.status) };
+      yield { type: 'error', error: errorFromStatus(response.status), ...askedOf };
       return;
     }
     if (!response.body) {
-      yield { type: 'error', error: { code: 'unknown', message: 'Tomt svar fra tjeneren.' } };
+      yield {
+        type: 'error',
+        error: { code: 'unknown', message: 'Tomt svar fra tjeneren.' },
+        ...askedOf,
+      };
       return;
     }
 
@@ -280,7 +294,7 @@ export class LiveChatClient implements ChatClient {
         const frames = done ? decoder.flush() : decoder.push(value ?? '');
 
         for (const frame of frames) {
-          yield* readFrame(frame.data, state, conversationId);
+          yield* readFrame(frame.data, state, conversationId, askedOf);
         }
 
         if (done) return;
@@ -291,6 +305,7 @@ export class LiveChatClient implements ChatClient {
         error: params.signal?.aborted
           ? { code: 'aborted' }
           : { code: 'unknown', message: 'Forbindelsen brøt sammen mens svaret kom.' },
+        ...askedOf,
       };
     } finally {
       await reader.cancel().catch(() => {});
@@ -362,6 +377,13 @@ function* readFrame(
   data: string,
   state: McpStreamState,
   fallbackConversationId?: string,
+  /**
+   * `{ corpusKey }` or `{}`, ready to spread — the corpus the call was made
+   * against, resolved once in `ask`. A spreadable object rather than a
+   * `string | undefined`, so «not known» leaves the field out of the frame
+   * instead of putting `undefined` in it.
+   */
+  askedOf: { corpusKey?: string } = {},
 ): Generator<StreamEvent> {
   let message: {
     method?: string;
@@ -395,6 +417,7 @@ function* readFrame(
         code: chatErrorCode(message.error.data?.code),
         message: message.error.message ?? 'Ukjent feil fra tjeneren.',
       },
+      ...askedOf,
     };
     return;
   }
@@ -421,6 +444,7 @@ function* readFrame(
         code: chatErrorCode(result._meta?.error_code),
         message: text ?? 'Spørringen feilet.',
       },
+      ...askedOf,
     };
     return;
   }
@@ -448,7 +472,7 @@ function* readFrame(
    * `sources` frame with no documents is what the panel needs to say so.
    */
   if (documents.length === 0 && finalText === '') {
-    yield { type: 'error', error: { code: 'no-hits' } };
+    yield { type: 'error', error: { code: 'no-hits' }, ...askedOf };
     return;
   }
 
@@ -480,5 +504,6 @@ function* readFrame(
     ...(result._meta?.status === 'needs-clarification'
       ? { outcome: 'needs-clarification' as const }
       : {}),
+    ...askedOf,
   };
 }

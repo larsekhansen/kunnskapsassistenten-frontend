@@ -129,6 +129,16 @@ export type AnswerSources = {
    * means «not known», and the panel then says what it said before.
    */
   citationCount?: number;
+  /**
+   * Which corpus this answer was retrieved from. Same field and the same
+   * reason as `Message.corpusKey`: the panel and the disclaimer name the
+   * corpus the ANSWER came from, not the one the chooser stands on now.
+   *
+   * Optional while the chat view still has to start sending it, and
+   * undefined also for a turn where nothing said which corpus answered. It
+   * means «not known» either way, and the panel decides what to say then.
+   */
+  corpusKey?: string;
 };
 
 /**

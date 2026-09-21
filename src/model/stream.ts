@@ -111,6 +111,20 @@ export type StreamEvent =
        * say the same thing would leave a reader wondering which one wins.
        */
       outcome?: 'complete' | 'needs-clarification';
+      /**
+       * Which corpus answered, as the client asked it — `dataset_config_key`.
+       *
+       * Reported by the client rather than read off the store by whoever
+       * writes the turn down, because the client is what put the key on the
+       * wire: the live client resolves it once per question, and the mock
+       * reads it to pick its fixtures after the thinking steps have already
+       * gone out. Two reads of a store the reader can change are two answers
+       * to «which corpus was this turn».
+       *
+       * Optional, and undefined means «not known»: live without a tenant
+       * leaves the key out of the call and the backend picks its own.
+       */
+      corpusKey?: string;
     }
   | {
       type: 'error';
@@ -126,4 +140,12 @@ export type StreamEvent =
        * than the time its placeholder was made.
        */
       createdAt?: string;
+      /**
+       * Which corpus the turn was asked of. Same field and same reason as on
+       * `done`, and it is here for the same reason `createdAt` is: two of
+       * these codes are finished turns that get written down — a stopped
+       * answer and `no-hits` — and both stay on screen as turns a reader can
+       * ask «from which corpus» about.
+       */
+      corpusKey?: string;
     };

@@ -1,12 +1,11 @@
 import { Heading } from '@digdir/designsystemet-react';
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { activeCorpusKey, corpusOption, subscribeToCorpus } from '../../api';
+import { activeCorpusKey, corpusDisplayName, corpusOption, subscribeToCorpus } from '../../api';
 import { EmptyState, findHits, stepHit, type SearchHit } from '../../components';
 import { ViewHead } from '../../layout/ViewHead';
 import { excerptDomId, type AnswerSources, type Excerpt, type SourceDocument } from '../../model';
 import { AnswerSwitcher } from './AnswerSwitcher';
 import { ExcerptSearch } from './ExcerptSearch';
-import { corpusDisplayName } from '../filters/corpusText';
 import { KudosDisclaimer } from './KudosDisclaimer';
 import { isOwnDocument } from './origin';
 import { SourceDocumentCard } from './SourceDocumentCard';
@@ -397,9 +396,9 @@ export function SourcesView({
    * `useSyncExternalStore` is the same subscription `useCorpus` uses, minus
    * the half this view has no business with.
    *
-   * `corpusDisplayName` is the filter panel's function (#2's folder, #110)
-   * and is imported rather than copied: two ways of shortening one label, or
-   * two spellings of the fallback, would drift apart the first time somebody
+   * `corpusDisplayName` is shared, in src/api: the filter panel and this one
+   * name the same corpus, and two ways of shortening one label, or two
+   * spellings of the fallback, would drift apart the first time somebody
    * changed one of them.
    */
   const corpusKey = useSyncExternalStore(subscribeToCorpus, activeCorpusKey, activeCorpusKey);
