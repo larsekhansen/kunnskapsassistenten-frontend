@@ -24,7 +24,7 @@ import { GENERAL_KICKSTARTERS, KICKSTARTERS } from './text';
  * den leser en modul-lagring som er låst ved oppstart fra miljøet, så begge
  * tilstandene finnes ikke i én kjøring uten dette.
  */
-const corpus = vi.hoisted(() => ({ active: 'kudos-pilot' as string | undefined }));
+const corpus = vi.hoisted(() => ({ active: 'mock' as string | undefined }));
 
 vi.mock('../../layout/useCorpus', () => ({
   useCorpus: () => ({
@@ -69,8 +69,10 @@ function Shell({ children }: { children: ReactNode }) {
 const shown = () => screen.getAllByRole('button').map((button) => button.textContent?.trim() ?? '');
 
 describe('ChatView og forslagene per korpus', () => {
-  it('viser Kudos-spørsmålene over Kudos-pilot', () => {
-    corpus.active = 'kudos-pilot';
+  it('viser Kudos-spørsmålene over mock-korpuset', () => {
+    // Mock er de 938 Kudos-dokumentene spørsmålene navngir. Kudos-pilot er
+    // det ikke, tross navnet — se kickstartersPerCorpus.test.ts.
+    corpus.active = 'mock';
     render(
       <Shell>
         <ChatView client={idleClient} />
@@ -99,7 +101,7 @@ describe('ChatView og forslagene per korpus', () => {
      * Cachet det lista ved montering, ville en leser som byttet korpus sittet
      * igjen med forslagene fra det forrige til hen lastet sida på nytt.
      */
-    corpus.active = 'kudos-pilot';
+    corpus.active = 'mock';
     const { rerender } = render(
       <Shell>
         <ChatView client={idleClient} />

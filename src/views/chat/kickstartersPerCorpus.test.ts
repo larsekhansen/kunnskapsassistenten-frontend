@@ -11,13 +11,20 @@ import { GENERAL_KICKSTARTERS, KICKSTARTERS, kickstartersFor } from './text';
  * kan svare på.
  */
 describe('kickstartersFor', () => {
-  it('gir Kudos-spørsmålene til kudos-pilot', () => {
-    expect(kickstartersFor('kudos-pilot')).toEqual(KICKSTARTERS);
+  it('gir Kudos-spørsmålene til mock-korpuset', () => {
+    // Mock svarer fra de 938 Kudos-dokumentene spørsmålene navngir.
+    expect(kickstartersFor('mock')).toEqual(KICKSTARTERS);
   });
 
-  it('gir Kudos-spørsmålene til mock-korpuset', () => {
-    // Mock svarer fra 938 Kudos-dokumenter, så det er de samme tre.
-    expect(kickstartersFor('mock')).toEqual(KICKSTARTERS);
+  it('gir de generelle spørsmålene til kudos-pilot, tross navnet', () => {
+    /*
+     * Målt live av KA CC på #111, og grunnen til at denne testen finnes:
+     * piloten heter Kudos og mock ER Kudos, så de så ut som ett tilfelle. Men
+     * piloten er fem årsrapporter fra 2025, fra andre virksomheter enn dem
+     * spørsmålene navngir. «DSS sine årsrapporter» kom tilbake som «finner
+     * ikke DSS» uten kilder, mens de generelle tre fikk ekte svar med kilder.
+     */
+    expect(kickstartersFor('kudos-pilot')).toEqual(GENERAL_KICKSTARTERS);
   });
 
   it('holder seg til mock-korpusets faktiske nøkkel', () => {
