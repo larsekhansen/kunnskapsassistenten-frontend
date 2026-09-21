@@ -89,7 +89,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
     send,
     cancel,
     retry,
-  } = useChat(chatClient, thread?.messages ?? [], selection);
+  } = useChat(chatClient, thread?.messages ?? [], selection, corpusKey);
 
   // What the alert says, per case. Undefined while the turn is fine, which is
   // what keeps the region mounted and empty.

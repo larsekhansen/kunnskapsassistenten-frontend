@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useParams } from 'react-router';
-import { activeCorpusKey, createChatClient } from '../../api';
+import { activeCorpusKey, createChatClient, subscribeToCorpus } from '../../api';
 import { NotFoundState } from '../../components';
 import { threadFromQuestion, type Thread, type ThreadDetail } from '../../model';
 import { ChatView } from '../../views/chat';
@@ -70,6 +70,39 @@ function ChatSlot({ threadId }: { threadId?: string }) {
    */
   const [started, setStarted] = useState<Thread | undefined>(undefined);
   const startedRef = useRef<Thread | undefined>(undefined);
+
+  /*
+   * Switching corpus lets go of the thread this page started.
+   *
+   * A thread belongs to the corpus it was started in, and the selector says
+   * so by navigating to `/`. That navigation is a no-op here, and the reason
+   * is three paragraphs down: the address was written with
+   * `history.replaceState`, which the ROUTER never sees, so React Router
+   * still believes the location is `/` and navigating there changes nothing.
+   * Nothing remounts, this ref keeps the old thread, and the next question is
+   * filed under it — one thread with answers from two corpora, which is what
+   * the thread list then draws one corpus for (KA CC on #131).
+   *
+   * So the thread is released here instead, where the change is actually
+   * observable. `useChat` empties the conversation on the same change; this
+   * is the other half, and without it the empty screen would still mint its
+   * next question into the old thread.
+   *
+   * The state goes while rendering, the ref in the effect beside it: a ref
+   * written during render is a change React cannot see. Nothing reads this
+   * one before then — `startThread` runs from a question, which is a click or
+   * a keystroke, long after effects.
+   */
+  const corpusKey = useSyncExternalStore(subscribeToCorpus, activeCorpusKey);
+  const [corpusInUse, setCorpusInUse] = useState(corpusKey);
+  if (corpusKey !== corpusInUse) {
+    setCorpusInUse(corpusKey);
+    setStarted(undefined);
+  }
+
+  useEffect(() => {
+    startedRef.current = undefined;
+  }, [corpusKey]);
 
   useEffect(() => {
     if (!threadId) return;

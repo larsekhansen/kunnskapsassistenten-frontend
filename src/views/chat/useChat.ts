@@ -162,6 +162,7 @@ export function useChat(
   client: ChatClient,
   initialMessages: Message[] = [],
   filters: FilterSelection = emptyFilterSelection,
+  corpusKey?: string,
 ): UseChat {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
 
@@ -245,6 +246,51 @@ export function useChat(
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  /*
+   * Switching corpus lets go of the conversation.
+   *
+   * A thread belongs to the corpus it was started in — its answers cite
+   * documents that only exist there — so continuing it against another one
+   * would produce a conversation whose citations point into two different
+   * document sets, with nothing on screen saying which is which. The thread
+   * list would draw one corpus for a thread that has two (KA CC on #131).
+   *
+   * Everything goes: the messages, the backend conversation the next question
+   * would have continued, and what each answer was asked under. The draft
+   * does not, because it is not part of the conversation — it is a question
+   * the reader is still writing, and it is as good a question of the new
+   * corpus as of the old (see `ChatView`, which holds it).
+   *
+   * What the READER sees is emptied while rendering, the same way the thread
+   * below is adopted: an effect would draw the old conversation once under
+   * the new corpus first.
+   *
+   * What the reader does not see — the backend conversation, the question a
+   * retry would repeat, the turn in flight — is let go in the effect under
+   * it. Those are refs, and a ref read or written during render is a value
+   * React cannot see changing. It costs nothing here: the only thing that
+   * reads them is a question, and a question comes from a click or a
+   * keystroke, long after effects have run.
+   */
+  const [corpusInUse, setCorpusInUse] = useState(corpusKey);
+  if (corpusKey !== corpusInUse) {
+    setCorpusInUse(corpusKey);
+    setMessages([]);
+    setAppliedFilters({});
+    setAttachmentsByMessage({});
+    setNoHitsAnswers(new Set());
+    setAnnouncement('');
+    setError(null);
+    setStatus('idle');
+  }
+
+  useEffect(() => {
+    abortRef.current?.abort();
+    conversationRef.current = undefined;
+    lastQuestionRef.current = null;
+    lastAttachmentsRef.current = undefined;
+  }, [corpusKey]);
 
   // Abort a turn still in flight when the view goes away, so the stream does
   // not keep setting state on an unmounted component.
