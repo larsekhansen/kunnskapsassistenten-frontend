@@ -147,6 +147,31 @@ describe('vedlegg i skrivefeltet', { timeout: 20000 }, () => {
     expect(asked[0].attachments).toHaveLength(1);
   });
 
+  it('tar vente-beskjeden bort når det ikke er noe å vente på lenger', async () => {
+    /*
+     * Et avslag overlever grunnen sin hvis ingen tar det bort: det sto i
+     * live-området seks sekunder etter at opplastingen var ferdig, og ba
+     * leseren vente på en fil som var klar (KA CC på #125, runde 2).
+     *
+     * Og ingenting sendes av seg selv når ventinga er over — leseren trykker
+     * igjen. Et spørsmål som drar av gårde på egen hånd er et spørsmål ingen
+     * valgte å sende akkurat da.
+     */
+    show(answer);
+    fireEvent.change(field(), { target: { value: 'Hva står i rapporten?' } });
+    pick(file('rapport.pdf'));
+
+    fireEvent.keyDown(field(), { key: 'Enter' });
+    expect(screen.getByText(WAIT_FOR_UPLOADS)).toBeTruthy();
+
+    await waitForReady();
+
+    await waitFor(() => expect(screen.queryByText(WAIT_FOR_UPLOADS)).toBeNull());
+    // Og spørsmålet står fortsatt uskrevet i feltet: det gikk ikke av seg selv.
+    expect(asked).toHaveLength(0);
+    expect((field() as HTMLTextAreaElement).value).toBe('Hva står i rapporten?');
+  });
+
   it('sender ikke med knappen heller mens en fil er på vei', async () => {
     show(answer);
     fireEvent.change(field(), { target: { value: 'Hva står i rapporten?' } });

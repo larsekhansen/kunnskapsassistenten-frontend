@@ -144,9 +144,12 @@ export function Composer({
    * silent drop the rule exists to prevent, arriving through the door the
    * rule was not on.
    *
-   * It refuses rather than queues. Waiting would send a question the reader
-   * has stopped watching, seconds later, with no way to call it back — and
-   * the wait is a second or two, with the bar in plain sight.
+   * It refuses rather than queues, and **nothing is sent when the upload
+   * finishes**: the reader presses again. Queueing would send a question
+   * seconds after the reader stopped watching, with no way to call it back,
+   * and a question that leaves on its own is a question nobody chose to send
+   * at that moment. The wait is a second or two with the bar in plain sight,
+   * and the message goes as soon as the waiting does (see below).
    */
   function trySubmit(send: () => void) {
     if (busy) return;
@@ -158,6 +161,24 @@ export function Composer({
     setRefusal('');
     send();
   }
+
+  /*
+   * The wait message goes when there is nothing left to wait for.
+   *
+   * A refusal outlives its reason if nobody takes it away: it stood in the
+   * live region six seconds after the upload had finished, telling a reader
+   * to wait for a file that was ready (KA CC on #125, runde 2).
+   *
+   * Worked out while rendering rather than cleared in an effect. The message
+   * is not a fact of its own — it is «is anything still uploading» read
+   * aloud — so it follows that state in the same paint, and there is no
+   * render where the page says wait and the bar is gone.
+   *
+   * Only that one. The `unavailable` sentence is not waiting for anything:
+   * it is true for as long as the service has no endpoint, so it stays until
+   * something the reader does replaces it.
+   */
+  const shownRefusal = refusal === WAIT_FOR_UPLOADS && !attachments.busy ? '' : refusal;
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== 'Enter' || event.shiftKey) return;
@@ -340,7 +361,7 @@ export function Composer({
         </p>
       ) : null}
 
-      {refusal ? <output className="ka-composer__refusal">{refusal}</output> : null}
+      {shownRefusal ? <output className="ka-composer__refusal">{shownRefusal}</output> : null}
 
       {showFollowUps ? (
         <ul className="ka-follow-ups">
