@@ -83,6 +83,7 @@ slik de ble anmeldt.
 | Ser at tenketiden er målt og ikke summert                  | `chat.spec.ts`             |
 | Går tilbake til svaret fra et utdrag, med Escape og knapp  | `sources.spec.ts`          |
 | En lang filterchip holder seg i feltet, 1440 og i skuffa   | `filter-chip.spec.ts`      |
+| Når alle kontrollene i panelraden med peker                | `panel-head.spec.ts`       |
 
 ## Merget, men ikke dekket
 
