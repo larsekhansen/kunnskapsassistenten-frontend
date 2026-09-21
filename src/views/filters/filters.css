@@ -100,6 +100,45 @@
  * would set the width of every Suggestion in the app, including the ones
  * other owners build.
  */
+/*
+ * A chip is never wider than the field it sits in.
+ *
+ * Designsystemet draws the selected values as chips with `white-space:
+ * nowrap`, a fixed height and `text-overflow: ellipsis` — a one-line pill —
+ * and puts no ceiling on the width. The chip row wraps BETWEEN chips (#91),
+ * but one chip that is wider than the panel on its own does not wrap at all:
+ * «Statsforvalteren i Østfold, Buskerud, Oslo og Akershus» measured 456 px in
+ * a 327 px field at 1440, so it ran 92 px past the panel edge with the remove
+ * cross off screen (Lars, 21.09, skjermbilde 12:22).
+ *
+ * The ellipsis is not the answer here, and that is the one real decision in
+ * this rule: an organisation's name IS the information — «Statsforvalteren i
+ * Østfold, Bu…» does not say which of the twelve statsforvaltere is filtered
+ * on — and cutting it is what WCAG 1.4.4 and 1.4.10 exist to prevent. So the
+ * text wraps inside the chip instead.
+ *
+ * `overflow-wrap: anywhere` and not `break-word`: a name can hold one long
+ * unbroken word, and `anywhere` is the value that also lets the chip's
+ * min-content width shrink, which is what keeps the ceiling below from being
+ * fought by the content.
+ *
+ * `height: auto` because Designsystemet's is fixed; the minimum keeps a
+ * one-line chip exactly as tall as it is today. The remove cross is absolute
+ * at 50% of the chip, so it stays centred over two lines, and the padding
+ * Designsystemet reserves for it holds.
+ *
+ * Scoped to this view for the same reason the list width above is: this is
+ * our panel's problem, not every Suggestion in the app. The drawer under
+ * 1139 px draws the same view, so it is covered too (measured at 1100).
+ */
+.filters-view ds-suggestion > data {
+  max-inline-size: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  height: auto;
+  min-block-size: var(--dsc-suggestion-chip-height);
+}
+
 .filters-view .ds-suggestion > u-datalist {
   width: min(26rem, calc(100vw - var(--ds-size-8)));
 }
