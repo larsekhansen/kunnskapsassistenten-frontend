@@ -179,9 +179,25 @@ export const MOCK_WIKIPEDIA_CORPUS: CorpusOption = {
   description: 'Åtte artikler fra norsk Wikipedia, satt sammen for å vise korpusbytte.',
 };
 
+/*
+ * Read with `?.`, because this module is evaluated outside Vite as well.
+ *
+ * `import.meta.env` is Vite's, and it is undefined in plain Node — which is
+ * where Playwright loads spec files. `tests/e2e/chat.spec.ts` imports
+ * `src/api/mock` for one query string, and since the mock client began
+ * reading the active corpus that import reaches this module. At module scope
+ * the read runs immediately, so the whole suite died on `Cannot read
+ * properties of undefined` before a single test ran.
+ *
+ * The fallback is the truthful one for that context: no environment means no
+ * configuration, which is mock mode — the same answer the app gives a
+ * developer who has set nothing.
+ */
+const env: Partial<ImportMetaEnv> = import.meta.env ?? {};
+
 const { options: corpusOptions, fallback } =
-  (import.meta.env.VITE_API_MODE ?? 'mock') === 'live'
-    ? resolveCorpus(import.meta.env.VITE_KA_DATASETS, import.meta.env.VITE_KA_DATASET_CONFIG_KEY)
+  (env.VITE_API_MODE ?? 'mock') === 'live'
+    ? resolveCorpus(env.VITE_KA_DATASETS, env.VITE_KA_DATASET_CONFIG_KEY)
     : { options: [MOCK_CORPUS, MOCK_WIKIPEDIA_CORPUS], fallback: MOCK_CORPUS.key };
 
 export { corpusOptions };
