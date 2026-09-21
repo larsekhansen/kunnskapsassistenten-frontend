@@ -1,4 +1,4 @@
-import type { UserDocument } from '../model';
+import type { UploadErrorCode, UserDocument } from '../model';
 
 /** Reports how far an upload has come, 0–100. */
 export type UploadProgress = (percent: number) => void;
@@ -19,6 +19,20 @@ export type UploadProgress = (percent: number) => void;
  * backend: mangler, se API-bestilling A3.
  */
 export interface UploadClient {
+  /**
+   * Why uploading cannot work here at all, known BEFORE anyone picks a file.
+   *
+   * Undefined means it works. A code and not a boolean, and that is the whole
+   * point of the field: a drop zone that is switched off has to say why, and
+   * the view already maps {@link UploadErrorCode} to a Norwegian sentence for
+   * the four things that can go wrong with a file. A boolean would force it
+   * to invent a fifth sentence for a state that already has a code.
+   *
+   * Asked for by #2 on 21.09: the zone in live mode should say the honest
+   * thing up front rather than accept a file and refuse it a moment later.
+   */
+  readonly unavailable?: UploadErrorCode;
+
   /**
    * Take one file. Reports progress while it runs and resolves with the
    * finished document, ready or failed.

@@ -12,13 +12,14 @@ import { useUserDocuments } from './useUserDocuments';
  * ulike views trenger, er de riktige.
  */
 function Probe() {
-  const { documents, ready, uploading, upload } = useUserDocuments();
+  const { documents, ready, uploading, unavailable, upload } = useUserDocuments();
 
   return (
     <>
       <output data-testid="alle">{documents.length}</output>
       <output data-testid="klare">{ready.length}</output>
       <output data-testid="laster">{String(uploading)}</output>
+      <output data-testid="utilgjengelig">{unavailable ?? 'nei'}</output>
       <button
         type="button"
         onClick={() => {
@@ -64,6 +65,23 @@ describe('useUserDocuments', () => {
 
     expect(read('laster')).toBe('false');
     expect(read('klare')).toBe('1');
+  });
+
+  it('sier at opplasting går i mock', () => {
+    render(<Probe />);
+    expect(read('utilgjengelig')).toBe('nei');
+  });
+
+  it('sier at den ikke går i live, før noen har sluppet en fil', () => {
+    // Sona skal si det ærlige på forhånd i stedet for å ta imot en fil og
+    // levere den tilbake et øyeblikk etter. Bedt om av #2, 21.09.
+    vi.stubEnv('VITE_API_MODE', 'live');
+    resetUploadClientForTest();
+
+    render(<Probe />);
+
+    expect(read('utilgjengelig')).toBe('unavailable');
+    vi.unstubAllEnvs();
   });
 
   it('skiller det som er klart fra det som bare står i lista', async () => {

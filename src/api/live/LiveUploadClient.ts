@@ -1,4 +1,4 @@
-import { userDocumentType, type UserDocument } from '../../model';
+import { userDocumentType, type UploadErrorCode, type UserDocument } from '../../model';
 import type { UploadClient, UploadProgress } from '../uploadClient';
 
 /**
@@ -23,6 +23,13 @@ import type { UploadClient, UploadProgress } from '../uploadClient';
  * ever stored anywhere, so there is nothing to list and nothing to take away.
  */
 export class LiveUploadClient implements UploadClient {
+  /**
+   * Known before anyone picks a file: there is no endpoint, and there will
+   * not be one until A3. The drop zone reads this and says so up front
+   * instead of taking a file and handing it back.
+   */
+  readonly unavailable: UploadErrorCode = 'unavailable';
+
   async upload(file: File, _onProgress?: UploadProgress): Promise<UserDocument> {
     const type = userDocumentType(file.name);
 

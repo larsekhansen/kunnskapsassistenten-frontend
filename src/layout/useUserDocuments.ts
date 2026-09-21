@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import {
+  createUploadClient,
   loadUserDocuments,
   removeUserDocument,
   subscribeToUserDocuments,
   uploadUserDocument,
   userDocuments,
 } from '../api';
-import type { UserDocument } from '../model';
+import type { UploadErrorCode, UserDocument } from '../model';
 
 export type UserDocuments = {
   /** Everything the reader has uploaded, newest last. */
@@ -15,6 +16,16 @@ export type UserDocuments = {
   ready: UserDocument[];
   /** True while at least one is still on its way. */
   uploading: boolean;
+  /**
+   * Why uploading cannot work here at all, known before anyone picks a file.
+   * Undefined means it works.
+   *
+   * The drop zone reads this to say the honest thing up front in live mode,
+   * rather than taking a file and refusing it a moment later. A code and not
+   * a boolean, so the same Norwegian sentences that cover a refused file
+   * cover a switched-off zone. Asked for by #2, 21.09.
+   */
+  unavailable?: UploadErrorCode;
   /** Take a file. Resolves with the finished document, ready or failed. */
   upload: (file: File, signal?: AbortSignal) => Promise<UserDocument>;
   remove: (id: string) => Promise<void>;
@@ -50,14 +61,19 @@ export function useUserDocuments(): UserDocuments {
   );
   const remove = useCallback((id: string) => removeUserDocument(id), []);
 
+  // Read from the client rather than held as state: it is a property of the
+  // mode the app was built in and cannot change while the page is open.
+  const unavailable = createUploadClient().unavailable;
+
   return useMemo(
     () => ({
       documents,
       ready: documents.filter((document) => document.status === 'ready'),
       uploading: documents.some((document) => document.status === 'uploading'),
+      ...(unavailable ? { unavailable } : {}),
       upload,
       remove,
     }),
-    [documents, upload, remove],
+    [documents, unavailable, upload, remove],
   );
 }

@@ -79,6 +79,12 @@ function sleep(ms: number): Promise<void> {
  * as failed — can be built and seen before A3 exists.
  */
 export class MockUploadClient implements UploadClient {
+  /**
+   * Undefined, because uploading works here. Declared rather than left off so
+   * the two clients are visibly answering the same question.
+   */
+  readonly unavailable = undefined;
+
   async upload(
     file: File,
     onProgress?: UploadProgress,

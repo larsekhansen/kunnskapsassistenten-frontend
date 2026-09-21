@@ -202,6 +202,28 @@ describe('det som lagres', () => {
   });
 });
 
+describe('om opplasting er mulig i det hele tatt', () => {
+  it('sier ingenting i mock, der det virker', () => {
+    // Undefined betyr at det går. Erklært og ikke utelatt, så de to klientene
+    // synlig svarer på det samme spørsmålet.
+    expect(new MockUploadClient().unavailable).toBeUndefined();
+  });
+
+  it('sier «unavailable» i live, før noen har valgt en fil', () => {
+    // Sona skal si det ærlige paa forhaand i stedet for aa ta imot en fil og
+    // levere den tilbake et oeyeblikk etter. Bedt om av #2, 21.09.
+    expect(new LiveUploadClient().unavailable).toBe('unavailable');
+  });
+
+  it('bruker samme kodeord som en avvist fil, ikke et eget', async () => {
+    // En kode og ikke en boolean: viewet har alt en norsk setning per
+    // UploadErrorCode, og en boolean ville tvunget fram en femte setning for
+    // en tilstand som alt har en kode.
+    const client = new LiveUploadClient();
+    expect(client.unavailable).toBe((await client.upload(fileOf('Rapport.pdf'))).errorCode);
+  });
+});
+
 describe('live-klienten, som ikke har noe endepunkt', () => {
   it('avviser med «unavailable» uten å kalle noe', async () => {
     const fetchMock = vi.fn();
