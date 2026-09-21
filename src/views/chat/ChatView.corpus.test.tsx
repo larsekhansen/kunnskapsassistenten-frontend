@@ -9,6 +9,8 @@ import { FilterContext } from '../../layout/filterContext';
 import { MainScrollContext } from '../../layout/scrollContext';
 import { ThreadContext } from '../../layout/threadContext';
 import { emptyFilterSelection, threadFromQuestion } from '../../model';
+import { corpusDisplayNameFor } from '../../api';
+import type { Message, ThreadDetail } from '../../model';
 import { ChatView } from './ChatView';
 import { GENERAL_KICKSTARTERS, KICKSTARTERS } from './text';
 
@@ -118,5 +120,93 @@ describe('ChatView og forslagene per korpus', () => {
 
     expect(shown()).toContain(GENERAL_KICKSTARTERS[0]);
     expect(shown()).not.toContain(KICKSTARTERS[0]);
+  });
+});
+
+/**
+ * Sammenligningen i `filterSummary`: svarets korpus mot det valgte.
+ *
+ * Den hadde ingen test (KA CC bør 2 på #138), og det er den ene linja hele
+ * saken hviler på — leses navnet fra valget i stedet for fra svaret, er
+ * feilen fra #129 tilbake uten at noe annet endrer seg.
+ */
+describe('ChatView og korpuset på linja over svaret', () => {
+  const answered = (corpusKeyOnAnswer?: string): Message[] => [
+    {
+      id: 'u1',
+      role: 'user',
+      content: 'Hva står i årsrapporten?',
+      createdAt: '2026-09-20T09:00:00.000Z',
+      citations: [],
+      status: 'complete',
+    },
+    {
+      id: 'a1',
+      role: 'assistant',
+      content: 'Svaret.',
+      createdAt: '2026-09-20T09:00:05.000Z',
+      citations: [],
+      ...(corpusKeyOnAnswer === undefined ? {} : { corpusKey: corpusKeyOnAnswer }),
+      status: 'complete',
+    },
+  ];
+
+  const thread = (messages: Message[]): ThreadDetail => ({
+    id: 't1',
+    title: 'En tråd',
+    createdAt: '2026-09-20T09:00:00.000Z',
+    updatedAt: '2026-09-20T09:00:05.000Z',
+    messages,
+  });
+
+  it('navngir korpuset når svaret kom fra et annet enn det valgte', () => {
+    corpus.active = 'norquad-mock';
+    render(
+      <Shell>
+        <ChatView client={idleClient} thread={thread(answered('mock'))} />
+      </Shell>,
+    );
+
+    expect(screen.getByText(`Hentet fra ${corpusDisplayNameFor('mock')}`)).toBeTruthy();
+  });
+
+  it('tier når svaret kom fra det korpuset som er valgt', () => {
+    corpus.active = 'mock';
+    render(
+      <Shell>
+        <ChatView client={idleClient} thread={thread(answered('mock'))} />
+      </Shell>,
+    );
+
+    expect(screen.queryByText(/Hentet fra/u)).toBeNull();
+  });
+
+  it('tier når nøkkelen ikke er et korpus denne installasjonen kjenner', () => {
+    /*
+     * `corpusDisplayNameFor` svarer «standardkorpuset» for en nøkkel den ikke
+     * kjenner, og det er en setning om en standard heller enn om dette
+     * svaret. En live-backend som valgte datasettet selv sender nettopp en
+     * slik nøkkel (KA CC bør 1 på #138).
+     */
+    corpus.active = 'mock';
+    render(
+      <Shell>
+        <ChatView client={idleClient} thread={thread(answered('et-korpus-ingen-kjenner'))} />
+      </Shell>,
+    );
+
+    expect(screen.queryByText(/standardkorpuset/u)).toBeNull();
+    expect(screen.queryByText(/Hentet fra/u)).toBeNull();
+  });
+
+  it('tier når svaret ikke sier hvilket korpus det kom fra', () => {
+    corpus.active = 'mock';
+    render(
+      <Shell>
+        <ChatView client={idleClient} thread={thread(answered(undefined))} />
+      </Shell>,
+    );
+
+    expect(screen.queryByText(/Hentet fra/u)).toBeNull();
   });
 });

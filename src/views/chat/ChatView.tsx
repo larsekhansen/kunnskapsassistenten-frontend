@@ -1,6 +1,6 @@
 import { Heading } from '@digdir/designsystemet-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createChatClient, type ChatClient } from '../../api';
+import { corpusDisplayNameFor, corpusOption, createChatClient, type ChatClient } from '../../api';
 import { ErrorState } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useCitation } from '../../layout/useCitation';
@@ -8,11 +8,11 @@ import { useCorpus } from '../../layout/useCorpus';
 import { useFilterSelection } from '../../layout/useFilterSelection';
 import { useMainScroll } from '../../layout/useMainScroll';
 import { useThread } from '../../layout/useThread';
-import { isEmptySelection, type ThreadDetail } from '../../model';
+import { emptyFilterSelection, type ThreadDetail } from '../../model';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { chatErrorText } from './errorText';
-import { filterSummaryText } from './filterSummary';
+import { answerScopeText } from './filterSummary';
 import { CLARIFICATION_PLACEHOLDER, kickstartersFor } from './text';
 import { threadHeading } from './threadHeading';
 import { useAtBottom } from './useAtBottom';
@@ -44,8 +44,8 @@ export type ChatViewProps = {
  * view reported on every render, which re-rendered the shell, which ran the
  * view again. The suite hung rather than failed.
  */
-function sourcesSignature(documents: number, status: string): string {
-  return `${status}:${documents}`;
+function sourcesSignature(documents: number, status: string, corpusKey?: string): string {
+  return `${status}:${documents}:${corpusKey ?? ''}`;
 }
 
 let fallbackClient: ChatClient | undefined;
@@ -95,12 +95,41 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   // what keeps the region mounted and empty.
   const errorText = error ? chatErrorText(error) : undefined;
 
+  /**
+   * «Avgrenset til …» over one answer: which corpus, and what was narrowed.
+   *
+   * The corpus is named only when the answer came from a different one than
+   * the chooser stands on now — which is what happens when a thread is opened
+   * from the list while the reader is standing somewhere else. Naming it
+   * always would put a word that never varies over every answer in a
+   * deployment with one corpus.
+   *
+   * From the ANSWER's key, never from the choice: a name read from the
+   * chooser is the bug this was written to fix.
+   */
   const filterSummary = useCallback(
     (messageId: string) => {
-      const applied = appliedFilters[messageId];
-      return applied && !isEmptySelection(applied) ? filterSummaryText(applied) : undefined;
+      const applied = appliedFilters[messageId] ?? emptyFilterSelection;
+      const answer = messages.find((message) => message.id === messageId);
+      /*
+       * Named only when the answer came from a corpus this deployment knows
+       * AND it is not the one the chooser stands on.
+       *
+       * `corpusOption` is the first half and it is not ceremony:
+       * `corpusDisplayNameFor` answers «standardkorpuset» for a key it does
+       * not know, which is a sentence about a default rather than about this
+       * answer — and a live backend that picked the dataset itself sends a
+       * key nobody here has a name for (KA CC bør 1 på #138, same check as
+       * #139). No name, no line.
+       */
+      const from = answer?.corpusKey;
+      const elsewhere =
+        from !== undefined && from !== corpusKey && corpusOption(from) !== undefined
+          ? corpusDisplayNameFor(from)
+          : undefined;
+      return answerScopeText(applied, elsewhere);
     },
-    [appliedFilters],
+    [appliedFilters, corpusKey, messages],
   );
 
   const [draft, setDraft] = useState('');
@@ -237,8 +266,17 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
 
     for (const message of answers) {
       const held = (reported ?? []).find((answer) => answer.messageId === message.id);
-      const signature = sourcesSignature(message.sources?.length ?? 0, message.status);
-      if (held && sourcesSignature(held.documents.length, held.status) === signature) continue;
+      const signature = sourcesSignature(
+        message.sources?.length ?? 0,
+        message.status,
+        message.corpusKey,
+      );
+      if (
+        held &&
+        sourcesSignature(held.documents.length, held.status, held.corpusKey) === signature
+      ) {
+        continue;
+      }
 
       setAnswerSources({
         messageId: message.id,
@@ -253,6 +291,17 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
          * resolves its markers as they arrive and leaves this undefined.
          */
         ...(message.citationCount === undefined ? {} : { citationCount: message.citationCount }),
+        /*
+         * Which corpus answered. The panel names the corpus the ANSWER came
+         * from and not the one the chooser stands on: open a Kudos thread
+         * while the chooser says Wikipedia and the disclaimer said «fra
+         * Kudos» over a Wikipedia source, or the other way round (KA CC on
+         * #129). It arrives with the frame that ends the stream, so it is
+         * undefined while the answer is still writing — and that is why it
+         * is part of the signature below, or the panel would never hear
+         * about it.
+         */
+        ...(message.corpusKey === undefined ? {} : { corpusKey: message.corpusKey }),
       });
     }
   }, [messages, reported, setAnswerSources, clearAnswerSources, setDocuments]);

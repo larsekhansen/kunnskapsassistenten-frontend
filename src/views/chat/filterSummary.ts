@@ -20,3 +20,33 @@ export function filterSummaryText(selection: FilterSelection): string | undefine
   const chosen = DIMENSION_ORDER.flatMap((dimension) => selection[dimension]);
   return chosen.length === 0 ? undefined : chosen.join(' · ');
 }
+
+/**
+ * The line over one answer: what it was narrowed to, and where it came from.
+ *
+ * Two different facts, so they are drawn as two: the facets are what the
+ * READER ticked, the corpus is where the answer was retrieved. Running them
+ * into one list made «Kudos · Årsrapport · 2023» read as three things the
+ * reader had chosen, and one of them was not (KA CC kan 4 på #138).
+ *
+ * The chat column drew no corpus name at all until now, and for one corpus it
+ * should not: a word that never varies over every answer is a word without
+ * information in it. It is named in exactly one case, and that is the case
+ * this exists for — an answer retrieved from somewhere other than where the
+ * chooser stands now, which is what an old thread opened from the list is.
+ *
+ * `answerCorpusName` is looked up from the ANSWER's key, never from the
+ * choice. A name read from the chooser would be the bug wearing the fix's
+ * clothes.
+ */
+export function answerScopeText(
+  selection: FilterSelection,
+  answerCorpusName?: string,
+): string | undefined {
+  const narrowed = filterSummaryText(selection);
+  if (narrowed && answerCorpusName) return `Avgrenset til: ${narrowed}, fra ${answerCorpusName}`;
+  if (narrowed) return `Avgrenset til: ${narrowed}`;
+  // Nothing was narrowed, so «avgrenset» would be the wrong word: the answer
+  // was asked of the whole of another corpus.
+  return answerCorpusName ? `Hentet fra ${answerCorpusName}` : undefined;
+}
