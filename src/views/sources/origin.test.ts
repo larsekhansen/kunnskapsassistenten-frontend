@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { SourceDocument } from '../../model';
-import { corpusKeyToName, documentSubtitle, isOwnDocument, OWN_DOCUMENT_LABEL } from './origin';
+import { corpusKeyFor, documentSubtitle, isOwnDocument, OWN_DOCUMENT_LABEL } from './origin';
 
 function source(extra: Partial<SourceDocument>): SourceDocument {
   return { id: 'd', title: 'Årsrapport 2025.pdf', excerpts: [], ...extra };
@@ -54,18 +54,18 @@ describe('documentSubtitle', () => {
   });
 });
 
-describe('corpusKeyToName', () => {
+describe('corpusKeyFor', () => {
   test('svarets korpus vinner over det valgte', () => {
     // Saken KA CC målte: en gammel Kudos-tråd åpnet mens Wikipedia er valgt.
-    expect(corpusKeyToName('kudos-pilot', 'norquad-docs')).toBe('kudos-pilot');
+    expect(corpusKeyFor('kudos-pilot', 'norquad-docs')).toBe('kudos-pilot');
   });
 
   test('det valgte brukes bare når svaret ikke sier noe', () => {
-    expect(corpusKeyToName(undefined, 'norquad-docs')).toBe('norquad-docs');
+    expect(corpusKeyFor(undefined, 'norquad-docs')).toBe('norquad-docs');
   });
 
   test('vet ingen av dem noe, sier den det', () => {
     // `corpusDisplayNameFor` gjør undefined om til «standardkorpuset».
-    expect(corpusKeyToName(undefined, undefined)).toBeUndefined();
+    expect(corpusKeyFor(undefined, undefined)).toBeUndefined();
   });
 });

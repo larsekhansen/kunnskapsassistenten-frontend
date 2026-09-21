@@ -8,7 +8,7 @@ import { excerptDomId, type AnswerSources, type Excerpt, type SourceDocument } f
 import { AnswerSwitcher } from './AnswerSwitcher';
 import { ExcerptSearch } from './ExcerptSearch';
 import { KudosDisclaimer } from './KudosDisclaimer';
-import { corpusKeyToName, isOwnDocument } from './origin';
+import { corpusKeyFor, isOwnDocument } from './origin';
 import { SourceDocumentCard } from './SourceDocumentCard';
 import { SourcesOverview } from './SourcesOverview';
 import { SourcesPlaceholder } from './SourcesPlaceholder';
@@ -410,7 +410,7 @@ export function SourcesView({
    * Router, `preview/` included.
    */
   const activeCorpus = useActiveCorpus();
-  const corpusKey = corpusKeyToName(activeAnswer?.corpusKey, activeCorpus.key);
+  const corpusKey = corpusKeyFor(activeAnswer?.corpusKey, activeCorpus.key);
   const corpusName = corpusDisplayNameFor(corpusKey);
 
   /*

@@ -64,7 +64,7 @@ export const OWN_DOCUMENT_NO_LINK =
  * current choice there is a guess, but it is the best one available and it is
  * right in the common case, where nobody has switched.
  */
-export function corpusKeyToName(
+export function corpusKeyFor(
   answerKey: string | undefined,
   activeKey: string | undefined,
 ): string | undefined {
