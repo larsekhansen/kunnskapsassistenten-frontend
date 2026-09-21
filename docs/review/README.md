@@ -57,6 +57,7 @@ eier bare denne mappa.
 | [`feat-threads-button-panel-head-2026-09-21.md`](feat-threads-button-panel-head-2026-09-21.md) | PR #119, «Tråder» i panelhodet: 60 px, og to kontroller utenfor den klippede flata                     |
 | [`feat-sources-own-documents-2026-09-21.md`](feat-sources-own-documents-2026-09-21.md)         | PR #123, eget dokument som kilde: to setninger som må si forskjellige ting                             |
 | [`feat-your-documents-upload-2026-09-21.md`](feat-your-documents-upload-2026-09-21.md)         | PR #124, «Dine dokumenter»: to AA-funn axe ikke ser                                                    |
+| [`feat-composer-attachments-2026-09-21.md`](feat-composer-attachments-2026-09-21.md)           | PR #125, vedlegg i skrivefeltet: vakta sto på knappen, ikke på handlingen                              |
 
 ## Sånn går en review
 
