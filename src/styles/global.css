@@ -543,6 +543,9 @@ body {
   flex: 1 1 auto;
   min-block-size: 0;
   overflow-y: auto;
+  /* Positioned for the reason written above `.main`: an absolutely
+     positioned descendant belongs to the region it is written in. */
+  position: relative;
   /*
    * Room under the last item, so it does not sit against the panel's edge
    * when scrolled to the bottom. The slot's own `padding-block` only covers
@@ -633,7 +636,33 @@ body {
   inset-block-start: calc(-1 * var(--ds-size-8));
 }
 
+/*
+ * The three scrolling regions are POSITIONED, and that is not a style choice.
+ *
+ * `.ds-sr-only` is `position: absolute`. Inside an `overflow: auto` box that
+ * is itself `static`, its containing block is the nearest positioned ancestor
+ * — the document — so it is laid out against the PAGE and not against the
+ * region it is written in. Screen-reader text far down a long answer then
+ * sits below the viewport, the document grows a scrollbar of its own, and
+ * there is white under `<html>`.
+ *
+ * Measured 21.09, second answer in a thread at 900 px: `scrollHeight` 1984
+ * against an `innerHeight` of 900, with «Du skrev:» at y 1916 and
+ * «Kunnskapsassistenten svarte:» at y 1983. One declaration takes it back to
+ * 1085, which is the region's own content.
+ *
+ * All three and not only `.main`, because the reason is general: any
+ * absolutely positioned descendant — sr-only text, a tooltip, a popover —
+ * belongs to the region it is written in. A panel is one bug report away from
+ * the same thing.
+ *
+ * It changes nothing else. `position: sticky` on the view head resolves
+ * against the nearest SCROLLING ancestor, which these already were, and
+ * `scroll-padding` is a property of the scroller rather than of its
+ * containing block. Both measured after the change.
+ */
 .main {
+  position: relative;
   flex: 1 0 0;
   min-inline-size: var(--ka-main-min-width);
   max-inline-size: var(--ka-main-max-width);
