@@ -387,6 +387,76 @@ test.describe('skallet', () => {
     expect(main.kanRulle, 'hovedkolonnen skal ha noe å rulle i').toBe(true);
   });
 
+  test('rullehjulet virker i hele midtfeltet, ikke bare over kolonnen', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'skallet: hele midtfeltet ruller');
+
+    /*
+     * Hjulet gjør ingenting uten at pekeren står over en ruller. Da kolonnen
+     * og rulleregionen var samme boks, var det grå på hver side av de 800 px
+     * dødt: Lars, 21.09 på 5182, «Jeg vil kunne bruke scroll-wheelet med pilen
+     * her også – for nå er dette området ingenmannsland.»
+     *
+     * Pekeren settes midt mellom kolonnens ytterkant og kildepanelet, altså i
+     * det som var ingenmannsland. Målt her framfor regnet ut: hvor bred margen
+     * er, avhenger av vindusbredden og av hvilke paneler som er åpne.
+     */
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.goto('/');
+    // To svar, fordi ett ikke fyller 1080 px og et hjul over en region uten
+    // noe å rulle i står stille av helt andre grunner enn den som måles her.
+    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+    await ask(page, 'Hva mer sier rapporten?');
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const main = document.querySelector('.main')!;
+          return main.scrollHeight > main.clientHeight;
+        }),
+      )
+      .toBe(true);
+
+    /*
+     * Punktet måles fra kolonnen til kildepanelet, ikke inne i `.main`, og det
+     * er med vilje: det er den samme skjermkoordinaten før og etter denne
+     * endringa. Før lå den UTENFOR rulleregionen, som var 800 px bred og
+     * sentrert; nå ligger den inni, fordi regionen fyller feltet. Måler man i
+     * stedet margen inne i `.main`, er den null før endringa, og da er det
+     * målingen som feiler og ikke hjulet.
+     */
+    const column = (await page.locator('.main-column').boundingBox())!;
+    const sidebar = (await page.locator('.secondary-sidebar').boundingBox())!;
+
+    const margin = sidebar.x - (column.x + column.width);
+    expect(margin, 'det skal finnes grått mellom kolonnen og panelet').toBeGreaterThan(40);
+
+    /*
+     * Tilbake til toppen først, og det er ikke pynt: samtalen holder seg selv
+     * ved bunnen mens svaret strømmer, så `scrollTop` er alt større enn null
+     * når spørsmålet er besvart. Uten denne nullstillingen består testen av
+     * chat-visningens egen rulling og måler ingenting om hjulet — den var
+     * grønn med kolonnen tilbake på rulleregionen, som er nettopp tilstanden
+     * den skal fange.
+     */
+    await page.evaluate(() => (document.querySelector('.main')!.scrollTop = 0));
+    await expect
+      .poll(() => page.evaluate(() => document.querySelector('.main')!.scrollTop))
+      .toBe(0);
+
+    await page.mouse.move(
+      Math.round(column.x + column.width + margin / 2),
+      Math.round(column.y + column.height / 2),
+    );
+    await page.mouse.wheel(0, 400);
+
+    await expect
+      .poll(() => page.evaluate(() => document.querySelector('.main')!.scrollTop), {
+        message: 'hovedkolonnen skal ha rullet av hjulet i margen',
+      })
+      .toBeGreaterThan(0);
+  });
+
   test('skjermbilder av rutene i lys og mørk modus', async ({ page }, testInfo) => {
     covers(testInfo, 'visuell gjennomgang per merge');
     for (const route of Object.values(ROUTES)) {

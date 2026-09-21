@@ -154,6 +154,16 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
 
             <main id="main-content" className="main" ref={mainScroll}>
               {/*
+              The reading width, inside the scrolling region rather than being
+              it. `main` fills the whole field between the panels so the wheel
+              works anywhere in it; this box is the 800 px the text is set in.
+              See `.main-column` in global.css for what the split is for.
+
+              A plain `div` on purpose: one landmark per region, and `main` is
+              already it.
+            */}
+              <div className="main-column">
+                {/*
               The answer column's view head. First in the region, so nothing
               the reader can reach ends up underneath it when it pins — which
               is the whole reason the shell owns the place rather than the
@@ -163,9 +173,9 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
 
               Empty until a view fills it, and an empty head draws no line.
             */}
-              <div className="view-head" ref={mainHeadRef} />
+                <div className="view-head" ref={mainHeadRef} />
 
-              {/*
+                {/*
               The route contributes the page's level 1 heading and nothing
               else; the view in the slot is what draws the content, looked up
               in viewComponents like every other slot. Chat used to BE the
@@ -178,10 +188,11 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
               thread list and the filter are still there to steer to somewhere
               that exists.
             */}
-              <ViewHeadContext value={mainHead}>
-                <Outlet />
-                {routeOwnsMain ? null : <MainSlot />}
-              </ViewHeadContext>
+                <ViewHeadContext value={mainHead}>
+                  <Outlet />
+                  {routeOwnsMain ? null : <MainSlot />}
+                </ViewHeadContext>
+              </div>
             </main>
 
             <Sidebar slot="secondary-sidebar" element="aside" drawer={drawer} />

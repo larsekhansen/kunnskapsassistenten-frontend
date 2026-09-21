@@ -631,10 +631,13 @@ body {
  * Moving the spacing into the head instead would have pinned 32 px of air for
  * as long as the reader scrolls, which is the height budget funn 7 and 8 are
  * already about.
+ *
+ * **Gone since the column was split in two.** The 32 px now sits on
+ * `.main-column`, which is not the scroller, so the scrollport is no longer
+ * shrunk by it and `inset-block-start: 0` already means the top. An override
+ * left behind would have pinned the head 32 px ABOVE the region, with the
+ * answer visible in the strip over it.
  */
-.main > .view-head {
-  inset-block-start: calc(-1 * var(--ds-size-8));
-}
 
 /*
  * The three scrolling regions are POSITIONED, and that is not a style choice.
@@ -661,14 +664,35 @@ body {
  * `scroll-padding` is a property of the scroller rather than of its
  * containing block. Both measured after the change.
  */
+/*
+ * The answer column is TWO boxes, and the split is the whole point.
+ *
+ * `main` is the scrolling region and fills the whole field between the
+ * panels. `.main-column` inside it is the reading width — 800 px, centred.
+ *
+ * They used to be one box, and then the grey on either side of the column was
+ * dead: the wheel does nothing unless the pointer is over a scroller, so a
+ * reader with the pointer in that margin got nothing. Lars, 21.09 on 5182:
+ * «Jeg vil kunne bruke scroll-wheelet med pilen her også – for nå er dette
+ * området ingenmannsland.»
+ *
+ * `main` keeps the id, the ref and the landmark: the skip link points at it,
+ * the `scroll-padding-block-start` the view head sets is a property of the
+ * SCROLLER, and the e2e suite measures `.main`. The inner box is a plain
+ * `div` and deliberately not a second landmark.
+ */
 .main {
   position: relative;
   flex: 1 0 0;
   min-inline-size: var(--ka-main-min-width);
+  overflow-y: auto;
+}
+
+.main-column {
+  box-sizing: border-box;
   max-inline-size: var(--ka-main-max-width);
   margin-inline: auto;
   padding-block: var(--ds-size-8);
-  overflow-y: auto;
 }
 
 /* A plain vertical stack. Designsystemet ships no layout primitives, see
