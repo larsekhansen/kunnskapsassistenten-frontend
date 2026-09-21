@@ -1,6 +1,8 @@
 import { Button, Heading, Link, List, Paragraph } from '@digdir/designsystemet-react';
 import { useEffect, useId, useRef, useState } from 'react';
+import { useCorpus } from '../../layout/useCorpus';
 import type { SourceDocument } from '../../model';
+import { corpusDisplayName } from './corpusSummary';
 
 /**
  * How many documents are listed before «Vis flere dokumenter».
@@ -57,6 +59,7 @@ export function KudosDocuments({ documents }: KudosDocumentsProps) {
   // Not a module constant: two filter views in different slots would then
   // share one id, and the layout model exists so views can be moved.
   const kudosHeadingId = useId();
+  const { option } = useCorpus();
   const [expanded, setExpanded] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
 
@@ -98,8 +101,18 @@ export function KudosDocuments({ documents }: KudosDocumentsProps) {
       <Heading level={3} data-size="xs">
         Dokumenter
       </Heading>
+      {/*
+        The corpus, not the constant «Kudos». The line four elements up said
+        «Dokumenter fra Wikipedia (NorQuAD)» while this one still said «Fra
+        Kudos» over the same documents (brukerblikk 5, funn 1) — the same
+        claim #106 took out of the line, one element further down the panel.
+
+        The same short name the line uses, from the same function, so the two
+        cannot disagree about what to call one corpus. The list below is
+        labelled by this heading, so its accessible name follows.
+      */}
       <Heading level={4} data-size="2xs" id={kudosHeadingId}>
-        Fra Kudos
+        Fra {corpusDisplayName(option)}
       </Heading>
 
       {fromKudos.length === 0 ? (

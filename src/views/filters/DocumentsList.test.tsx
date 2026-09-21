@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import type { SourceDocument } from '../../model';
 import { KudosDocuments, OwnDocuments } from './DocumentsList';
@@ -18,11 +19,20 @@ const documents: SourceDocument[] = Array.from({ length: 7 }, (_, index) => ({
   excerpts: [],
 }));
 
+/**
+ * The heading over the list names the corpus, and `useCorpus` navigates when
+ * the corpus changes — so these components need a router the way the view
+ * around them does.
+ */
+function renderInApp(ui: React.ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+}
+
 const titles = () => screen.getAllByRole('listitem').map((item) => item.textContent);
 
 describe('KudosDocuments', () => {
   it('keeps the placeholder sentence when no answer has sources yet', () => {
-    render(<KudosDocuments />);
+    renderInApp(<KudosDocuments />);
 
     expect(screen.getByText('Dokumentene som er relevante for søket ditt vises her.')).toBeTruthy();
     expect(screen.queryByRole('list', { name: 'Fra Kudos' })).toBeNull();
@@ -32,13 +42,13 @@ describe('KudosDocuments', () => {
   it('says the same about an answer that had no sources', () => {
     // undefined and [] differ in the sources panel — «loading» against
     // «nothing behind this answer» — but here both mean nothing to list.
-    render(<KudosDocuments documents={[]} />);
+    renderInApp(<KudosDocuments documents={[]} />);
 
     expect(screen.getByText('Dokumentene som er relevante for søket ditt vises her.')).toBeTruthy();
   });
 
   it('lists five of seven, and counts the rest', () => {
-    render(<KudosDocuments documents={documents} />);
+    renderInApp(<KudosDocuments documents={documents} />);
 
     expect(screen.getAllByRole('listitem')).toHaveLength(5);
     expect(screen.getByText('Viser 5 av 7 dokumenter.')).toBeTruthy();
@@ -46,13 +56,13 @@ describe('KudosDocuments', () => {
   });
 
   it('writes type, organisation and year under the title', () => {
-    render(<KudosDocuments documents={documents} />);
+    renderInApp(<KudosDocuments documents={documents} />);
 
     expect(screen.getByText('Årsrapport · Nasjonal kommunikasjonsmyndighet · 2018')).toBeTruthy();
   });
 
   it('links each title to the document on Kudos', () => {
-    render(<KudosDocuments documents={documents} />);
+    renderInApp(<KudosDocuments documents={documents} />);
 
     // A pattern, not the literal name: the accessible name drops the space
     // that separates the title from the sr-only warning.
@@ -66,7 +76,7 @@ describe('KudosDocuments', () => {
     // Folder-based corpora come back with `url: null`. A dead link would be
     // worse than a plain title.
     const [first, ...rest] = documents;
-    render(<KudosDocuments documents={[{ ...first, url: undefined }, ...rest]} />);
+    renderInApp(<KudosDocuments documents={[{ ...first, url: undefined }, ...rest]} />);
 
     expect(screen.getByText('Årsrapport Nasjonal kommunikasjonsmyndighet 2018')).toBeTruthy();
     expect(
@@ -75,7 +85,7 @@ describe('KudosDocuments', () => {
   });
 
   it('shows the rest, drops the button, and leaves focus on the list', () => {
-    render(<KudosDocuments documents={documents} />);
+    renderInApp(<KudosDocuments documents={documents} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Vis flere dokumenter' }));
 
@@ -89,7 +99,7 @@ describe('KudosDocuments', () => {
   });
 
   it('lists everything and offers no button when there are five or fewer', () => {
-    render(<KudosDocuments documents={documents.slice(0, 3)} />);
+    renderInApp(<KudosDocuments documents={documents.slice(0, 3)} />);
 
     expect(titles()).toHaveLength(3);
     expect(screen.queryByRole('button', { name: 'Vis flere dokumenter' })).toBeNull();
@@ -97,13 +107,17 @@ describe('KudosDocuments', () => {
   });
 
   it('starts over at five when the next answer brings other documents', () => {
-    const { rerender } = render(<KudosDocuments documents={documents} />);
+    const { rerender } = renderInApp(<KudosDocuments documents={documents} />);
     fireEvent.click(screen.getByRole('button', { name: 'Vis flere dokumenter' }));
     expect(screen.getAllByRole('listitem')).toHaveLength(7);
 
     // A new answer, a new array. An expanded list carried over from the previous
     // one would show seven rows the reader never asked to see.
-    rerender(<KudosDocuments documents={documents.map((source) => ({ ...source }))} />);
+    rerender(
+      <MemoryRouter>
+        <KudosDocuments documents={documents.map((source) => ({ ...source }))} />
+      </MemoryRouter>,
+    );
 
     expect(screen.getAllByRole('listitem')).toHaveLength(5);
     expect(screen.getByRole('button', { name: 'Vis flere dokumenter' })).toBeTruthy();
@@ -116,7 +130,7 @@ describe('OwnDocuments', () => {
     // panel. Splitting them is what lets the Kudos list move above the facets
     // without dragging an upload placeholder up there with it (brukerblikk
     // runde 2, funn 4).
-    render(<OwnDocuments />);
+    renderInApp(<OwnDocuments />);
 
     expect(screen.getByRole('heading', { name: 'Dine dokumenter' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Fra Kudos' })).toBeNull();

@@ -16,9 +16,11 @@ import type { FilterFacet } from '../../model';
  * that happened was that they ticked a box.
  *
  * Every clause is optional and drops out when the data behind it is missing.
- * Live mode has no facet aggregation at all (API-bestilling A2), and there
- * the line is «Dokumenter fra Kudos» and nothing more — which is still the
- * one thing the user did not know.
+ * Live mode has no facet aggregation at all (API-bestilling A2), so there the
+ * line is the corpus's own words: its description from the environment, or
+ * its name when it has none. «Kudos» was the constant here until a reader
+ * could choose the corpus (#106) — it is now whatever is being searched, and
+ * «standardkorpuset» when nothing names it.
  */
 
 /**
@@ -110,7 +112,7 @@ function yearRange(facets: FilterFacet[]): string {
 }
 
 /**
- * The corpus's name, as a sentence can use it.
+ * The corpus's name, as a sentence or a heading can use it.
  *
  * A label is written for a row in a chooser and may carry more than a name:
  * the mock corpus is «Kudos, 938 dokumenter (mock)», which is exactly what a
@@ -139,6 +141,18 @@ function corpusName(corpus?: CorpusOption): string | undefined {
 const UNNAMED_CORPUS = 'standardkorpuset';
 
 /**
+ * What to call the corpus on screen: its short name, or the stand-in above.
+ *
+ * Exported because two places in this panel name the same corpus — this
+ * line, and the heading over the document list — and two ways of shortening
+ * one label, or two spellings of the fallback, would drift apart the first
+ * time somebody changed one of them.
+ */
+export function corpusDisplayName(corpus?: CorpusOption): string {
+  return corpusName(corpus) ?? UNNAMED_CORPUS;
+}
+
+/**
  * @param facets The unconditional facets, or undefined while they load.
  * @param corpus The corpus being searched, when one is known.
  * @returns A Norwegian sentence, always non-empty.
@@ -155,7 +169,7 @@ export function corpusSummary(facets?: FilterFacet[], corpus?: CorpusOption): st
       : []
   ).filter((clause) => clause !== '');
 
-  const source = `Dokumenter fra ${corpusName(corpus) ?? UNNAMED_CORPUS}`;
+  const source = `Dokumenter fra ${corpusDisplayName(corpus)}`;
   if (clauses.length > 0) return `${source}: ${clauses.join(', ')}`;
 
   /*
