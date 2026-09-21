@@ -167,6 +167,40 @@ describe('under brytepunktet, der panelet er en skuff', () => {
     }
   });
 
+  it('lar hoderaden i skuffa holde plassen alene, så en tom rad kan skjules', () => {
+    /*
+     * Det CSS-en henger på: `.drawer .sidebar-header:has(> .panel-head-slot:empty)`.
+     * jsdom kjører ikke stilarket vårt, så det som måles her er forutsetningen
+     * selektoren trenger — at raden har plassen som sitt eneste barn, og at
+     * plassen er tom til et view fyller den.
+     *
+     * Hvorfor det er verdt en regel: raden er et flex-element i `.panel`, som
+     * har `gap: 16px`. En boks på null høyde får gapet sitt likevel, så en
+     * ufylt plass tok 16 px av rullevinduet i et panel som ruller på alle
+     * bredder. Målt til 16 av KA CC på 1100, og til 0 etterpå.
+     */
+    const restore = openShell({ filled: false, width: 1024 });
+    try {
+      const header = document.querySelector('dialog .sidebar-header')!;
+
+      expect(header.children).toHaveLength(1);
+      expect(header.firstElementChild?.className).toBe('panel-head-slot');
+      expect(header.firstElementChild?.hasChildNodes()).toBe(false);
+    } finally {
+      restore();
+    }
+  });
+
+  it('lar raden fylles når et view bruker plassen', () => {
+    const restore = openShell({ width: 1024 });
+    try {
+      const header = document.querySelector('dialog .sidebar-header')!;
+      expect(header.firstElementChild?.hasChildNodes()).toBe(true);
+    } finally {
+      restore();
+    }
+  });
+
   it('beholder plassen når skuffa er lukket, så viewet ikke mister den', () => {
     // En lukket `<dialog>` er `display: none`, så innholdet er skjult uansett
     // — men boksen står, slik at viewet ikke må montere seg på nytt.

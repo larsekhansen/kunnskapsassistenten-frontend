@@ -311,6 +311,29 @@ body {
   display: none;
 }
 
+/*
+ * An empty head row in a drawer costs nothing, wrapper included.
+ *
+ * Hiding the slot is not enough: the row around it is still a flex item of
+ * `.panel`, and `.panel` has `gap: var(--ds-size-4)`. A box of zero height
+ * still gets a 16 px gap after it, so an unfilled place took 16 px off the
+ * reading window of a panel that scrolls at every width. Measured at 1100 by
+ * KA CC on #116 and confirmed here: header height 0, content 16 px down.
+ *
+ * `:has` and not a second class from the shell, because the condition is
+ * exactly «the one thing in this row is empty» and CSS can say that. The row
+ * on the row-panel is never empty — it holds the collapse button — so this is
+ * scoped to the drawer, where the row holds the slot alone.
+ *
+ * `[hidden]` beside `:empty` for the same reason the slot has both: a view
+ * that switches its own content off leaves children behind, so `:empty` would
+ * not match and the 16 px would come back.
+ */
+.drawer .sidebar-header:has(> .panel-head-slot:empty),
+.drawer .sidebar-header:has(> .panel-head-slot[hidden]) {
+  display: none;
+}
+
 .panel-width-buttons {
   display: flex;
   gap: var(--ds-size-1);
