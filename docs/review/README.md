@@ -52,6 +52,9 @@ eier bare denne mappa.
 | [`brukerblikk-6-2026-09-21.md`](brukerblikk-6-2026-09-21.md)                                     | Brukerblikk runde 6: opplastingsflyten hele veien, og to overskrifter som ikke følger med              |
 | [`fix-sources-disclaimer-corpus-2026-09-21.md`](fix-sources-disclaimer-corpus-2026-09-21.md)     | PR #129, fraskrivelsen i korpusets navn: sann om valget, ikke om det den står over                     |
 | [`fix-documents-list-excludes-own-2026-09-21.md`](fix-documents-list-excludes-own-2026-09-21.md) | PR #130, egen fil ett sted: to lister som svarer på hvert sitt spørsmål                                |
+| [`feat-mock-two-corpora-2026-09-21.md`](feat-mock-two-corpora-2026-09-21.md)                     | PR #131, to korpus i mocken: og to ting det andre korpuset gjorde synlige                              |
+| [`fix-corpus-switch-new-thread-2026-09-21.md`](fix-corpus-switch-new-thread-2026-09-21.md)       | PR #133, bytte starter ny tråd: og de to kantene rundt                                                 |
+| [`fix-facets-follow-corpus-2026-09-21.md`](fix-facets-follow-corpus-2026-09-21.md)               | PR #134, fasettene følger korpuset: og en setning som bare sier det som skjedde                        |
 | [`feat-corpus-choice-2026-09-21.md`](feat-corpus-choice-2026-09-21.md)                           | PR #103, korpus som kjøretidsvalg: nøkkelen målt på wire, og 401 på svaret                             |
 | [`feat-corpus-line-one-line-2026-09-21.md`](feat-corpus-line-one-line-2026-09-21.md)             | PR #114, korpuslinja på én linje: 42 px og ikke 32, og en funksjon uten kallere                        |
 | [`feat-panel-head-slot-2026-09-21.md`](feat-panel-head-slot-2026-09-21.md)                       | PR #116, plass i panelhodet: plassen fantes ikke i skuffa, og en tom rad kostet 16 px                  |
