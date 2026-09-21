@@ -17,6 +17,7 @@ import { CLARIFICATION_PLACEHOLDER, kickstartersFor } from './text';
 import { threadHeading } from './threadHeading';
 import { useAtBottom } from './useAtBottom';
 import { useComposerShortcut } from './useComposerShortcut';
+import { useAttachments } from './useAttachments';
 import { useChat } from './useChat';
 import { Welcome } from './Welcome';
 import './chat.css';
@@ -83,6 +84,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
     error,
     announcement,
     appliedFilters,
+    attachmentsByMessage,
     noHitsAnswers,
     send,
     cancel,
@@ -102,6 +104,12 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
   );
 
   const [draft, setDraft] = useState('');
+  /*
+   * The documents the question being written is asked with. Held here beside
+   * the draft, because the two are one unsent question: they are sent
+   * together and emptied together.
+   */
+  const attachments = useAttachments();
   const rootRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -332,9 +340,21 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
     const query = question.trim();
     if (query.length === 0) return;
 
+    /*
+     * Only the ready ones go. A file that was refused is not part of the
+     * question — sending its id would ask the backend about a document that
+     * does not exist — and one still uploading is not ready to be asked
+     * about, which is why the send button waits for it (see `Composer`).
+     */
+    const ids = attachments.readyIds;
+    const names = attachments.items
+      .filter((item) => item.documentId !== undefined)
+      .map((item) => item.name);
+
     startThread(query);
-    send(query);
+    send(query, ids.length > 0 ? { ids, names } : undefined);
     setDraft('');
+    attachments.clear();
   }
 
   /**
@@ -417,6 +437,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         <MessageList
           canScrollToBottom={!atBottom}
           filterSummary={filterSummary}
+          attachmentsFor={(messageId) => attachmentsByMessage[messageId]}
           foundNothing={(messageId) => noHitsAnswers.has(messageId)}
           /* Which turn the alert below is speaking for. A failed turn keeps
              its thinking panel, so it outlives the alert — and then its card
@@ -457,6 +478,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
       />
 
       <Composer
+        attachments={attachments}
         fieldRef={fieldRef}
         sendRef={sendRef}
         onCancel={() => {

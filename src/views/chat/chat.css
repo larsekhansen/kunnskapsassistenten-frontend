@@ -531,6 +531,65 @@
 }
 
 /*
+ * The files attached to the question being written, over the field.
+ *
+ * They wrap inside the composer's width rather than scrolling sideways: a
+ * reader with four documents should see four, not two and a hidden pair
+ * (#112-regelen).
+ */
+.ka-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-size-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ka-attachments__item {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-1);
+}
+
+.ka-attachments__error {
+  color: var(--ds-color-danger-text-subtle);
+  font-size: var(--ds-font-size-minus-1);
+}
+
+/*
+ * The field while a file is over it. A border and no movement: the box must
+ * not change size under a pointer that is about to let go, or the drop lands
+ * somewhere the reader did not aim.
+ */
+.ka-composer[data-dragging] {
+  border-color: var(--ds-color-accent-border-strong);
+}
+
+.ka-composer__drop-hint,
+.ka-composer__refusal {
+  display: block; /* `output` is inline, and a centred inline centres nothing */
+  margin: 0;
+  text-align: center;
+  font-size: var(--ds-font-size-minus-1);
+}
+
+.ka-composer__drop-hint {
+  color: var(--ds-color-accent-text-subtle);
+}
+
+.ka-composer__refusal {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+/* What a question was asked with, under the question itself. */
+.ka-message__attachments {
+  margin-block-start: var(--ds-size-1);
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+/*
  * The field takes what the two buttons leave. `min-inline-size: 0` because a
  * flex item will not shrink below its content otherwise, and one long
  * unbroken word would push the send button off the row.
@@ -538,6 +597,11 @@
 .ka-composer__field {
   flex: 1 1 auto;
   min-inline-size: 0;
+}
+
+/* The picker behind the paperclip. See Composer.tsx for why it is not sr-only. */
+.ka-composer__file-input {
+  display: none;
 }
 
 /* Neither button shrinks or stretches: they are icon-sized, the field is not. */
@@ -584,6 +648,8 @@
 .ka-retrieval__keywords[hidden],
 .ka-answer-actions[hidden],
 .ka-composer-area[hidden],
+.ka-attachments[hidden],
+.ka-attachments__item[hidden],
 .ka-composer[hidden],
 .ka-follow-ups[hidden] {
   display: none;

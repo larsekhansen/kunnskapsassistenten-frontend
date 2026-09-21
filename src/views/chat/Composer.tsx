@@ -1,5 +1,14 @@
 import { Button, Chip, Paragraph, Textfield } from '@digdir/designsystemet-react';
-import { useId, type KeyboardEvent, type Ref, type RefObject } from 'react';
+import {
+  useId,
+  useRef,
+  useState,
+  type DragEvent,
+  type KeyboardEvent,
+  type Ref,
+  type RefObject,
+} from 'react';
+import { UPLOAD_ACCEPT } from '../../model';
 import { COMPOSER_ID } from '../../layout/ids';
 import { PaperclipIcon, PaperplaneIcon, StopIcon } from '@navikt/aksel-icons';
 import {
@@ -9,6 +18,15 @@ import {
   SHORTCUT_DESCRIPTION,
   shortcutHint,
 } from './text';
+import { Attachments } from './Attachments';
+import {
+  ATTACH_LABEL,
+  ATTACH_UNAVAILABLE_LABEL,
+  DROP_HINT,
+  WAIT_FOR_UPLOADS,
+  uploadErrorText,
+} from './attachmentText';
+import type { Attachments as AttachmentsState } from './useAttachments';
 import type { ChatStatus } from './useChat';
 
 type ComposerProps = {
@@ -40,6 +58,8 @@ type ComposerProps = {
   showFollowUps?: boolean;
   /** A follow-up fills the field and sends it (answer 28). */
   onFollowUp: (question: string) => void;
+  /** The files this question is being written with. */
+  attachments: AttachmentsState;
 };
 
 /**
@@ -92,29 +112,190 @@ export function Composer({
   status,
   showFollowUps,
   onFollowUp,
+  attachments,
 }: ComposerProps) {
   const busy = status === 'pending' || status === 'streaming';
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Nesting counter, not a boolean: dragging over a child fires `dragleave`
+  // on the parent, so a boolean flickers the hint off every time the pointer
+  // crosses the field or a chip.
+  const [dragDepth, setDragDepth] = useState(0);
+  /*
+   * What to say when attaching cannot work here at all. Its own line rather
+   * than a chip: a chip stands for a file the reader picked, and in this case
+   * no file was ever taken. It stays until the reader picks something that
+   * does work, because a sentence that vanished on the next render would be
+   * one nobody had time to read.
+   */
+  const [refusal, setRefusal] = useState('');
+  const { unavailable } = attachments;
   // Generated, not a constant: two chat views in two slots would otherwise
   // share one id and the description would describe the wrong field.
   const descriptionId = useId();
+
+  /**
+   * The one way a question leaves this field.
+   *
+   * Every way of sending goes through here — Enter, the send button, a
+   * follow-up chip — because the rule about attachments is about SENDING and
+   * not about one control. It was on the send button's `disabled` alone, and
+   * Enter walked straight past it: the question went, the file that was still
+   * uploading did not, and nothing said so (KA CC on #125). That is the
+   * silent drop the rule exists to prevent, arriving through the door the
+   * rule was not on.
+   *
+   * It refuses rather than queues, and **nothing is sent when the upload
+   * finishes**: the reader presses again. Queueing would send a question
+   * seconds after the reader stopped watching, with no way to call it back,
+   * and a question that leaves on its own is a question nobody chose to send
+   * at that moment. The wait is a second or two with the bar in plain sight,
+   * and the message goes as soon as the waiting does (see below).
+   */
+  function trySubmit(send: () => void) {
+    if (busy) return;
+    if (attachments.busy) {
+      setRefusal(WAIT_FOR_UPLOADS);
+      fieldRef?.current?.focus();
+      return;
+    }
+    setRefusal('');
+    send();
+  }
+
+  /*
+   * The wait message goes when there is nothing left to wait for.
+   *
+   * A refusal outlives its reason if nobody takes it away: it stood in the
+   * live region six seconds after the upload had finished, telling a reader
+   * to wait for a file that was ready (KA CC on #125, runde 2).
+   *
+   * Worked out while rendering rather than cleared in an effect. The message
+   * is not a fact of its own — it is «is anything still uploading» read
+   * aloud — so it follows that state in the same paint, and there is no
+   * render where the page says wait and the bar is gone.
+   *
+   * Only that one. The `unavailable` sentence is not waiting for anything:
+   * it is true for as long as the service has no endpoint, so it stays until
+   * something the reader does replaces it.
+   */
+  const shownRefusal = refusal === WAIT_FOR_UPLOADS && !attachments.busy ? '' : refusal;
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== 'Enter' || event.shiftKey) return;
     if (event.nativeEvent.isComposing) return;
     event.preventDefault();
-    if (!busy) onSubmit();
+    trySubmit(onSubmit);
   }
 
   return (
     <div className="ka-composer-area" ref={ref}>
-      <div className="ka-composer">
+      {/*
+        Both handlers put focus back in the field, because both take the
+        control the reader is standing on out of the page: removing a chip
+        unmounts its button, and retrying one takes «Prøv igjen» away the
+        moment the file goes back to uploading. A control that vanishes
+        without saying where focus should land drops a keyboard user on
+        `<body>`, at the top of the document (WCAG 2.4.3). The field is where
+        they were heading anyway.
+      */}
+      <Attachments
+        items={attachments.items}
+        onRemove={(key) => {
+          attachments.remove(key);
+          fieldRef?.current?.focus();
+        }}
+        onRetry={(key) => {
+          attachments.retry(key);
+          fieldRef?.current?.focus();
+        }}
+      />
+
+      {/*
+        Dropping a file on the field attaches it. The button is the way —
+        WCAG 2.5.7 asks that nothing depend on dragging — and this is the
+        shortcut for anyone who already has the file under the pointer.
+
+        The handlers sit on the frame and not on the textarea, so the whole
+        white box takes a file rather than the 20 px of text inside it.
+      */}
+      <div
+        className="ka-composer"
+        data-dragging={dragDepth > 0 || undefined}
+        onDragEnter={(event: DragEvent<HTMLDivElement>) => {
+          if (!hasFiles(event)) return;
+          setDragDepth((depth) => depth + 1);
+        }}
+        onDragLeave={() => setDragDepth((depth) => Math.max(0, depth - 1))}
+        onDragOver={(event: DragEvent<HTMLDivElement>) => {
+          // Without this the browser opens the file instead of handing it over.
+          if (hasFiles(event)) event.preventDefault();
+        }}
+        onDrop={(event: DragEvent<HTMLDivElement>) => {
+          setDragDepth(0);
+          if (!hasFiles(event)) return;
+          event.preventDefault();
+          if (unavailable) {
+            setRefusal(uploadErrorText(unavailable));
+            return;
+          }
+          setRefusal('');
+          attachments.add(event.dataTransfer.files);
+        }}
+      >
+        {/*
+          The picker, hidden but real: a styled `<label>` around a file input
+          is the other way to do this, and it loses the button semantics the
+          row needs — this control sits between a textarea and a send button
+          and has to behave like the third control, not like a label.
+
+          `multiple`, because a reader with three documents on the same
+          question should not have to pick them one at a time.
+        */}
+        <input
+          accept={UPLOAD_ACCEPT}
+          /*
+           * `display: none` and not `ds-sr-only`: the input is the mechanism,
+           * the button is the control. Screen-reader-only keeps it in the
+           * accessibility tree, where it is a second, nameless file control
+           * beside the named one — axe called it, and it was right.
+           * A hidden input still opens the picker when clicked.
+           */
+          className="ka-composer__file-input"
+          multiple
+          onChange={(event) => {
+            const picked = event.currentTarget.files;
+            if (picked?.length) {
+              setRefusal('');
+              attachments.add(picked);
+            }
+            // Cleared so picking the SAME file again fires `change` at all.
+            event.currentTarget.value = '';
+          }}
+          ref={fileInputRef}
+          tabIndex={-1}
+          type="file"
+        />
+
+        {/*
+          Where there is nothing to upload to, the reason is in the button's
+          own name — known before a file is picked rather than after one is
+          refused. `aria-disabled` and not `disabled`, so the control stays
+          reachable and can still say what it says; a control that is coming
+          is worth knowing about.
+        */}
         <Button
-          aria-disabled="true"
+          aria-disabled={unavailable ? 'true' : undefined}
+          aria-label={unavailable ? ATTACH_UNAVAILABLE_LABEL : ATTACH_LABEL}
           className="ka-composer__attach"
           data-color="neutral"
-          data-tooltip="Vedlegg kommer"
           icon
-          onClick={(event) => event.preventDefault()}
+          onClick={() => {
+            if (unavailable) {
+              setRefusal(uploadErrorText(unavailable));
+              return;
+            }
+            fileInputRef.current?.click();
+          }}
           variant="tertiary"
         >
           <PaperclipIcon aria-hidden />
@@ -160,7 +341,13 @@ export function Composer({
             className="ka-composer__send"
             disabled={value.trim().length === 0}
             icon
-            onClick={onSubmit}
+            /*
+             * Through `trySubmit`, like every other way of sending. The
+             * button used to be `disabled` while a file was uploading, which
+             * stopped the click and said nothing about why — and did not stop
+             * Enter at all.
+             */
+            onClick={() => trySubmit(onSubmit)}
             ref={sendRef}
           >
             <PaperplaneIcon aria-hidden />
@@ -168,11 +355,21 @@ export function Composer({
         )}
       </div>
 
+      {dragDepth > 0 ? (
+        <p aria-hidden="true" className="ka-composer__drop-hint">
+          {DROP_HINT}
+        </p>
+      ) : null}
+
+      {shownRefusal ? <output className="ka-composer__refusal">{shownRefusal}</output> : null}
+
       {showFollowUps ? (
         <ul className="ka-follow-ups">
           {FOLLOW_UP_QUESTIONS.map((question) => (
             <li key={question}>
-              <Chip.Button onClick={() => onFollowUp(question)}>{question}</Chip.Button>
+              <Chip.Button onClick={() => trySubmit(() => onFollowUp(question))}>
+                {question}
+              </Chip.Button>
             </li>
           ))}
         </ul>
@@ -199,4 +396,15 @@ export function Composer({
       </Paragraph>
     </div>
   );
+}
+
+/**
+ * Whether what is being dragged is files at all.
+ *
+ * Dragging selected text across the page fires the same events, and a compose
+ * field that lit up every time someone dragged a word would be lying about
+ * what it was about to do.
+ */
+function hasFiles(event: DragEvent<HTMLDivElement>): boolean {
+  return [...event.dataTransfer.types].includes('Files');
 }

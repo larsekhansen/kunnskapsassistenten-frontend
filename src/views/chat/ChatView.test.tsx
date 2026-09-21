@@ -16,6 +16,7 @@ import {
   type StreamEvent,
   type ThreadDetail,
 } from '../../model';
+import { ATTACH_LABEL } from './attachmentText';
 import { ChatView } from './ChatView';
 import {
   ABORTED_BEFORE_ANSWER,
@@ -849,14 +850,8 @@ describe('ChatView', () => {
     // turn fails — so the rescue must leave it alone. The rescue is about the
     // one control that changed meaning, not about the area it sits in
     // (KA CC on #59).
-    // Found by class, not by name: the paperclip is named by Designsystemet's
-    // `data-tooltip`, and the custom element that turns that into an
-    // accessible name is never upgraded in jsdom. The e2e suite finds it by
-    // name, where the name exists.
-    const paperclip = document.querySelector<HTMLButtonElement>('.ka-composer__attach');
-    paperclip?.focus();
-
-    expect(paperclip?.getAttribute('aria-disabled')).toBe('true');
+    const paperclip = screen.getByRole('button', { name: ATTACH_LABEL });
+    paperclip.focus();
 
     await screen.findByText('Assistenten svarte ikke');
     expect(document.activeElement).toBe(paperclip);
