@@ -108,11 +108,24 @@ ikke et prefiks på det korte.
 `design/skjermbilder-frontend/e2e/`. Ingen av dem er en assert. Gjennomgangen
 mot Figma står i [`visuell-2026-09-11.md`](visuell-2026-09-11.md).
 
-**Ett ord i bildene er plattformavhengig.** Hinten ved skrivefeltet sier
-«Trykk Cmd + / for å hoppe hit» når suiten kjøres på en Mac og «Ctrl» ellers
-(`shortcutHint()` i `src/views/chat/text.ts`). Bildene fra min maskin og fra
-CI er derfor ulike på akkurat det ordet, og det er ikke et avvik.
-Snarveistesten låser formen `/^Trykk (Ctrl|Cmd) \+ \/ …$/` og ikke ordet.
+**Ett ord er plattformavhengig — men ikke i denne suiten.** Hintet ved
+skrivefeltet (`shortcutHint()` i `src/views/chat/text.ts`) og hurtigtasten i
+hopplenka (`shortcutModifier()` i `src/layout/shortcutModifier.ts`) leser
+begge `navigator.userAgent` og sier «Cmd» på en Mac, «Ctrl» ellers.
+
+I e2e-suiten er ordet **alltid «Ctrl»**, uansett hvilken maskin den kjøres på:
+`devices['Desktop Chrome']` i `playwright.config.ts` setter sin egen user
+agent, og den er Windows. Målt 21.09 i suiten på en Mac:
+`Mozilla/5.0 (Windows NT 10.0; Win64; x64) … Chrome/153`, hint «Trykk Ctrl + /
+for å hoppe hit», hopplenke «Hopp til skrivefeltet (Ctrl + /)». En påstand i
+klartekst på «Ctrl» er derfor portabel her, og bildene fra denne maskinen og
+fra CI er like på det ordet.
+
+Fram til 21.09 sto det motsatte i denne fila. Det gjelder `a11y.sh`, som
+kjører playwright-cli uten enhetsbeskrivelse og derfor ser maskinens ekte user
+agent: der står det «Cmd» på en Mac. Samme app, to verktøy, to ord — og
+forskjellen ligger i verktøyet, ikke i appen. Snarveistesten låser formen
+`/^Trykk (Ctrl|Cmd) \+ \/ …$/`, som holder i begge.
 
 ## Det som måtte måles før det kunne påstås
 
