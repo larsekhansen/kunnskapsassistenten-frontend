@@ -76,9 +76,24 @@ export function KudosDocuments({ documents }: KudosDocumentsProps) {
     setExpanded(false);
   }
 
-  const fromKudos = documents ?? [];
-  const hidden = expanded ? 0 : Math.max(fromKudos.length - initiallyVisible, 0);
-  const shown = hidden === 0 ? fromKudos : fromKudos.slice(0, initiallyVisible);
+  /*
+   * The reader's own uploads are left out, however much the answer leaned on
+   * them. The heading over this list says «Fra <korpus>», and a file only the
+   * reader holds did not come from there; it has its own section further down
+   * the panel, and stood in both places at once until now (brukerblikk 6,
+   * funn 1). Same file, two headings, one of them wrong.
+   *
+   * Read off `origin` and never off the title, and absent means corpus — the
+   * model's own rule (src/model/source.ts). The sources panel splits on the
+   * same field through its `isOwnDocument`; that helper lives in #4's view,
+   * so this reads the model instead of tying two views together.
+   *
+   * The count under the heading and «Vis flere dokumenter» both follow from
+   * this array, so neither counts a document the list does not show.
+   */
+  const fromCorpus = (documents ?? []).filter((source) => source.origin !== 'user');
+  const hidden = expanded ? 0 : Math.max(fromCorpus.length - initiallyVisible, 0);
+  const shown = hidden === 0 ? fromCorpus : fromCorpus.slice(0, initiallyVisible);
 
   /*
    * «Vis flere dokumenter» removes itself with the click that hits it, and a
@@ -115,7 +130,7 @@ export function KudosDocuments({ documents }: KudosDocumentsProps) {
         Fra {corpusDisplayName(option)}
       </Heading>
 
-      {fromKudos.length === 0 ? (
+      {fromCorpus.length === 0 ? (
         /*
             The spec reads «Dokumentene som er relevant for ditt søk vises her».
             Deliberate deviation: «relevant» has to agree with «dokumentene».
@@ -134,7 +149,7 @@ export function KudosDocuments({ documents }: KudosDocumentsProps) {
             */}
           {hidden > 0 && (
             <Paragraph data-size="xs" className="documents-list__count">
-              Viser {shown.length} av {fromKudos.length} dokumenter.
+              Viser {shown.length} av {fromCorpus.length} dokumenter.
             </Paragraph>
           )}
 

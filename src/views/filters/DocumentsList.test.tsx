@@ -20,6 +20,18 @@ const documents: SourceDocument[] = Array.from({ length: 7 }, (_, index) => ({
 }));
 
 /**
+ * En fil leseren selv har lastet opp. `origin: 'user'` er det eneste som
+ * skiller den; tittelen er et filnavn og ingenting i den sier hvor den kommer
+ * fra (src/model/source.ts).
+ */
+const ownFile: SourceDocument = {
+  id: 'own-1',
+  title: 'Årsrapport 2025.pdf',
+  origin: 'user',
+  excerpts: [],
+};
+
+/**
  * The heading over the list names the corpus, and `useCorpus` navigates when
  * the corpus changes — so these components need a router the way the view
  * around them does.
@@ -104,6 +116,24 @@ describe('KudosDocuments', () => {
     expect(titles()).toHaveLength(3);
     expect(screen.queryByRole('button', { name: 'Vis flere dokumenter' })).toBeNull();
     expect(screen.queryByText(/^Viser /)).toBeNull();
+  });
+
+  it('leaves an uploaded file to «Dine dokumenter»', () => {
+    // brukerblikk 6, funn 1: samme fil sto både her og under «Dine
+    // dokumenter», under en overskrift som sier at den kommer fra korpuset.
+    renderInApp(<KudosDocuments documents={[ownFile, ...documents]} />);
+
+    expect(screen.queryByText('Årsrapport 2025.pdf')).toBeNull();
+    // Og den teller ikke: sju korpusdokumenter, ikke åtte.
+    expect(screen.getByText('Viser 5 av 7 dokumenter.')).toBeTruthy();
+    expect(titles()).toHaveLength(5);
+  });
+
+  it('lists nothing when the answer only used an uploaded file', () => {
+    renderInApp(<KudosDocuments documents={[ownFile]} />);
+
+    expect(screen.getByText('Dokumentene som er relevante for søket ditt vises her.')).toBeTruthy();
+    expect(screen.queryByRole('list', { name: 'Fra Kudos' })).toBeNull();
   });
 
   it('starts over at five when the next answer brings other documents', () => {
