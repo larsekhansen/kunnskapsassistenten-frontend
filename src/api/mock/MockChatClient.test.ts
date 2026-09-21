@@ -554,3 +554,74 @@ describe('filteret og de scriptede samtalene', () => {
     expect(events.at(-1)).toMatchObject({ type: 'done', outcome: 'needs-clarification' });
   });
 });
+
+describe('markørene og kildene peker på det samme', () => {
+  /*
+   * Et sitatnummer ER utdragets plass i svarets flate liste, så å sette
+   * leserens eget dokument først flytter hvert senere nummer — og markørene i
+   * TEKSTEN må flytte med. Uten det pekte hver påstand ett dokument for
+   * tidlig, og den siste kilden hadde ingen markør i det hele tatt. Funnet av
+   * KA CC på #117.
+   */
+  async function askWithOwnDocument() {
+    const { resetUserDocumentsForTest, uploadUserDocument } = await import('../userDocuments');
+    const { resetUploadClientForTest } = await import('../uploadFactory');
+    localStorage.clear();
+    resetUserDocumentsForTest();
+    resetUploadClientForTest();
+
+    const file = new File(['x'], 'Egen rapport.pdf');
+    const document = await uploadUserDocument(file);
+
+    return collect(
+      client.ask({ query: 'Hva står i dokumentet mitt?', attachments: [document.id] }),
+    );
+  }
+
+  function numbersIn(markdown: string): number[] {
+    return [...markdown.matchAll(/\[(\d+)\]/g)].map((match) => Number(match[1]));
+  }
+
+  it('gir hver kilde en markør og hver markør en kilde', async () => {
+    const events = await askWithOwnDocument();
+    const sources = sourcesIn(events)!;
+
+    const inText = new Set(numbersIn(answerIn(events)));
+    const inPanel = new Set(
+      sources.documents.flatMap((document) =>
+        document.excerpts
+          .map((excerpt) => excerpt.citationNumber)
+          .filter((number): number is number => number !== undefined),
+      ),
+    );
+
+    expect([...inPanel].sort((a, b) => a - b)).toEqual([...inText].sort((a, b) => a - b));
+  });
+
+  it('flytter korpusets markører like langt som numrene flyttet seg', async () => {
+    // Ett vedlagt utdrag foran, så korpusets 1–5 blir 2–6.
+    const events = await askWithOwnDocument();
+
+    expect(numbersIn(answerIn(events))).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('lar det vedlagte dokumentet være det markøren [1] peker på', async () => {
+    const events = await askWithOwnDocument();
+    const sources = sourcesIn(events)!;
+
+    const first = sources.documents.find((document) =>
+      document.excerpts.some((excerpt) => excerpt.citationNumber === 1),
+    );
+
+    expect(first?.origin).toBe('user');
+    expect(first?.title).toBe('Egen rapport.pdf');
+    expect(answerIn(events)).toContain('[1]');
+  });
+
+  it('lar teksten være urørt når ingenting er vedlagt', async () => {
+    const events = await collect(client.ask({ query: 'Hvordan jobber Nkom med måloppnåelse?' }));
+
+    expect(numbersIn(answerIn(events))).toEqual([1, 2, 3, 4, 5]);
+    expect(answerIn(events)).toBe(mockAnswerMarkdown);
+  });
+});

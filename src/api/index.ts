@@ -4,6 +4,15 @@ import { LiveChatClient } from './live';
 import { defaultMockSpeed, MockChatClient, mockSpeeds } from './mock';
 
 export type { AskParams, ChatClient } from './chatClient';
+export type { UploadClient, UploadProgress } from './uploadClient';
+export { createUploadClient } from './uploadFactory';
+export {
+  loadUserDocuments,
+  removeUserDocument,
+  subscribeToUserDocuments,
+  uploadUserDocument,
+  userDocuments,
+} from './userDocuments';
 export type { CorpusOption } from './corpus';
 export {
   activeCorpusKey,

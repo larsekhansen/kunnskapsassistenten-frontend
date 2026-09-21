@@ -7,6 +7,7 @@ import type {
   Thread,
   ThreadDetail,
   ThinkingStep,
+  UserDocument,
 } from '../../model';
 import { daysAgo } from './clock';
 import { scriptedThreads } from './conversations/threads';
@@ -166,6 +167,38 @@ export const nkomSources: SourceDocument[] = [
   ]),
   nkomInstruks,
 ];
+
+/**
+ * A source from one of the reader's OWN documents.
+ *
+ * Built per question rather than fixed, because the title is the file the
+ * reader actually uploaded — a fixture cannot know it. `origin: 'user'` is
+ * what the sources panel reads to tell it from a Kudos document (#4 asked for
+ * it on the model rather than on the title), and there is no `kudosUrl`: it
+ * is the reader's own file, and nobody else can open it.
+ *
+ * The excerpt text says it is mock data IN THE FIXTURE, not in any UI string.
+ * Nothing draws this sentence as chrome — it is quoted as if it came out of
+ * the document — so the honesty has to be in the words themselves, or a
+ * screenshot of the mock would read as a real quotation from the reader's
+ * file.
+ */
+export function userDocumentSource(document: UserDocument, citationNumber: number): SourceDocument {
+  return {
+    id: document.id,
+    title: document.name,
+    origin: 'user',
+    excerpts: [
+      {
+        id: `${document.id}-1`,
+        citationNumber,
+        relevance: 'high',
+        heading: 'Fra ditt eget dokument',
+        text: `Dette utdraget er mock-data. Når opplasting finnes (API-bestilling A3), står det et ekte sitat fra «${document.name}» her.`,
+      },
+    ],
+  };
+}
 
 export const nkomCitations: Citation[] = nkomSources.flatMap((document) =>
   document.excerpts

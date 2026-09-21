@@ -91,6 +91,25 @@ export function citedNumbers(documents: SourceDocument[]): Set<number> {
 const CITATION = /[ \t]?\[(\d{1,3})\]/g;
 
 /**
+ * Move every `[n]` in the answer along by `offset`.
+ *
+ * A citation number IS the excerpt's position in the answer's flat list, so
+ * putting documents in front of the corpus moves every later number — and the
+ * markers in the TEXT have to move with them. Without this each claim pointed
+ * one document too early and the last source had no marker at all. Found by
+ * KA CC on #117.
+ *
+ * One pass with a replacer function, not a loop of replaces: `[1]` → `[2]`
+ * followed by a pass for `[2]` would shift the same marker twice.
+ */
+export function shiftCitations(markdown: string, offset: number): string {
+  if (offset === 0) return markdown;
+  return markdown.replace(CITATION, (match, number: string) =>
+    match.replace(`[${number}]`, `[${Number(number) + offset}]`),
+  );
+}
+
+/**
  * The canned answer with the markers the filter took away removed.
  *
  * The mock's answer text is fixed and cites five excerpts; narrow the corpus

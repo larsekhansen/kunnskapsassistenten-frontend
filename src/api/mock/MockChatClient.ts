@@ -3,6 +3,7 @@ import {
   type ChatErrorCode,
   type FilterFacet,
   type FilterSelection,
+  type SourceDocument,
   type StreamEvent,
   type Thread,
   type ThinkingStep,
@@ -12,7 +13,13 @@ import { facetsFor } from './corpus/facets';
 import { citationsFor, scriptedFor } from './conversations';
 import { mockThreadDetail, mockThreadList, openMockThread, recordMockTurn } from './sessionThreads';
 import type { AskParams, ChatClient } from '../chatClient';
-import { citedNumbers, narrowToSelection, retrievalFor, withOnlyCitations } from './filtering';
+import {
+  citedNumbers,
+  narrowToSelection,
+  retrievalFor,
+  shiftCitations,
+  withOnlyCitations,
+} from './filtering';
 import {
   findThread,
   mockAnswerMarkdown,
@@ -21,7 +28,66 @@ import {
   nkomSources,
   nkomThinkingSteps,
   threads,
+  userDocumentSource,
 } from './fixtures';
+import { userDocuments } from '../userDocuments';
+
+/**
+ * The reader's own documents this question was asked with, as sources.
+ *
+ * Read from the store rather than passed in, because `AskParams.attachments`
+ * carries ids and the names live with the documents. An id the store does not
+ * know is skipped in silence: it is a document removed between the question
+ * being typed and sent, and a mock that threw there would fail a turn a real
+ * backend would simply answer without it.
+ */
+function attachedSources(attachments: string[] | undefined): SourceDocument[] {
+  if (!attachments?.length) return [];
+  const known = new Map(userDocuments().map((document) => [document.id, document]));
+
+  return attachments
+    .map((id) => known.get(id))
+    .filter((document) => document !== undefined)
+    .map((document, index) => userDocumentSource(document, index + 1));
+}
+
+/**
+ * Renumber every excerpt by its position in the flat list.
+ *
+ * A citation number IS that position — `[3]` means the third excerpt of the
+ * answer — so putting documents in front of others moves the rest along. Only
+ * excerpts that carry a number are renumbered: one the answer never cited
+ * keeps having none.
+ */
+function renumber(documents: SourceDocument[]): SourceDocument[] {
+  let next = 1;
+  return documents.map((document) => ({
+    ...document,
+    excerpts: document.excerpts.map((excerpt) =>
+      excerpt.citationNumber === undefined ? excerpt : { ...excerpt, citationNumber: next++ },
+    ),
+  }));
+}
+
+/**
+ * A first line that cites the documents the reader attached.
+ *
+ * Mock data saying so about itself, in the words rather than in chrome:
+ * nothing draws this sentence as a label, so a screenshot has to read as what
+ * it is. One marker per attached excerpt, in order, so every number in the
+ * panel has something in the text pointing at it.
+ */
+function attachmentSentence(attached: SourceDocument[]): string {
+  if (attached.length === 0) return '';
+
+  const markers = attached
+    .flatMap((document) => document.excerpts)
+    .map((excerpt) => `[${excerpt.citationNumber}]`)
+    .join('');
+  const names = attached.map((document) => `«${document.title}»`).join(', ');
+
+  return `Svaret er også bygget på dokumentet du la ved, ${names}.${markers}\n\n`;
+}
 
 export interface MockDelays {
   /** Between thinking steps. */
@@ -431,8 +497,33 @@ export class MockChatClient implements ChatClient {
        * and a control that quietly stops working on eleven of the questions is
        * worse than one that never worked at all.
        */
-      const documents = narrowToSelection(scripted?.documents ?? nkomSources, params.filters);
+      /*
+       * A question asked WITH the reader's own documents cites at least one
+       * of them. The attached ones come first, so `[1]` in the answer points
+       * at the reader's own file — which is what a reader who just attached
+       * something expects the first marker to be.
+       *
+       * The corpus documents are renumbered after them, because a citation
+       * number is a position in the answer's flat excerpt list and inserting
+       * at the front moves everything else along. Renumbering here rather
+       * than in the fixture keeps the fixture a fixture.
+       */
+      const attached = attachedSources(params.attachments);
+      const fromCorpus = narrowToSelection(scripted?.documents ?? nkomSources, params.filters);
+      const documents = attached.length === 0 ? fromCorpus : renumber([...attached, ...fromCorpus]);
       const cited = citedNumbers(documents);
+
+      /*
+       * How far the corpus markers moved. The attached documents take the
+       * first numbers, so every `[n]` written for the corpus now means
+       * `[n + attachedExcerpts]` — and the text has to say so, or each claim
+       * points one document too early and the last source is left with no
+       * marker. Found by KA CC on #117.
+       */
+      const attachedExcerpts = attached.reduce(
+        (total, document) => total + document.excerpts.length,
+        0,
+      );
 
       const steps = scripted?.thinkingSteps ?? nkomThinkingSteps;
       for (const step of steps) {
@@ -473,9 +564,23 @@ export class MockChatClient implements ChatClient {
       await wait(this.#delays.firstTokenMs, signal);
       const thought = thoughtMs();
       thoughtAtFirstToken = thought;
-      for (const text of tokenize(
-        withOnlyCitations(scripted?.answer ?? mockAnswerMarkdown, cited),
-      )) {
+      /*
+       * The answer, with the corpus markers moved along and a first sentence
+       * that cites what the reader attached.
+       *
+       * The sentence is not decoration. Shifting alone leaves source 1 — the
+       * reader's own document — with no marker pointing at it, which is the
+       * same inconsistency the shift fixes, only mirrored: a number in the
+       * panel that the text never refers to. One of the two has to give, and
+       * an answer that mentions the document it was handed is the honest one.
+       */
+      const answer = withOnlyCitations(
+        attachmentSentence(attached) +
+          shiftCitations(scripted?.answer ?? mockAnswerMarkdown, attachedExcerpts),
+        cited,
+      );
+
+      for (const text of tokenize(answer)) {
         await wait(this.#delays.tokenMs, signal);
         written += text;
         yield { type: 'token', text };
