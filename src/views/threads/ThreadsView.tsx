@@ -3,6 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink } from 'react-router';
 import { FilterIcon, NewThreadIcon } from '../../components/icons';
 import { EmptyState, ErrorState, PanelHeader, threadTime } from '../../components';
+import { useCorpus } from '../../layout/useCorpus';
 import { useOpenThread } from '../../layout/useOpenThread';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { Thread } from '../../model';
@@ -37,6 +38,22 @@ export function ThreadsView({
   // Which conversation is on screen, whoever put it there. See
   // src/layout/openThreadContext.ts.
   const openThreadId = useOpenThread();
+  /*
+   * Which corpus a thread was asked of, for the rows — and only when there is
+   * more than one to tell apart. With a single corpus the label would be the
+   * same word under every row in the list, which is noise rather than
+   * information, and the panel pays for it in height.
+   *
+   * The WHOLE label, not the short name the corpus line above uses: the row
+   * and the chooser name the same corpora, and a reader who picked «Kudos,
+   * 938 dokumenter (mock)» should find those words again under the thread. It
+   * costs a second line when the label is long — see `.threads-view__meta` in
+   * threads.css, which wraps — and that cost belongs to whoever writes the
+   * label in `VITE_KA_DATASETS`.
+   */
+  const { options, choosable } = useCorpus();
+  const corpusLabel = (key?: string) =>
+    choosable ? options.find((candidate) => candidate.key === key)?.label : undefined;
   const { threads, failed, retry } = useThreadList(given);
   const [query, setQuery] = useState('');
   const searchStatusId = useId();
@@ -182,15 +199,27 @@ export function ThreadsView({
                     which is where it belongs: first what the thread is, then
                     when it was.
                   */}
-                  {when && (
-                    <time
-                      className="threads-view__time"
-                      dateTime={when.dateTime}
-                      title={when.title}
-                    >
-                      {when.text}
-                    </time>
-                  )}
+                  {/*
+                    The time and the corpus on one line under the title, not
+                    two: a row is a row, and a second line under every thread
+                    is twelve more lines in a panel that is already over its
+                    height budget. The corpus is left out entirely when there
+                    is only one — see `corpusLabel`.
+                  */}
+                  <span className="threads-view__meta">
+                    {when && (
+                      <time
+                        className="threads-view__time"
+                        dateTime={when.dateTime}
+                        title={when.title}
+                      >
+                        {when.text}
+                      </time>
+                    )}
+                    {corpusLabel(thread.corpusKey) && (
+                      <span className="threads-view__corpus">{corpusLabel(thread.corpusKey)}</span>
+                    )}
+                  </span>
                 </li>
               );
             })}

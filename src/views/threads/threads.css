@@ -70,6 +70,42 @@
 }
 
 /*
+ * The line under the title: when the thread was last touched, and which
+ * corpus it was asked of when there is more than one.
+ *
+ * One line and not two, because a second line under every row is twelve more
+ * lines in a panel that is already over its height budget. It wraps rather
+ * than truncates: a corpus name is a name, and half of one says nothing.
+ *
+ * But `flex-wrap` means the second line comes back as soon as the label is
+ * long enough — and a corpus label is written in a deployment's environment,
+ * not here. The mock one, «Kudos, 938 dokumenter (mock)», is already past it
+ * at 400 px. That is the trade: the row shows the label WHOLE, the same words
+ * the chooser above shows, and pays for a long one in height. Anyone writing
+ * `VITE_KA_DATASETS` is writing the height of twelve rows with it — short
+ * names stay on one line (decided with KA CC on #106).
+ */
+.threads-view__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--ds-size-2);
+}
+
+.threads-view__meta[hidden] {
+  display: none;
+}
+
+/*
+ * The corpus a thread belongs to. Drawn like the timestamp beside it: this is
+ * context for the title above, not something to read first.
+ */
+.threads-view__corpus {
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: var(--ds-font-size-1);
+}
+
+/*
  * The timestamp. Indented to line up with the link text above it, which sits
  * inside the link's own padding.
  */

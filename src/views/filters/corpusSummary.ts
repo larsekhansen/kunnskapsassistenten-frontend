@@ -1,3 +1,4 @@
+import type { CorpusOption } from '../../api';
 import type { FilterFacet } from '../../model';
 
 /**
@@ -109,19 +110,68 @@ function yearRange(facets: FilterFacet[]): string {
 }
 
 /**
+ * The corpus's name, as a sentence can use it.
+ *
+ * A label is written for a row in a chooser and may carry more than a name:
+ * the mock corpus is «Kudos, 938 dokumenter (mock)», which is exactly what a
+ * reader picking between corpora wants to read and exactly what a sentence
+ * that then counts the documents itself must not repeat. What comes before
+ * the first comma is the name; «Wikipedia (NorQuAD)» has none and survives
+ * whole.
+ *
+ * Undefined when no corpus is known.
+ */
+function corpusName(corpus?: CorpusOption): string | undefined {
+  const label = corpus?.label.split(',')[0]?.trim();
+  return label === '' ? undefined : label;
+}
+
+/**
+ * What to call the corpus when nothing names it.
+ *
+ * Live with neither `VITE_KA_DATASETS` nor `VITE_KA_DATASET_CONFIG_KEY` set
+ * is a configuration #103 supports on purpose: no list, no chooser, and the
+ * backend picks the dataset. Nothing on this side knows which one it picked,
+ * so the line says that rather than «Kudos» — which was the claim this file
+ * was changed to stop making, left standing in the one case where no corpus
+ * is known (KA CC on #106).
+ */
+const UNNAMED_CORPUS = 'standardkorpuset';
+
+/**
  * @param facets The unconditional facets, or undefined while they load.
+ * @param corpus The corpus being searched, when one is known.
  * @returns A Norwegian sentence, always non-empty.
  */
-export function corpusSummary(facets?: FilterFacet[]): string {
-  const source = 'Dokumenter fra Kudos';
-  if (!facets || facets.length === 0) return source;
+export function corpusSummary(facets?: FilterFacet[], corpus?: CorpusOption): string {
+  const total = facets ? totalDocuments(facets) : undefined;
+  const clauses = (
+    facets
+      ? [
+          total === undefined ? '' : `${total.toLocaleString('nb-NO')} dokumenter`,
+          documentTypes(facets),
+          yearRange(facets),
+        ]
+      : []
+  ).filter((clause) => clause !== '');
 
-  const total = totalDocuments(facets);
-  const clauses = [
-    total === undefined ? '' : `${total.toLocaleString('nb-NO')} dokumenter`,
-    documentTypes(facets),
-    yearRange(facets),
-  ].filter((clause) => clause !== '');
+  const source = `Dokumenter fra ${corpusName(corpus) ?? UNNAMED_CORPUS}`;
+  if (clauses.length > 0) return `${source}: ${clauses.join(', ')}`;
 
-  return clauses.length === 0 ? source : `${source}: ${clauses.join(', ')}`;
+  /*
+   * Nothing to count, so the corpus says what it is in its own words — the
+   * description from the environment, after the same “Dokumenter fra X”
+   * opening the counted line uses.
+   *
+   * The opening stays because it carries the one thing the description
+   * cannot be trusted to: where the documents come from. That was the whole
+   * reason the line exists (brukerreiser punkt 11), and a description written
+   * in a deployment's environment may well name only what is inside.
+   *
+   * This is the live path — there is no facet aggregation there (A2) — and it
+   * is where the sentence used to be the constant «Dokumenter fra Kudos»,
+   * which said «Kudos» over NorQuAD's articles as soon as a reader could
+   * choose the corpus (measured by KA CC, 21.09).
+   */
+  return corpus?.description ? `${source}: ${corpus.description}` : source;
 }
