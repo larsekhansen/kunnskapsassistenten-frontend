@@ -1,33 +1,39 @@
 import { Paragraph } from '@digdir/designsystemet-react';
 
 /**
- * The Kudos disclaimer.
+ * The disclaimer over the excerpts, in the corpus's own name.
  *
- * Question 25 is still open, and the two Figma panels word it differently.
- * Choice made here: the wording from the newer of the two Figma panels, which
- * is also the one the curated September page shows. Written down so the next
- * person does not have to re-derive it.
+ * It used to say «fra Kudos» whatever the reader was searching, which over
+ * NorQuAD's Wikipedia articles is simply wrong — measured live, brukerblikk 6
+ * funn 2. The corpus half now comes from `corpusDisplayName`, the same
+ * function the filter panel names the corpus with (#110), so the two cannot
+ * drift apart and a corpus with no name falls back to «standardkorpuset»
+ * rather than to a claim.
+ *
+ * The own-documents half is #123's and unchanged in substance: with an
+ * uploaded file among the sources, «fra <korpus>» alone is false about that
+ * excerpt.
+ *
+ * The sentence that matters is the second one, and it never changes. Nothing
+ * here is generated — that is the whole reason the line exists, and it is
+ * true of every corpus.
+ *
+ * Question 25 is still open on the exact wording; the shape is the newer of
+ * the two Figma panels, which is also what the curated September page shows.
  */
-export const KUDOS_DISCLAIMER =
-  'All tekst er sitater fra dokumentene fra Kudos. Ikke generert av kunstig intelligens.';
+export function sourcesDisclaimer(corpusName: string, hasOwnDocument: boolean): string {
+  const source = hasOwnDocument
+    ? `dokumentene, både fra ${corpusName} og fra dine egne dokumenter`
+    : `dokumentene fra ${corpusName}`;
 
-/**
- * The same promise when one of the documents is the reader's own.
- *
- * The sentence above is a claim about where every word in the panel came
- * from, and with an uploaded document in the list it is false: that excerpt
- * is not from Kudos. The part that matters is unchanged and is the reason the
- * line exists at all — none of this is generated — so only the source is
- * widened. Saying «fra Kudos» over the reader's own file would be the panel
- * telling them something they can see is wrong, and the whole point of this
- * panel is that it can be checked.
- */
-export const OWN_DOCUMENT_DISCLAIMER =
-  'All tekst er sitater fra dokumentene, både fra Kudos og fra dine egne. Ikke generert av kunstig intelligens.';
+  return `All tekst er sitater fra ${source}. Ikke generert av kunstig intelligens.`;
+}
 
 type KudosDisclaimerProps = {
   /** `aria-describedby` on the search field points here. */
   id: string;
+  /** What to call the corpus, from `corpusDisplayName`. */
+  corpusName: string;
   /** True when at least one document in the panel is the reader's own. */
   hasOwnDocument?: boolean;
 };
@@ -46,10 +52,10 @@ type KudosDisclaimerProps = {
  * `aria-describedby` resolves by id, not by position, so the search field
  * still carries this as its description wherever it sits.
  */
-export function KudosDisclaimer({ id, hasOwnDocument = false }: KudosDisclaimerProps) {
+export function KudosDisclaimer({ id, corpusName, hasOwnDocument = false }: KudosDisclaimerProps) {
   return (
     <Paragraph id={id} data-size="xs" className="sources-search__description">
-      {hasOwnDocument ? OWN_DOCUMENT_DISCLAIMER : KUDOS_DISCLAIMER}
+      {sourcesDisclaimer(corpusName, hasOwnDocument)}
     </Paragraph>
   );
 }

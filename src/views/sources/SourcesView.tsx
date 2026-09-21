@@ -1,10 +1,12 @@
 import { Heading } from '@digdir/designsystemet-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { activeCorpusKey, corpusOption, subscribeToCorpus } from '../../api';
 import { EmptyState, findHits, stepHit, type SearchHit } from '../../components';
 import { ViewHead } from '../../layout/ViewHead';
 import { excerptDomId, type AnswerSources, type Excerpt, type SourceDocument } from '../../model';
 import { AnswerSwitcher } from './AnswerSwitcher';
 import { ExcerptSearch } from './ExcerptSearch';
+import { corpusDisplayName } from '../filters/corpusText';
 import { KudosDisclaimer } from './KudosDisclaimer';
 import { isOwnDocument } from './origin';
 import { SourceDocumentCard } from './SourceDocumentCard';
@@ -385,6 +387,24 @@ export function SourcesView({
     }
   }
 
+  /*
+   * The corpus's own name for the disclaimer.
+   *
+   * Read straight from the store rather than through `useCorpus`, which also
+   * carries the setter and therefore `useNavigate` — switching corpus starts
+   * a new thread. This panel only reads, and a read that drags in a Router
+   * would make the view unmountable outside one, including in `preview/`.
+   * `useSyncExternalStore` is the same subscription `useCorpus` uses, minus
+   * the half this view has no business with.
+   *
+   * `corpusDisplayName` is the filter panel's function (#2's folder, #110)
+   * and is imported rather than copied: two ways of shortening one label, or
+   * two spellings of the fallback, would drift apart the first time somebody
+   * changed one of them.
+   */
+  const corpusKey = useSyncExternalStore(subscribeToCorpus, activeCorpusKey, activeCorpusKey);
+  const corpusName = corpusDisplayName(corpusOption(corpusKey));
+
   const content = panelContentFor(answerList, activeAnswer);
 
   /**
@@ -476,7 +496,11 @@ export function SourcesView({
       </ViewHead>
 
       {content.kind !== 'empty' && (
-        <KudosDisclaimer id={disclaimerId} hasOwnDocument={documentList.some(isOwnDocument)} />
+        <KudosDisclaimer
+          id={disclaimerId}
+          corpusName={corpusName}
+          hasOwnDocument={documentList.some(isOwnDocument)}
+        />
       )}
 
       {content.kind === 'loading' ? (
