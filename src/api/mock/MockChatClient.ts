@@ -13,7 +13,13 @@ import { facetsFor } from './corpus/facets';
 import { citationsFor, scriptedFor } from './conversations';
 import { mockThreadDetail, mockThreadList, openMockThread, recordMockTurn } from './sessionThreads';
 import type { AskParams, ChatClient } from '../chatClient';
-import { citedNumbers, narrowToSelection, retrievalFor, withOnlyCitations } from './filtering';
+import {
+  citedNumbers,
+  narrowToSelection,
+  retrievalFor,
+  shiftCitations,
+  withOnlyCitations,
+} from './filtering';
 import {
   findThread,
   mockAnswerMarkdown,
@@ -61,6 +67,26 @@ function renumber(documents: SourceDocument[]): SourceDocument[] {
       excerpt.citationNumber === undefined ? excerpt : { ...excerpt, citationNumber: next++ },
     ),
   }));
+}
+
+/**
+ * A first line that cites the documents the reader attached.
+ *
+ * Mock data saying so about itself, in the words rather than in chrome:
+ * nothing draws this sentence as a label, so a screenshot has to read as what
+ * it is. One marker per attached excerpt, in order, so every number in the
+ * panel has something in the text pointing at it.
+ */
+function attachmentSentence(attached: SourceDocument[]): string {
+  if (attached.length === 0) return '';
+
+  const markers = attached
+    .flatMap((document) => document.excerpts)
+    .map((excerpt) => `[${excerpt.citationNumber}]`)
+    .join('');
+  const names = attached.map((document) => `«${document.title}»`).join(', ');
+
+  return `Svaret er også bygget på dokumentet du la ved, ${names}.${markers}\n\n`;
 }
 
 export interface MockDelays {
@@ -487,6 +513,18 @@ export class MockChatClient implements ChatClient {
       const documents = attached.length === 0 ? fromCorpus : renumber([...attached, ...fromCorpus]);
       const cited = citedNumbers(documents);
 
+      /*
+       * How far the corpus markers moved. The attached documents take the
+       * first numbers, so every `[n]` written for the corpus now means
+       * `[n + attachedExcerpts]` — and the text has to say so, or each claim
+       * points one document too early and the last source is left with no
+       * marker. Found by KA CC on #117.
+       */
+      const attachedExcerpts = attached.reduce(
+        (total, document) => total + document.excerpts.length,
+        0,
+      );
+
       const steps = scripted?.thinkingSteps ?? nkomThinkingSteps;
       for (const step of steps) {
         await wait(this.#delays.thinkingStepMs, signal);
@@ -526,9 +564,23 @@ export class MockChatClient implements ChatClient {
       await wait(this.#delays.firstTokenMs, signal);
       const thought = thoughtMs();
       thoughtAtFirstToken = thought;
-      for (const text of tokenize(
-        withOnlyCitations(scripted?.answer ?? mockAnswerMarkdown, cited),
-      )) {
+      /*
+       * The answer, with the corpus markers moved along and a first sentence
+       * that cites what the reader attached.
+       *
+       * The sentence is not decoration. Shifting alone leaves source 1 — the
+       * reader's own document — with no marker pointing at it, which is the
+       * same inconsistency the shift fixes, only mirrored: a number in the
+       * panel that the text never refers to. One of the two has to give, and
+       * an answer that mentions the document it was handed is the honest one.
+       */
+      const answer = withOnlyCitations(
+        attachmentSentence(attached) +
+          shiftCitations(scripted?.answer ?? mockAnswerMarkdown, attachedExcerpts),
+        cited,
+      );
+
+      for (const text of tokenize(answer)) {
         await wait(this.#delays.tokenMs, signal);
         written += text;
         yield { type: 'token', text };

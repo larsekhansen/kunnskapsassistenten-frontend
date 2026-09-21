@@ -11,9 +11,13 @@ let client: UploadClient | undefined;
  * does the whole flow in the browser, live mode refuses honestly because
  * there is no endpoint (API-bestilling A3).
  *
- * Cached, unlike `createChatClient()`, because the mock client is the only
- * thing that knows a `localStorage` key and two callers with two instances
- * would be two lists of one truth.
+ * Cached, unlike `createChatClient()` — but not because two instances would
+ * disagree. They would not: `MockUploadClient` holds no state of its own and
+ * reads `localStorage` on every call, so a second instance would answer
+ * exactly the same. The cache is here so that `unavailable` is read off one
+ * object rather than a new one per render, and so a test that swaps the mode
+ * has one place to reset. That is a smaller claim than the one this comment
+ * used to make, and it is the true one. KA CC on #117.
  */
 export function createUploadClient(): UploadClient {
   client ??=

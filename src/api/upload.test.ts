@@ -126,6 +126,13 @@ describe('framdrift og feilsti', () => {
     // den er den ene et view må tegne over en bar som alt var full.
     expect(seen.at(-1)).toBe(100);
     expect(failed.progress).toBe(100);
+
+    // Og den lagres ikke, like lite som en fil som ble avvist med en gang. En
+    // feil er noe å se og prøve på nytt etter, ikke et dokument — og en som
+    // overlevde omlasting ville kommet tilbake som en død rad med full bar og
+    // ingen vei videre. Funnet av KA CC på #117.
+    expect(await client.list()).toEqual([]);
+    expect(localStorage.getItem(DOCUMENTS_STORAGE_KEY)).toBeNull();
   });
 
   it('kaster når opplastingen avbrytes', async () => {

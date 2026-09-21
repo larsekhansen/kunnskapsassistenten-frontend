@@ -122,13 +122,18 @@ export class MockUploadClient implements UploadClient {
     }
 
     if (file.name.toLocaleLowerCase('nb-NO').startsWith(ALWAYS_FAILS_PREFIX)) {
-      // After the progress, not before: this is the failure that happens on
-      // the way home, which is the one a view has to draw over a bar that had
-      // already filled.
-      const failed = refuse('failed');
-      const stored: UserDocument = { ...failed, progress: 100 };
-      write([...read(), stored]);
-      return stored;
+      /*
+       * After the progress, not before: this is the failure that happens on
+       * the way home, which is the one a view has to draw over a bar that had
+       * already filled.
+       *
+       * Not written to storage, the same as a file refused before it started.
+       * A failure is something to see and try again after, not a document —
+       * and one that survived a reload would come back as a dead row with a
+       * full bar and no way to retry it. One rule for both: a failed upload
+       * lives in the session, never in the store. Found by KA CC on #117.
+       */
+      return { ...refuse('failed'), progress: 100 };
     }
 
     const ready: UserDocument = { ...base, status: 'ready', progress: 100 };
