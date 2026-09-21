@@ -70,6 +70,34 @@
 }
 
 /*
+ * The line under the title: when the thread was last touched, and which
+ * corpus it was asked of when there is more than one.
+ *
+ * One line and not two, because a second line under every row is twelve more
+ * lines in a panel that is already over its height budget. It wraps rather
+ * than truncates: a corpus name is a name, and half of one says nothing.
+ */
+.threads-view__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--ds-size-2);
+}
+
+.threads-view__meta[hidden] {
+  display: none;
+}
+
+/*
+ * The corpus a thread belongs to. Drawn like the timestamp beside it: this is
+ * context for the title above, not something to read first.
+ */
+.threads-view__corpus {
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: var(--ds-font-size-1);
+}
+
+/*
  * The timestamp. Indented to line up with the link text above it, which sits
  * inside the link's own padding.
  */

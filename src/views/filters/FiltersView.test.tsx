@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { AnswerSourcesContext, inertAnswerSources } from '../../layout/answerSourcesContext';
 import { FilterContext } from '../../layout/filterContext';
@@ -9,14 +10,20 @@ import { FiltersView } from './FiltersView';
  * The view reads two pieces of shell state, so both contexts are mounted the
  * way LayoutProvider mounts them. No documents: the document list is its own
  * test, and this one is about the facets.
+ *
+ * The router is here because the corpus chooser switches corpus by starting a
+ * new thread, and `useCorpus` navigates to do it — so the view now needs a
+ * router the way it needs the two contexts.
  */
 function renderView(facets?: FilterFacet[]) {
   return render(
-    <FilterContext value={{ selection: emptyFilterSelection, setSelection: () => {} }}>
-      <AnswerSourcesContext value={inertAnswerSources}>
-        <FiltersView siblingViews={['filters']} onShowView={() => {}} facets={facets} />
-      </AnswerSourcesContext>
-    </FilterContext>,
+    <MemoryRouter>
+      <FilterContext value={{ selection: emptyFilterSelection, setSelection: () => {} }}>
+        <AnswerSourcesContext value={inertAnswerSources}>
+          <FiltersView siblingViews={['filters']} onShowView={() => {}} facets={facets} />
+        </AnswerSourcesContext>
+      </FilterContext>
+    </MemoryRouter>,
   );
 }
 

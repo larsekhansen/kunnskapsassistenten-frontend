@@ -1,9 +1,10 @@
-import { Button, Paragraph, Skeleton } from '@digdir/designsystemet-react';
+import { Button, Field, Label, Paragraph, Select, Skeleton } from '@digdir/designsystemet-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createChatClient } from '../../api';
 import { BackIcon } from '../../components/icons';
 import { EmptyState, ErrorState, PanelHeader } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
+import { useCorpus } from '../../layout/useCorpus';
 import { useFilterSelection } from '../../layout/useFilterSelection';
 import { ViewHead } from '../../layout/ViewHead';
 import type { SlotViewProps } from '../../layout/viewModel';
@@ -43,6 +44,30 @@ export function FiltersView({
   const client = useMemo(() => createChatClient(), []);
   const { selection, setSelection } = useFilterSelection();
   const { documents } = useAnswerSources();
+  const { options, active, option, choosable, set } = useCorpus();
+  /**
+   * What the live region says after a corpus switch.
+   *
+   * The region already exists and already announces «Henter filtre»; this
+   * reuses it rather than adding a second one, which is what the brief asks
+   * and what a panel with two announcers would get wrong anyway — two regions
+   * mean two voices and no order between them.
+   *
+   * The switch itself is silent on screen: the panel is redrawn and the
+   * address goes to `/`, neither of which a screen reader reads out. Without
+   * this, the one thing that changed — which corpus the next question is
+   * asked of — is the one thing nobody is told.
+   */
+  const [corpusAnnouncement, setCorpusAnnouncement] = useState('');
+
+  function chooseCorpus(key: string) {
+    const picked = options.find((candidate) => candidate.key === key);
+    setCorpusAnnouncement(`Korpus: ${picked?.label ?? key}`);
+    // The shell owns what a switch does — a new thread, and the address with
+    // it. See useCorpus.ts.
+    set(key);
+  }
+
   const [facets, setFacets] = useState<FilterFacet[] | undefined>(given);
   /*
    * The facets as they are with nothing selected, kept apart from the ones
@@ -213,9 +238,36 @@ export function FiltersView({
           are narrowing: scrolled away, «3 av 6 valgt» is three of six of
           nothing in particular (brukerblikk runde 2, funn 4).
         */}
-        <Paragraph data-size="xs" className="filters-view__corpus">
-          {corpusSummary(corpus)}
-        </Paragraph>
+        {choosable ? (
+          /*
+            More than one corpus to search, so the line becomes the control
+            that picks between them. `Select` and not `Suggestion`: one value,
+            a handful of options, and the native dropdown is the one control a
+            reader already knows on every platform (select.md).
+
+            `Field` wires the label to the control and the description to
+            `aria-describedby` on its own, which is why the description keeps
+            the same class and text as the line it replaces — it IS the line,
+            now saying what the chosen corpus holds.
+          */
+          <Field>
+            <Label>Korpus</Label>
+            <Select value={active} onChange={(event) => chooseCorpus(event.currentTarget.value)}>
+              {options.map((candidate) => (
+                <Select.Option key={candidate.key} value={candidate.key}>
+                  {candidate.label}
+                </Select.Option>
+              ))}
+            </Select>
+            <Field.Description data-size="xs" className="filters-view__corpus">
+              {corpusSummary(corpus, option)}
+            </Field.Description>
+          </Field>
+        ) : (
+          <Paragraph data-size="xs" className="filters-view__corpus">
+            {corpusSummary(corpus, option)}
+          </Paragraph>
+        )}
       </ViewHead>
 
       {/*
@@ -251,7 +303,7 @@ export function FiltersView({
         mounting the region and its text together says nothing — the same
         reason ErrorState keeps its alert container. A retry has to announce.
       */}
-      <output className="ds-sr-only">{loading ? 'Henter filtre' : ''}</output>
+      <output className="ds-sr-only">{loading ? 'Henter filtre' : corpusAnnouncement}</output>
 
       {loading && (
         <div className="filters-view__loading">

@@ -18,7 +18,14 @@ if (typeof document.getAnimations !== 'function') {
   document.getAnimations = () => [];
 }
 
-vi.mock('../../api', () => ({
+/*
+ * Only the client is replaced. `importOriginal` keeps the rest of the module,
+ * which the shell's corpus store lives in — a bare factory drops
+ * `subscribeToCorpus` and every test in the file fails on an import rather
+ * than on what it is about.
+ */
+vi.mock('../../api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api')>()),
   createChatClient: () => ({ listThreads: () => new Promise(() => {}) }),
 }));
 

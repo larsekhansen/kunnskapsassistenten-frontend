@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { CorpusOption } from '../../api';
 import type { FilterFacet } from '../../model';
 import { corpusSummary } from './corpusSummary';
 
@@ -97,5 +98,49 @@ describe('corpusSummary', () => {
 
   it('writes one year without a range', () => {
     expect(corpusSummary([years(2024)])).toBe('Dokumenter fra Kudos: 2024');
+  });
+});
+
+describe('corpusSummary med et valgt korpus', () => {
+  const norquad: CorpusOption = {
+    key: 'norquad-docs',
+    label: 'Wikipedia (NorQuAD)',
+    description: '351 artikler fra Wikipedia, brukt til å prøve ut spørsmål og svar.',
+  };
+
+  it('sier korpusets egne ord når det ikke er noe å telle', () => {
+    // Live: ingen fasettaggregering (A2). Linja sa «Dokumenter fra Kudos» over
+    // NorQuAD sine artikler til korpusvalget kom (målt av KA CC 21.09).
+    const line = `Dokumenter fra Wikipedia (NorQuAD): ${norquad.description}`;
+    expect(corpusSummary(undefined, norquad)).toBe(line);
+    expect(corpusSummary([], norquad)).toBe(line);
+  });
+
+  it('navngir korpuset når det ikke har noen beskrivelse', () => {
+    expect(corpusSummary([], { key: 'kudos-pilot', label: 'Kudos-pilot' })).toBe(
+      'Dokumenter fra Kudos-pilot',
+    );
+  });
+
+  it('bruker navnet foran kommaet i en setning som teller selv', () => {
+    // Etiketten er skrevet for en rad i en velger: «Kudos, 938 dokumenter
+    // (mock)». Setningen under teller dokumentene selv, så den skal ikke si
+    // tallet to ganger.
+    const line = corpusSummary([types(['Årsrapport', 12])], {
+      key: 'mock',
+      label: 'Kudos, 938 dokumenter (mock)',
+    });
+
+    expect(line).toBe('Dokumenter fra Kudos: 12 dokumenter, årsrapporter');
+  });
+
+  it('lar et navn med parentes stå helt', () => {
+    expect(corpusSummary([types(['Årsrapport', 3])], norquad)).toBe(
+      'Dokumenter fra Wikipedia (NorQuAD): 3 dokumenter, årsrapporter',
+    );
+  });
+
+  it('står som før uten korpus', () => {
+    expect(corpusSummary(undefined)).toBe('Dokumenter fra Kudos');
   });
 });

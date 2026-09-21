@@ -27,7 +27,10 @@ if (typeof document.getAnimations !== 'function') {
  */
 const backend = vi.hoisted(() => ({ threads: [] as Thread[], reads: 0, down: false }));
 
-vi.mock('../../api', () => ({
+// `importOriginal`, so the corpus store the shell reads is still there; see
+// ThreadsView.test.tsx.
+vi.mock('../../api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api')>()),
   createChatClient: () => ({
     listThreads: async () => {
       backend.reads += 1;
