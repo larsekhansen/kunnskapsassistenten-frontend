@@ -185,3 +185,59 @@ describe('turen som skrives ned bærer korpuset sitt', () => {
     expect(answer?.corpusKey).toBe('norquad-mock');
   });
 });
+
+/**
+ * Fixturtrådene bærer korpuset sitt de også.
+ *
+ * De elleve skriptede trådene var de eneste radene i lista uten korpus på
+ * seg, mens hver rad leseren hadde laget bar et — som leser som «disse hører
+ * ikke til noe korpus» i stedet for «disse er eldre» (KA CC kan 2 på #133).
+ * Alt i dem er Kudos-dokumenter, så det er Kudos-mocken de sier.
+ */
+async function fixtures() {
+  vi.stubEnv('VITE_API_MODE', 'mock');
+  vi.stubEnv('VITE_KA_DATASETS', '');
+  vi.stubEnv('VITE_KA_DATASET_CONFIG_KEY', '');
+  vi.resetModules();
+  return await import('./fixtures');
+}
+
+describe('fixturtrådene og korpuset', () => {
+  it('gir hver rad i lista en korpusnøkkel', async () => {
+    const { threads } = await fixtures();
+
+    // Tolv rader: den håndskrevne NKOM-tråden og de elleve skriptede.
+    expect(threads.length).toBeGreaterThan(1);
+    for (const thread of threads) expect(thread.corpusKey).toBe('mock');
+  });
+
+  it('gir svaret i en skriptet tråd samme nøkkel', async () => {
+    // Slik at fraskrivelsen over en åpnet fixturtråd sier Kudos selv om
+    // leseren står i Wikipedia-mocken når den åpnes.
+    const { findThread } = await fixtures();
+    const answer = findThread('dss-regnskap')?.messages.find(
+      (message) => message.role === 'assistant',
+    );
+
+    expect(answer?.corpusKey).toBe('mock');
+  });
+
+  it('gir svaret i den håndskrevne tråden samme nøkkel', async () => {
+    const { findThread } = await fixtures();
+    const answer = findThread('nkom-maaloppnaaelse')?.messages.find(
+      (message) => message.role === 'assistant',
+    );
+
+    expect(answer?.corpusKey).toBe('mock');
+  });
+
+  it('lar spørsmålene være uten', async () => {
+    const { findThread } = await fixtures();
+    const questions = (findThread('dss-regnskap')?.messages ?? []).filter(
+      (message) => message.role === 'user',
+    );
+
+    expect(questions).toHaveLength(1);
+    for (const question of questions) expect(question.corpusKey).toBeUndefined();
+  });
+});

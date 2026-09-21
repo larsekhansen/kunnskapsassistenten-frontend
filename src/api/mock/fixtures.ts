@@ -9,6 +9,7 @@ import type {
   ThinkingStep,
   UserDocument,
 } from '../../model';
+import { MOCK_CORPUS } from '../corpus';
 import { daysAgo } from './clock';
 import { scriptedThreads } from './conversations/threads';
 import { sourceFrom } from './conversations/types';
@@ -286,6 +287,8 @@ const nkomThread: Thread = {
   createdAt: daysAgo(0, 9),
   updatedAt: daysAgo(0, 10),
   conversationId: 'conv-nkom-1',
+  // Kudos, like the scripted ones: the answer under it cites Kudos documents.
+  corpusKey: MOCK_CORPUS.key,
 };
 
 /** A `ThreadDetail` as it appears in the list, without its messages. */
@@ -326,6 +329,7 @@ const nkomMessages: Message[] = [
     sources: nkomSources,
     retrieval: nkomRetrieval,
     thinkingSteps: nkomThinkingSteps,
+    corpusKey: MOCK_CORPUS.key,
     status: 'complete',
   },
 ];
