@@ -233,15 +233,22 @@ test.describe('skuffer under 1139', () => {
   }, testInfo) => {
     covers(testInfo, 'skuffer: hovedkolonnens bredde');
 
-    // 1024 − 67 − 67 = 890, og taket på 800 er det trangeste. Railene blir
-    // stående i vindusranda, `margin-inline: auto` fordeler resten.
+    // 1024 − 67 − 67 = 890: det er plassen mellom railene, og den fyller
+    // rulleregionen. Lesebredden stopper på taket sitt på 800 og sentreres i
+    // den. To tall siden rulleregionen og lesebredden ble skilt — `.main`
+    // fyller feltet så hjulet virker i margen òg, `.main-column` holder
+    // teksten. Railene blir stående i vindusranda.
     await page.setViewportSize(NARROW);
     await page.goto('/threads/nkom-maaloppnaaelse');
-    await expectWidth(page, '.main', MAIN_MAX, 'hovedkolonnen ved 1024');
+    await expectWidth(page, '.main', NARROW.width - 2 * RAIL, 'rulleregionen ved 1024');
+    await expectWidth(page, '.main-column', MAIN_MAX, 'lesebredden ved 1024');
 
     // 720: 67 + 640 + 67 = 774, altså 54 px for mye. Gulvet finnes for at
     // kildene skal kunne leses VED SIDEN AV svaret, og her er ingenting ved
     // siden av svaret — så det viker, teksten brytes, og ingenting klippes.
+    // Her er de to like: plassen er 586, og lesebredden tar det som er igjen
+    // fordi taket på 800 er romsligere enn feltet. `.main` er fortsatt det
+    // rette å måle, for påstanden er at GULVET vek.
     await page.setViewportSize(ZOOMED);
     await expectWidth(page, '.main', ZOOMED.width - 2 * RAIL, 'hovedkolonnen ved 720');
     await expectNoSidewaysScroll(page, '720 etter at gulvet vek');

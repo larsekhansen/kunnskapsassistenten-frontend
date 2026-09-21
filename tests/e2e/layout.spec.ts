@@ -183,7 +183,21 @@ type Measurement = {
   clientWidth: number;
   navLeftEdge: number;
   navWidth: number;
+  /**
+   * The answer column's share of the ROW — the slot, which is what the sums
+   * and the floor are about.
+   */
   mainWidth: number;
+  /**
+   * The width the text is actually set in, inside that slot.
+   *
+   * Two numbers since the scrolling region and the reading width were split
+   * apart: `main` fills the field between the panels so the wheel works
+   * anywhere in it, and `.main-column` holds the 800 px. They were one box
+   * until then, and one measurement served both — the ceiling belongs to this
+   * one, the floor and the sums to the slot above.
+   */
+  mainColumnWidth: number;
   sourcesWidth: number;
 };
 
@@ -209,6 +223,7 @@ async function measure(page: Page): Promise<Measurement> {
       ),
       navWidth: width('.primary-sidebar'),
       mainWidth: width('.main'),
+      mainColumnWidth: width('.main-column'),
       sourcesWidth: width('.secondary-sidebar'),
     };
   });
@@ -264,9 +279,15 @@ function expectLayoutFits(measured: Measurement, state: LayoutState, where: stri
     measured.mainWidth,
     `hovedkolonnen skal aldri under gulvet sitt (${MAIN_FLOOR}) i ${where}`,
   ).toBeGreaterThanOrEqual(MAIN_FLOOR);
-  expect(measured.mainWidth, `hovedkolonnen skal aldri over taket i ${where}`).toBeLessThanOrEqual(
-    MAIN_CEILING,
-  );
+  // Taket er om LESEBREDDEN, ikke om plassen: siden rulleregionen og
+  // lesebredden ble skilt, fyller `.main` feltet mellom panelene mens
+  // `.main-column` holder de 800. Målt på `.main` ville dette sagt 941 ved
+  // 1440 med sidekolonnene kollapset, uten at en eneste linje tekst var
+  // bredere enn før.
+  expect(
+    measured.mainColumnWidth,
+    `lesebredden skal aldri over taket i ${where}`,
+  ).toBeLessThanOrEqual(MAIN_CEILING);
 }
 
 test.describe('layouten', () => {
