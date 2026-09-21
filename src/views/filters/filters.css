@@ -68,11 +68,54 @@
   flex-wrap: wrap;
   align-items: baseline;
   column-gap: var(--ds-size-2);
+  /*
+   * Only ever between the line and the detail, because closed there is one
+   * row: the detail is `hidden`, and a `display: none` item makes no row to
+   * have a gap to. It is what keeps the opened detail clear of «Vis mindre»'s
+   * hit area, which reaches 3 px below the text — see the toggle below.
+   */
+  row-gap: var(--ds-size-1);
   color: var(--ds-color-neutral-text-subtle);
 }
 
 .filters-view__corpus[hidden] {
   display: none;
+}
+
+/*
+ * «Vis mer» is a text-sized control, and the text here is 21 px high — under
+ * the 24 px WCAG 2.5.8 (Target Size, Minimum) asks of a target. Being as tall
+ * as the line is the whole point of it: Designsystemet's Button is 42 px and
+ * set the height of the row, which is most of what the filter head saved in
+ * #114.
+ *
+ * So the hit area grows and the row does not. The padding takes the box to
+ * 24 px and a negative margin of the same size hands those pixels back to the
+ * layout, so the line measures exactly what it did before.
+ *
+ * DOWNWARD only, measured rather than assumed: the corpus Select above ends
+ * within 3 px of this line, and a target that grew upward would have its top
+ * edge covered by the Select — a click meant for «Vis mer» would open the
+ * corpus list (measured: elementFromPoint at the top edge returned the
+ * select). Under the line there is nothing but the detail text, which is not
+ * a target.
+ *
+ * WCAG's inline exception would have covered this — the control's size is
+ * constrained by the line-height of the sentence beside it — but an exception
+ * leaves a 21 px target on screen for the reader with a tremor, and this
+ * costs two declarations.
+ */
+.filters-view__corpus-toggle {
+  /*
+   * The success criterion's own number, so it is not a design value and has
+   * no token. `1lh` is this control's own line: whatever the text measures,
+   * the box reaches 24 px and no further. A browser without `lh` drops both
+   * declarations and gets the line-tall control it had before.
+   */
+  --ka-target-grow: max(0px, calc(24px - 1lh));
+
+  padding-block-end: var(--ka-target-grow);
+  margin-block-end: calc(-1 * var(--ka-target-grow));
 }
 
 .filters-view__corpus-detail {
