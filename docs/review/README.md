@@ -54,6 +54,10 @@ eier bare denne mappa.
 | [`feat-panel-head-slot-2026-09-21.md`](feat-panel-head-slot-2026-09-21.md)                     | PR #116, plass i panelhodet: plassen fantes ikke i skuffa, og en tom rad kostet 16 px                  |
 | [`feat-composer-row-footer-line-2026-09-21.md`](feat-composer-row-footer-line-2026-09-21.md)   | PR #115, send og vedlegg inn i feltraden: 88 px og ikke 72, og fokus som overlever byttet              |
 | [`feat-upload-foundation-2026-09-21.md`](feat-upload-foundation-2026-09-21.md)                 | PR #117, grunnmur for opplasting: kildene flyttet, men markørene i svaret ble stående                  |
+| [`feat-threads-button-panel-head-2026-09-21.md`](feat-threads-button-panel-head-2026-09-21.md) | PR #119, «Tråder» i panelhodet: 60 px, og to kontroller utenfor den klippede flata                     |
+| [`feat-sources-own-documents-2026-09-21.md`](feat-sources-own-documents-2026-09-21.md)         | PR #123, eget dokument som kilde: to setninger som må si forskjellige ting                             |
+| [`feat-your-documents-upload-2026-09-21.md`](feat-your-documents-upload-2026-09-21.md)         | PR #124, «Dine dokumenter»: to AA-funn axe ikke ser                                                    |
+| [`feat-composer-attachments-2026-09-21.md`](feat-composer-attachments-2026-09-21.md)           | PR #125, vedlegg i skrivefeltet: vakta sto på knappen, ikke på handlingen                              |
 
 ## Sånn går en review
 
