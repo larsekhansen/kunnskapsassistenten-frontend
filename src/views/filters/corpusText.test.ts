@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CorpusOption } from '../../api';
 import type { FilterFacet } from '../../model';
-import { corpusLine } from './corpusSummary';
+import { corpusLine } from './corpusText';
 
 /*
  * The two parts the panel draws, not one sentence.

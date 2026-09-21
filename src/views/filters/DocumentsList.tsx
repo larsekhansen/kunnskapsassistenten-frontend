@@ -2,7 +2,7 @@ import { Button, Heading, Link, List, Paragraph } from '@digdir/designsystemet-r
 import { useEffect, useId, useRef, useState } from 'react';
 import { useCorpus } from '../../layout/useCorpus';
 import type { SourceDocument } from '../../model';
-import { corpusDisplayName } from './corpusSummary';
+import { corpusDisplayName } from './corpusText';
 
 /**
  * How many documents are listed before «Vis flere dokumenter».
