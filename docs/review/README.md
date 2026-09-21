@@ -52,6 +52,7 @@ eier bare denne mappa.
 | [`feat-corpus-choice-2026-09-21.md`](feat-corpus-choice-2026-09-21.md)                         | PR #103, korpus som kjøretidsvalg: nøkkelen målt på wire, og 401 på svaret                             |
 | [`feat-corpus-line-one-line-2026-09-21.md`](feat-corpus-line-one-line-2026-09-21.md)           | PR #114, korpuslinja på én linje: 42 px og ikke 32, og en funksjon uten kallere                        |
 | [`feat-panel-head-slot-2026-09-21.md`](feat-panel-head-slot-2026-09-21.md)                     | PR #116, plass i panelhodet: plassen fantes ikke i skuffa, og en tom rad kostet 16 px                  |
+| [`feat-composer-row-footer-line-2026-09-21.md`](feat-composer-row-footer-line-2026-09-21.md)   | PR #115, send og vedlegg inn i feltraden: 88 px og ikke 72, og fokus som overlever byttet              |
 
 ## Sånn går en review
 
