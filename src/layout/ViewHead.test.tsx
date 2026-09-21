@@ -121,7 +121,15 @@ describe('view-hodet i skallet', () => {
       expect(scroller.firstElementChild?.className).toBe('view-head');
     }
 
-    expect(document.querySelector('main')?.firstElementChild?.className).toBe('view-head');
+    /*
+     * Ett hopp til i hovedkolonnen: `main` er rulleregionen og fyller hele
+     * feltet mellom panelene, mens `.main-column` inni er lesebredden. Hodet
+     * er fortsatt det første som står foran innholdet — garantien er den
+     * samme, boksen mellom er bare det som gjør at hjulet virker i margen òg.
+     */
+    const main = document.querySelector('main');
+    expect(main?.firstElementChild?.className).toBe('main-column');
+    expect(main?.querySelector('.main-column')?.firstElementChild?.className).toBe('view-head');
   });
 
   it('holder «Tråder», overskriften og korpuslinja i navigasjonspanelets hode', () => {
