@@ -148,3 +148,8 @@ ut, mål en gang til før det skrives ned.
   `corpusDisplayName` eller `origin`, aldri stå fast.
 - Runde 5 funn 4 og 5 er nå tre runder gamle. De er «kan», og de blir ikke
   mindre av å stå — verdt en avgjørelse om de skal lukkes som «sånn er det».
+
+**Avgjort samme dag:** begge lukkes som «sånn er det». Chipsene ligger i
+Designsystemets eget Suggestion-felt slik komponenten tegner det, og
+bindestreken i kildekortet er valgt framfor overflyt. Dirigenten skriver det i
+beslutningene, og de står altså ikke som åpne funn i runde 7.
