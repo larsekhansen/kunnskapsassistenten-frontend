@@ -16,6 +16,16 @@ import {
   NO_HITS_WHOLE_CORPUS,
 } from './text';
 
+/**
+ * The documents one question is asked with: what to send, and what to show.
+ *
+ * Both, because the two are read by different things and neither can be got
+ * from the other later. The ids go on the wire; the names go on the reader's
+ * own message in the thread, and a name looked up from the document list
+ * afterwards would go missing the day the reader removes the file.
+ */
+export type AskAttachments = { ids: string[]; names: string[] };
+
 /** Where the current turn is. Drives the skeleton, the stop button and the error. */
 export type ChatStatus = 'idle' | 'pending' | 'streaming' | 'error';
 
@@ -94,7 +104,20 @@ export type UseChat = {
    * utdype?» asks the assistant to say more about nothing.
    */
   noHitsAnswers: ReadonlySet<string>;
-  send: (question: string) => void;
+  /**
+   * The documents each question was asked with, by the QUESTION's message id.
+   *
+   * Beside the messages and not on them, the same call `appliedFilters`
+   * makes: what a question carried is a fact about that turn at the moment it
+   * was asked, and the reader's document list goes on changing afterwards. A
+   * document removed tomorrow must not rewrite what yesterday's question said
+   * it was asked with.
+   *
+   * Names and not ids, because the thread draws them and a reader reads
+   * «Årsrapport 2025.pdf», not a uuid.
+   */
+  attachmentsByMessage: Record<string, string[]>;
+  send: (question: string, attachments?: AskAttachments) => void;
   /** Stop the generation and keep what has arrived (answer 34). */
   cancel: () => void;
   /**
@@ -196,6 +219,7 @@ export function useChat(
     });
   }
   const [appliedFilters, setAppliedFilters] = useState<Record<string, FilterSelection>>({});
+  const [attachmentsByMessage, setAttachmentsByMessage] = useState<Record<string, string[]>>({});
   const [status, setStatus] = useState<ChatStatus>('idle');
   const [error, setError] = useState<ChatError | null>(null);
   const [noHitsAnswers, setNoHitsAnswers] = useState<ReadonlySet<string>>(() => new Set());
@@ -205,6 +229,7 @@ export function useChat(
   const turnRef = useRef(0);
   const conversationRef = useRef<string | undefined>(undefined);
   const lastQuestionRef = useRef<string | null>(null);
+  const lastAttachmentsRef = useRef<AskAttachments | undefined>(undefined);
 
   /*
    * The conversation as it stands, for the handlers that need to read it
@@ -303,7 +328,7 @@ export function useChat(
   }, []);
 
   const run = useCallback(
-    async (question: string, answerId: string) => {
+    async (question: string, answerId: string, attachments?: string[]) => {
       // Every turn gets a number, and only the newest one may write status,
       // announcement or error. Asking a second question while the first is
       // still streaming aborts the first, but that abort is handled one tick
@@ -357,6 +382,10 @@ export function useChat(
           // it is sent regardless: that is the contract, and the day it is
           // honoured nothing here has to change.
           filters,
+          // Which of the reader's own documents THIS question is about.
+          // Separate from `filters`, which narrows the corpus and follows the
+          // reader between questions.
+          ...(attachments?.length ? { attachments } : {}),
           signal: controller.signal,
         })) {
           switch (event.type) {
@@ -505,20 +534,27 @@ export function useChat(
   );
 
   const send = useCallback(
-    (question: string) => {
+    (question: string, attachments?: AskAttachments) => {
       const query = question.trim();
       if (query.length === 0) return;
 
       abortRef.current?.abort();
       lastQuestionRef.current = query;
+      // Carried on the turn, so «Generer på nytt» asks the same question of
+      // the same documents rather than of none.
+      lastAttachmentsRef.current = attachments;
 
       const now = new Date().toISOString();
+      const questionId = nextId('user');
       const answerId = nextId('assistant');
       setAppliedFilters((current) => ({ ...current, [answerId]: filters }));
+      if (attachments?.names.length) {
+        setAttachmentsByMessage((current) => ({ ...current, [questionId]: attachments.names }));
+      }
       setMessages((current) => [
         ...current,
         {
-          id: nextId('user'),
+          id: questionId,
           role: 'user',
           content: query,
           createdAt: now,
@@ -535,7 +571,7 @@ export function useChat(
         },
       ]);
 
-      void run(query, answerId);
+      void run(query, answerId, attachments?.ids);
     },
     [filters, run],
   );
@@ -570,7 +606,7 @@ export function useChat(
         status: 'streaming',
       },
     ]);
-    void run(question, answerId);
+    void run(question, answerId, lastAttachmentsRef.current?.ids);
   }, [filters, run]);
 
   return {
@@ -579,6 +615,7 @@ export function useChat(
     error,
     announcement,
     appliedFilters,
+    attachmentsByMessage,
     noHitsAnswers,
     send,
     cancel,

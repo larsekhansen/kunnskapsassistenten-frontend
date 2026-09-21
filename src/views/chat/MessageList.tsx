@@ -2,6 +2,7 @@ import { Paragraph } from '@digdir/designsystemet-react';
 import { useState } from 'react';
 import type { Message } from '../../model';
 import { AnswerMessage } from './AnswerMessage';
+import { attachmentsOnMessage } from './attachmentText';
 import { Clarification } from './Clarification';
 import { ThinkingPanel } from './ThinkingPanel';
 
@@ -32,6 +33,13 @@ type MessageListProps = {
   foundNothing?: (messageId: string) => boolean;
   /** The turn the error alert under the conversation is about, if any. */
   liveErrorId?: string;
+  /**
+   * The documents a question was asked with, by the question's message id.
+   *
+   * Drawn on the reader's own message, because that is where it belongs: the
+   * question is what carried them, and the answer is what came back.
+   */
+  attachmentsFor?: (messageId: string) => string[] | undefined;
 };
 
 /**
@@ -69,6 +77,7 @@ export function MessageList({
   filterSummary,
   foundNothing,
   liveErrorId,
+  attachmentsFor,
 }: MessageListProps) {
   // The answer whose search strip is in the view-head, and what is typed in
   // it. One strip, one query: switching answers starts a fresh search rather
@@ -101,6 +110,7 @@ export function MessageList({
     <ol className="ka-messages">
       {messages.map((message) => {
         if (message.role === 'user') {
+          const attached = attachmentsFor?.(message.id);
           return (
             <li className="ka-message ka-message--user" key={message.id}>
               <span className="ds-sr-only">Du skrev:</span>
@@ -109,6 +119,14 @@ export function MessageList({
               <Paragraph data-size="lg" variant="long">
                 {message.content}
               </Paragraph>
+              {/* What the question was asked with. Under the question and not
+                  over it: the words are what the reader wrote, the documents
+                  are what they wrote it about. */}
+              {attached?.length ? (
+                <Paragraph className="ka-message__attachments" data-size="sm">
+                  {attachmentsOnMessage(attached)}
+                </Paragraph>
+              ) : null}
             </li>
           );
         }
