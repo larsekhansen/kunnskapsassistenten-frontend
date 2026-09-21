@@ -2,6 +2,7 @@ import { Heading, Link, List, Paragraph } from '@digdir/designsystemet-react';
 import { useId } from 'react';
 import type { SourceDocument } from '../../model';
 import { documentDomId } from './ids';
+import { isOwnDocument, OWN_DOCUMENT_LABEL } from './origin';
 
 /**
  * «Utdrag 1–3» when the numbers run unbroken, «Utdrag 1, 2, 5» when they do
@@ -71,6 +72,15 @@ export function SourcesOverview({ documents, onNavigateToDocument }: SourcesOver
                 }}
               >
                 {source.title}
+                {/* An uploaded document is named by its file name, and a file
+                    name can look exactly like a corpus document's title. The
+                    shortcut list is read out of context — that is what a
+                    shortcut list is for — so the name carries what the card
+                    below shows as a subtitle. Same reason as the Kudos link
+                    names in #92: a list of links has to tell its rows apart. */}
+                {isOwnDocument(source) && (
+                  <span className="ds-sr-only">, {OWN_DOCUMENT_LABEL.toLowerCase()}</span>
+                )}
               </Link>
               {range !== '' && (
                 <Paragraph data-size="xs" className="sources-overview__excerpts">

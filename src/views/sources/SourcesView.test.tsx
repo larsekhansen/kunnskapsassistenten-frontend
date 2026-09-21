@@ -1,6 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { userDocumentSource } from '../../api/mock/fixtures';
+import { documentDomId } from './ids';
 import { excerptDomId, type AnswerSources, type SourceDocument } from '../../model';
 import { SourcesView } from './SourcesView';
 
@@ -520,5 +522,101 @@ describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
       .trim();
 
     expect(visible).toBe('Les dokumentet på Kudos');
+  });
+});
+
+describe('SourcesView, et dokument leseren har lastet opp selv', () => {
+  /**
+   * Bygget med mockens egen `userDocumentSource`, ikke med en håndskrevet
+   * kilde. Det er den som lager kilden når et spørsmål stilles med et vedlegg,
+   * så en test mot noe annet ville målt min egen antakelse om formen.
+   */
+  function ownDocument(name = 'Mitt notat 2026.pdf'): SourceDocument {
+    return userDocumentSource(
+      {
+        id: 'doc-egen',
+        name,
+        type: 'pdf',
+        size: 1024,
+        status: 'ready',
+        progress: 100,
+        uploadedAt: '2026-09-21T09:00:00.000Z',
+      },
+      1,
+    );
+  }
+
+  it('viser filnavnet som tittel og «Ditt dokument» som type', () => {
+    render(<SourcesView documents={[ownDocument()]} />);
+
+    expect(screen.getByRole('heading', { name: 'Mitt notat 2026.pdf' })).toBeTruthy();
+    expect(screen.getByText('Ditt dokument')).toBeTruthy();
+  });
+
+  it('har ingen lenke ut, og sier hvorfor med sine egne ord', () => {
+    // Ikke «Dokumentet har ingen offentlig lenke», som er mappekorpusets
+    // setning: her mangler det ingenting, filen er leserens egen.
+    render(<SourcesView documents={[ownDocument()]} />);
+
+    expect(screen.queryByRole('link', { name: /Kudos/ })).toBeNull();
+    expect(screen.getByText(/Bare du har dette dokumentet/)).toBeTruthy();
+  });
+
+  it('sier i snarveien at dokumentet er ditt, uten å endre synlig tekst', () => {
+    // Et filnavn kan se ut akkurat som et korpusdokument, og snarveilista
+    // leses ut av sammenheng.
+    render(<SourcesView documents={[ownDocument('Årsrapport Nkom 2025')]} />);
+
+    expect(screen.getByRole('link', { name: 'Årsrapport Nkom 2025, ditt dokument' })).toBeTruthy();
+  });
+
+  it('sier at teksten er fra begge slags dokumenter, ikke bare fra Kudos', () => {
+    // Linja er en påstand om hvor hvert ord i panelet kommer fra. Med et
+    // opplastet dokument i lista er «fra Kudos» usant, og nettopp dette
+    // panelet er det leseren skal kunne etterprøve.
+    render(<SourcesView documents={[ownDocument()]} />);
+
+    expect(screen.getByText(/både fra Kudos og fra dine egne/)).toBeTruthy();
+    expect(screen.queryByText(/^All tekst er sitater fra dokumentene fra Kudos\./)).toBeNull();
+  });
+
+  it('lar linja stå uendret når alt er fra korpuset', () => {
+    render(<SourcesView documents={firstAnswer.documents} />);
+
+    expect(screen.getByText(/All tekst er sitater fra dokumentene fra Kudos\./)).toBeTruthy();
+  });
+
+  it('skiller ditt dokument fra korpusets med samme tittel', () => {
+    // Begge heter det samme. Bare det ene har en Kudos-lenke, og det er
+    // origin som avgjør hvilket.
+    const tittel = 'Årsrapport Nkom 2025';
+    const corpus: SourceDocument = {
+      id: 'doc-korpus',
+      title: tittel,
+      documentType: 'Årsrapport',
+      organisation: 'Nkom',
+      year: 2025,
+      url: 'https://kudos.dfo.no/dokument/a1c6feb9-3a47-4889-b049-92adae575b9f',
+      excerpts: [
+        {
+          id: 'doc-korpus-1',
+          citationNumber: 2,
+          relevance: 'high' as const,
+          text: 'Sitat fra korpuset.',
+          kudosUrl: 'https://kudos.dfo.no/dokument/a1c6feb9-3a47-4889-b049-92adae575b9f',
+        },
+      ],
+    };
+
+    const { container } = render(<SourcesView documents={[ownDocument(tittel), corpus]} />);
+
+    expect(screen.getAllByRole('heading', { name: tittel })).toHaveLength(2);
+    expect(screen.getByText('Ditt dokument')).toBeTruthy();
+
+    // Skopet til hvert sitt kort: korpusdokumentet har lenker ut, ditt har
+    // ingen, selv om de to kortene har nøyaktig samme overskrift.
+    const card = (id: string) => container.querySelector(`#${documentDomId(id)}`) as HTMLElement;
+    expect(within(card('doc-korpus')).getAllByRole('link').length).toBeGreaterThan(0);
+    expect(within(card('doc-egen')).queryAllByRole('link')).toEqual([]);
   });
 });

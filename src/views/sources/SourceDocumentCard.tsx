@@ -3,6 +3,7 @@ import { hitsFor, type SearchHit } from '../../components';
 import type { SourceDocument } from '../../model';
 import { SourceExcerpt } from './SourceExcerpt';
 import { documentDomId } from './ids';
+import { documentSubtitle, isOwnDocument, OWN_DOCUMENT_NO_LINK } from './origin';
 
 type SourceDocumentCardProps = {
   /** Named `source`, not `document`: the DOM global is used in this view. */
@@ -46,9 +47,8 @@ export function SourceDocumentCard({
   activeCitationNumber,
   onReturnToAnswer,
 }: SourceDocumentCardProps) {
-  const subtitle = [source.documentType, source.organisation, source.year]
-    .filter((part) => part !== undefined)
-    .join(' · ');
+  const subtitle = documentSubtitle(source);
+  const own = isOwnDocument(source);
 
   return (
     <Card
@@ -99,7 +99,12 @@ export function SourceDocumentCard({
       })}
 
       <Card.Block className="source-document__foot">
-        {source.url === undefined ? (
+        {own ? (
+          // The reader's own file. It never had a public address, which is the
+          // normal state for it — see `origin.ts` for why this is not the same
+          // sentence as the folder-corpus one below.
+          <Paragraph data-size="xs">{OWN_DOCUMENT_NO_LINK}</Paragraph>
+        ) : source.url === undefined ? (
           // Normal, not an error: folder-based corpora have no public URL.
           // Saying so beats a dead link or an unexplained missing one.
           <Paragraph data-size="xs">Dokumentet har ingen offentlig lenke.</Paragraph>

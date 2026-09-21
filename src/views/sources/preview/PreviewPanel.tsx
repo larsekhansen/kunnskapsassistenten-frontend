@@ -20,10 +20,19 @@ import './preview.css';
  * survive.
  */
 type PreviewState =
-  'ready' | 'loading' | 'empty' | 'uncited' | 'flere-svar' | 'avbrutt' | 'feil' | 'avklaring';
+  | 'ready'
+  | 'eget-dokument'
+  | 'loading'
+  | 'empty'
+  | 'uncited'
+  | 'flere-svar'
+  | 'avbrutt'
+  | 'feil'
+  | 'avklaring';
 
 const STATE_LABELS: Record<PreviewState, string> = {
   ready: 'Med kilder',
+  'eget-dokument': 'Eget dokument',
   loading: 'Laster',
   empty: 'Tom',
   uncited: 'Utdrag uten nummer',
@@ -82,6 +91,11 @@ function oneAnswer(documents: SourceDocument[]): readonly AnswerSources[] {
 
 function answersFor(state: PreviewState): readonly AnswerSources[] | undefined {
   switch (state) {
+    // A question asked with an attachment: the reader's own file first, the
+    // corpus behind it, which is the order the mock renumbers them into. The
+    // corpus document keeps its own title so the two kinds stand side by side.
+    case 'eget-dokument':
+      return oneAnswer([ownDocument, ...renumberedCorpus]);
     case 'loading':
       return [{ messageId: 'svar-1', status: 'streaming', documents: [] }];
     case 'empty':
@@ -102,6 +116,37 @@ function answersFor(state: PreviewState): readonly AnswerSources[] | undefined {
       return oneAnswer(fixtures.nkomSources);
   }
 }
+
+/**
+ * A source from a file the reader uploaded, built the way the mock builds it.
+ *
+ * `fixtures.userDocumentSource` is what `MockChatClient` calls when a question
+ * carries `attachments`, so the harness shows the real shape rather than a
+ * hand-written guess at it.
+ */
+const ownDocument: SourceDocument = fixtures.userDocumentSource(
+  {
+    id: 'doc-egen',
+    name: 'Notat om måloppnåelse 2026.pdf',
+    type: 'pdf',
+    size: 348_000,
+    status: 'ready',
+    progress: 100,
+    uploadedAt: '2026-09-21T09:00:00.000Z',
+  },
+  1,
+);
+
+/** The corpus documents after the attachment took citation number 1. */
+const renumberedCorpus: SourceDocument[] = (() => {
+  let next = 2;
+  return fixtures.nkomSources.map((source) => ({
+    ...source,
+    excerpts: source.excerpts.map((excerpt) =>
+      excerpt.citationNumber === undefined ? excerpt : { ...excerpt, citationNumber: next++ },
+    ),
+  }));
+})();
 
 /**
  * `?kilde=3` mounts the view with a citation already set.
