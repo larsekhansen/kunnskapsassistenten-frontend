@@ -80,7 +80,7 @@ describe('korpusvelgeren', () => {
     // `hidden`, ikke fjernet: `aria-controls` peker på det, og et element
     // som ikke er i dokumentet kan ingen skjermleser følge pekeren til.
     expect(screen.getByText('351 artikler.').hasAttribute('hidden')).toBe(true);
-    expect(screen.getByRole('button', { name: 'Vis mer' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Vis mer om korpuset' })).toBeTruthy();
   });
 
   it('ber skallet bytte, og annonserer hvilket korpus det ble', () => {
@@ -104,6 +104,6 @@ describe('korpusvelgeren', () => {
     expect(screen.queryByRole('combobox', { name: 'Korpus' })).toBeNull();
     // Linja står som før: navnet på én linje, resten bak «Vis mer».
     expect(screen.getByText('Dokumenter fra Wikipedia (NorQuAD)')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Vis mer' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Vis mer om korpuset' })).toBeTruthy();
   });
 });

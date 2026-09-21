@@ -196,15 +196,3 @@ export function corpusLine(facets?: FilterFacet[], corpus?: CorpusOption): Corpu
    */
   return corpus?.description ? { source, detail: corpus.description } : { source };
 }
-
-/**
- * The whole sentence, source and detail in one string.
- *
- * @param facets The unconditional facets, or undefined while they load.
- * @param corpus The corpus being searched, when one is known.
- * @returns A Norwegian sentence, always non-empty.
- */
-export function corpusSummary(facets?: FilterFacet[], corpus?: CorpusOption): string {
-  const { source, detail } = corpusLine(facets, corpus);
-  return detail ? `${source}: ${detail}` : source;
-}

@@ -34,6 +34,17 @@ export type CorpusLineProps = {
  * The state is not remembered — deliberately, and it is in the brief. A
  * reader who opened it once has read it; reopening the panel tomorrow starts
  * from the short line again, which is the line the height budget assumes.
+ *
+ * It does survive a corpus switch, and that is a choice rather than an
+ * oversight (KA CC, #114): a reader who has opened the detail is reading what
+ * is in the corpus, and that is exactly the question they are asking again
+ * when they pick another one. Closing it would hide the answer at the moment
+ * it changed. The name above it changes in the same render, so nothing claims
+ * the new text belongs to the old corpus.
+ *
+ * The visible words stay «Vis mer» — the line beside them says what of — but
+ * the accessible name says it too, for a reader who lists the buttons on the
+ * page and hears them out of context (KA CC, #114).
  */
 export function CorpusLine({ facets, corpus }: CorpusLineProps) {
   const { source, detail } = corpusLine(facets, corpus);
@@ -66,6 +77,7 @@ export function CorpusLine({ facets, corpus }: CorpusLineProps) {
             <Link asChild className="filters-view__corpus-toggle">
               <button
                 type="button"
+                aria-label={open ? 'Vis mindre om korpuset' : 'Vis mer om korpuset'}
                 aria-expanded={open}
                 aria-controls={detailId}
                 onClick={() => setOpen((shown) => !shown)}

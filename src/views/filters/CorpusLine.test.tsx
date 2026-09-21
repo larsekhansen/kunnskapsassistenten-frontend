@@ -35,18 +35,18 @@ describe('korpuslinja', () => {
 
     expect(screen.getByText('Dokumenter fra Kudos')).toBeTruthy();
     expect(screen.getByText(detail).hasAttribute('hidden')).toBe(true);
-    expect(screen.getByRole('button', { name: 'Vis mer' }).getAttribute('aria-expanded')).toBe(
-      'false',
-    );
+    expect(
+      screen.getByRole('button', { name: 'Vis mer om korpuset' }).getAttribute('aria-expanded'),
+    ).toBe('false');
   });
 
   it('åpner og lukker resten', () => {
     render(<CorpusLine facets={facets} corpus={kudos} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Vis mer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Vis mer om korpuset' }));
 
     expect(screen.getByText(detail).hasAttribute('hidden')).toBe(false);
-    const open = screen.getByRole('button', { name: 'Vis mindre' });
+    const open = screen.getByRole('button', { name: 'Vis mindre om korpuset' });
     expect(open.getAttribute('aria-expanded')).toBe('true');
 
     fireEvent.click(open);
@@ -58,7 +58,7 @@ describe('korpuslinja', () => {
     // det som åpnet seg, og derfor står teksten i dokumentet hele tida.
     render(<CorpusLine facets={facets} corpus={kudos} />);
 
-    const button = screen.getByRole('button', { name: 'Vis mer' });
+    const button = screen.getByRole('button', { name: 'Vis mer om korpuset' });
     const controlled = document.getElementById(button.getAttribute('aria-controls') ?? '');
 
     expect(controlled?.textContent).toBe(detail);
@@ -70,6 +70,19 @@ describe('korpuslinja', () => {
     render(<CorpusLine corpus={{ key: 'kudos-pilot', label: 'Kudos-pilot' }} />);
 
     expect(screen.getByText('Dokumenter fra Kudos-pilot')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Vis mer' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Vis mer om korpuset' })).toBeNull();
+  });
+  it('sier i det tilgjengelige navnet hva det er mer om', () => {
+    // Den som lister knappene med skjermleser hører dem uten linja som står
+    // ved siden av på skjermen (KA CC på #114).
+    render(<CorpusLine facets={facets} corpus={kudos} />);
+
+    const button = screen.getByRole('button', { name: 'Vis mer om korpuset' });
+    expect(button.textContent).toBe('Vis mer');
+
+    fireEvent.click(button);
+    expect(screen.getByRole('button', { name: 'Vis mindre om korpuset' }).textContent).toBe(
+      'Vis mindre',
+    );
   });
 });
