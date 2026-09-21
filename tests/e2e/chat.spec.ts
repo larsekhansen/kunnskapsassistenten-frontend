@@ -330,10 +330,14 @@ test.describe('hovedkolonnen', () => {
     await field.pressSequentially('a/b');
     await expect(field).toHaveValue('a/b');
 
-    // Snarveien står to steder: en synlig hint og en beskrivelse på feltet.
-    await expect(page.locator('.ka-composer__shortcut')).toHaveText(
-      /^Trykk (Ctrl|Cmd) \+ \/ for å hoppe hit$/,
-    );
+    /*
+     * Snarveien står to steder: en tooltip på feltet og en beskrivelse på
+     * feltet. Den synlige hinten under feltet er borte — den delte linje med
+     * forbeholdet og brøt den i to på begge målte bredder, 24 px av den
+     * klebrige bunnen på hver skjerm (høydebudsjett 2026-09-21, H3). Den
+     * flyttet til det den handler om, og påstanden flyttet med den.
+     */
+    await expect(field).toHaveAttribute('title', /^Trykk (Ctrl|Cmd) \+ \/ for å hoppe hit$/);
     /*
      * `aria-describedby` er en LISTE av id-er, ikke én id, så oppslaget må
      * splitte på mellomrom — `getElementById` på hele strengen finner

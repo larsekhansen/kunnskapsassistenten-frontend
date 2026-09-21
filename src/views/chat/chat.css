@@ -465,11 +465,19 @@
   pointer-events: none;
 }
 
+/*
+ * One row: paperclip, field, send. The buttons used to sit on a row of their
+ * own under the field — 48 px of the sticky bottom on every screen, for two
+ * controls that fit beside it (høydebudsjett 2026-09-21, H1).
+ *
+ * `flex-end` so they stay level with the last line as the field grows, rather
+ * than drifting to the middle of a four-line question.
+ */
 .ka-composer {
   display: flex;
-  flex-direction: column;
+  align-items: flex-end;
   gap: var(--ds-size-2);
-  padding: var(--ds-size-3);
+  padding: var(--ds-size-2);
   /* White box on the tinted ground, like the answer card. */
   background: var(--ds-color-neutral-surface-default);
   border: var(--ds-border-width-default) solid var(--ds-color-neutral-border-default);
@@ -522,33 +530,20 @@
   outline: none;
 }
 
-.ka-composer__buttons {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ds-size-2);
+/*
+ * The field takes what the two buttons leave. `min-inline-size: 0` because a
+ * flex item will not shrink below its content otherwise, and one long
+ * unbroken word would push the send button off the row.
+ */
+.ka-composer__field {
+  flex: 1 1 auto;
+  min-inline-size: 0;
 }
 
-/*
- * «Trykk / for å hoppe hit», on the same line as the disclaimer.
- *
- * Its own line would be a second sentence of grey text under a field that
- * already carries one; after the disclaimer it is a footnote to a footnote,
- * which is the weight a keyboard shortcut deserves. The separator is drawn in
- * CSS so it is not read out as a word.
- */
-.ka-composer__shortcut {
-  color: var(--ds-color-neutral-text-subtle);
-}
-
-/*
- * The separator moved to the front with the hint itself: the disclaimer comes
- * first now, and a dot trailing the last words on the line reads as a full
- * stop that fell over (brukerblikk runde 2, funn 6).
- */
-.ka-composer__shortcut::before {
-  content: '·';
-  margin-inline: var(--ds-size-1);
+/* Neither button shrinks or stretches: they are icon-sized, the field is not. */
+.ka-composer__attach,
+.ka-composer__send {
+  flex: 0 0 auto;
 }
 
 .ka-composer__disclaimer {
@@ -590,7 +585,6 @@
 .ka-answer-actions[hidden],
 .ka-composer-area[hidden],
 .ka-composer[hidden],
-.ka-composer__buttons[hidden],
 .ka-follow-ups[hidden] {
   display: none;
 }
