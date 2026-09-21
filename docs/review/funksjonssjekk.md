@@ -251,3 +251,37 @@ noe er ikke piksler.
 - **Første overskrift i DOM er fortsatt en `h2`**, fordi skallet tegner
   panelene før `<main>`. Ingen axe-regel fanger det, og ingen test heller:
   det er en avgjørelse om rekkefølge, ikke en feil i et view.
+
+## To målinger av det samme kravet, som aldri ble sammenlignet
+
+Lagt til 2026-09-21, etter #142.
+
+`docs/review/tools/a11y.sh` har siden den ble skrevet kjørt axe med taggene
+`wcag2a, wcag2aa, wcag21a, wcag21aa, wcag22aa`. `tests/e2e/a11y.ts` kjørte
+`wcag2a, wcag2aa`. Begge to kaller det de måler «WCAG AA», begge to er mine,
+og forskjellen mellom dem er to versjoner av standarden.
+
+Det ble synlig på en knapp. Verktøyet meldte `target-size` (serious, WCAG
+2.5.8) på «Vis mer om korpuset» i filterpanelet, målt 47 × 21 px, på hver rute
+i både lys og mørk modus — mens 149 e2e-tester var grønne, fordi
+`target-size` er `wcag22aa` og suiten ikke spurte etter den. #2 fant grunnen i
+`RULE_SETS`.
+
+Målt på `main` den dagen regelsettet ble utvidet:
+
+| Regelsett                           | Røde | Grønne |
+| ----------------------------------- | ---- | ------ |
+| `wcag2a, wcag2aa` (slik det sto)    | 0    | 150    |
+| pluss `wcag21a, wcag21aa, wcag22aa` | 29   | 121    |
+
+Alle 29 er `target-size`, og alle 29 er den samme knappen. WCAG 2.1 legger
+til null røde: det settet var allerede rent. Hele kostnaden ved å måle mot
+2.2 i dette repoet var én kontroll, og #142 betalte den.
+
+**Det som er verdt å ta med videre er ikke regelen, men formen.** Ingen skrev
+feil tall noe sted. To verktøy målte det samme kravet hver for seg, begge
+rapporterte grønt om sitt eget spørsmål, og ingen stilte dem opp mot
+hverandre før et enkelttilfelle sprakk. Et krav som måles to steder trenger
+ett sted der de to tallene står ved siden av hverandre — og etter denne PR-en
+er `RULE_SETS` det stedet, med `a11y.sh` som den andre halvdelen navngitt i
+kommentaren.

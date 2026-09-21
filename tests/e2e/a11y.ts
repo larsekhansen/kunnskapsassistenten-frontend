@@ -7,11 +7,25 @@ import { SCREENSHOTS } from './paths';
 /**
  * The rule sets every state is checked against.
  *
- * `wcag2a` and `wcag2aa` only, as the role brief says. Best-practice rules
- * are deliberately left out: they are advice, not the requirement, and a
- * suite that fails on advice gets switched off.
+ * WCAG 2.0, 2.1 and 2.2 at level AA, which is what «WCAG 2.x AA er krav»
+ * means. Best-practice rules are deliberately left out: they are advice, not
+ * the requirement, and a suite that fails on advice gets switched off.
+ *
+ * It said `wcag2a` and `wcag2aa` only until #142, and that is two versions
+ * short. `docs/review/tools/a11y.sh` has run 2.1 and 2.2 since it was
+ * written, so the two measurements of the same requirement disagreed without
+ * anyone comparing them — which is how a `target-size` violation stood on
+ * every route while 149 e2e tests were green (KA CC on #142, found by #2).
+ *
+ * Measured on `main` the day it was widened: 29 red, every one of them
+ * `target-size` and every one of them the same button, which #142 fixed. The
+ * 2.1 tags add nothing red — that set was already clean.
+ *
+ * `wcag22a` is left out because axe has no rule under it: WCAG 2.2's one
+ * level-A criterion is 3.2.6 Consistent Help, which nothing automatic can
+ * decide.
  */
-const RULE_SETS = ['wcag2a', 'wcag2aa'];
+const RULE_SETS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
 /**
  * `window.ka` is declared in src/layout/colorScheme.ts, which these tests do
