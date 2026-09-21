@@ -10,6 +10,13 @@ import {
   type ThreadDetail,
 } from '../../model';
 import { facetsFor } from './corpus/facets';
+import { corpusDocumentsFor } from './corpus';
+import {
+  WIKIPEDIA_MOCK_ANSWER,
+  WIKIPEDIA_MOCK_KEY,
+  wikipediaMockSources,
+} from './corpus/wikipedia';
+import { activeCorpusKey } from '../corpus';
 import { citationsFor, scriptedFor } from './conversations';
 import { mockThreadDetail, mockThreadList, openMockThread, recordMockTurn } from './sessionThreads';
 import type { AskParams, ChatClient } from '../chatClient';
@@ -508,8 +515,18 @@ export class MockChatClient implements ChatClient {
        * at the front moves everything else along. Renumbering here rather
        * than in the fixture keeps the fixture a fixture.
        */
+      /*
+       * Which corpus the question is being asked of. The Wikipedia mock has
+       * one canonical answer with its own sources; everything else is Kudos,
+       * including the eleven scripted conversations, which were written
+       * against Kudos documents and only make sense there.
+       */
+      const wikipedia = activeCorpusKey() === WIKIPEDIA_MOCK_KEY;
       const attached = attachedSources(params.attachments);
-      const fromCorpus = narrowToSelection(scripted?.documents ?? nkomSources, params.filters);
+      const fromCorpus = narrowToSelection(
+        wikipedia ? wikipediaMockSources : (scripted?.documents ?? nkomSources),
+        params.filters,
+      );
       const documents = attached.length === 0 ? fromCorpus : renumber([...attached, ...fromCorpus]);
       const cited = citedNumbers(documents);
 
@@ -574,9 +591,11 @@ export class MockChatClient implements ChatClient {
        * panel that the text never refers to. One of the two has to give, and
        * an answer that mentions the document it was handed is the honest one.
        */
+      const baseAnswer = wikipedia
+        ? WIKIPEDIA_MOCK_ANSWER
+        : (scripted?.answer ?? mockAnswerMarkdown);
       const answer = withOnlyCitations(
-        attachmentSentence(attached) +
-          shiftCitations(scripted?.answer ?? mockAnswerMarkdown, attachedExcerpts),
+        attachmentSentence(attached) + shiftCitations(baseAnswer, attachedExcerpts),
         cited,
       );
 
@@ -728,6 +747,8 @@ export class MockChatClient implements ChatClient {
    */
   async listFacets(signal?: AbortSignal, selection?: FilterSelection): Promise<FilterFacet[]> {
     await wait(this.#delays.requestMs, signal);
-    return facetsFor(selection ?? emptyFilterSelection);
+    // Counted from the corpus that is selected, so switching changes what the
+    // filter panel offers. Half of what makes a switch visible at all.
+    return facetsFor(selection ?? emptyFilterSelection, corpusDocumentsFor(activeCorpusKey()));
   }
 }
