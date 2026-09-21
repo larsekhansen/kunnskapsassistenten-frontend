@@ -6,6 +6,7 @@ import { excerptDomId, type AnswerSources, type Excerpt, type SourceDocument } f
 import { AnswerSwitcher } from './AnswerSwitcher';
 import { ExcerptSearch } from './ExcerptSearch';
 import { KudosDisclaimer } from './KudosDisclaimer';
+import { isOwnDocument } from './origin';
 import { SourceDocumentCard } from './SourceDocumentCard';
 import { SourcesOverview } from './SourcesOverview';
 import { SourcesPlaceholder } from './SourcesPlaceholder';
@@ -474,7 +475,9 @@ export function SourcesView({
         )}
       </ViewHead>
 
-      {content.kind !== 'empty' && <KudosDisclaimer id={disclaimerId} />}
+      {content.kind !== 'empty' && (
+        <KudosDisclaimer id={disclaimerId} hasOwnDocument={documentList.some(isOwnDocument)} />
+      )}
 
       {content.kind === 'loading' ? (
         <SourcesPlaceholder />
