@@ -565,14 +565,34 @@ function Sidebar({
       variant="tertiary"
       data-color="neutral"
       data-size="sm"
-      icon={railed || undefined}
-      aria-label={railed ? toggleName : undefined}
+      /*
+        An icon button with its name in `aria-label`, in every state.
+
+        It used to draw the words beside the icon while the panel was open, on
+        the argument that a label on screen beats one behind a hover. That was
+        right while the row held one control. It stopped being right when the
+        row had to hold three: «Skjul tråder og filter» (209 px) beside
+        «Tråder» (123) and the two width buttons (88) is 420 px in a 400 px
+        panel, and what fell off the end was the width buttons — a control the
+        pointer could no longer reach at all. Measured by KA CC on #119.
+
+        Nothing is lost for a screen reader: the name is the same string it
+        always was, and `aria-label` is what carries it. What a sighted reader
+        loses is the word on screen; what they get back is two controls that
+        are on screen at all. The tooltip says the same string on hover and on
+        focus.
+
+        Both sidebars and not only the one that overflowed: it is the same
+        row, and a panel head that read differently in the two would be two
+        designs for one thing.
+      */
+      icon
+      aria-label={toggleName}
       aria-expanded={!state.collapsed}
       aria-controls={contentId}
       onClick={() => toggleCollapsed(slot)}
     >
       <Icon aria-hidden />
-      {railed ? null : toggleLabel}
     </Button>
   );
 
@@ -671,7 +691,13 @@ function Sidebar({
               <Tooltip content={toggleName}>{toggleButton}</Tooltip>
             </BadgePosition>
           ) : (
-            toggleButton
+            /*
+              The same tooltip the rail has. @digdir/designsystemet-web writes
+              `data-tooltip` into `aria-label` on an element with no text of
+              its own, so this string and the explicit `aria-label` above have
+              to agree — and they do, both `toggleName`.
+            */
+            <Tooltip content={toggleName}>{toggleButton}</Tooltip>
           )}
           {/*
             What the view wants on the panel's own row, beside the collapse

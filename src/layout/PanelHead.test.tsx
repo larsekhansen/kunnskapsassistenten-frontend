@@ -213,6 +213,76 @@ describe('under brytepunktet, der panelet er en skuff', () => {
   });
 });
 
+describe('sammenleggingsknappen på panelraden', () => {
+  /*
+   * Ikonknapp med navnet i `aria-label`, i alle tilstander.
+   *
+   * Den tegnet ordene ved siden av ikonet mens panelet var åpent, på det
+   * argumentet at en etikett på skjermen slår en bak en hover. Det holdt så
+   * lenge raden hadde én kontroll. Med tre ble «Skjul tråder og filter»
+   * (209 px) pluss «Tråder» (123) pluss breddeknappene (88) til 420 px i et
+   * panel på 400, og det som falt av enden var breddeknappene — en kontroll
+   * pekeren ikke lenger nådde. Målt av KA CC på #119.
+   *
+   * Etter: 42 + 123 + 88 = 253 i en rad på 399. Målt her uten layout, så
+   * tallene står i kommentaren; det testen måler er navnet og at teksten er
+   * borte.
+   */
+  it('har navnet sitt selv om ordene ikke står på skjermen', () => {
+    const restore = openShell();
+    try {
+      const toggle = railToggle();
+
+      expect(toggle.getAttribute('aria-label')).toBe('Skjul tråder og filter');
+      expect(toggle.textContent).toBe('');
+    } finally {
+      restore();
+    }
+  });
+
+  it('sier fortsatt om panelet er åpent, og hva den styrer', () => {
+    // Ikonet endrer ingenting for en skjermleser: navnet er den samme
+    // strengen som før, og `aria-expanded` og `aria-controls` står.
+    const restore = openShell();
+    try {
+      const toggle = railToggle();
+
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      expect(toggle.getAttribute('aria-controls')).toBeTruthy();
+    } finally {
+      restore();
+    }
+  });
+
+  it('har en tooltip med den samme strengen', () => {
+    // @digdir/designsystemet-web skriver `data-tooltip` inn i `aria-label` på
+    // et element uten egen tekst, så de to må si det samme — ellers ville
+    // navnet blitt byttet ut et øyeblikk etter render.
+    const restore = openShell();
+    try {
+      const toggle = railToggle();
+      expect(toggle.getAttribute('data-tooltip')).toBe(toggle.getAttribute('aria-label'));
+    } finally {
+      restore();
+    }
+  });
+
+  it('er ikonknapp i begge sidepanelene, ikke bare det som rant over', () => {
+    // Samme rad, samme design. Et panelhode som leste ulikt i de to ville
+    // vært to design for én ting.
+    const restore = openShell();
+    try {
+      act(() => screen.getByRole('button', { name: /^Vis kilder/ }).click());
+
+      const sources = screen.getByRole('button', { name: 'Skjul kilder' });
+      expect(sources.getAttribute('aria-label')).toBe('Skjul kilder');
+      expect(sources.textContent).toBe('');
+    } finally {
+      restore();
+    }
+  });
+});
+
 describe('utenfor et skall', () => {
   it('tegner ingenting, i stedet for å legge knappen midt i en forhåndsvisning', () => {
     // Motsatt av `ViewHead`, som tegner seg der den står når det ikke finnes
