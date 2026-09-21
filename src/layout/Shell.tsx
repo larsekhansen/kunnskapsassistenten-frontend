@@ -679,10 +679,10 @@ function Sidebar({
             nothing — `:empty` in global.css, so the row is exactly what it
             was before this existed.
 
-            Not drawn on a rail at all: a rail is one button wide, and a
-            second control there would have nowhere to go. `PanelHead` then
-            finds no place and draws nothing, which is the same path it takes
-            outside a shell. See panelHeadContext.ts.
+            Not drawn on a rail: a rail is one button wide, and a second
+            control there would have nowhere to go. In drawer mode this row IS
+            a rail, and the place is inside the drawer instead — one box at a
+            time, which is why one ref serves both. See panelHeadContext.ts.
           */}
           {railed ? null : <div className="panel-head-slot" ref={panelHeadRef} />}
           {railed ? null : <PanelWidthButtons slot={slot} />}
@@ -725,7 +725,24 @@ function Sidebar({
           open={!state.collapsed}
           placement={drawerPlacement(slot)}
         >
-          <div className="panel">{panelContent}</div>
+          <div className="panel">
+            {/*
+              The panel head row inside the drawer. A drawer is the whole
+              panel, not a rail — the view is drawn in here, so the place it
+              writes into has to be in here too. Without this the «Tråder»
+              button simply vanished below 1139, which is where the reader
+              needs it most: the thread list is the way back out of a filter.
+              Found by KA CC on #116.
+
+              No collapse button beside it: the drawer has Designsystemet's
+              own close button, and two controls that both shut the panel
+              would be one too many. So this row holds the slot alone.
+            */}
+            <div className="sidebar-header">
+              <div className="panel-head-slot" ref={panelHeadRef} />
+            </div>
+            {panelContent}
+          </div>
         </Dialog>
       ) : null}
 

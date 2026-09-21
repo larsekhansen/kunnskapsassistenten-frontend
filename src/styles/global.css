@@ -300,7 +300,14 @@ body {
   margin-inline-end: auto;
 }
 
-.panel-head-slot:empty {
+/*
+ * `:empty` for the unused place, `[hidden]` for one a view switches off. The
+ * pair is the rule this file keeps everywhere `display` is set on something
+ * that can be hidden: author CSS beats the browser's own
+ * `[hidden] { display: none }`.
+ */
+.panel-head-slot:empty,
+.panel-head-slot[hidden] {
   display: none;
 }
 

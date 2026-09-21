@@ -99,7 +99,9 @@ describe('plassen i panelhodet', () => {
     const restore = openShell({ filled: false });
     try {
       expect(slot()).not.toBeNull();
-      expect(slot()?.childElementCount).toBe(0);
+      // `hasChildNodes()` og ikke `childElementCount`: `:empty` i CSS-en er om
+      // BARNENODER, tekst medregnet, og det er den påstanden som skal måles.
+      expect(slot()?.hasChildNodes()).toBe(false);
     } finally {
       restore();
     }
@@ -124,6 +126,53 @@ describe('plassen i panelhodet', () => {
       act(() => screen.getByRole('button', { name: 'Vis tråder og filter' }).click());
 
       expect(screen.getByRole('button', { name: 'Tråder' })).toBeDefined();
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe('under brytepunktet, der panelet er en skuff', () => {
+  it('har plassen inne i skuffa, ikke på railen', () => {
+    /*
+     * En skuff er hele panelet, ikke en rail: viewet tegnes inne i den, så
+     * plassen det skriver til må være der inne også. Uten dette forsvant
+     * «Tråder» helt under 1139 — der leseren trenger den mest, for trådlista
+     * er veien ut av et filter. Funnet av KA CC på #116.
+     */
+    const restore = openShell({ width: 1024 });
+    try {
+      act(() => screen.getByRole('button', { name: /^Vis tråder og filter/ }).click());
+
+      const button = screen.getByRole('button', { name: 'Tråder' });
+      expect(button.closest('dialog')).not.toBeNull();
+      expect(button.closest('.panel-head-slot')).not.toBeNull();
+    } finally {
+      restore();
+    }
+  });
+
+  it('har ingen plass på railen bak skuffa', () => {
+    // Railen står igjen på rada mens skuffa er åpen, og den er én knapp bred.
+    const restore = openShell({ width: 1024 });
+    try {
+      act(() => screen.getByRole('button', { name: /^Vis tråder og filter/ }).click());
+
+      const outside = [...document.querySelectorAll('.panel-head-slot')].filter(
+        (element) => element.closest('dialog') === null,
+      );
+      expect(outside).toEqual([]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('beholder plassen når skuffa er lukket, så viewet ikke mister den', () => {
+    // En lukket `<dialog>` er `display: none`, så innholdet er skjult uansett
+    // — men boksen står, slik at viewet ikke må montere seg på nytt.
+    const restore = openShell({ width: 1024 });
+    try {
+      expect(document.querySelector('dialog .panel-head-slot')).not.toBeNull();
     } finally {
       restore();
     }
