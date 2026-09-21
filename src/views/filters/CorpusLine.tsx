@@ -1,4 +1,4 @@
-import { Button, Paragraph } from '@digdir/designsystemet-react';
+import { Link, Paragraph } from '@digdir/designsystemet-react';
 import { useId, useState } from 'react';
 import type { CorpusOption } from '../../api';
 import type { FilterFacet } from '../../model';
@@ -43,21 +43,36 @@ export function CorpusLine({ facets, corpus }: CorpusLineProps) {
   return (
     <Paragraph asChild data-size="xs">
       <div className="filters-view__corpus">
-        <span>{source}</span>
+        <span className="filters-view__corpus-source">{source}</span>
 
         {detail && (
           <>
-            <Button
-              variant="tertiary"
-              data-color="neutral"
-              data-size="sm"
-              className="filters-view__corpus-toggle"
-              aria-expanded={open}
-              aria-controls={detailId}
-              onClick={() => setOpen((shown) => !shown)}
-            >
-              {open ? 'Vis mindre' : 'Vis mer'}
-            </Button>
+            {/*
+              A `Link` around a `button`, and both halves are deliberate.
+
+              The button is the semantics: this opens something on the page,
+              it is not a place to go, and `aria-expanded` belongs on a
+              button. The link is the size: Designsystemet's `Button` is
+              42 px tall at `data-size="sm"` against a 21 px line of text, so
+              a real button set the height of the row and ate most of what
+              this change exists to save (measured: head 158 px with it,
+              139 without). `Link` draws text, so the control is as tall as
+              the line it sits on — and quieter beside a small muted sentence
+              than a filled grey button was.
+
+              Nothing of Designsystemet's is overridden to get there; the link
+              styles and the focus ring come from the component.
+            */}
+            <Link asChild className="filters-view__corpus-toggle">
+              <button
+                type="button"
+                aria-expanded={open}
+                aria-controls={detailId}
+                onClick={() => setOpen((shown) => !shown)}
+              >
+                {open ? 'Vis mindre' : 'Vis mer'}
+              </button>
+            </Link>
 
             {/*
               Rendered whether or not it is open, and hidden with `hidden`:
