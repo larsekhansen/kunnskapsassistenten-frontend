@@ -1,6 +1,6 @@
 import { Heading } from '@digdir/designsystemet-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { corpusDisplayNameFor, createChatClient, type ChatClient } from '../../api';
+import { corpusDisplayNameFor, corpusOption, createChatClient, type ChatClient } from '../../api';
 import { ErrorState } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useCitation } from '../../layout/useCitation';
@@ -8,7 +8,7 @@ import { useCorpus } from '../../layout/useCorpus';
 import { useFilterSelection } from '../../layout/useFilterSelection';
 import { useMainScroll } from '../../layout/useMainScroll';
 import { useThread } from '../../layout/useThread';
-import { emptyFilterSelection, isEmptySelection, type ThreadDetail } from '../../model';
+import { emptyFilterSelection, type ThreadDetail } from '../../model';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { chatErrorText } from './errorText';
@@ -111,11 +111,23 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
     (messageId: string) => {
       const applied = appliedFilters[messageId] ?? emptyFilterSelection;
       const answer = messages.find((message) => message.id === messageId);
+      /*
+       * Named only when the answer came from a corpus this deployment knows
+       * AND it is not the one the chooser stands on.
+       *
+       * `corpusOption` is the first half and it is not ceremony:
+       * `corpusDisplayNameFor` answers «standardkorpuset» for a key it does
+       * not know, which is a sentence about a default rather than about this
+       * answer — and a live backend that picked the dataset itself sends a
+       * key nobody here has a name for (KA CC bør 1 på #138, same check as
+       * #139). No name, no line.
+       */
+      const from = answer?.corpusKey;
       const elsewhere =
-        answer?.corpusKey !== undefined && answer.corpusKey !== corpusKey
-          ? corpusDisplayNameFor(answer.corpusKey)
+        from !== undefined && from !== corpusKey && corpusOption(from) !== undefined
+          ? corpusDisplayNameFor(from)
           : undefined;
-      return answerScopeText(isEmptySelection(applied) ? emptyFilterSelection : applied, elsewhere);
+      return answerScopeText(applied, elsewhere);
     },
     [appliedFilters, corpusKey, messages],
   );

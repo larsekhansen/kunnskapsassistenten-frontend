@@ -126,20 +126,34 @@ describe('korpus per tur', () => {
   });
 });
 
-describe('«Avgrenset til …» leser svarets korpus', () => {
-  it('navngir korpuset når svaret kom fra et annet enn det valgte', () => {
-    const name = corpusDisplayNameFor('kudos-pilot');
+describe('linja over svaret', () => {
+  const name = corpusDisplayNameFor('kudos-pilot');
 
-    expect(answerScopeText(emptyFilterSelection, name)).toBe(name);
+  it('skiller korpuset fra fasettene', () => {
+    /*
+     * To ulike opplysninger, så de tegnes som to: fasettene er det LESEREN
+     * huket av, korpuset er hvor svaret ble hentet. Slått sammen til én liste
+     * leste «Kudos · Årsrapport · 2023» som tre ting leseren hadde valgt, og
+     * én av dem var ikke det (KA CC kan 4 på #138).
+     */
     expect(answerScopeText({ ...emptyFilterSelection, year: ['2023'] }, name)).toBe(
-      `${name} · 2023`,
+      `Avgrenset til: 2023, fra ${name}`,
     );
   });
 
-  it('tier om korpuset når svaret kom fra det samme', () => {
-    // Ett navn som aldri varierer over hvert eneste svar er et ord uten
-    // opplysning i seg.
+  it('sier «hentet fra» når ingenting er avgrenset', () => {
+    // «Avgrenset til» ville vært feil ord: svaret ble stilt til hele det
+    // andre korpuset.
+    expect(answerScopeText(emptyFilterSelection, name)).toBe(`Hentet fra ${name}`);
+  });
+
+  it('nevner bare fasettene når korpuset er det valgte', () => {
+    expect(answerScopeText({ ...emptyFilterSelection, year: ['2023'] }, undefined)).toBe(
+      'Avgrenset til: 2023',
+    );
+  });
+
+  it('tegner ingen linje når det ikke er noe å si', () => {
     expect(answerScopeText(emptyFilterSelection, undefined)).toBeUndefined();
-    expect(answerScopeText({ ...emptyFilterSelection, year: ['2023'] }, undefined)).toBe('2023');
   });
 });

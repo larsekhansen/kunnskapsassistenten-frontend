@@ -54,7 +54,11 @@ type AnswerMessageProps = {
    * the same thing twice.
    */
   liveErrorId?: string;
-  /** «Avgrenset til …» over the answer. Absent means the whole corpus. */
+  /**
+   * The line over the answer: what it was narrowed to, where it came from, or
+   * both. Absent means the whole corpus the reader is standing in, which
+   * needs no line. Built by `answerScopeText`, which owns the wording.
+   */
   narrowedTo?: string;
   /**
    * The search behind this answer came back empty.
@@ -197,7 +201,8 @@ export function AnswerMessage({
       */}
       {narrowedTo ? (
         <p className="ka-filter-summary">
-          <span className="ds-sr-only">Svaret er </span>Avgrenset til: {narrowedTo}
+          <span className="ds-sr-only">Svaret er </span>
+          {narrowedTo}
         </p>
       ) : null}
 
