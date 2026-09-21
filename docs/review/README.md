@@ -67,6 +67,7 @@ eier bare denne mappa.
 | [`feat-composer-attachments-2026-09-21.md`](feat-composer-attachments-2026-09-21.md)             | PR #125, vedlegg i skrivefeltet: vakta sto på knappen, ikke på handlingen                              |
 | [`feat-chat-corpus-per-turn-2026-09-21.md`](feat-chat-corpus-per-turn-2026-09-21.md)             | PR #138, korpuset per tur i hovedkolonnen: stedfortrederen som ble et navn                             |
 | [`fix-sources-answer-corpus-2026-09-21.md`](fix-sources-answer-corpus-2026-09-21.md)             | PR #139, kildepanelet leser svarets korpus: setningen fulgte med, tomtilstanden ikke                   |
+| [`fix-corpus-toggle-target-size-2026-09-21.md`](fix-corpus-toggle-target-size-2026-09-21.md)     | PR #142, 24 px treffhøyde uten å ta en piksel av linja, og PR #140                                     |
 
 ## Sånn går en review
 
