@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { corpusDisplayName } from '../../api';
-import { sourcesDisclaimer } from './KudosDisclaimer';
+import { sourcesDisclaimer } from './CorpusDisclaimer';
 
 describe('sourcesDisclaimer', () => {
   test('setningen bytter med korpuset', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { SourceDocument } from '../../model';
-import { documentSubtitle, isOwnDocument, OWN_DOCUMENT_LABEL } from './origin';
+import { corpusKeyFor, documentSubtitle, isOwnDocument, OWN_DOCUMENT_LABEL } from './origin';
 
 function source(extra: Partial<SourceDocument>): SourceDocument {
   return { id: 'd', title: 'Årsrapport 2025.pdf', excerpts: [], ...extra };
@@ -51,5 +51,21 @@ describe('documentSubtitle', () => {
 
   test('et korpusdokument uten metadata får ingen undertittel', () => {
     expect(documentSubtitle(source({}))).toBe('');
+  });
+});
+
+describe('corpusKeyFor', () => {
+  test('svarets korpus vinner over det valgte', () => {
+    // Saken KA CC målte: en gammel Kudos-tråd åpnet mens Wikipedia er valgt.
+    expect(corpusKeyFor('kudos-pilot', 'norquad-docs')).toBe('kudos-pilot');
+  });
+
+  test('det valgte brukes bare når svaret ikke sier noe', () => {
+    expect(corpusKeyFor(undefined, 'norquad-docs')).toBe('norquad-docs');
+  });
+
+  test('vet ingen av dem noe, sier den det', () => {
+    // `corpusDisplayNameFor` gjør undefined om til «standardkorpuset».
+    expect(corpusKeyFor(undefined, undefined)).toBeUndefined();
   });
 });

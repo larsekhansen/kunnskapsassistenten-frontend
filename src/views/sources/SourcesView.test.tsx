@@ -620,3 +620,79 @@ describe('SourcesView, et dokument leseren har lastet opp selv', () => {
     expect(within(card('doc-egen')).queryAllByRole('link')).toEqual([]);
   });
 });
+
+describe('SourcesView, korpuset følger svaret og ikke valget', () => {
+  /**
+   * KA CC målte det gjenværende tilfellet på #129: åpne Kudos-tråden mens
+   * Wikipedia er valgt, og «fra Wikipedia (mock)» sto over Nkom-kortet.
+   * Utdragene under linja endrer seg ikke når velgeren flyttes, så linja skal
+   * ikke gjøre det heller.
+   *
+   * Mock-miljøet kjenner bare ett korpus, «Kudos». Det er nok til å vise
+   * saken: et svar merket med et korpus denne installasjonen ikke kjenner
+   * sier «standardkorpuset», mens et svar uten nøkkel faller tilbake på det
+   * valgte og sier «Kudos». Går valget foran svaret, blir begge «Kudos».
+   * Selve valget mellom de to nøklene er testet for seg i `origin.test.ts`.
+   */
+  function answerFrom(corpusKey: string | undefined): AnswerSources {
+    return {
+      messageId: 'svar-1',
+      status: 'complete',
+      documents: [documentWith('doc-a', 'Årsrapport 2021', [1])],
+      ...(corpusKey === undefined ? {} : { corpusKey }),
+    };
+  }
+
+  function disclaimer(): string {
+    return document.querySelector('.sources-search__description')?.textContent ?? '';
+  }
+
+  it('navngir korpuset svaret kom fra, ikke det som er valgt', () => {
+    render(<SourcesView answers={[answerFrom('et-annet-korpus')]} />);
+
+    expect(disclaimer()).toContain('fra standardkorpuset');
+    expect(disclaimer()).not.toContain('fra Kudos');
+  });
+
+  it('faller tilbake til det valgte korpuset når svaret mangler nøkkel', () => {
+    // Gamle live-tråder fra før nøkkelen fulgte med.
+    render(<SourcesView answers={[answerFrom(undefined)]} />);
+
+    expect(disclaimer()).toContain('fra Kudos');
+  });
+
+  it('lar lenketeksten følge samme korpus som linja', () => {
+    // `documentWith` lager ingen adresser, og uten adresse er det ingen lenke
+    // å navngi. Dette dokumentet har en.
+    const url = 'https://kudos.dfo.no/dokument/a1c6feb9-3a47-4889-b049-92adae575b9f';
+    const withLink: AnswerSources = {
+      messageId: 'svar-1',
+      status: 'complete',
+      corpusKey: 'et-annet-korpus',
+      documents: [
+        {
+          id: 'doc-a',
+          title: 'Årsrapport 2021',
+          url,
+          excerpts: [
+            {
+              id: 'doc-a-1',
+              citationNumber: 1,
+              relevance: 'high' as const,
+              text: 'Et sitat.',
+              kudosUrl: url,
+            },
+          ],
+        },
+      ],
+    };
+
+    render(<SourcesView answers={[withLink]} />);
+
+    // Ukjent korpus: fraskrivelsen tar stedfortrederen, lenka navngir
+    // ingenting og sier bare hva den gjør.
+    expect(screen.getAllByRole('link', { name: /^Les dokumentet,/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: /på standardkorpuset/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /på Kudos/ })).toBeNull();
+  });
+});

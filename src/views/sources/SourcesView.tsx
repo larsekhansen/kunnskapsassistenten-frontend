@@ -1,17 +1,18 @@
 import { Heading } from '@digdir/designsystemet-react';
-import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { activeCorpusKey, corpusDisplayName, corpusOption, subscribeToCorpus } from '../../api';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { corpusDisplayNameFor, corpusOption } from '../../api';
 import { EmptyState, findHits, stepHit, type SearchHit } from '../../components';
+import { useActiveCorpus } from '../../layout/useActiveCorpus';
 import { ViewHead } from '../../layout/ViewHead';
 import { excerptDomId, type AnswerSources, type Excerpt, type SourceDocument } from '../../model';
 import { AnswerSwitcher } from './AnswerSwitcher';
 import { ExcerptSearch } from './ExcerptSearch';
-import { KudosDisclaimer } from './KudosDisclaimer';
-import { isOwnDocument } from './origin';
+import { CorpusDisclaimer } from './CorpusDisclaimer';
+import { corpusKeyFor, isOwnDocument } from './origin';
 import { SourceDocumentCard } from './SourceDocumentCard';
 import { SourcesOverview } from './SourcesOverview';
 import { SourcesPlaceholder } from './SourcesPlaceholder';
-import { NO_ANSWER_YET, emptyStateFor, type SourcesEmptyState } from './emptyStates';
+import { noAnswerYet, emptyStateFor, type SourcesEmptyState } from './emptyStates';
 import { documentDomId } from './ids';
 import { buildSearchIndex } from './search';
 import type { SourcesViewProps } from './types';
@@ -134,9 +135,11 @@ type PanelContent =
 function panelContentFor(
   answers: readonly AnswerSources[] | undefined,
   active: AnswerSources | undefined,
+  /** For the «nothing asked yet» state, which has no answer to read from. */
+  activeCorpusName: string,
 ): PanelContent {
   if (answers === undefined) return { kind: 'loading' };
-  if (active === undefined) return { kind: 'empty', state: NO_ANSWER_YET };
+  if (active === undefined) return { kind: 'empty', state: noAnswerYet(activeCorpusName) };
   if (active.status === 'streaming') return { kind: 'loading' };
   if (active.documents.length === 0) {
     return { kind: 'empty', state: emptyStateFor(active.status, active.citationCount) };
@@ -387,24 +390,41 @@ export function SourcesView({
   }
 
   /*
-   * The corpus's own name for the disclaimer.
+   * The corpus the ANSWER on screen came from, not the one the chooser stands
+   * on now.
    *
-   * Read straight from the store rather than through `useCorpus`, which also
-   * carries the setter and therefore `useNavigate` — switching corpus starts
-   * a new thread. This panel only reads, and a read that drags in a Router
-   * would make the view unmountable outside one, including in `preview/`.
-   * `useSyncExternalStore` is the same subscription `useCorpus` uses, minus
-   * the half this view has no business with.
+   * Switching corpus starts a new thread, so the two agree while a reader
+   * moves forward. They part the moment an older thread is opened: KA CC
+   * measured «fra Wikipedia (mock)» standing over the Nkom card of a Kudos
+   * thread (bør on #129). The excerpts under the line do not change when the
+   * chooser moves, so the line must not either.
    *
-   * `corpusDisplayName` is shared, in src/api: the filter panel and this one
-   * name the same corpus, and two ways of shortening one label, or two
-   * spellings of the fallback, would drift apart the first time somebody
-   * changed one of them.
+   * The active corpus is the fallback and only that — an answer from before
+   * the key travelled, or a turn where nothing said which corpus answered.
+   * Naming the current choice there is a guess, but it is the best one
+   * available and it is right in the common case, where nobody has switched.
+   *
+   * `useActiveCorpus` rather than the store by hand (#129): the hook is that
+   * subscription with the navigating half of `useCorpus` left out, so this
+   * view no longer has to know the store exists and still mounts outside a
+   * Router, `preview/` included.
    */
-  const corpusKey = useSyncExternalStore(subscribeToCorpus, activeCorpusKey, activeCorpusKey);
-  const corpusName = corpusDisplayName(corpusOption(corpusKey));
+  const activeCorpus = useActiveCorpus();
+  const corpusKey = corpusKeyFor(activeAnswer?.corpusKey, activeCorpus.key);
+  const corpusName = corpusDisplayNameFor(corpusKey);
 
-  const content = panelContentFor(answerList, activeAnswer);
+  /*
+   * The same corpus, but undefined when nothing actually names it.
+   *
+   * The disclaimer is a sentence about where the text came from and has to
+   * say something, so it takes the “standardkorpuset” stand-in. A link label
+   * is not a sentence, and «Les dokumentet på standardkorpuset» is a clumsy
+   * name for a control — there the link says only what it does (dirigenten,
+   * 21.09). `corpusOption` is the lookup the stand-in hides.
+   */
+  const linkCorpusName = corpusOption(corpusKey) === undefined ? undefined : corpusName;
+
+  const content = panelContentFor(answerList, activeAnswer, activeCorpus.displayName);
 
   /**
    * The marker is active on the answer the reader was sent to, and nowhere
@@ -495,7 +515,7 @@ export function SourcesView({
       </ViewHead>
 
       {content.kind !== 'empty' && (
-        <KudosDisclaimer
+        <CorpusDisclaimer
           id={disclaimerId}
           corpusName={corpusName}
           hasOwnDocument={documentList.some(isOwnDocument)}
@@ -518,6 +538,7 @@ export function SourcesView({
               <SourceDocumentCard
                 key={source.id}
                 source={source}
+                corpusName={linkCorpusName}
                 openExcerptIds={openExcerptIds}
                 onExcerptOpenChange={setExcerptOpen}
                 hits={hits}

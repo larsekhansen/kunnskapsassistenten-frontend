@@ -3,11 +3,14 @@ import { hitsFor, type SearchHit } from '../../components';
 import type { SourceDocument } from '../../model';
 import { SourceExcerpt } from './SourceExcerpt';
 import { documentDomId } from './ids';
+import { documentLinkLabel } from './kudosLink';
 import { documentSubtitle, isOwnDocument, OWN_DOCUMENT_NO_LINK } from './origin';
 
 type SourceDocumentCardProps = {
   /** Named `source`, not `document`: the DOM global is used in this view. */
   source: SourceDocument;
+  /** What to call the corpus, or undefined when nothing names it. */
+  corpusName: string | undefined;
   /** Ids of the excerpts that are currently open. */
   openExcerptIds: ReadonlySet<string>;
   onExcerptOpenChange: (excerptId: string, open: boolean) => void;
@@ -40,6 +43,7 @@ type SourceDocumentCardProps = {
  */
 export function SourceDocumentCard({
   source,
+  corpusName,
   openExcerptIds,
   onExcerptOpenChange,
   hits,
@@ -82,6 +86,7 @@ export function SourceDocumentCard({
             key={excerpt.id}
             excerpt={excerpt}
             documentTitle={source.title}
+            corpusName={corpusName}
             // The place in the document, for naming an excerpt the answer
             // never cited: the same count the card prints above them.
             position={index + 1}
@@ -110,11 +115,11 @@ export function SourceDocumentCard({
           <Paragraph data-size="xs">Dokumentet har ingen offentlig lenke.</Paragraph>
         ) : (
           <Link href={source.url} target="_blank" rel="noreferrer" data-size="sm">
-            Les dokumentet på Kudos
-            {/* The title, because every document card ends in these same four
+            {documentLinkLabel(corpusName)}
+            {/* The title, because every document card ends in these same
                 words: without it a screen reader listing the panel's links
-                reads «Les dokumentet på Kudos» once per document and cannot
-                tell which one leads where (WCAG 2.4.9, KA CC on #70).
+                reads them once per document and cannot tell which one leads
+                where (WCAG 2.4.9, KA CC on #70).
 
                 Designsystemet also says not to mark an external link with an
                 icon alone, so leaving the app is said in words too.
