@@ -179,11 +179,41 @@ function ChatSlot({ threadId }: { threadId?: string }) {
    * The ref is what makes it once-only. State would be read from a closure
    * that is one render stale, and the second question of a conversation would
    * mint a second thread.
+   *
+   * A thread that is still being read is NOT no thread. See below.
    */
   const startThread = useCallback(
     (question: string): Thread => {
       const existing = startedRef.current ?? thread ?? undefined;
       if (existing) return existing;
+
+      /*
+       * The address already names a conversation; it just has not arrived
+       * yet. The question belongs to that one.
+       *
+       * This is the rest of the hole KA CC found in #66. The compose field
+       * works while `getThread` is in flight — deliberately, and `useChat`
+       * lays the stored conversation in front of the turn when it lands — but
+       * nothing here could tell «no thread» from «a thread that is still on
+       * its way», and the two look identical: `thread` is null in both. So a
+       * question asked in that gap minted a thread of its own, wrote the
+       * address over to it, and left an empty conversation in the list beside
+       * the one the reader was standing in. «Kopier lenke til tråden» copies
+       * `window.location.href`, so it copied the wrong one. Measured on
+       * `/threads/nkom-maaloppnaaelse`.
+       *
+       * Nothing is minted, stored or navigated here, because there is nothing
+       * to do: the address is already right, and the read that is in flight
+       * is what tells the client where the answer goes (`openThread` in the
+       * effect above). It arrives in one round trip, an answer takes several
+       * seconds, and the turn is filed under the thread in the address.
+       *
+       * The id is the part of this that is true. The title stands in until
+       * the thread lands with its own — nothing reads it today, and a thread
+       * whose title came from a question is what the list would draw for one
+       * this reader had just started.
+       */
+      if (threadId) return { ...threadFromQuestion(question), id: threadId };
 
       /*
         Stamped with the corpus the question is about to be asked of, so a
@@ -200,7 +230,7 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       window.history.replaceState(window.history.state, '', `/threads/${created.id}`);
       return created;
     },
-    [client, thread],
+    [client, thread, threadId],
   );
 
   const value = useMemo(
