@@ -1,5 +1,13 @@
 import type { FilterFacet, FilterSelection, StreamEvent, Thread, ThreadDetail } from '../model';
 
+/**
+ * How much of a thread the caller vouches for when it opens one.
+ *
+ * `known` is the thread as it stands; `id-only` is the id and a stand-in for
+ * the rest. See `ChatClient.openThread`.
+ */
+export type ThreadCertainty = 'known' | 'id-only';
+
 /** One question to the assistant. */
 export interface AskParams {
   /** The question, as the user typed it. */
@@ -51,8 +59,16 @@ export interface ChatClient {
    * thread API to write to at all (gap 4 in
    * design/eksisterende/api-for-frontend.md, API-bestilling A6), so it does
    * not implement this and the shell's call is a no-op.
+   *
+   * `certainty` says how much of the thread the caller vouches for. `known`
+   * is the whole of it, as the backend has it. `id-only` is the shell saying
+   * it is sure of the id and of nothing else: a question asked while
+   * `/threads/:id` is still being read has to be filed somewhere, and the
+   * title it carries is a stand-in until the read lands. A client that
+   * remembers threads must not write a stand-in over what it already knows —
+   * it said so, so it does not have to be guessed from who wrote first.
    */
-  openThread?(thread: Thread): void;
+  openThread?(thread: Thread, certainty?: ThreadCertainty): void;
   /** Resolves to null when the thread does not exist. */
   getThread(threadId: string, signal?: AbortSignal): Promise<ThreadDetail | null>;
   /**

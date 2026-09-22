@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockChatClient } from '../../api/mock/MockChatClient';
 import { findThread, threads } from '../../api/mock/fixtures';
 import {
+  SESSION_STORAGE_KEY,
   mockThreadDetail,
   mockThreadList,
   openMockThread,
@@ -124,6 +125,30 @@ describe('turen som ble stilt i gapet', () => {
 
     const other = mockThreadDetail('annen-traad', null);
     expect(other?.messages).toHaveLength(0);
+  });
+
+  it('slipper den ekte tittelen til når lesingen lander', { timeout: 30000 }, async () => {
+    /*
+     * Rekkefølgen som oppstår i gapet: stedfortrederen skriver FØRST, den
+     * ekte tråden 700 ms senere. En regel om at «det lageret alt vet vinner»
+     * ser lik ut og er det ikke — da blir stedfortrederens tittel det lageret
+     * vet, og samtalen heter leserens siste spørsmål (KA CC på #153).
+     *
+     * Lest rett ut av lageret, fordi det er der verdien er feil: trådlista
+     * tegner fikstursamtalene fra koden, så en fikstur-tittel i lageret er
+     * ikke synlig noe annet sted.
+     */
+    showThread(ID);
+    ask(QUESTION);
+
+    // Lesingen har landet når fikstursamtalen står på skjermen.
+    const fixtureQuestion = findThread(ID)?.messages.at(0)?.content ?? '';
+    expect(fixtureQuestion).not.toBe('');
+    await screen.findByText(fixtureQuestion, undefined, { timeout: 20000 });
+
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY) ?? '{}';
+    const stored = JSON.parse(raw) as Record<string, { thread: { title: string } }>;
+    expect(stored[ID]?.thread.title).toBe(findThread(ID)?.title);
   });
 
   it('døper ikke om en tråd lageret alt kjenner', { timeout: 30000 }, async () => {

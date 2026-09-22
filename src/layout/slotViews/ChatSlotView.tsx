@@ -215,16 +215,17 @@ function ChatSlot({ threadId }: { threadId?: string }) {
        * was written down.
        *
        * Saying it twice costs nothing: opening a thread that is already open
-       * is what the effect above does on every mount, and it keeps whatever
-       * is already known about the thread (see `openMockThread`).
+       * is what the effect above does on every mount.
        *
-       * The id is the part of this that is true. The title stands in until
-       * the thread lands with its own — nothing reads it, and the store is
-       * careful not to rename a thread it already knows.
+       * The id is the part of this that is true, and `id-only` is how the
+       * client is told so. The title is a stand-in until the read lands with
+       * the real one — and the client is the one that has to know the
+       * difference, or it writes the stand-in down as the conversation's name
+       * (KA CC on #153). See `ChatClient.openThread`.
        */
       if (threadId) {
         const asked: Thread = { ...threadFromQuestion(question), id: threadId };
-        client.openThread?.(asked);
+        client.openThread?.(asked, 'id-only');
         return asked;
       }
 
