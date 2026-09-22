@@ -202,18 +202,32 @@ function ChatSlot({ threadId }: { threadId?: string }) {
        * `window.location.href`, so it copied the wrong one. Measured on
        * `/threads/nkom-maaloppnaaelse`.
        *
-       * Nothing is minted, stored or navigated here, because there is nothing
-       * to do: the address is already right, and the read that is in flight
-       * is what tells the client where the answer goes (`openThread` in the
-       * effect above). It arrives in one round trip, an answer takes several
-       * seconds, and the turn is filed under the thread in the address.
+       * Nothing is minted and nothing is navigated, because there is nothing
+       * to do: the address is already right.
        *
-       * The id is the part of this that is true. The title stands in until
-       * the thread lands with its own — nothing reads it today, and a thread
-       * whose title came from a question is what the list would draw for one
-       * this reader had just started.
+       * The client IS told, here and not only when the read lands, and that
+       * is the second half of the same hole (KA CC on #149). The read is what
+       * used to say where the answer goes — and it says it too late when it
+       * comes back after the turn is over. Then nothing had filed the answer
+       * anywhere, and the question the reader asked in the gap was gone at
+       * the next reload. Measured with a read that takes longer than the
+       * answer: the turn finished at 3 s, the read landed at 4 s, and nothing
+       * was written down.
+       *
+       * Saying it twice costs nothing: opening a thread that is already open
+       * is what the effect above does on every mount.
+       *
+       * The id is the part of this that is true, and `id-only` is how the
+       * client is told so. The title is a stand-in until the read lands with
+       * the real one — and the client is the one that has to know the
+       * difference, or it writes the stand-in down as the conversation's name
+       * (KA CC on #153). See `ChatClient.openThread`.
        */
-      if (threadId) return { ...threadFromQuestion(question), id: threadId };
+      if (threadId) {
+        const asked: Thread = { ...threadFromQuestion(question), id: threadId };
+        client.openThread?.(asked, 'id-only');
+        return asked;
+      }
 
       /*
         Stamped with the corpus the question is about to be asked of, so a

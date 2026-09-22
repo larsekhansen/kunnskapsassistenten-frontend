@@ -1,3 +1,4 @@
+import type { ThreadCertainty } from '../chatClient';
 import type { Message, Thread, ThreadDetail } from '../../model';
 
 /**
@@ -80,14 +81,28 @@ function write(store: Store): void {
  * question asked on `/`, and the one it read from `/threads/:threadId`. An
  * entry that exists keeps its messages — opening a thread is not the same as
  * emptying it.
+ *
+ * `certainty` is the caller saying how much of the thread is real. The shell
+ * can open one before it has read it — a question asked while `/threads/:id`
+ * is still loading has to be filed somewhere — and then it is sure of the id
+ * and stands in for the rest. A stand-in only makes sure there is somewhere
+ * to file the answer; it never writes over what is already here, and it never
+ * keeps the real thread from landing a moment later.
+ *
+ * Told rather than worked out. Keeping whatever was written FIRST looks like
+ * the same rule and is not: in that one gap it is the stand-in that writes
+ * first, so the conversation would have ended up named after the newest
+ * question asked in it, with the real title arriving 700 ms too late to get in
+ * (KA CC on #153).
  */
-export function openMockThread(thread: Thread): void {
+export function openMockThread(thread: Thread, certainty: ThreadCertainty = 'known'): void {
   openThreadId = thread.id;
 
   const store = read();
   const existing = store[thread.id];
   store[thread.id] = {
-    thread: { ...existing?.thread, ...thread },
+    thread:
+      certainty === 'id-only' ? (existing?.thread ?? thread) : { ...existing?.thread, ...thread },
     messages: existing?.messages ?? [],
   };
   write(store);

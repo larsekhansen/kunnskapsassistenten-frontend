@@ -19,7 +19,7 @@ import {
 import { activeCorpusKey } from '../corpus';
 import { citationsFor, scriptedFor } from './conversations';
 import { mockThreadDetail, mockThreadList, openMockThread, recordMockTurn } from './sessionThreads';
-import type { AskParams, ChatClient } from '../chatClient';
+import type { AskParams, ChatClient, ThreadCertainty } from '../chatClient';
 import {
   citedNumbers,
   narrowToSelection,
@@ -758,8 +758,8 @@ export class MockChatClient implements ChatClient {
    * Which conversation the questions that follow belong to. See
    * `ChatClient.openThread`, and sessionThreads.ts for what is kept.
    */
-  openThread(thread: Thread): void {
-    openMockThread(thread);
+  openThread(thread: Thread, certainty?: ThreadCertainty): void {
+    openMockThread(thread, certainty);
   }
 
   async listThreads(signal?: AbortSignal): Promise<Thread[]> {
