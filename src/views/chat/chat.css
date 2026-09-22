@@ -155,6 +155,25 @@
   margin: 0;
 }
 
+/* -------------------------------------------------- tråden som hentes */
+
+/*
+ * The shape of the conversation being read: one question, one answer. Same
+ * stack and same gaps as `.ka-messages`, so nothing moves sideways or jumps
+ * when the real turns take its place.
+ */
+.ka-thread-loading__turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+}
+
+/* Set in from the card edge, the way the reader's own question is. */
+.ka-thread-loading__question {
+  margin: 0;
+  padding-inline: var(--ds-size-2);
+}
+
 /* ----------------------------------------------------------------- status */
 
 .ka-answer-skeleton {

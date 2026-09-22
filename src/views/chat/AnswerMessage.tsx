@@ -76,6 +76,11 @@ type AnswerMessageProps = {
 /**
  * Four ragged lines standing in for the paragraph on its way (answer 32).
  *
+ * Exported because the conversation being READ uses the same four lines: an
+ * answer on its way and an answer being fetched are the same shape, and two
+ * sets of ragged lines side by side would be two guesses at the same thing.
+ * See ThreadLoading.
+ *
  * `width` on `variant="text"` is a NUMBER OF CHARACTERS, not a length:
  * Skeleton writes `data-text={'-'.repeat(Number(width) || 1)}` and never
  * passes width to `style`. A percentage makes `Number()` return NaN, every
@@ -88,7 +93,7 @@ type AnswerMessageProps = {
  */
 const SKELETON_LINE_CHARACTERS = [78, 86, 82, 48];
 
-function AnswerSkeleton() {
+export function AnswerSkeleton() {
   return (
     <div aria-hidden="true" className="ka-answer-skeleton">
       {SKELETON_LINE_CHARACTERS.map((characters) => (

@@ -19,6 +19,7 @@ import { useAtBottom } from './useAtBottom';
 import { useComposerShortcut } from './useComposerShortcut';
 import { useAttachments } from './useAttachments';
 import { useChat } from './useChat';
+import { ThreadLoading } from './ThreadLoading';
 import { Welcome } from './Welcome';
 import './chat.css';
 
@@ -27,6 +28,15 @@ export type ChatViewProps = {
   userName?: string;
   /** The thread to show. Absent means a new conversation. */
   thread?: ThreadDetail;
+  /**
+   * The address names a conversation that has not been read yet.
+   *
+   * Absent `thread` means two different things and this is what tells them
+   * apart: an untouched front page, and a thread on its way. The view cannot
+   * work it out — it takes a `ThreadDetail` and never a route — so whoever
+   * knows the address says so. See `slotViews/ChatSlotView.tsx`.
+   */
+  loading?: boolean;
   /** Which backend to talk to. Defaults to whatever `createChatClient` picks. */
   client?: ChatClient;
 };
@@ -54,7 +64,7 @@ function defaultClient(): ChatClient {
   return fallbackClient;
 }
 
-function ChatSession({ userName, thread, client }: ChatViewProps) {
+function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   const chatClient = useMemo(() => client ?? defaultClient(), [client]);
 
   // The document filter is part of the question. The filter view writes it,
@@ -471,18 +481,18 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         </Heading>
       ) : null}
 
-      {messages.length === 0 ? (
-        <Welcome
-          kickstarters={kickstartersFor(corpusKey)}
-          onPickKickstarter={(question) => {
-            // Fills the field, does not send (answer 40). The caret goes with
-            // it, so the reader can edit before asking.
-            setDraft(question);
-            focusField();
-          }}
-          userName={userName}
-        />
-      ) : (
+      {/*
+        Three states, in the order a reader meets them: what they asked for,
+        what is on its way, and — only when the address names nothing — the
+        greeting.
+
+        The conversation wins over the loading shape, and that is the point of
+        the order rather than an accident of it: a question asked while the
+        thread is being read is already on screen (#149), and drawing
+        skeletons over it would take the reader's own words away while they
+        waited for older ones.
+      */}
+      {messages.length > 0 ? (
         <MessageList
           canScrollToBottom={!atBottom}
           filterSummary={filterSummary}
@@ -499,6 +509,19 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
           }}
           onScrollToBottom={() => scrollToBottom()}
           onSelectSource={showCitation}
+        />
+      ) : loading ? (
+        <ThreadLoading />
+      ) : (
+        <Welcome
+          kickstarters={kickstartersFor(corpusKey)}
+          onPickKickstarter={(question) => {
+            // Fills the field, does not send (answer 40). The caret goes with
+            // it, so the reader can edit before asking.
+            setDraft(question);
+            focusField();
+          }}
+          userName={userName}
         />
       )}
 
