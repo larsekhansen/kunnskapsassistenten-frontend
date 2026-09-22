@@ -72,6 +72,7 @@ eier bare denne mappa.
 | [`fix-documents-list-link-rule-2026-09-22.md`](fix-documents-list-link-rule-2026-09-22.md)       | PR #146, dokumentet uten adresse sier hvorfor: 18 px er prisen for å si det                            |
 | [`fix-heading-path-markdown-2026-09-22.md`](fix-heading-path-markdown-2026-09-22.md)             | PR #147, overskriftsstien uten rå Markdown: regelen er mellomrommet                                    |
 | [`natten-2026-09-22.md`](natten-2026-09-22.md)                                                   | Natta 22.–23.: testmiljøet, to hull i chatten, en spike — og et funn som ikke fantes                   |
+| [`brukerblikk-8-2026-09-23.md`](brukerblikk-8-2026-09-23.md)                                     | Brukerblikk runde 8: en lenke appen skriver til seg selv, og ikke kan følge                            |
 
 ## Sånn går en review
 
