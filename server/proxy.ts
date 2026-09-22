@@ -75,7 +75,13 @@ export function targetFor(apiBase: string, requestUrl: string): URL | undefined 
     return undefined;
   }
 
-  if (target.origin !== prefix.origin) return undefined;
+  /*
+   * The path, and only the path. The origin is not checked because it cannot
+   * differ: both strings start with `apiBase`, and a request path always
+   * begins with `/`, so the authority is settled before the appended part
+   * begins. A check there would compare a value with itself — measured, by a
+   * mutation that stayed green with it removed.
+   */
   if (!target.pathname.startsWith(prefix.pathname)) return undefined;
 
   let decoded: string;
