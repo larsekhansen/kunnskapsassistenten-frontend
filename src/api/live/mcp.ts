@@ -117,19 +117,63 @@ function chunkTitle(chunk: McpChunk): string {
 }
 
 /**
+ * A heading marker the chunker left inside a value.
+ *
+ * Measured against the running stack 2026-09-22, `norquad-docs`:
+ *
+ * ```
+ * {"Header 1" "Europas historie 1789–1914",
+ *  "Header 2" "Noter## Referanser## Litteratur"}
+ * ```
+ *
+ * So `##` is not a separator the backend chose — it is Markdown that came
+ * along inside ONE value, where the chunker ran three sibling headings
+ * together without the line breaks that made them headings. The reader saw it
+ * raw: «Europas historie 1789–1914 › Noter## Referanser## Litteratur»
+ * (brukerblikk 7, funn 1). It is the only place in live where anything from
+ * the backend reaches the screen without going through the Markdown renderer.
+ *
+ * A run of `#` followed by whitespace, because that is what tells a heading
+ * marker from a `#` that is part of the text: «Kapittel #3» has no space
+ * after the hash and must survive whole. `#+` rather than `#{1,6}` — six is
+ * Markdown's limit for a heading somebody wrote, and this is a run somebody's
+ * chunker produced, so an impossible seventh hash should still be swallowed
+ * rather than left on screen.
+ */
+const HEADING_MARKER = /#+\s+/;
+
+/**
  * The heading path inside a document.
  *
  * The server sends this as a string containing Clojure map syntax —
  * `{"Header 1" "Akershus slott og festning"}` — even though the schema
  * declares an object. So it is parsed as text: every quoted string in order,
  * odd ones are keys, even ones are values, and the values are the path.
+ *
+ * Each value is then split on the markers above, so the three headings the
+ * chunker ran together come back as three steps. **They are siblings, not
+ * nesting, and the path draws them as if they were** — which is the honest
+ * limit of doing this here: nothing in the string says whether «Referanser»
+ * sits under «Noter» or beside it. Showing all three beats showing one and
+ * dropping two, and beats showing the markers. The lasting fix is the backend
+ * sending clean text per level; noted in
+ * design/utkast-til-benjamin-2026-09-14.md.
+ *
+ * Nothing else is cleaned. This is not Markdown rendering and not HTML
+ * sanitising — it is one field, with one measured defect in it.
  */
 export function parseHeadingPath(metadata: string | undefined): string | undefined {
   if (!metadata) return undefined;
 
   const quoted = [...metadata.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((match) => match[1]);
   const values = quoted.filter((_, index) => index % 2 === 1);
-  const path = values.filter(Boolean).join(' › ');
+  const path = values
+    .flatMap((value) => value.split(HEADING_MARKER))
+    .map((step) => step.trim())
+    // Empty once a value began with a marker, and all-hashes when a value was
+    // nothing but one. Both are the marker with no heading behind it.
+    .filter((step) => step !== '' && !/^#+$/.test(step))
+    .join(' › ');
   return path || undefined;
 }
 
