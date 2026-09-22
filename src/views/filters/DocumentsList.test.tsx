@@ -105,9 +105,7 @@ describe('KudosDocuments', () => {
     renderInApp(<KudosDocuments documents={[{ ...first, url: undefined }, ...rest]} />);
 
     expect(
-      screen.getByText(
-        'Årsrapport · Nasjonal kommunikasjonsmyndighet · 2018 · Ingen offentlig lenke',
-      ),
+      screen.getByText('Årsrapport · Nasjonal kommunikasjonsmyndighet · 2018, uten lenke'),
     ).toBeTruthy();
     // And a document that IS a link says nothing of the kind.
     expect(screen.getByText('Årsrapport · Nasjonal kommunikasjonsmyndighet · 2019')).toBeTruthy();
@@ -122,7 +120,7 @@ describe('KudosDocuments', () => {
       />,
     );
 
-    expect(screen.getByText('Ingen offentlig lenke')).toBeTruthy();
+    expect(screen.getByText('Uten lenke')).toBeTruthy();
   });
 
   it('shows the rest, drops the button, and leaves focus on the list', () => {
