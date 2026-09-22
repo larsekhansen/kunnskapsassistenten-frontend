@@ -71,6 +71,7 @@ eier bare denne mappa.
 | [`brukerblikk-7-2026-09-22.md`](brukerblikk-7-2026-09-22.md)                                     | Brukerblikk runde 7: mandagen henger sammen, og to feller i min egen måling                            |
 | [`fix-documents-list-link-rule-2026-09-22.md`](fix-documents-list-link-rule-2026-09-22.md)       | PR #146, dokumentet uten adresse sier hvorfor: 18 px er prisen for å si det                            |
 | [`fix-heading-path-markdown-2026-09-22.md`](fix-heading-path-markdown-2026-09-22.md)             | PR #147, overskriftsstien uten rå Markdown: regelen er mellomrommet                                    |
+| [`natten-2026-09-22.md`](natten-2026-09-22.md)                                                   | Natta 22.–23.: testmiljøet, to hull i chatten, en spike — og et funn som ikke fantes                   |
 
 ## Sånn går en review
 
@@ -267,8 +268,22 @@ lyver er verre enn ingen måling, fordi den blir stående i en rapport.
   strømmen, og du rapporterer at det andre svaret ikke har kilder. Bruk
   `.nth(n - 1)` eller tell knappene. Målt på nytt 16.09 i anmeldelsen av #82,
   der `.first()` ga det samme: det nyeste svaret så ut til å mangle hele
-  handlingsraden, og hadde bare ikke kommet ennå. Det som virker er å vente på
-  ANTALLET: `waitForFunction(n => knapper med «Kopier svaret» === n)`.
+  handlingsraden, og hadde bare ikke kommet ennå.
+
+  **Og å telle er ikke nok når det ikke finnes noe å telle ennå.** Denne
+  advarselen sa «vent på ANTALLET», og den forutsetter at du kan lese av et
+  utgangspunkt. Målt natt til 23.09: et spørsmål stilt før tråden er lastet
+  har ingenting å telle — tråden er ikke på skjermen — så utgangspunktet blir
+  0, og fikstursamtalens egen «Kopier svaret» oppfyller «én til» ett sekund
+  senere, mens ditt eget svar har 32 sekunder igjen. Jeg leste lageret og
+  lastet på nytt midt i strømmen, og meldte to ganger at en tur aldri ble
+  skrevet ned. Den ble skrevet ned ved 32,9 s, hver gang.
+
+  **Riktig sluttsignal er at turen er OVER, ikke at noe har dukket opp**:
+  ingenting i flukt (ingen «Avbryt»-knapp), forventet antall meldinger, og
+  like mange «Kopier svaret» som det er svar. Et element som dukker opp kan
+  være noe annet enn ditt.
+
 - **Hovedkolonnen ruller på `main` selv**, ikke på en boks inni den —
   `main` har `overflow-y: auto`. En hjelper som leter etter en rullende
   ETTERKOMMER med `main.querySelectorAll('*')` finner ingen, og hvis den
