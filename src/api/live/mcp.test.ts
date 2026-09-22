@@ -65,6 +65,13 @@ describe('parseHeadingPath og Markdown fra chunkeren', () => {
     expect(parseHeadingPath('{"H1" "### Navn"}')).toBe('Navn');
   });
 
+  it('trimmer leddet når markøren hadde mellomrom foran seg', () => {
+    // Delingen spiser mellomrommet ETTER markøren, ikke det før: «Bakgrunn
+    // ### Navn» ville ellers gitt et ledd som het «Bakgrunn » med hale.
+    expect(parseHeadingPath('{"H1" "Bakgrunn ### Navn"}')).toBe('Bakgrunn › Navn');
+    expect(parseHeadingPath('{"H1" "  Noter  "}')).toBe('Noter');
+  });
+
   it('lar en emneknagg i teksten være i fred', () => {
     // Det er mellomrommet etter som skiller en overskriftsmarkør fra en
     // skigard i teksten. «Kapittel #3» er ikke to overskrifter.
