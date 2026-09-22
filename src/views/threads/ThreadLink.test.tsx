@@ -18,19 +18,24 @@ const thread: Thread = {
  * — which is the right default for every other test in the project. The two
  * tests that are about the measurement say what the browser would have
  * measured, on the prototype, and put it back afterwards.
+ *
+ * On `HTMLElement` and not on `HTMLAnchorElement`, so the stub covers
+ * whichever element carries the clamp: the row's own `<a>`, or a `<span>`
+ * inside it when the row is built as a button (a flex container cannot also
+ * be a `-webkit-box`). The assertion is about the tooltip either way.
  */
 function withHeights(scrollHeight: number, clientHeight: number): void {
   for (const [name, value] of [
     ['scrollHeight', scrollHeight],
     ['clientHeight', clientHeight],
   ] as const) {
-    Object.defineProperty(HTMLAnchorElement.prototype, name, { configurable: true, value });
+    Object.defineProperty(HTMLElement.prototype, name, { configurable: true, value });
   }
 }
 
 afterEach(() => {
   for (const name of ['scrollHeight', 'clientHeight']) {
-    delete (HTMLAnchorElement.prototype as unknown as Record<string, unknown>)[name];
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>)[name];
   }
   // jsdom has no FontFaceSet, so the font test installs one. Anything left
   // behind would make the next file's rows measure themselves twice.

@@ -144,80 +144,67 @@
  * the focus ring around the row is untouched.
  */
 .threads-view__thread {
+  /*
+   * PRØVE: Designsystemets egne knappevariabler i stedet for våre verdier.
+   *
+   * `--dsc-button-padding` er DS sin egen, og «redusert padding» er nettopp
+   * det Simen fikk beskrevet. `--dsc-button-size` setter BÅDE min-height og
+   * min-width på knappen (48 px på `sm` her, målt), så en rad som skal være
+   * tekst-høy må sette den ned; 0 lar innholdet bestemme.
+   */
+  --dsc-button-padding: var(--ds-size-1) var(--ds-size-2);
+  --dsc-button-size: 0;
+  --dsc-button-border-radius: var(--ds-border-radius-md);
+
+  /*
+   * Knappen er `display: flex` med `justify-content: center` og
+   * `width: fit-content`. En navigasjonsrad er venstrestilt og full bredde,
+   * og DS har ingen variabler for noen av delene — `[data-fullwidth]` gir
+   * bredden, men sentrerer teksten. Så disse tre er våre.
+   */
+  inline-size: 100%;
+  justify-content: start;
+  text-align: start;
+}
+
+/*
+ * Avkortingen, flyttet fra raden til et span inni den.
+ *
+ * En DS-knapp er `display: flex`, og et flex-element kan ikke samtidig være
+ * `-webkit-box`. Alt annet står som før: hele tittelen er i DOM-en og er
+ * lenkas tilgjengelige navn, og ThreadLink.tsx måler dette elementet for å
+ * avgjøre om raden trenger tooltip.
+ */
+.threads-view__thread-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   overflow: hidden;
-  padding: var(--ds-size-1) var(--ds-size-2);
-  border-radius: var(--ds-border-radius-md);
-}
-
-.threads-view__thread:hover {
-  background: var(--ds-color-accent-surface-hover);
-}
-
-/*
- * The focus ring inside the row instead of around it.
- *
- * Designsystemet draws it at `outline-offset: 0`, which paints the ring in
- * the pixels immediately below the link — and the timestamp starts there: the
- * link's bottom edge and the time's top edge are the same line, measured 0.0
- * px apart. The ring cut through «09:14» on every row a keyboard user passed
- * (brukerblikk runde 3).
- *
- * Moving it in rather than adding air, because air here is not free: the
- * panel is already over its height budget, and 4 px under twelve rows is
- * another 48 px of it. The row's own vertical padding is where the ring goes
- * instead — and it is exactly one ring wide: the row is `data-size="sm"`, so
- * `--ds-size-1` measures 3 px there, the same as the ring (measured, KA CC on
- * #91). The ring therefore fills the padding rather than sitting in it, and
- * ends flush against the text box. Nothing is left over as slack; what keeps
- * the letters off the ring is the line box's own half-leading, 2 px here.
- *
- * A whole ring width, not a guess: an outline is drawn OUTWARD from the
- * offset edge, so `-2px` on a 3 px ring still left 1 px over the timestamp
- * (measured). One ring width inward puts its outer edge exactly on the
- * border box. Colour, width and style stay Designsystemet's — only the offset
- * is ours, and it is written from the same token the width comes from.
- */
-.threads-view__thread:focus-visible {
-  outline-offset: calc(-1 * var(--ds-border-width-focus));
+  /*
+   * Uten disse to krymper spannet til innholdet: et flex-element har
+   * `min-width: auto` og vokser ikke av seg selv, så tittelen fikk 163–311 px
+   * av en 327 px rad og brøt til to linjer tidligere enn den trengte (målt).
+   */
+  inline-size: 100%;
+  min-inline-size: 0;
 }
 
 /*
- * The selected thread. aria-current is the semantics; this is only the paint,
- * and it is bound to the same attribute so the two cannot disagree.
+ * Den valgte tråden. `aria-current` er semantikken, dette er bare malingen.
  *
- * The spec marks the active thread with weight alone. The surface is an
- * addition, and a deliberate one — but it only reaches 1.6:1 against the
- * panel, so it cannot be the signal on its own. Semibold rather than medium
- * is what actually carries the state at 14 px.
- *
- * Dropping the underline is the third difference, and it is what keeps the
- * selected row apart from a hovered one now that both draw a surface: the
- * page you are on is not a place to go. Weight, surface and underline all
- * differ, so the two states cannot be confused at a glance.
- *
- * The text colour is set with it, and it has to be. The link colour the other
- * rows now carry is `accent-text-subtle`, which reaches only 4.01:1 light and
- * 4.15:1 dark on this surface — axe caught it. `accent-text-default` measures
- * 8.62:1 and 8.44:1 on the same surface. The rows that are still links keep
- * the link colour, at 4.70:1 and 5.07:1 on the hover surface.
+ * Flate og tekstfarge er de samme som før prøven: DS sin tertiærknapp maler
+ * `--ds-color-surface-active` og `--ds-color-text-subtle`, og den siste
+ * måler bare 4,01:1 mot den aktive flata (målt av KA CC på #91). Halvfet
+ * bærer tilstanden på 14 px, som i spesifikasjonen.
  */
 .threads-view__thread[aria-current='page'] {
-  background: var(--ds-color-accent-surface-active);
-  color: var(--ds-color-accent-text-default);
+  --dsc-button-background: var(--ds-color-accent-surface-active);
+  --dsc-button-background--hover: var(--ds-color-accent-surface-active);
+  --dsc-button-color: var(--ds-color-accent-text-default);
   font-weight: var(--ds-font-weight-semibold);
-  text-decoration: none;
 }
 
-/*
- * The hit count is rendered even when there is nothing to say, so that the
- * live region exists before its text does. Collapse the empty box; never
- * `display: none`, which would take the region out of the accessibility tree
- * and bring the announcement problem back.
- */
 .threads-view__search-status:empty {
   margin: 0;
   block-size: 0;

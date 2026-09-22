@@ -1,4 +1,4 @@
-import { Link } from '@digdir/designsystemet-react';
+import { Button } from '@digdir/designsystemet-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link as RouterLink } from 'react-router';
 import type { Thread } from '../../model';
@@ -31,7 +31,16 @@ export type ThreadLinkProps = {
  * panel is resizable (#50), so the answer changes without the title changing.
  */
 export function ThreadLink({ thread, current }: ThreadLinkProps) {
-  const ref = useRef<HTMLAnchorElement>(null);
+  /*
+   * PRØVE (steg 2 i design/plan-traadliste-ds-2026-09-22.md): raden bygd som
+   * Designsystemets undernavigasjon, `Button variant="tertiary"` som lenke.
+   *
+   * The clamp moved off the link and onto a span inside it, because a DS
+   * button is `display: flex` and a flex container cannot be a
+   * `-webkit-box`. So the element that is measured for the tooltip is the
+   * span, not the row.
+   */
+  const ref = useRef<HTMLSpanElement>(null);
   const [clipped, setClipped] = useState(false);
 
   useEffect(() => {
@@ -85,7 +94,7 @@ export function ThreadLink({ thread, current }: ThreadLinkProps) {
   }, [thread.title, current]);
 
   return (
-    <Link asChild data-size="sm" className="threads-view__thread">
+    <Button asChild variant="tertiary" data-size="sm" className="threads-view__thread">
       {/*
         `aria-current="page"` — not the colour — is what makes the open thread
         available to a screen reader, and the style hangs off the same
@@ -99,13 +108,14 @@ export function ThreadLink({ thread, current }: ThreadLinkProps) {
         on screen however the address got there; see openThreadContext.ts.
       */}
       <RouterLink
-        ref={ref}
         aria-current={current ? 'page' : undefined}
         title={clipped ? thread.title : undefined}
         to={`/threads/${thread.id}`}
       >
-        {thread.title}
+        <span className="threads-view__thread-title" ref={ref}>
+          {thread.title}
+        </span>
       </RouterLink>
-    </Link>
+    </Button>
   );
 }
