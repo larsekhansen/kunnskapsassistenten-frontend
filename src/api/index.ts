@@ -1,5 +1,6 @@
 import type { ChatClient } from './chatClient';
 import { activeCorpusKey } from './corpus';
+import { kaEnv } from './runtimeConfig';
 import { LiveChatClient } from './live';
 import { defaultMockSpeed, MockChatClient, mockSpeeds } from './mock';
 
@@ -33,13 +34,14 @@ export {
  * See design/eksisterende/api-for-frontend.md.
  */
 export function createChatClient(): ChatClient {
-  const mode = import.meta.env.VITE_API_MODE ?? 'mock';
+  const env = kaEnv();
+  const mode = env.VITE_API_MODE ?? 'mock';
   if (mode !== 'live') {
     // `VITE_MOCK_SPEED` decides how long the mock takes to answer. The default
     // is the slow, lifelike one on purpose: a mock that answers instantly
     // cannot show the skeleton, the thinking panel or the streaming, which is
     // most of what there is to look at. The e2e suite sets `fast`.
-    const speed = import.meta.env.VITE_MOCK_SPEED ?? defaultMockSpeed;
+    const speed = env.VITE_MOCK_SPEED ?? defaultMockSpeed;
     return new MockChatClient(mockSpeeds[speed] ?? mockSpeeds[defaultMockSpeed]);
   }
 
@@ -52,7 +54,7 @@ export function createChatClient(): ChatClient {
   // so the question goes to whatever is selected then — not to whatever was
   // selected when this factory ran. See src/api/corpus.ts.
   return new LiveChatClient({
-    tenant: import.meta.env.VITE_KA_TENANT,
+    tenant: env.VITE_KA_TENANT,
     datasetConfigKey: activeCorpusKey,
   });
 }

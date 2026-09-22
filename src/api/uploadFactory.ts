@@ -1,5 +1,6 @@
 import { LiveUploadClient } from './live/LiveUploadClient';
 import { MockUploadClient } from './mock/MockUploadClient';
+import { kaEnv } from './runtimeConfig';
 import type { UploadClient } from './uploadClient';
 
 let client: UploadClient | undefined;
@@ -21,9 +22,7 @@ let client: UploadClient | undefined;
  */
 export function createUploadClient(): UploadClient {
   client ??=
-    (import.meta.env.VITE_API_MODE ?? 'mock') === 'live'
-      ? new LiveUploadClient()
-      : new MockUploadClient();
+    (kaEnv().VITE_API_MODE ?? 'mock') === 'live' ? new LiveUploadClient() : new MockUploadClient();
   return client;
 }
 

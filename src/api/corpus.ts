@@ -1,3 +1,5 @@
+import { kaEnv } from './runtimeConfig';
+
 /**
  * Which corpus the assistant searches, chosen at runtime.
  *
@@ -180,20 +182,13 @@ export const MOCK_WIKIPEDIA_CORPUS: CorpusOption = {
 };
 
 /*
- * Read with `?.`, because this module is evaluated outside Vite as well.
- *
- * `import.meta.env` is Vite's, and it is undefined in plain Node — which is
- * where Playwright loads spec files. `tests/e2e/chat.spec.ts` imports
- * `src/api/mock` for one query string, and since the mock client began
- * reading the active corpus that import reaches this module. At module scope
- * the read runs immediately, so the whole suite died on `Cannot read
- * properties of undefined` before a single test ran.
- *
- * The fallback is the truthful one for that context: no environment means no
- * configuration, which is mock mode — the same answer the app gives a
- * developer who has set nothing.
+ * Build-time and runtime configuration, merged. See runtimeConfig.ts for why
+ * both exist and why this module cannot simply read `import.meta.env`: a
+ * container has to be able to run one image as mock or live, and the read
+ * also has to survive plain Node, where Playwright loads spec files that
+ * reach this module.
  */
-const env: Partial<ImportMetaEnv> = import.meta.env ?? {};
+const env = kaEnv();
 
 const { options: corpusOptions, fallback } =
   (env.VITE_API_MODE ?? 'mock') === 'live'

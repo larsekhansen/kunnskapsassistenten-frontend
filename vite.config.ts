@@ -47,9 +47,36 @@ export default defineConfig(({ mode }) => {
       },
     },
     test: {
-      environment: 'jsdom',
-      setupFiles: ['./src/test/setup.ts'],
-      include: ['src/**/*.test.{ts,tsx}'],
+      /*
+       * Klienten og serveren i samme kjøring, men ikke i samme miljø.
+       *
+       * `src/test/setup.ts` er jsdom fra første linje — den installerer
+       * matchMedia, `<dialog>` og CSS.escape på `window` mens den lastes — og
+       * `server/` tester en Node-HTTP-server som ikke har noe `window`. Det
+       * er ikke et miljø som kan deles, så det deles ikke: to prosjekter,
+       * hvert med sitt miljø og sine filer. Alt annet arves fra rota her
+       * (`extends`), så antall arbeidere og `restoreMocks` står fortsatt ett
+       * sted.
+       */
+      projects: [
+        {
+          extends: true,
+          test: {
+            name: 'klient',
+            environment: 'jsdom',
+            setupFiles: ['./src/test/setup.ts'],
+            include: ['src/**/*.test.{ts,tsx}'],
+          },
+        },
+        {
+          extends: true,
+          test: {
+            name: 'server',
+            environment: 'node',
+            include: ['server/**/*.test.ts'],
+          },
+        },
+      ],
       restoreMocks: true,
       /*
        * Fire arbeidere lokalt. Vitest tar ellers én per kjerne: målt 15.09 gikk
