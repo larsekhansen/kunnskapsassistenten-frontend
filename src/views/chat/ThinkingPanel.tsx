@@ -1,5 +1,5 @@
-import { Details, Paragraph, Spinner } from '@digdir/designsystemet-react';
-import { useState } from 'react';
+import { Details, Paragraph, Spinner, Tag } from '@digdir/designsystemet-react';
+import { useId, useState } from 'react';
 import type { ThinkingStep } from '../../model';
 import { reportedDurationMs, thoughtForLabel } from './thinkingTime';
 
@@ -17,6 +17,49 @@ type ThinkingPanelProps = {
    */
   thoughtMs?: number;
 };
+
+/**
+ * What the agent actually searched for, under the step that searched.
+ *
+ * The strings have been in the model, in the mock and in the live client all
+ * along (`tool-calls` → `ThinkingStep.queries`), and nothing drew them — so
+ * «Jeg søker i korpuset» stood there without saying after what (KA CC,
+ * 2026-09-16). They are the one part of the thinking a reader can check the
+ * answer against: a search for the wrong words explains a thin answer.
+ *
+ * Tags, and the same neutral ones as «Nøkkelord som ble brukt i søket» in
+ * Fremgangsmåte, because it is the same kind of thing — words the machine
+ * used, not words to press. They are not clickable there and not here
+ * (answer 13). Search strings are short («DSS årsrapport 2022»), and the one
+ * long one there is — the mock's failure step sends the reader's whole
+ * question — wraps rather than running out through the side of the card,
+ * which is what `ka-tag--wrapping` is for.
+ *
+ * The list carries the lead-in as its accessible name, so a screen reader
+ * that jumps by list hears what the list is instead of two bare strings. The
+ * lead-in is visible as well: chips with no label are words without a reason.
+ *
+ * Nothing here is drawn while the panel is shut — it is `Details.Content` —
+ * so a closed panel is exactly as tall as it was.
+ */
+function StepQueries({ id, queries }: { id: string; queries: string[] }) {
+  return (
+    <div className="ka-thinking__queries">
+      <Paragraph data-size="sm" id={id} variant="long">
+        Søkte etter:
+      </Paragraph>
+      <ul aria-labelledby={id} className="ka-thinking__query-list">
+        {queries.map((query, index) => (
+          <li key={`${index}-${query}`}>
+            <Tag className="ka-tag--wrapping" data-color="neutral" data-size="sm">
+              {query}
+            </Tag>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /**
  * «Tenker …»: what the agent is doing while the search takes its time.
@@ -49,6 +92,10 @@ type ThinkingPanelProps = {
  */
 export function ThinkingPanel({ steps, status, thoughtMs }: ThinkingPanelProps) {
   const thinking = status === 'thinking';
+  // One per panel, and the step id makes it one per step. Two answers on
+  // screen each have a panel, and `aria-labelledby` points at an id — the
+  // same id twice would point both lists at the first one's text.
+  const queryLabelId = useId();
 
   const [chosen, setChosen] = useState<boolean | undefined>(undefined);
   const open = chosen ?? thinking;
@@ -108,6 +155,9 @@ export function ThinkingPanel({ steps, status, thoughtMs }: ThinkingPanelProps) 
                   <Paragraph className="ka-thinking__detail" data-size="sm" variant="long">
                     {step.detail}
                   </Paragraph>
+                ) : null}
+                {step.queries?.length ? (
+                  <StepQueries id={`${queryLabelId}-${step.id}`} queries={step.queries} />
                 ) : null}
               </li>
             );

@@ -245,6 +245,28 @@
   color: var(--ds-color-neutral-text-subtle);
 }
 
+/*
+ * «Søkte etter:» og søkestrengene på samme linje, som én setning som brytes.
+ * `baseline` og ikke `center`: lead-in-teksten og teksten inne i taggene skal
+ * stå på samme grunnlinje, ellers flyter ordet over eller under chipene.
+ */
+.ka-thinking__queries {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ds-size-2);
+  margin-block-start: var(--ds-size-2);
+}
+
+.ka-thinking__query-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 /* -------------------------------------------------------------- retrieval */
 
 .ka-retrieval__summary {
