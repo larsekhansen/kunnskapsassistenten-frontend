@@ -27,6 +27,65 @@ describe('parseHeadingPath', () => {
   });
 });
 
+/**
+ * Overskriftsstien uten rå Markdown.
+ *
+ * Leseren så «Europas historie 1789–1914 › Noter## Referanser## Litteratur»
+ * i kildepanelet (brukerblikk 7, funn 1). Råverdiene under er målt mot den
+ * kjørende stacken 2026-09-22, `norquad-docs`, på spørsmålet «Hva var
+ * bakgrunnen for første verdenskrig?» — og de avgjør hva `##` er: ikke et
+ * skilletegn backend valgte, men Markdown inne i ÉN verdi, der chunkeren har
+ * kjørt tre søskenoverskrifter sammen uten linjeskiftene som gjorde dem til
+ * overskrifter.
+ */
+describe('parseHeadingPath og Markdown fra chunkeren', () => {
+  const MÅLT_REN =
+    '{"Header 1" "Europas historie 1789–1914", "Header 2" "Stille før stormen (1900–1914)", "Header 3" "Mot krig (1911–1914)"}';
+  const MÅLT_MED_MARKØRER =
+    '{"Header 1" "Europas historie 1789–1914", "Header 2" "Noter## Referanser## Litteratur"}';
+
+  it('lar en målt verdi uten markører stå urørt', () => {
+    // To av de tre målte chunkene var rene. Normaliseringen skal ikke røre
+    // dem: en parentes og et tankestrek er tekst, ikke Markdown.
+    expect(parseHeadingPath(MÅLT_REN)).toBe(
+      'Europas historie 1789–1914 › Stille før stormen (1900–1914) › Mot krig (1911–1914)',
+    );
+  });
+
+  it('deler den målte verdien med markører i ledd, uten å vise markørene', () => {
+    expect(parseHeadingPath(MÅLT_MED_MARKØRER)).toBe(
+      'Europas historie 1789–1914 › Noter › Referanser › Litteratur',
+    );
+  });
+
+  it('stryker en innledende markør', () => {
+    // Formen fra rapporten: «Bakgrunn### Navn» i én verdi, og en verdi som
+    // begynner med markøren.
+    expect(parseHeadingPath('{"H1" "Bakgrunn### Navn"}')).toBe('Bakgrunn › Navn');
+    expect(parseHeadingPath('{"H1" "### Navn"}')).toBe('Navn');
+  });
+
+  it('trimmer leddet når markøren hadde mellomrom foran seg', () => {
+    // Delingen spiser mellomrommet ETTER markøren, ikke det før: «Bakgrunn
+    // ### Navn» ville ellers gitt et ledd som het «Bakgrunn » med hale.
+    expect(parseHeadingPath('{"H1" "Bakgrunn ### Navn"}')).toBe('Bakgrunn › Navn');
+    expect(parseHeadingPath('{"H1" "  Noter  "}')).toBe('Noter');
+  });
+
+  it('lar en emneknagg i teksten være i fred', () => {
+    // Det er mellomrommet etter som skiller en overskriftsmarkør fra en
+    // skigard i teksten. «Kapittel #3» er ikke to overskrifter.
+    expect(parseHeadingPath('{"H1" "Kapittel #3"}')).toBe('Kapittel #3');
+  });
+
+  it('dropper et ledd som bare var en markør', () => {
+    // En markør uten overskrift bak er ingenting å vise, og «###» på skjermen
+    // er nøyaktig feilen dette retter.
+    expect(parseHeadingPath('{"H1" "###"}')).toBeUndefined();
+    expect(parseHeadingPath('{"H1" "Noter" "H2" "##"}')).toBe('Noter');
+  });
+});
+
 describe('relevanceFromRank', () => {
   it('ranks by position, since the server sends no score', () => {
     expect(relevanceFromRank(0, 9)).toBe('high');
