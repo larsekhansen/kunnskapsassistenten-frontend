@@ -21,6 +21,17 @@ let backend: Server | undefined;
 /** Det siste kallet backend så. Nok til å måle hva som ble sendt videre. */
 let seen: { url: string; headers: Record<string, string | string[] | undefined> } | undefined;
 
+/**
+ * `seen`, lest gjennom et kall.
+ *
+ * TypeScript snevrer variabelen til `undefined` etter en tilordning og vet
+ * ikke at backendens tilbakekall kjører mellom den og lesingen. Et kall
+ * opphever innsnevringen, som er nøyaktig hva som er sant her.
+ */
+function lastSeen(): typeof seen {
+  return seen;
+}
+
 async function listen(instance: Server): Promise<number> {
   await new Promise<void>((done) => instance.listen(0, '127.0.0.1', done));
   const address = instance.address();
@@ -227,6 +238,56 @@ describe('proxy mot backend', () => {
       expect({ path, status: response.status }).toEqual({ path, status: 404 });
       expect(response.contentType).toContain('application/json');
       expect({ path, sett: seen }).toEqual({ path, sett: undefined });
+    }
+  });
+
+  it('avviser stier der backendens dekoding avgjør hva de betyr', async () => {
+    /*
+     * KA CC på #151: alle tre overlever normaliseringen her og kan bli
+     * `/api/../auth` der borte — semikolonet som en stiparameter noen servere
+     * stryker, `%25` som en escapet escape, og `....//` som det en filtrering
+     * av `../` gjør om til nettopp `../`. Hva de betyr er ikke vår regel, så
+     * de videresendes ikke.
+     */
+    const apiBase = await startBackend();
+    await start({ apiBase, apiKey: 'rag_hemmelig_verdi' });
+
+    for (const path of [
+      '/api/..;/auth',
+      '/api/%252e%252e/auth',
+      '/api/....//auth',
+      // Doble skråstreker uten punktumer i det hele tatt: den ene av de fire
+      // reglene som ellers ikke ville vært målt, siden `....//` fanges av
+      // prikk-regelen før den tomme-segment-regelen får se noe.
+      '/api/conversations//abc',
+    ]) {
+      const response = await raw(portOf(base), path);
+
+      expect({ path, status: response.status }).toEqual({ path, status: 404 });
+      expect({ path, sett: seen }).toEqual({ path, sett: undefined });
+    }
+  });
+
+  it('lar de legitime adressene være i fred', async () => {
+    // Vakta over er en blokkeringsliste, og en blokkeringsliste som tar med
+    // seg vanlige adresser er verre enn ingen. Målt begge veier.
+    const apiBase = await startBackend();
+    await start({ apiBase });
+
+    for (const path of [
+      '/api/mcp',
+      '/api/conversations?page_size=100',
+      '/api/conversations/5G7i1YoIdX432vrCDLrwk',
+      '/api/conversations/f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      '/api/conversations/rapport.2025',
+      '/api/conversations/',
+      '/api/',
+    ]) {
+      seen = undefined;
+      const response = await raw(portOf(base), path);
+
+      expect({ path, status: response.status }).toEqual({ path, status: 200 });
+      expect({ path, sett: lastSeen()?.url }).toEqual({ path, sett: path });
     }
   });
 

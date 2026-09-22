@@ -59,11 +59,25 @@ function forwardedHeaders(request: IncomingMessage, config: ServerConfig): Heade
  * address that carries a path of its own keeps it: `new URL('/api/mcp',
  * 'https://host/rag')` throws the `/rag` away, and the string does not.
  *
- * The second check is for the encoded separator. `%2f` is not a separator to
- * the URL parser, so `/api/..%2fauth` survives normalisation intact — and
- * whether it stays inside `/api/` after that is the BACKEND's decoding rule,
- * which is not a rule this server gets to know. A `..` in the decoded path is
- * refused rather than reasoned about.
+ * The checks after it are all one idea: a path whose meaning depends on how
+ * the BACKEND decodes it is a path this server does not get to reason about,
+ * so it refuses it. Measured shapes, all of which survive normalisation here
+ * and may or may not escape `/api/` over there (KA CC on #151):
+ *
+ * | sendt | etter parsing | hva backend kan gjøre av det |
+ * | --- | --- | --- |
+ * | `/api/..%2fauth` | `/api/..%2fauth` | dekoder `%2f` → `/api/../auth` |
+ * | `/api/..;/auth` | `/api/..;/auth` | stryker `;`-parameter → `/api/../auth` |
+ * | `/api/%252e%252e/auth` | `/api/%252e%252e/auth` | dekoder to ganger → `/api/../auth` |
+ * | `/api/....//auth` | `/api/....//auth` | stryker `../` én gang → `/api/../auth` |
+ *
+ * This is a blocklist, and a blocklist is the weaker kind. An allowlist on the
+ * segment alphabet would be stronger and is not available: the ids in these
+ * paths are the backend's — `5G7i1YoIdX432vrCDLrwk` today — and we do not get
+ * to decide what characters it may mint tomorrow. What is refused here is
+ * therefore the shapes, and none of them is a shape a real path has: no
+ * address we call carries a semicolon, a double-encoded escape, a segment of
+ * nothing but dots, or an empty segment in the middle.
  */
 export function targetFor(apiBase: string, requestUrl: string): URL | undefined {
   let target: URL;
@@ -84,6 +98,12 @@ export function targetFor(apiBase: string, requestUrl: string): URL | undefined 
    */
   if (!target.pathname.startsWith(prefix.pathname)) return undefined;
 
+  // Semicolon: a path parameter to some servers, invisible to this one.
+  // `%25`: an escaped escape, so what arrives here is not what the backend
+  // will read. Both are checked before decoding, on what was actually sent.
+  if (target.pathname.includes(';')) return undefined;
+  if (/%25/i.test(target.pathname)) return undefined;
+
   let decoded: string;
   try {
     decoded = decodeURIComponent(target.pathname);
@@ -91,7 +111,16 @@ export function targetFor(apiBase: string, requestUrl: string): URL | undefined 
     // A malformed escape is not a path we forward.
     return undefined;
   }
-  if (decoded.split('/').includes('..')) return undefined;
+
+  const segments = decoded.split('/');
+  for (const [index, segment] of segments.entries()) {
+    // `.`, `..`, `...`, `....` — a segment of nothing but dots is either a
+    // traversal or a filter's bypass, and never an address.
+    if (/^\.+$/.test(segment)) return undefined;
+    // An empty segment is `//` in the middle. The first is the leading slash
+    // and the last is a trailing one; both of those are ordinary.
+    if (segment === '' && index !== 0 && index !== segments.length - 1) return undefined;
+  }
 
   return target;
 }
