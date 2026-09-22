@@ -13,6 +13,27 @@ import type { SourceDocument } from '../../model';
  */
 const initiallyVisible = 5;
 
+/**
+ * Why a document in this list is not a link.
+ *
+ * The sources panel has said «Dokumentet har ingen offentlig lenke.» about
+ * the same document since it was built, while this list simply drew some
+ * titles as links and some as plain text and left the reader to wonder which
+ * of them was broken (brukerblikk 7, funn 2). It is normal, not an error:
+ * a folder-based corpus has no public addresses.
+ *
+ * Shortened to fit the line it stands on. This list is an index in a 327 px
+ * panel, where the sources panel has a card and room for a sentence: the note
+ * joins the type, the organisation and the year on the row's own small line
+ * rather than taking a line of its own from a panel that is over its height
+ * budget. Same words, and they say the same thing.
+ *
+ * The sentence in `src/views/sources/SourceDocumentCard.tsx` is the other
+ * copy. Two views may not import each other — the shell holds what they
+ * share — so if the wording changes, it changes in both places.
+ */
+const NO_PUBLIC_LINK = 'Ingen offentlig lenke';
+
 export type KudosDocumentsProps = {
   /**
    * The documents behind the answer on screen, held by the shell. See
@@ -170,7 +191,16 @@ export function KudosDocuments({ documents }: KudosDocumentsProps) {
           >
             {shown.map((source) => {
               // Named `source`, not `document`: the DOM global.
-              const about = [source.documentType, source.organisation, source.year]
+              //
+              // The last part is the sources panel's rule, said in this
+              // panel's words: a document with a public address is a link,
+              // and one without says why it is not.
+              const about = [
+                source.documentType,
+                source.organisation,
+                source.year,
+                source.url === undefined ? NO_PUBLIC_LINK : undefined,
+              ]
                 .filter((part) => part !== undefined)
                 .join(' · ');
 
@@ -179,7 +209,8 @@ export function KudosDocuments({ documents }: KudosDocumentsProps) {
                   {source.url === undefined ? (
                     // Normal, not an error: folder-based corpora have no
                     // public URL, and a title without a link beats a link
-                    // that goes nowhere.
+                    // that goes nowhere. The row says as much below the
+                    // title — see NO_PUBLIC_LINK.
                     <Paragraph data-size="sm">{source.title}</Paragraph>
                   ) : (
                     <Link href={source.url} target="_blank" rel="noreferrer">

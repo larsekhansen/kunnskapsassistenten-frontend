@@ -96,6 +96,35 @@ describe('KudosDocuments', () => {
     ).toBeNull();
   });
 
+  it('says why a document without a public address is not a link', () => {
+    // The list drew some titles as links and some as plain text, and said
+    // nothing about the difference — so a reader could only read it as a link
+    // that had failed (brukerblikk 7, funn 2). The sources panel has said why
+    // about the same document all along.
+    const [first, ...rest] = documents;
+    renderInApp(<KudosDocuments documents={[{ ...first, url: undefined }, ...rest]} />);
+
+    expect(
+      screen.getByText(
+        'Årsrapport · Nasjonal kommunikasjonsmyndighet · 2018 · Ingen offentlig lenke',
+      ),
+    ).toBeTruthy();
+    // And a document that IS a link says nothing of the kind.
+    expect(screen.getByText('Årsrapport · Nasjonal kommunikasjonsmyndighet · 2019')).toBeTruthy();
+  });
+
+  it('stands on its own when the document has no metadata either', () => {
+    // A corpus that knows neither type, organisation nor year still has to
+    // explain the missing link; the line is then that explanation alone.
+    renderInApp(
+      <KudosDocuments
+        documents={[{ id: 'bare-tittel', title: 'Notat uten data', excerpts: [] }]}
+      />,
+    );
+
+    expect(screen.getByText('Ingen offentlig lenke')).toBeTruthy();
+  });
+
   it('shows the rest, drops the button, and leaves focus on the list', () => {
     renderInApp(<KudosDocuments documents={documents} />);
 
