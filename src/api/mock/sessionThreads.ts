@@ -80,6 +80,13 @@ function write(store: Store): void {
  * question asked on `/`, and the one it read from `/threads/:threadId`. An
  * entry that exists keeps its messages — opening a thread is not the same as
  * emptying it.
+ *
+ * It keeps the rest of what it knows as well: opening a thread says WHICH
+ * thread is open, never what it is called. The shell can open one before it
+ * has read it — a question asked while `/threads/:id` is still loading has to
+ * be filed somewhere — and it knows the id and stands in for the rest. Letting
+ * that stand-in through would rename a conversation to the newest question
+ * asked in it, and roll `updatedAt` back past turns that are already stored.
  */
 export function openMockThread(thread: Thread): void {
   openThreadId = thread.id;
@@ -87,7 +94,7 @@ export function openMockThread(thread: Thread): void {
   const store = read();
   const existing = store[thread.id];
   store[thread.id] = {
-    thread: { ...existing?.thread, ...thread },
+    thread: { ...thread, ...existing?.thread },
     messages: existing?.messages ?? [],
   };
   write(store);
