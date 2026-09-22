@@ -13,6 +13,57 @@ import type { SourceDocument } from '../../model';
  */
 const initiallyVisible = 5;
 
+/**
+ * Why a document in this list is not a link.
+ *
+ * The sources panel has said «Dokumentet har ingen offentlig lenke.» about
+ * the same document since it was built, while this list simply drew some
+ * titles as links and some as plain text and left the reader to wonder which
+ * of them was broken (brukerblikk 7, funn 2). It is normal, not an error:
+ * a folder-based corpus has no public addresses.
+ *
+ * Two words, and what they buy is measured rather than assumed. This list is
+ * an index in a 327 px panel, not a card with room for a sentence, and the
+ * note shares the row's small line with the document's properties. At 1440
+ * that line is 306 px: «, uten lenke» takes 66 of them against the sentence's
+ * 123, so there is a band of about 57 px of properties where this fits on one
+ * line and the sentence would have wrapped it to two.
+ *
+ * Outside that band the wording changes nothing, and the mock corpus is
+ * outside it in both directions (measured 22.09): «Instruks · Nasjonal
+ * kommunikasjonsmyndighet · 2024» fills the line on its own, so the row goes
+ * 62 → 80 px whichever note it carries, while «Instruks · Nkom · 2024» leaves
+ * room for either. The 18 px is the price of saying it at all — and a
+ * non-link that says nothing reads as a link that failed, which is the finding
+ * this answers.
+ *
+ * A comma before it rather than a fourth « · »: the dots separate what the
+ * document IS, and this is about the row, not another property of the
+ * document (#138).
+ *
+ * The sentence in `src/views/sources/SourceDocumentCard.tsx` is the other
+ * copy. Two views may not import each other — the shell holds what they
+ * share — so if the wording changes, it changes in both places.
+ */
+const NO_LINK_NOTE = 'uten lenke';
+
+/**
+ * The same note where it has to start the line, which is a corpus that knows
+ * neither type, organisation nor year. Same words; a line in this list begins
+ * with a capital like every other.
+ */
+const NO_LINK_ALONE = 'Uten lenke';
+
+/** The row's small line: what the document is, and whether it can be opened. */
+function aboutLine(source: SourceDocument): string {
+  const properties = [source.documentType, source.organisation, source.year]
+    .filter((part) => part !== undefined)
+    .join(' · ');
+
+  if (source.url !== undefined) return properties;
+  return properties === '' ? NO_LINK_ALONE : `${properties}, ${NO_LINK_NOTE}`;
+}
+
 export type KudosDocumentsProps = {
   /**
    * The documents behind the answer on screen, held by the shell. See
@@ -170,16 +221,19 @@ export function KudosDocuments({ documents }: KudosDocumentsProps) {
           >
             {shown.map((source) => {
               // Named `source`, not `document`: the DOM global.
-              const about = [source.documentType, source.organisation, source.year]
-                .filter((part) => part !== undefined)
-                .join(' · ');
+              //
+              // The line carries the sources panel's rule, said in this
+              // panel's words: a document with a public address is a link,
+              // and one without says why it is not.
+              const about = aboutLine(source);
 
               return (
                 <List.Item key={source.id}>
                   {source.url === undefined ? (
                     // Normal, not an error: folder-based corpora have no
                     // public URL, and a title without a link beats a link
-                    // that goes nowhere.
+                    // that goes nowhere. The row says as much below the
+                    // title — see NO_LINK_NOTE.
                     <Paragraph data-size="sm">{source.title}</Paragraph>
                   ) : (
                     <Link href={source.url} target="_blank" rel="noreferrer">
