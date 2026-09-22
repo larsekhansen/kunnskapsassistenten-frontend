@@ -93,11 +93,12 @@ export function readConfig(
  * `<` unescaped, and a browser's HTML parser ends the script at `</script`
  * wherever it appears — inside a string as much as outside one. `\u003c` is
  * the same character to a JavaScript parser and not a `<` to an HTML one.
+ *
+ * Nothing filters out the variables that are not set, because
+ * `JSON.stringify` already drops a key whose value is `undefined`. A filter
+ * here looked like it was doing that job and was measured doing nothing.
  */
 export function configScript(config: ClientConfig): string {
-  const defined = Object.fromEntries(
-    Object.entries(config).filter(([, entry]) => entry !== undefined),
-  );
-  const json = JSON.stringify(defined).replace(/</g, '\\u003c');
+  const json = JSON.stringify(config).replace(/</g, '\\u003c');
   return `window.__KA_CONFIG__ = ${json};\n`;
 }
