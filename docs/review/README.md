@@ -69,6 +69,8 @@ eier bare denne mappa.
 | [`fix-sources-answer-corpus-2026-09-21.md`](fix-sources-answer-corpus-2026-09-21.md)             | PR #139, kildepanelet leser svarets korpus: setningen fulgte med, tomtilstanden ikke                   |
 | [`fix-corpus-toggle-target-size-2026-09-21.md`](fix-corpus-toggle-target-size-2026-09-21.md)     | PR #142, 24 px treffhøyde uten å ta en piksel av linja, og PR #140                                     |
 | [`brukerblikk-7-2026-09-22.md`](brukerblikk-7-2026-09-22.md)                                     | Brukerblikk runde 7: mandagen henger sammen, og to feller i min egen måling                            |
+| [`fix-documents-list-link-rule-2026-09-22.md`](fix-documents-list-link-rule-2026-09-22.md)       | PR #146, dokumentet uten adresse sier hvorfor: 18 px er prisen for å si det                            |
+| [`fix-heading-path-markdown-2026-09-22.md`](fix-heading-path-markdown-2026-09-22.md)             | PR #147, overskriftsstien uten rå Markdown: regelen er mellomrommet                                    |
 
 ## Sånn går en review
 
