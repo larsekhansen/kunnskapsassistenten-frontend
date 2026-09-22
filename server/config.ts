@@ -39,6 +39,16 @@ export type ServerConfig = {
   mode: KaMode;
   /** The built client. Absolute, so the static handler can refuse to escape it. */
   distDir: string;
+  /**
+   * The largest request body forwarded, in bytes.
+   *
+   * A constant with a home rather than an environment variable: nobody has
+   * needed a different number, and a limit that can be raised from outside is
+   * a limit somebody raises instead of asking why a request is 200 MB. It
+   * sits here so a test can measure the behaviour without sending 25 MB
+   * through a socket to do it.
+   */
+  maxBodyBytes: number;
   clientConfig: ClientConfig;
 };
 
@@ -72,6 +82,10 @@ export function readConfig(
     apiKey: value(env.DIGDIR_API_KEY),
     mode,
     distDir,
+    // 25 MB. A question is a few hundred bytes; the only thing near this is a
+    // reader's own uploaded document, and the client caps those at 20 MB
+    // (`MAX_UPLOAD_BYTES`). The margin is the multipart wrapper around one.
+    maxBodyBytes: 25 * 1024 * 1024,
     clientConfig: {
       VITE_API_MODE: mode,
       VITE_KA_TENANT: value(env.VITE_KA_TENANT),

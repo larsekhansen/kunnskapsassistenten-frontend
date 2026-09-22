@@ -45,12 +45,77 @@ function forwardedHeaders(request: IncomingMessage, config: ServerConfig): Heade
   return headers;
 }
 
-/** The whole request body. Small enough to hold; see `proxy`. */
-async function readBody(request: IncomingMessage): Promise<Buffer | undefined> {
+/**
+ * Where the call is actually going, or undefined when that is outside `/api/`.
+ *
+ * The prefix has to be checked on the address the fetch will use, not on the
+ * string the browser sent, and those are not the same string. The URL parser
+ * removes dot segments — `/api/../console-api/x` becomes `/console-api/x`,
+ * and `%2e%2e` counts as `..` to it — so a `startsWith('/api/')` on the raw
+ * request passed happily while the call landed on the console API with this
+ * server's key attached. Found by KA CC on #151.
+ *
+ * Built by concatenating rather than resolving against a base, so a backend
+ * address that carries a path of its own keeps it: `new URL('/api/mcp',
+ * 'https://host/rag')` throws the `/rag` away, and the string does not.
+ *
+ * The second check is for the encoded separator. `%2f` is not a separator to
+ * the URL parser, so `/api/..%2fauth` survives normalisation intact — and
+ * whether it stays inside `/api/` after that is the BACKEND's decoding rule,
+ * which is not a rule this server gets to know. A `..` in the decoded path is
+ * refused rather than reasoned about.
+ */
+export function targetFor(apiBase: string, requestUrl: string): URL | undefined {
+  let target: URL;
+  let prefix: URL;
+  try {
+    target = new URL(`${apiBase}${requestUrl}`);
+    prefix = new URL(`${apiBase}/api/`);
+  } catch {
+    return undefined;
+  }
+
+  if (target.origin !== prefix.origin) return undefined;
+  if (!target.pathname.startsWith(prefix.pathname)) return undefined;
+
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(target.pathname);
+  } catch {
+    // A malformed escape is not a path we forward.
+    return undefined;
+  }
+  if (decoded.split('/').includes('..')) return undefined;
+
+  return target;
+}
+
+/**
+ * The whole request body, up to a limit.
+ *
+ * Buffered because it is small — a question is a few hundred bytes of JSON —
+ * and the limit is what makes «small» true rather than hoped for: without it
+ * a client could stream gigabytes into this process's memory, and the only
+ * thing standing between that and the container's memory cap would be the
+ * client's own restraint.
+ *
+ * Returns undefined for a body over the limit; the caller answers 413.
+ */
+async function readBody(
+  request: IncomingMessage,
+  limit: number,
+): Promise<Buffer | undefined | 'too-large'> {
   if (request.method === 'GET' || request.method === 'HEAD') return undefined;
 
   const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(chunk as Buffer);
+  let size = 0;
+  for await (const chunk of request) {
+    size += (chunk as Buffer).length;
+    // Stop reading rather than finish and then complain: the point of a limit
+    // is the bytes that never arrive.
+    if (size > limit) return 'too-large';
+    chunks.push(chunk as Buffer);
+  }
   return Buffer.concat(chunks);
 }
 
@@ -72,7 +137,24 @@ export async function proxy(
   response: ServerResponse,
   config: ServerConfig,
 ): Promise<void> {
-  const target = `${config.apiBase}${request.url ?? ''}`;
+  const target = targetFor(config.apiBase, request.url ?? '');
+  if (target === undefined) {
+    /*
+      Outside `/api/`, so it is not this server's to forward. 404 and not 403:
+      there is nothing here, and saying «forbidden» would confirm that
+      something is there to be forbidden.
+    */
+    response.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+    response.end(JSON.stringify({ error: 'Ukjent endepunkt.' }));
+    return;
+  }
+
+  const body = await readBody(request, config.maxBodyBytes);
+  if (body === 'too-large') {
+    response.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
+    response.end(JSON.stringify({ error: 'Forespørselen er for stor.' }));
+    return;
+  }
 
   /*
    * The reader pressing stop closes this socket, and the backend should hear
@@ -87,7 +169,7 @@ export async function proxy(
     upstream = await fetch(target, {
       method: request.method,
       headers: forwardedHeaders(request, config),
-      body: await readBody(request),
+      body,
       signal: controller.signal,
     });
   } catch (error) {
@@ -95,7 +177,7 @@ export async function proxy(
     if (controller.signal.aborted) return;
     response.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
     response.end(JSON.stringify({ error: 'Fikk ikke kontakt med backend.' }));
-    console.error('[ka] proxy mot %s feilet: %s', target, String(error));
+    console.error('[ka] proxy mot %s feilet: %s', target.href, String(error));
     return;
   }
 

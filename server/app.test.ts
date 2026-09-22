@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
-import { createServer, type Server } from 'node:http';
+import { createServer, request as httpRequest, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -51,6 +51,41 @@ async function start(overrides: Partial<ServerConfig> = {}): Promise<void> {
   const config: ServerConfig = { ...readConfig({}, dist), ...overrides };
   server = createServer(createHandler(config));
   base = `http://127.0.0.1:${await listen(server)}`;
+}
+
+/**
+ * En forespørsel med stien akkurat som den er skrevet.
+ *
+ * `fetch` normaliserer adressen sin før den sender — `/api/../x` blir `/x` hos
+ * KLIENTEN — så den kan ikke stille spørsmålet dette handler om. En angriper
+ * bruker ikke fetch, og serveren må tåle stien rå.
+ */
+function raw(
+  port: number,
+  path: string,
+  method = 'POST',
+): Promise<{ status: number; contentType: string; body: string }> {
+  return new Promise((done, fail) => {
+    const call = httpRequest({ host: '127.0.0.1', port, path, method }, (response) => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk: string) => (body += chunk));
+      response.on('end', () =>
+        done({
+          status: response.statusCode ?? 0,
+          contentType: response.headers['content-type'] ?? '',
+          body,
+        }),
+      );
+    });
+    call.on('error', fail);
+    call.end('{}');
+  });
+}
+
+/** Porten serveren under test lytter på, lest av adressen. */
+function portOf(url: string): number {
+  return Number(new URL(url).port);
 }
 
 function stop(instance: Server | undefined): Promise<void> {
@@ -174,6 +209,58 @@ describe('proxy mot backend', () => {
     // Bare de to hodene som er våre å gi videre.
     expect(response.headers.get('x-skal-bort')).toBeNull();
     expect(await response.text()).toContain('data: {"jsonrpc":"2.0"}');
+  });
+
+  it('slipper ikke ut av /api/ med punktum-segmenter', async () => {
+    /*
+     * Funnet av KA CC på #151. `startsWith('/api/')` sto på råstrengen, mens
+     * URL-parseren fjerner `..`-segmenter etterpå — så kallet landet på
+     * konsoll-API-et med denne serverens nøkkel på. Backenden skal ikke se
+     * noe av det i det hele tatt.
+     */
+    const apiBase = await startBackend();
+    await start({ apiBase, apiKey: 'rag_hemmelig_verdi' });
+
+    for (const path of ['/api/../console-api/x', '/api/%2e%2e/auth', '/api/..%2fauth']) {
+      const response = await raw(portOf(base), path);
+
+      expect({ path, status: response.status }).toEqual({ path, status: 404 });
+      expect(response.contentType).toContain('application/json');
+      expect({ path, sett: seen }).toEqual({ path, sett: undefined });
+    }
+  });
+
+  it('lar en vanlig sti med spørrestreng gå gjennom som før', async () => {
+    // Vakta over skal stenge omveier, ikke veien.
+    const apiBase = await startBackend();
+    await start({ apiBase });
+
+    const response = await fetch(`${base}/api/conversations?page_size=100`);
+
+    expect(response.status).toBe(200);
+    expect(seen?.url).toBe('/api/conversations?page_size=100');
+  });
+
+  it('avviser en forespørsel som er større enn taket', async () => {
+    // Uten tak er det bare klientens egen tilbakeholdenhet som står mellom
+    // en strøm og containerens minne.
+    const apiBase = await startBackend();
+    await start({ apiBase, maxBodyBytes: 64 });
+
+    const response = await fetch(`${base}/api/mcp`, { method: 'POST', body: 'x'.repeat(200) });
+
+    expect(response.status).toBe(413);
+    expect(seen).toBeUndefined();
+  });
+
+  it('slipper en forespørsel under taket gjennom', async () => {
+    const apiBase = await startBackend();
+    await start({ apiBase, maxBodyBytes: 64 });
+
+    const response = await fetch(`${base}/api/mcp`, { method: 'POST', body: 'x'.repeat(32) });
+
+    expect(response.status).toBe(200);
+    expect(seen?.url).toBe('/api/mcp');
   });
 
   it('svarer 502 når backend ikke er der, ikke en side', async () => {

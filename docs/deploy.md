@@ -121,6 +121,11 @@ docker run --rm -p 8787:8787 \
 curl -fsS localhost:8787/healthz   # {"ok":true,"mode":"live"}
 ```
 
+`host.docker.internal` er hvordan containeren når stacken på maskinen, og den
+virker under Colima — målt 22.09: containeren fikk svar med kilder fra
+`localhost:8080` gjennom den. `localhost` inne i containeren er containeren
+selv og treffer ingenting.
+
 ## Kjente grenser
 
 **Spørsmål svarer ikke mot den hostede backenden.**
