@@ -18,7 +18,13 @@ import {
 } from './corpus/wikipedia';
 import { activeCorpusKey } from '../corpus';
 import { citationsFor, scriptedFor } from './conversations';
-import { mockThreadDetail, mockThreadList, openMockThread, recordMockTurn } from './sessionThreads';
+import {
+  mockThreadDetail,
+  mockThreadList,
+  newMockThreadId,
+  openMockThread,
+  recordMockTurn,
+} from './sessionThreads';
 import type { AskParams, ChatClient, ThreadCertainty } from '../chatClient';
 import {
   citedNumbers,
@@ -760,6 +766,23 @@ export class MockChatClient implements ChatClient {
    */
   openThread(thread: Thread, certainty?: ThreadCertainty): void {
     openMockThread(thread, certainty);
+  }
+
+  /**
+   * The mock names its own conversations, exactly as the backend does.
+   *
+   * It did not, and that was the hole: the mock filed threads under the id
+   * the shell made up, so the one thing live does differently — owning the
+   * identity — was the one thing no test in mock could see. The address in
+   * live named a conversation nobody could open, for a week (brukerblikk 8).
+   *
+   * No delay and no failure path. This stands in for a store that answers in
+   * a millisecond, and a mock that could not mint an id would be testing the
+   * shell's fallback rather than the flow the reader walks through.
+   */
+  async createThread(thread: Thread): Promise<Thread> {
+    const id = newMockThreadId();
+    return { ...thread, id, conversationId: id };
   }
 
   async listThreads(signal?: AbortSignal): Promise<Thread[]> {

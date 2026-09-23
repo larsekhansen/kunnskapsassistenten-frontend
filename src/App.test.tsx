@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -195,12 +195,6 @@ describe('den åpne tråden i lista', () => {
     fireEvent.change(field, { target: { value: 'Hva rapporterer Digdir om digitalisering?' } });
     act(() => screen.getByRole('button', { name: 'Send spørsmålet' }).click());
 
-    // MemoryRouter leser ikke `window.history`, så adressen er det eneste
-    // stedet id-en finnes — som er hele grunnen til at lista ikke kunne
-    // spørre ruta om den.
-    const id = window.location.pathname.split('/').pop();
-    expect(id, 'samtalen skal ha fått en adresse').toBeTruthy();
-
     act(() => screen.getByRole('button', { name: 'Tråder' }).click());
 
     const row = await screen.findByRole(
@@ -208,9 +202,78 @@ describe('den åpne tråden i lista', () => {
       { name: 'Hva rapporterer Digdir om digitalisering?' },
       { timeout: 3000 },
     );
+
+    /*
+     * MemoryRouter leser ikke `window.history`, så adressen er det eneste
+     * stedet id-en finnes — som er hele grunnen til at lista ikke kunne
+     * spørre ruta om den.
+     *
+     * Lest ETTER at raden er der, ikke rett etter klikket: id-en klienten
+     * fant på er en stedfortreder, og adressen flytter til den klienten
+     * navngir et øyeblikk senere (brukerblikk 8). Å lese den synkront ville
+     * målt stedfortrederen, altså nettopp den adressen som ikke kan åpnes.
+     */
+    await waitFor(() => expect(window.location.pathname).toMatch(/^\/threads\/mock-conv-/));
+    const id = window.location.pathname.split('/').pop();
     expect(row.getAttribute('href')).toBe(`/threads/${id}`);
     expect(row.getAttribute('aria-current')).toBe('page');
     expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+  });
+
+  it('gir samtalen en adresse som kan åpnes igjen', async () => {
+    /*
+     * Hovedfunnet i brukerblikk 8, målt som kontrasten mellom de to
+     * adressene.
+     *
+     * Appen skrev `/threads/<uuid klienten fant på>` mens backenden svarte
+     * med sin egen id, så gjenåpning ga «Conversation not found» — stabilt,
+     * for alle, også for den som nettopp lagde samtalen. «Kopier lenke til
+     * tråden» kopierte nøyaktig den adressen.
+     *
+     * Stedfortrederen leses synkront etter klikket, før adopsjonen rekker å
+     * flytte adressen, så testen har begge to. Den ene finner ingen tråd —
+     * som er riktig, den navngir ingenting — og den andre finner samtalen.
+     */
+    const first = openAt('/');
+
+    const field = screen.getByRole('textbox', { name: 'Spørsmål til Kunnskapsassistenten' });
+    fireEvent.change(field, { target: { value: 'Hva rapporterer Nkom om måloppnåelse?' } });
+    act(() => screen.getByRole('button', { name: 'Send spørsmålet' }).click());
+
+    const standIn = window.location.pathname;
+    await waitFor(() => expect(window.location.pathname).not.toBe(standIn));
+    const address = window.location.pathname;
+
+    expect(standIn).toMatch(/^\/threads\//);
+    expect(address).toMatch(/^\/threads\/mock-conv-/);
+
+    // Raden i lista peker på den adressen leseren faktisk har.
+    act(() => screen.getByRole('button', { name: 'Tråder' }).click());
+    const row = await screen.findByRole(
+      'link',
+      { name: 'Hva rapporterer Nkom om måloppnåelse?' },
+      { timeout: 3000 },
+    );
+    expect(row.getAttribute('href')).toBe(address);
+
+    cleanup();
+    first.unmount();
+
+    // Stedfortrederen navngir ingen samtale, og det er hele poenget: det var
+    // den adressen leseren satt igjen med.
+    openAt(standIn);
+    await screen.findByRole('heading', { level: 2, name: 'Fant ikke tråden' });
+
+    cleanup();
+
+    // Den ekte adressen finner samtalen.
+    openAt(address);
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 2, name: 'Fant ikke tråden' })).toBeNull(),
+    );
+    expect(
+      screen.getByRole('textbox', { name: 'Spørsmål til Kunnskapsassistenten' }),
+    ).toBeDefined();
   });
 
   it('merker ingen rad når adressen navngir en tråd som ikke finnes', async () => {

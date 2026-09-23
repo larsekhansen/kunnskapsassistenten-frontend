@@ -182,6 +182,43 @@ function ChatSlot({ threadId }: { threadId?: string }) {
    *
    * A thread that is still being read is NOT no thread. See below.
    */
+  /**
+   * Move a thread from the stand-in id to the one its backend gave it.
+   *
+   * Everything that names the thread has to move together — the address, what
+   * the client files answers under, and what the thread list marks as open —
+   * or the reader ends up with two of something they only made one of.
+   *
+   * Three things make it safe to do while an answer streams. The address is
+   * written with `replaceState`, which the router does not see, so nothing
+   * remounts. `ChatView` does not key itself on the thread either. And the
+   * guard below is what keeps a slow creation from writing over a reader who
+   * has moved on in the meantime: if the thread this started for is no longer
+   * the one on screen, the new name is simply not used.
+   *
+   * A client that cannot mint a thread — or fails to — leaves the stand-in
+   * standing, which is what the app did before this existed.
+   */
+  const adoptRealThread = useCallback(
+    async (placeholder: Thread): Promise<void> => {
+      const real = await client.createThread?.(placeholder).catch(() => undefined);
+
+      if (!real || real.id === placeholder.id) {
+        // Nothing better to call it. File it under the stand-in, as before.
+        client.openThread?.(placeholder);
+        return;
+      }
+
+      if (startedRef.current?.id !== placeholder.id) return;
+
+      client.openThread?.(real);
+      startedRef.current = real;
+      setStarted(real);
+      window.history.replaceState(window.history.state, '', `/threads/${real.id}`);
+    },
+    [client],
+  );
+
   const startThread = useCallback(
     (question: string): Thread => {
       const existing = startedRef.current ?? thread ?? undefined;
@@ -238,13 +275,32 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       const created: Thread = { ...threadFromQuestion(question), corpusKey: activeCorpusKey() };
       startedRef.current = created;
       setStarted(created);
-      // Before the address is written, so a client that remembers threads has
-      // somewhere to file the answer that is about to stream in.
-      client.openThread?.(created);
       window.history.replaceState(window.history.state, '', `/threads/${created.id}`);
+
+      /*
+       * The id above is a stand-in, and the address it just wrote is a
+       * promise this browser cannot keep on its own.
+       *
+       * A thread is a conversation in the backend, and the backend names its
+       * own: `POST /api/conversations` answered with `rskfhAR3otaiib3NJiKfQ`
+       * while the reader was looking at `/threads/<uuid we invented>`.
+       * Reopening that address returned «Conversation not found», stably, for
+       * everyone including the reader who had just written it — and «Kopier
+       * lenke til tråden» copied precisely it (brukerblikk 8).
+       *
+       * So the client is asked what the thread is really called, and the
+       * address moves there when the answer comes, a fraction of a second
+       * later. Nothing on screen moves with it: `replaceState` is invisible
+       * to the router, which is why the streaming answer survives an id
+       * changing underneath it (see the note above this callback).
+       *
+       * Not awaited, because this function cannot be: `useChat` needs a
+       * thread now, and the answer is already on its way.
+       */
+      void adoptRealThread(created);
       return created;
     },
-    [client, thread, threadId],
+    [adoptRealThread, client, thread, threadId],
   );
 
   const value = useMemo(

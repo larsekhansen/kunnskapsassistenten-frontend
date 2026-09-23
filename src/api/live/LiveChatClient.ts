@@ -100,6 +100,28 @@ function errorFromStatus(status: number): ChatError {
  * dataset, so there are no counts to give (API-bestilling A2). Mock mode has
  * the data, live mode says the truth.
  */
+/**
+ * The conversation the questions that follow belong to.
+ *
+ * Module state and not an instance field, for the reason the mock's
+ * `openThreadId` is (sessionThreads.ts): there is more than one client in the
+ * running app — the shell builds one to read the thread, the chat view builds
+ * another to ask questions — and they have to agree about which conversation
+ * is on screen. A client is a stand-in for one backend, so it has one session.
+ *
+ * It holds a promise while the conversation is being made, and that is the
+ * point rather than a detail: `createThread` and the first `ask` start within
+ * a tick of each other, and two creators would mean two conversations — the
+ * address pointing at one and the answer landing in the other. A question
+ * asked in that gap awaits the same creation instead of starting its own.
+ */
+let openConversation: string | Promise<string | undefined> | undefined;
+
+/** For tests: forget which conversation is open. */
+export function resetLiveConversation(): void {
+  openConversation = undefined;
+}
+
 export class LiveChatClient implements ChatClient {
   readonly #basePath: string;
   readonly #toolName: string;
@@ -130,6 +152,50 @@ export class LiveChatClient implements ChatClient {
    */
   #dataset(): Record<string, string> {
     return datasetArguments(this.#tenant, this.#corpusKey());
+  }
+
+  /**
+   * Which conversation the questions that follow belong to.
+   *
+   * Only `conversationId` is read, never `thread.id`, and the difference is
+   * the whole of this change. In live the two are the same string for a
+   * thread that exists — `threadFromConversation` sets both from the
+   * backend's id — while a stand-in minted by the shell has an id this
+   * browser made up and no `conversationId` at all. Reading the id would
+   * therefore send a uuid the backend has never seen as `conversation_id`.
+   *
+   * Undefined clears it, and that is right: a new thread must not continue
+   * the conversation the reader just left.
+   */
+  openThread(thread: Thread): void {
+    openConversation = thread.conversationId;
+  }
+
+  /**
+   * Make the conversation, and hand back the thread as the backend names it.
+   *
+   * The id IS the conversation id here. A thread in live is a conversation in
+   * `/api/conversations`, so giving it a second identity of our own is what
+   * produced an address that 404-ed (brukerblikk 8).
+   *
+   * The pending creation is published before it is awaited, so a question
+   * asked in the same tick joins it rather than making a second conversation.
+   */
+  async createThread(thread: Thread, signal?: AbortSignal): Promise<Thread | undefined> {
+    const dataset = this.#dataset();
+    const pending = this.#createConversation(thread.title, dataset.dataset_config_key, signal);
+    openConversation = pending;
+
+    const id = await pending;
+    if (id === undefined) {
+      // Nothing was made, so nothing is open. `ask` will try again on its own,
+      // which is what it did before this method existed.
+      openConversation = undefined;
+      return undefined;
+    }
+
+    openConversation = id;
+    return { ...thread, id, conversationId: id };
   }
 
   /**
@@ -218,8 +284,16 @@ export class LiveChatClient implements ChatClient {
     const askedOf = dataset.dataset_config_key ? { corpusKey: dataset.dataset_config_key } : {};
     // The first turn of a thread makes the conversation; every later one
     // already has the id and goes straight to the tool call.
+    /*
+      Three sources, most specific first. The caller's own is the turn's — a
+      follow-up carries the conversation it is a follow-up in. The open one is
+      the thread on screen, made by `createThread` or read off the thread the
+      shell opened. Only when there is neither is a conversation made here,
+      which is the first question of a thread nobody minted for us.
+    */
     const conversationId =
       params.conversationId ??
+      (await openConversation) ??
       (await this.#createConversation(params.query, dataset.dataset_config_key, params.signal));
     const body = {
       jsonrpc: '2.0',

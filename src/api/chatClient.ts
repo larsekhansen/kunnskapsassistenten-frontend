@@ -69,6 +69,26 @@ export interface ChatClient {
    * it said so, so it does not have to be guessed from who wrote first.
    */
   openThread?(thread: Thread, certainty?: ThreadCertainty): void;
+  /**
+   * Make the conversation this thread will live in, and say what it is called.
+   *
+   * The shell mints a stand-in thread the moment a question is asked, because
+   * it has to return one synchronously and the answer starts streaming at
+   * once. In live that stand-in's id is a uuid this browser made up, and the
+   * backend's conversation has a different id — so the address the reader was
+   * given named a conversation nobody could open, including them. «Kopier
+   * lenke til tråden» copied exactly that address (brukerblikk 8).
+   *
+   * So the client is asked for the real thread, and the shell moves the
+   * address to it when it arrives. Returns undefined when it could not make
+   * one; the stand-in then stands, which is what happened before this existed.
+   *
+   * Optional, because only a client whose backend owns the identity needs it.
+   * The live client does. The mock does too, on purpose: it used to file
+   * conversations under the id the client made up, so mock and live disagreed
+   * about exactly the thing that was broken, and no test could see it.
+   */
+  createThread?(thread: Thread, signal?: AbortSignal): Promise<Thread | undefined>;
   /** Resolves to null when the thread does not exist. */
   getThread(threadId: string, signal?: AbortSignal): Promise<ThreadDetail | null>;
   /**

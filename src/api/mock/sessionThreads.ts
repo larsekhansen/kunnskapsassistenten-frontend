@@ -108,6 +108,24 @@ export function openMockThread(thread: Thread, certainty: ThreadCertainty = 'kno
   write(store);
 }
 
+/**
+ * An id for a conversation the mock owns, told apart from the shell's at a
+ * glance.
+ *
+ * The mock used to file conversations under the id the SHELL made up, and
+ * that is why nobody saw brukerblikk 8's finding for a week: live's backend
+ * names its own conversations, so mock and live disagreed about precisely the
+ * thing that was broken, and a test could pass in mock while the address was
+ * dead in live. Now both name their own, and the prefix is there so a failing
+ * assertion says which side minted the id it is looking at.
+ */
+let mockThreadCounter = 0;
+
+export function newMockThreadId(): string {
+  mockThreadCounter += 1;
+  return `mock-conv-${mockThreadCounter}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 /** One question and the answer it got, as the mock produced them. */
 export type MockTurn = {
   question: string;
