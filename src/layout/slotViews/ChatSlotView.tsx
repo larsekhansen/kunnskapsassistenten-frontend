@@ -277,7 +277,21 @@ function ChatSlot({ threadId }: { threadId?: string }) {
           description="Lenken peker på en samtale som ikke finnes her. Tråder lagres ikke på tvers av nettlesere, så en delt lenke fører ikke fram ennå."
         />
       ) : (
-        <ChatView thread={thread ?? undefined} />
+        /*
+          `loading` is the one thing about the address the view cannot see.
+          An absent thread means «front page» to it, and it drew the greeting
+          and three suggestions over a conversation the reader had already
+          chosen, while the filter panel beside it said it was loading
+          (brukerblikk 8, funn 2).
+
+          Read off what is actually true here: the route names a thread, the
+          client has not come back with it, and it has not said the thread is
+          gone either — `missing` has its own screen above.
+        */
+        <ChatView
+          loading={threadId !== undefined && thread === null}
+          thread={thread ?? undefined}
+        />
       )}
     </ThreadContext>
   );

@@ -13,12 +13,13 @@ import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { chatErrorText } from './errorText';
 import { answerScopeText } from './filterSummary';
-import { CLARIFICATION_PLACEHOLDER, kickstartersFor } from './text';
+import { CLARIFICATION_PLACEHOLDER, READING_THREAD, kickstartersFor } from './text';
 import { threadHeading } from './threadHeading';
 import { useAtBottom } from './useAtBottom';
 import { useComposerShortcut } from './useComposerShortcut';
 import { useAttachments } from './useAttachments';
 import { useChat } from './useChat';
+import { ThreadLoading } from './ThreadLoading';
 import { Welcome } from './Welcome';
 import './chat.css';
 
@@ -27,6 +28,15 @@ export type ChatViewProps = {
   userName?: string;
   /** The thread to show. Absent means a new conversation. */
   thread?: ThreadDetail;
+  /**
+   * The address names a conversation that has not been read yet.
+   *
+   * Absent `thread` means two different things and this is what tells them
+   * apart: an untouched front page, and a thread on its way. The view cannot
+   * work it out — it takes a `ThreadDetail` and never a route — so whoever
+   * knows the address says so. See `slotViews/ChatSlotView.tsx`.
+   */
+  loading?: boolean;
   /** Which backend to talk to. Defaults to whatever `createChatClient` picks. */
   client?: ChatClient;
 };
@@ -54,7 +64,7 @@ function defaultClient(): ChatClient {
   return fallbackClient;
 }
 
-function ChatSession({ userName, thread, client }: ChatViewProps) {
+function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   const chatClient = useMemo(() => client ?? defaultClient(), [client]);
 
   // The document filter is part of the question. The filter view writes it,
@@ -131,6 +141,49 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
     },
     [appliedFilters, corpusKey, messages],
   );
+
+  /*
+   * «Henter samtalen», through the polite region at the bottom of this view.
+   *
+   * That region is mounted, empty, from the first render, so putting words in
+   * it is a CHANGE — which is the thing a screen reader announces. The
+   * loading state used to carry an `output` of its own, and that element
+   * arrived with its text already in it: nothing changed, so there was
+   * nothing to announce (KA CC on #156).
+   *
+   * Set from an effect rather than during render, for the same reason: the
+   * first commit puts the empty region in the page, and the text lands in the
+   * next one.
+   *
+   * Only while the skeleton is what is on screen. Ask something in the gap
+   * and the turn has its own things to say — «Henter svar.», then the answer
+   * — and they are about what the reader just did.
+   */
+  const readingThread = loading === true && messages.length === 0;
+  const [noticeSaid, setNoticeSaid] = useState(false);
+  useEffect(() => {
+    // Nothing to undo when it stops: `loadingNotice` below reads
+    // `readingThread` too, so the words leave with the same render that
+    // replaces the skeleton.
+    if (!readingThread) return;
+    /*
+     * A beat after the region is in the page, and not in the same commit.
+     * Deriving this during render would put the words in the region as it was
+     * inserted, which is what a screen reader has nothing to announce about —
+     * it is the change it reports, not the content it finds. The timer is the
+     * change.
+     */
+    const timer = setTimeout(() => setNoticeSaid(true));
+    return () => clearTimeout(timer);
+  }, [readingThread]);
+  /*
+   * Read back through `readingThread` as well, so the words LEAVE in the same
+   * render that replaces the skeleton with the conversation. Only their
+   * arrival has to wait for an effect; a region still saying «Henter
+   * samtalen» under a conversation that has landed says something that is no
+   * longer true.
+   */
+  const loadingNotice = readingThread && noticeSaid ? READING_THREAD : '';
 
   const [draft, setDraft] = useState('');
   /*
@@ -471,18 +524,18 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         </Heading>
       ) : null}
 
-      {messages.length === 0 ? (
-        <Welcome
-          kickstarters={kickstartersFor(corpusKey)}
-          onPickKickstarter={(question) => {
-            // Fills the field, does not send (answer 40). The caret goes with
-            // it, so the reader can edit before asking.
-            setDraft(question);
-            focusField();
-          }}
-          userName={userName}
-        />
-      ) : (
+      {/*
+        Three states, in the order a reader meets them: what they asked for,
+        what is on its way, and — only when the address names nothing — the
+        greeting.
+
+        The conversation wins over the loading shape, and that is the point of
+        the order rather than an accident of it: a question asked while the
+        thread is being read is already on screen (#149), and drawing
+        skeletons over it would take the reader's own words away while they
+        waited for older ones.
+      */}
+      {messages.length > 0 ? (
         <MessageList
           canScrollToBottom={!atBottom}
           filterSummary={filterSummary}
@@ -499,6 +552,19 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
           }}
           onScrollToBottom={() => scrollToBottom()}
           onSelectSource={showCitation}
+        />
+      ) : loading ? (
+        <ThreadLoading />
+      ) : (
+        <Welcome
+          kickstarters={kickstartersFor(corpusKey)}
+          onPickKickstarter={(question) => {
+            // Fills the field, does not send (answer 40). The caret goes with
+            // it, so the reader can edit before asking.
+            setDraft(question);
+            focusField();
+          }}
+          userName={userName}
         />
       )}
 
@@ -551,7 +617,7 @@ function ChatSession({ userName, thread, client }: ChatViewProps) {
         token stutters, and the finished answer is in the page anyway.
       */}
       <p aria-live="polite" className="ds-sr-only">
-        {announcement}
+        {announcement || loadingNotice}
       </p>
     </div>
   );
