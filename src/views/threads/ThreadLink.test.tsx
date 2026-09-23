@@ -104,6 +104,21 @@ describe('ThreadLink', () => {
     expect(overlay()).toBeNull();
   });
 
+  it('legger boksen inne i lenka, så et klikk på den åpner tråden', () => {
+    /*
+     * Boksen dekker raden, og med `pointer-events: auto` tar den klikket.
+     * Lå den utenfor lenka — den lå i en portal på body til KA CC målte #160
+     * — landet klikket på en div og gjorde ingenting. Inne i lenka ER et
+     * klikk på boksen et klikk på raden, midtklikk og «åpne i ny fane» med.
+     */
+    withWidths(420, 300);
+    renderLink();
+
+    fireEvent.pointerEnter(link());
+
+    expect(overlay()?.closest('a')).toBe(link());
+  });
+
   it('blir stående når pekeren går fra raden og inn i boksen', () => {
     /*
      * WCAG 1.4.13, «hoverable»: boksen henger utenfor radens høyre kant, så

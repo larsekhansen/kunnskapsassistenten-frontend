@@ -9,7 +9,6 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { Link as RouterLink } from 'react-router';
 import { threadTime } from '../../components';
 import type { Thread } from '../../model';
@@ -200,18 +199,18 @@ export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
             )}
             {corpusLabel && <span className="threads-view__corpus">{corpusLabel}</span>}
           </span>
+
+          {anchor && (
+            <RowOverlay ref={overlayRef} anchor={anchor} onDismiss={hide} onPointerLeave={leave}>
+              <span className="threads-view__overlay-title">{thread.title}</span>
+              <span className="threads-view__meta">
+                {when && <span className="threads-view__time">{when.text}</span>}
+                {corpusLabel && <span className="threads-view__corpus">{corpusLabel}</span>}
+              </span>
+            </RowOverlay>
+          )}
         </RouterLink>
       </Link>
-
-      {anchor && (
-        <RowOverlay ref={overlayRef} anchor={anchor} onDismiss={hide} onPointerLeave={leave}>
-          <span className="threads-view__overlay-title">{thread.title}</span>
-          <span className="threads-view__meta">
-            {when && <span className="threads-view__time">{when.text}</span>}
-            {corpusLabel && <span className="threads-view__corpus">{corpusLabel}</span>}
-          </span>
-        </RowOverlay>
-      )}
     </>
   );
 }
@@ -230,11 +229,17 @@ export type RowOverlayProps = {
 /**
  * The row again, whole, across the panel's edge.
  *
- * In a portal on `document.body` because the panel is a scrolling region: a
- * box drawn inside it is clipped at the edge, and crossing that edge is the
- * one thing this box exists to do. It is positioned `fixed` at the row's own
- * top-left corner and painted in the row's hover surface and radius, so it
- * reads as the row growing rather than as a second thing appearing elsewhere.
+ * INSIDE the link, and that is the whole trick: `position: fixed` takes it
+ * out of the panel's scrolling box — which clips its children, and crossing
+ * that edge is the one thing this box exists to do — while the DOM keeps it
+ * a descendant of the row. So a click on the box is a click on the row, with
+ * middle-click and «open in new tab» included, and nothing has to re-state
+ * where the row goes. It was a portal on `document.body` until KA CC measured
+ * #160: the box covered the row and swallowed the click.
+ *
+ * It is anchored at the row's own top-left corner and painted in the row's
+ * hover surface and radius, so it reads as the row growing rather than as a
+ * second thing appearing elsewhere.
  *
  * `aria-hidden`, and that is not a shortcut: the whole title is already in
  * the row's DOM and is already the link's accessible name, so a screen reader
@@ -274,7 +279,7 @@ export function RowOverlay({ anchor, onDismiss, onPointerLeave, ref, children }:
     };
   }, [onDismiss]);
 
-  return createPortal(
+  return (
     <div
       ref={ref}
       aria-hidden="true"
@@ -296,7 +301,6 @@ export function RowOverlay({ anchor, onDismiss, onPointerLeave, ref, children }:
       }}
     >
       {children}
-    </div>,
-    document.body,
+    </div>
   );
 }
