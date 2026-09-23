@@ -404,7 +404,10 @@ test.describe('navigasjonspanelet', () => {
     await expect(page).toHaveURL(/\/threads\/nkom-maaloppnaaelse$/);
     // aria-current, not colour, is what carries «you are here».
     await expect(panel.locator('[aria-current="page"]')).toHaveCount(1);
-    await expect(panel.locator('[aria-current="page"]')).toHaveText('NKOM måloppnåelse');
+    // Navnet, ikke teksten: hele raden er lenka siden 23.09, så tid og korpus
+    // står inni den — men `aria-labelledby` holder navnet på tittelen alene.
+    // Unntak fra dirigenten for denne påstanden, som de to andre i runden.
+    await expect(panel.locator('[aria-current="page"]')).toHaveAccessibleName('NKOM måloppnåelse');
   });
 
   test('en tråd fra lista åpner en hel samtale, med kildene bak svaret', async ({
