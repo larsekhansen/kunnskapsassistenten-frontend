@@ -1,8 +1,8 @@
-import { Button, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
+import { Button, Heading, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink } from 'react-router';
 import { FilterIcon, NewThreadIcon } from '../../components/icons';
-import { EmptyState, ErrorState, PanelHeader, threadTime } from '../../components';
+import { EmptyState, ErrorState } from '../../components';
 import { useCorpus } from '../../layout/useCorpus';
 import { useOpenThread } from '../../layout/useOpenThread';
 import type { SlotViewProps } from '../../layout/viewModel';
@@ -116,26 +116,37 @@ export function ThreadsView({
         </RouterLink>
       </Button>
 
-      <PanelHeader title="Tidligere tråder">
-        {/*
-          <search> is the landmark; the <form> inside it is what makes
-          Search.Clear work, since that button is type="reset". Submitting
-          does nothing because the list filters as the user types.
-        */}
-        <search>
-          <form onSubmit={(event) => event.preventDefault()} onReset={() => setQuery('')}>
-            <Search>
-              <Search.Input
-                aria-label="Søk i tråder"
-                aria-describedby={searchStatusId}
-                placeholder="Søk i tråder"
-                onInput={(event) => setQuery(event.currentTarget.value)}
-              />
-              <Search.Clear />
-            </Search>
-          </form>
-        </search>
-      </PanelHeader>
+      {/*
+        «Tidligere tråder» is gone from the screen (Lars, 23.09): the panel is
+        a list of threads, the search field says «Søk i tråder», and the
+        groups under it name themselves. It stays for a screen reader, and
+        that is measured rather than kept out of habit — the group headings
+        are level 3, so without a level 2 over them the panel jumps from the
+        page's h1 to h3 and a reader moving by headings loses the step that
+        says what the list under it is.
+      */}
+      <Heading level={2} data-size="xs" className="ds-sr-only">
+        Tidligere tråder
+      </Heading>
+
+      {/*
+        <search> is the landmark; the <form> inside it is what makes
+        Search.Clear work, since that button is type="reset". Submitting
+        does nothing because the list filters as the user types.
+      */}
+      <search className="threads-view__search">
+        <form onSubmit={(event) => event.preventDefault()} onReset={() => setQuery('')}>
+          <Search>
+            <Search.Input
+              aria-label="Søk i tråder"
+              aria-describedby={searchStatusId}
+              placeholder="Søk i tråder"
+              onInput={(event) => setQuery(event.currentTarget.value)}
+            />
+            <Search.Clear />
+          </Search>
+        </form>
+      </search>
 
       {/*
         The hit count, and the loading message under it, are both rendered
@@ -177,49 +188,34 @@ export function ThreadsView({
 
       {groups.map((group) => (
         <section key={group.id} className="threads-view__group">
-          <PanelHeader title={group.title} level={3} size="2xs" />
+          {/*
+            The heading on its own, without `PanelHeader` (Lars, 23.09):
+            bigger, in the default text colour, and without the box that
+            component draws around a panel's top. It is a label over a group
+            of rows, not the head of a panel — the panel's head is the row
+            above with «Skjul tråder og filter» in it.
+
+            Level 3 unchanged: the semantics are the same as before, and it is
+            only the size and the wrapper that moved.
+          */}
+          <Heading level={3} data-size="xs" className="threads-view__group-title">
+            {group.title}
+          </Heading>
           <ul className="threads-view__list">
             {group.threads.map((thread) => {
-              const when = threadTime(thread.updatedAt);
-
               return (
                 <li key={thread.id} className="threads-view__item">
                   {/*
                     Its own component because it measures itself: a title cut
-                    off after two lines carries the whole text in a tooltip,
-                    and a title that fits does not. See ThreadLink.tsx.
+                    off at one line shows the whole row again on hover and on
+                    focus, and a title that fits does not. The row is the
+                    whole link — title, time and corpus. See ThreadLink.tsx.
                   */}
-                  <ThreadLink thread={thread} current={thread.id === openThreadId} />
-                  {/*
-                    Beside the link and not inside it. Inside, the time would
-                    join the link's accessible name, and every row would be
-                    announced as «NKOM måloppnåelse 14:32» — a name that
-                    changes as the clock moves and that no one can use to ask
-                    for the row by voice. Out here it is read after the link,
-                    which is where it belongs: first what the thread is, then
-                    when it was.
-                  */}
-                  {/*
-                    The time and the corpus on one line under the title, not
-                    two: a row is a row, and a second line under every thread
-                    is twelve more lines in a panel that is already over its
-                    height budget. The corpus is left out entirely when there
-                    is only one — see `corpusLabel`.
-                  */}
-                  <span className="threads-view__meta">
-                    {when && (
-                      <time
-                        className="threads-view__time"
-                        dateTime={when.dateTime}
-                        title={when.title}
-                      >
-                        {when.text}
-                      </time>
-                    )}
-                    {corpusLabel(thread.corpusKey) && (
-                      <span className="threads-view__corpus">{corpusLabel(thread.corpusKey)}</span>
-                    )}
-                  </span>
+                  <ThreadLink
+                    thread={thread}
+                    current={thread.id === openThreadId}
+                    corpusLabel={corpusLabel(thread.corpusKey)}
+                  />
                 </li>
               );
             })}

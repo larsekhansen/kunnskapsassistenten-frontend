@@ -1,47 +1,71 @@
 import { Link } from '@digdir/designsystemet-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Link as RouterLink } from 'react-router';
+import { threadTime } from '../../components';
 import type { Thread } from '../../model';
 
 export type ThreadLinkProps = {
   thread: Thread;
   /** This is the conversation on screen. See openThreadContext.ts. */
   current: boolean;
+  /**
+   * The whole corpus label, when there is more than one corpus to tell apart.
+   * The view decides that; see ThreadsView.
+   */
+  corpusLabel?: string;
 };
 
+/** Where the hover box is drawn, in viewport coordinates. */
+type Anchor = { top: number; left: number };
+
 /**
- * One thread's title, as a link, cut off after two lines.
+ * One thread's row: the title on one line, and under it when it was last
+ * touched and which corpus it was asked of.
  *
- * The cut is for the rows nobody has titled. `Thread.title` is the reader's
- * own question until a backend writes a real title (see `titleFromQuestion`),
- * so the thread they just started is the one row in the list that is raw
- * question text: three lines against one for «NKOM måloppnåelse», and the
- * same subject written twice in the panel — once as a heading further down
- * the list, once as the question at the top (brukerblikk runde 3, funn 5).
+ * THE WHOLE ROW IS THE LINK (Lars, 23.09). The time and the corpus used to
+ * sit beside it, outside the link, so the bottom half of every row was dead
+ * to the pointer. They are inside it now, and the name is still the title
+ * alone: `aria-labelledby` points at the title span, so a screen reader says
+ * «NKOM måloppnåelse, lenke» and not «NKOM måloppnåelse 14:32 Kudos, 938
+ * dokumenter (mock)» — a name that changes as the clock moves and that nobody
+ * can ask for by voice. That is the reason the two were kept out of the link
+ * in #67 and #106, and it still holds; only the click surface changed.
  *
- * Two lines rather than one, because a question cut after one line is rarely
- * still a question. The cut is visual only: the whole title stays in the DOM,
- * so it is the link's accessible name and a screen reader reads all of it.
+ * One line, always, with an ellipsis (Lars, 23.09). `Thread.title` is the
+ * reader's own question until a backend writes a real title, so an untitled
+ * thread was the one row that took two lines where «NKOM måloppnåelse» took
+ * one. The whole title stays in the DOM and is read by a screen reader; what
+ * is cut is only what is drawn.
  *
- * `title` — the tooltip — is set only when something is actually hidden, and
- * that is why this is measured rather than always on. As a description it is
- * read after the name by some screen readers, so an unconditional one would
- * have every short row announce its own title twice; and a tooltip on a row
- * that is not cut off promises the reader something they can already see. The
- * panel is resizable (#50), so the answer changes without the title changing.
+ * What is cut comes back on hover and on focus, as a box that may hang over
+ * the panel's edge — see {@link RowOverlay}. It replaces the `title`
+ * attribute the row used to carry: a native tooltip cannot be styled, cannot
+ * hold the metadata line, and is read as a description after the name a
+ * screen reader has just said.
  */
-export function ThreadLink({ thread, current }: ThreadLinkProps) {
-  const ref = useRef<HTMLAnchorElement>(null);
+export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
+  const titleId = useId();
+  const titleRef = useRef<HTMLSpanElement>(null);
+  const rowRef = useRef<HTMLAnchorElement>(null);
   const [clipped, setClipped] = useState(false);
+  const [anchor, setAnchor] = useState<Anchor | undefined>(undefined);
+  const when = threadTime(thread.updatedAt);
 
   useEffect(() => {
-    const element = ref.current;
+    const element = titleRef.current;
     if (!element) return;
 
-    // A line clamp leaves the element's own box at two lines and the content
-    // taller. The pixel of slack is for sub-pixel line heights, which round
-    // the two apart on a row where nothing is hidden.
-    const measure = () => setClipped(element.scrollHeight - element.clientHeight > 1);
+    /*
+     * An ellipsis leaves the element's own box at one line and the content
+     * wider. The pixel of slack is for sub-pixel text widths, which round the
+     * two apart on a row where nothing is hidden.
+     *
+     * Width rather than height now that the row is one line: the question is
+     * no longer whether a third line fell off, but whether the end of the
+     * sentence did.
+     */
+    const measure = () => setClipped(element.scrollWidth - element.clientWidth > 1);
     measure();
 
     /*
@@ -79,33 +103,155 @@ export function ThreadLink({ thread, current }: ThreadLinkProps) {
      * `current` is in here for a reason a resize cannot cover: the open row is
      * drawn semibold (see threads.css), which makes the same title about 6 px
      * wider without changing the box it is drawn in. `ResizeObserver` watches
-     * the box, so it stays silent through exactly the change that can push a
-     * title onto a third line. Measured by KA CC on #80.
+     * the box, so it stays silent through exactly the change that can push
+     * the end of a title out of sight. Measured by KA CC on #80.
      */
   }, [thread.title, current]);
 
-  return (
-    <Link asChild data-size="sm" className="threads-view__thread">
-      {/*
-        `aria-current="page"` — not the colour — is what makes the open thread
-        available to a screen reader, and the style hangs off the same
-        attribute so the two can never drift.
+  const show = useCallback(() => {
+    const row = rowRef.current;
+    // Only when something is actually hidden. A box that repeats a title the
+    // reader can already see whole promises them the rest and hands them the
+    // same sentence — the rule the `title` attribute followed before it.
+    if (!row || !clipped) return;
 
-        It came from `NavLink`, which reads the router's location, until
-        2026-09-15. That missed the commonest way in: a conversation the
-        reader starts on `/` gets its address from `history.replaceState`,
-        which the router never sees, so the thread they had just made stayed
-        unmarked until a reload (KA CC). The shell knows which conversation is
-        on screen however the address got there; see openThreadContext.ts.
-      */}
-      <RouterLink
-        ref={ref}
-        aria-current={current ? 'page' : undefined}
-        title={clipped ? thread.title : undefined}
-        to={`/threads/${thread.id}`}
-      >
-        {thread.title}
-      </RouterLink>
-    </Link>
+    const box = row.getBoundingClientRect();
+    setAnchor({ top: box.top, left: box.left });
+  }, [clipped]);
+
+  const hide = useCallback(() => setAnchor(undefined), []);
+
+  return (
+    <>
+      <Link asChild data-size="sm" className="threads-view__thread">
+        {/*
+          `aria-current="page"` — not the colour — is what makes the open
+          thread available to a screen reader, and the style hangs off the
+          same attribute so the two can never drift.
+
+          It came from `NavLink`, which reads the router's location, until
+          2026-09-15. That missed the commonest way in: a conversation the
+          reader starts on `/` gets its address from `history.replaceState`,
+          which the router never sees, so the thread they had just made stayed
+          unmarked until a reload (KA CC). The shell knows which conversation
+          is on screen however the address got there; see openThreadContext.ts.
+        */}
+        <RouterLink
+          ref={rowRef}
+          aria-current={current ? 'page' : undefined}
+          aria-labelledby={titleId}
+          to={`/threads/${thread.id}`}
+          onPointerEnter={show}
+          onPointerLeave={hide}
+          onFocus={show}
+          onBlur={hide}
+        >
+          <span className="threads-view__thread-title" id={titleId} ref={titleRef}>
+            {thread.title}
+          </span>
+
+          {/*
+            Inside the link, so the pointer hits the row wherever it lands,
+            and out of the link's name by `aria-labelledby` above. The corpus
+            is left out entirely when there is only one — see ThreadsView.
+          */}
+          <span className="threads-view__meta">
+            {when && (
+              <time className="threads-view__time" dateTime={when.dateTime} title={when.title}>
+                {when.text}
+              </time>
+            )}
+            {corpusLabel && <span className="threads-view__corpus">{corpusLabel}</span>}
+          </span>
+        </RouterLink>
+      </Link>
+
+      {anchor && (
+        <RowOverlay anchor={anchor} onDismiss={hide}>
+          <span className="threads-view__overlay-title">{thread.title}</span>
+          <span className="threads-view__meta">
+            {when && <span className="threads-view__time">{when.text}</span>}
+            {corpusLabel && <span className="threads-view__corpus">{corpusLabel}</span>}
+          </span>
+        </RowOverlay>
+      )}
+    </>
+  );
+}
+
+export type RowOverlayProps = {
+  anchor: Anchor;
+  /** Escape, a scroll, a resize — anything that ends the hover from outside. */
+  onDismiss: () => void;
+  children: ReactNode;
+};
+
+/**
+ * The row again, whole, across the panel's edge.
+ *
+ * In a portal on `document.body` because the panel is a scrolling region: a
+ * box drawn inside it is clipped at the edge, and crossing that edge is the
+ * one thing this box exists to do. It is positioned `fixed` at the row's own
+ * top-left corner and painted in the row's hover surface and radius, so it
+ * reads as the row growing rather than as a second thing appearing elsewhere.
+ *
+ * `aria-hidden`, and that is not a shortcut: the whole title is already in
+ * the row's DOM and is already the link's accessible name, so a screen reader
+ * has it. Saying it again here would read the same sentence twice.
+ *
+ * WCAG 1.4.13 (content on hover or focus):
+ *
+ *   Dismissible — Escape closes it without moving the pointer or the focus.
+ *   The listener is on the document because the pointer may be what opened
+ *   it, and then nothing in the row has focus to catch a key.
+ *   Persistent — it stays until the pointer leaves the row, focus leaves it,
+ *   or Escape. Nothing times it out.
+ *   Hoverable — the box takes no pointer events (see threads.css), so the row
+ *   under it keeps the hover that opened it: the pointer can rest anywhere
+ *   over the box and read. Nothing in it is interactive, and what it covers
+ *   is the same link.
+ *
+ * It is anchored to a place in the window rather than to the row, so a scroll
+ * or a resize moves the row out from under it. Both close it.
+ */
+export function RowOverlay({ anchor, onDismiss, children }: RowOverlayProps) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onDismiss();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    // Capture, so a scroll inside the panel closes it too: a scroll on an
+    // inner region never reaches the window by bubbling.
+    window.addEventListener('scroll', onDismiss, true);
+    window.addEventListener('resize', onDismiss);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('scroll', onDismiss, true);
+      window.removeEventListener('resize', onDismiss);
+    };
+  }, [onDismiss]);
+
+  return createPortal(
+    <div
+      aria-hidden="true"
+      className="threads-view__overlay"
+      /*
+       * The row's own size scale. Designsystemet's `data-size` rescales the
+       * font and spacing tokens for everything under it, and the row is `sm`:
+       * without this the box drew the same title at 14 px against the row's
+       * 16 and the time at 12 against 11, so the box was narrower than the
+       * text it exists to show and never reached the panel edge (measured).
+       */
+      data-size="sm"
+      style={{
+        insetBlockStart: `${anchor.top}px`,
+        insetInlineStart: `${anchor.left}px`,
+        // Never past the window's own edge, whatever the title measures.
+        maxInlineSize: `calc(100vw - ${anchor.left}px - var(--ds-size-4))`,
+      }}
+    >
+      {children}
+    </div>,
+    document.body,
   );
 }

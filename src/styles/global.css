@@ -33,7 +33,7 @@
    * Gaps and padding stay here, because they are on Designsystemet's scale.
    */
   --ka-slot-gap: var(--ds-size-8); /* 32 px */
-  --ka-sidebar-padding-inline: var(--ds-size-9); /* 36 px */
+  --ka-sidebar-padding-inline: var(--ds-size-5); /* 20 px, Lars 23.09 */
   --ka-rail-padding-inline: var(--ds-size-3); /* 12 px, the 24 in railWidth */
 
   /*
