@@ -155,6 +155,17 @@ export const CLARIFICATION_PLACEHOLDER = 'Svar på spørsmålet over …';
 export const CLARIFICATION_ANNOUNCEMENT = 'Kunnskapsassistenten trenger en avklaring.';
 
 /**
+ * What the polite region says while the conversation at the address is being
+ * read.
+ *
+ * Said through the region the view already keeps in the page, and not by an
+ * element of its own. A live region that arrives WITH its text is a region a
+ * screen reader has no update to announce — it was inserted, not changed —
+ * and the one here is mounted, empty, from the first render (KA CC on #156).
+ */
+export const READING_THREAD = 'Henter samtalen';
+
+/**
  * The only action on a clarification. Named after what it copies, like
  * «Kopier svaret» on a finished answer — the card holds a question, not an
  * answer, so the label says so.

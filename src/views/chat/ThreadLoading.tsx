@@ -24,9 +24,11 @@ const QUESTION_CHARACTERS = 46;
  * answer. It is the same skeleton the answer being written uses, because it
  * is the same promise — text is on its way to this spot.
  *
- * Hidden from a screen reader, which cannot read a shape, and the `output`
- * says in words what the lines say in grey. It sits outside the hidden part,
- * or it would be hidden with it.
+ * Hidden from a screen reader, which cannot read a shape. What the lines say
+ * in grey is said in words by the view's own polite region, which is already
+ * in the page and empty — see `READING_THREAD`. An `output` here said the
+ * same thing and arrived with its text already in it, so there was no change
+ * for a screen reader to announce (KA CC on #156).
  *
  * The compose field stays. A question asked while this is on screen belongs
  * to the thread in the address and is filed under it (#149, #153), and the
@@ -34,20 +36,16 @@ const QUESTION_CHARACTERS = 46;
  */
 export function ThreadLoading() {
   return (
-    <div className="ka-thread-loading">
-      <output className="ds-sr-only">Henter samtalen</output>
+    <div aria-hidden="true" className="ka-thread-loading__turn">
+      <p className="ka-thread-loading__question">
+        <Skeleton variant="text" width={QUESTION_CHARACTERS} />
+      </p>
 
-      <div aria-hidden="true" className="ka-thread-loading__turn">
-        <p className="ka-thread-loading__question">
-          <Skeleton variant="text" width={QUESTION_CHARACTERS} />
-        </p>
-
-        <Card className="ka-answer-card" data-color="neutral">
-          <Card.Block>
-            <AnswerSkeleton />
-          </Card.Block>
-        </Card>
-      </div>
+      <Card className="ka-answer-card" data-color="neutral">
+        <Card.Block>
+          <AnswerSkeleton />
+        </Card.Block>
+      </Card>
     </div>
   );
 }

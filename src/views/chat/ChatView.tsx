@@ -13,7 +13,7 @@ import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { chatErrorText } from './errorText';
 import { answerScopeText } from './filterSummary';
-import { CLARIFICATION_PLACEHOLDER, kickstartersFor } from './text';
+import { CLARIFICATION_PLACEHOLDER, READING_THREAD, kickstartersFor } from './text';
 import { threadHeading } from './threadHeading';
 import { useAtBottom } from './useAtBottom';
 import { useComposerShortcut } from './useComposerShortcut';
@@ -141,6 +141,49 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
     },
     [appliedFilters, corpusKey, messages],
   );
+
+  /*
+   * «Henter samtalen», through the polite region at the bottom of this view.
+   *
+   * That region is mounted, empty, from the first render, so putting words in
+   * it is a CHANGE — which is the thing a screen reader announces. The
+   * loading state used to carry an `output` of its own, and that element
+   * arrived with its text already in it: nothing changed, so there was
+   * nothing to announce (KA CC on #156).
+   *
+   * Set from an effect rather than during render, for the same reason: the
+   * first commit puts the empty region in the page, and the text lands in the
+   * next one.
+   *
+   * Only while the skeleton is what is on screen. Ask something in the gap
+   * and the turn has its own things to say — «Henter svar.», then the answer
+   * — and they are about what the reader just did.
+   */
+  const readingThread = loading === true && messages.length === 0;
+  const [noticeSaid, setNoticeSaid] = useState(false);
+  useEffect(() => {
+    // Nothing to undo when it stops: `loadingNotice` below reads
+    // `readingThread` too, so the words leave with the same render that
+    // replaces the skeleton.
+    if (!readingThread) return;
+    /*
+     * A beat after the region is in the page, and not in the same commit.
+     * Deriving this during render would put the words in the region as it was
+     * inserted, which is what a screen reader has nothing to announce about —
+     * it is the change it reports, not the content it finds. The timer is the
+     * change.
+     */
+    const timer = setTimeout(() => setNoticeSaid(true));
+    return () => clearTimeout(timer);
+  }, [readingThread]);
+  /*
+   * Read back through `readingThread` as well, so the words LEAVE in the same
+   * render that replaces the skeleton with the conversation. Only their
+   * arrival has to wait for an effect; a region still saying «Henter
+   * samtalen» under a conversation that has landed says something that is no
+   * longer true.
+   */
+  const loadingNotice = readingThread && noticeSaid ? READING_THREAD : '';
 
   const [draft, setDraft] = useState('');
   /*
@@ -574,7 +617,7 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
         token stutters, and the finished answer is in the page anyway.
       */}
       <p aria-live="polite" className="ds-sr-only">
-        {announcement}
+        {announcement || loadingNotice}
       </p>
     </div>
   );

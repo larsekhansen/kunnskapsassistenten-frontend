@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { useRef, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -91,13 +91,30 @@ function show(props: Parameters<typeof ChatView>[0]) {
 const greeting = () => screen.queryByText(/Hva lurer du på\?/u);
 
 describe('hovedkolonnen mens tråden hentes', () => {
-  it('sier at samtalen hentes, i stedet for å hilse på nytt', () => {
+  it('sier at samtalen hentes, i stedet for å hilse på nytt', async () => {
     show({ loading: true, userName: 'Simen' });
 
-    expect(screen.getByText('Henter samtalen')).toBeTruthy();
+    expect(await screen.findByText('Henter samtalen')).toBeTruthy();
     expect(greeting()).toBeNull();
     // Forslagene er et tilbud om å begynne på noe annet enn det leseren valgte.
     expect(screen.queryByRole('heading', { name: 'Forslag' })).toBeNull();
+  });
+
+  it('sier det gjennom området som alt står i sida, ikke i et nytt', async () => {
+    /*
+     * Et live-område som kommer MED teksten sin er et område skjermleseren
+     * ikke har noen endring å melde om — det ble satt inn, ikke endret. Det
+     * polite området nederst i viewet er montert og tomt fra første render,
+     * så der er ordene en endring (KA CC på #156).
+     */
+    show({ loading: true });
+
+    const politt = document.querySelector('[aria-live="polite"]');
+    // Tomt i første commit: det er nettopp derfor ordene er en endring.
+    expect(politt?.textContent).toBe('');
+    await waitFor(() => expect(politt?.textContent).toBe('Henter samtalen'));
+    // Og ingen andre områder som sier det samme: <output> er role="status".
+    expect(screen.queryAllByRole('status')).toHaveLength(0);
   });
 
   it('lar skrivefeltet stå, så spørsmålet i gapet fortsatt kan stilles', () => {

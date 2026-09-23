@@ -48,10 +48,10 @@ beforeEach(() => {
 });
 
 describe('hovedkolonnen på en tråd-adresse', () => {
-  it('henter samtalen i stedet for å hilse mens lesingen står på', () => {
+  it('henter samtalen i stedet for å hilse mens lesingen står på', async () => {
     showThread(ID);
 
-    expect(screen.getByText('Henter samtalen')).toBeTruthy();
+    expect(await screen.findByText('Henter samtalen')).toBeTruthy();
     expect(greeting()).toBeNull();
   });
 
@@ -82,7 +82,7 @@ describe('hovedkolonnen på en tråd-adresse', () => {
     window.history.replaceState(null, '', '/threads/tom-traad');
     showThread('tom-traad');
 
-    expect(screen.getByText('Henter samtalen')).toBeTruthy();
+    expect(await screen.findByText('Henter samtalen')).toBeTruthy();
 
     expect(
       await screen.findByText(/Hva lurer du på\?/u, undefined, { timeout: 5000 }),
@@ -95,7 +95,7 @@ describe('hovedkolonnen på en tråd-adresse', () => {
     showThread('finnes-ikke');
 
     // Mens lesingen står på er svaret ukjent, så skjermen venter.
-    expect(screen.getByText('Henter samtalen')).toBeTruthy();
+    expect(await screen.findByText('Henter samtalen')).toBeTruthy();
 
     expect(await screen.findByText('Fant ikke tråden', undefined, { timeout: 5000 })).toBeTruthy();
     expect(greeting()).toBeNull();
