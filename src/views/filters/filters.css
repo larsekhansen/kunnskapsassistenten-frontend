@@ -112,6 +112,11 @@
    * the box reaches 24 px and no further. A browser without `lh` drops both
    * declarations and gets the line-tall control it had before.
    */
+  /* stylelint-disable-next-line plugin/browser-compat -- `lh` kom i Safari
+     16.4, så i 16.0–16.3 er hele verdien ugyldig og paddingen blir 0. Raden
+     er fortsatt klikkbar og teksten står som før; det er treffflaten som
+     ikke vokser. Verdt en ekte reserveverdi den dagen noen måler at det
+     betyr noe for målstørrelsen der. */
   --ka-target-grow: max(0px, calc(24px - 1lh));
 
   padding-block-end: var(--ka-target-grow);

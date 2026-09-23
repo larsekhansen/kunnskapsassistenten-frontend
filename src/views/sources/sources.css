@@ -142,6 +142,10 @@
    * instead, and the page says `lang="nb"` so it can. It is advice, not a
    * rule — a build without the dictionary simply falls back to `break-word`.
    */
+  /* stylelint-disable-next-line plugin/browser-compat -- uprefikset
+     `hyphens` kom i Safari 17; 16 har den bare som `-webkit-hyphens`. Da
+     deles ingen ord der, og avsnittet over sier hva som skjer i stedet:
+     `break-word`. Det er fallet fila alt beskriver. */
   hyphens: auto;
   /* The title bar is light blue in Figma without the colour being explained
      (dokument.md says so plainly). Kept as brand3, which is where that blue
