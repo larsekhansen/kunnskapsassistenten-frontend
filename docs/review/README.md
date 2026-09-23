@@ -73,6 +73,7 @@ eier bare denne mappa.
 | [`fix-heading-path-markdown-2026-09-22.md`](fix-heading-path-markdown-2026-09-22.md)             | PR #147, overskriftsstien uten rå Markdown: regelen er mellomrommet                                    |
 | [`natten-2026-09-22.md`](natten-2026-09-22.md)                                                   | Natta 22.–23.: testmiljøet, to hull i chatten, en spike — og et funn som ikke fantes                   |
 | [`brukerblikk-8-2026-09-23.md`](brukerblikk-8-2026-09-23.md)                                     | Brukerblikk runde 8: en lenke appen skriver til seg selv, og ikke kan følge                            |
+| [`fix-thread-identity-2026-09-23.md`](fix-thread-identity-2026-09-23.md)                         | PR #156 og #157, tråden får et navn den kan svare på: og en sammenslåing som måtte måles for seg       |
 
 ## Sånn går en review
 
