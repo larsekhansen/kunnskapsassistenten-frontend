@@ -99,7 +99,7 @@ npm error Missing: yaml@2.9.1 from lock file
 
 **Mine fem porter var grønne likevel.** De kjører mot et `node_modules` som
 alt står der. Installerbarhet er ikke en av portene — `npm ci` er den, og CI
-kjører den først. Se sjekklista.
+kjører den først. Står nå under «Sånn går en review» i README.
 
 ### blokkerer 2: vakta sto inne i det den skulle vokte
 
@@ -149,7 +149,7 @@ hadde installert hooken og andre sto på grener som ikke kjente den. Rettet i
 Målt i mitt eget arbeidstre på `main` `2d01fa1`: `npm install` exit 0,
 `lint-staged` på plass, og den delte `.git/hooks` har `pre-commit` og
 `pre-push` med vakta i kommandoen. Denne rapporten er committet gjennom
-hooken.
+hooken: prettier-sjekken på den stagede fila, 0,78 s.
 
 ## Om min egen måling
 
