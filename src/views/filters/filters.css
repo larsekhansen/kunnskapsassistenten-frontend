@@ -107,20 +107,31 @@
  */
 .filters-view__corpus-toggle {
   /*
-   * The success criterion's own number, so it is not a design value and has
-   * no token. `1lh` is this control's own line: whatever the text measures,
-   * the box reaches 24 px and no further. A browser without `lh` drops both
-   * declarations and gets the line-tall control it had before.
+   * 24 px er kriteriets eget tall, så det er ingen designverdi og har ikke
+   * noe token. Det skrives to ganger med vilje:
+   *
+   * Først 3 px fast. Linja måler 21 px her, og 21 + 3 er 24. Det er
+   * reserveverdien for Safari 16.0–16.3, som er innenfor nettleserlista vår
+   * og ikke kjenner `lh` (KA CC på #159): der falt treffhøyden til 21 px.
+   *
+   * Så det samme regnet ut av `1lh`, altså kontrollens egen linje. Den
+   * overstyrer der den forstås, og følger teksten om den skulle vokse. I
+   * eldre Safari er enheten ukjent, så DEKLARASJONEN forkastes ved parsing
+   * og de tre faste pikslene blir stående.
+   *
+   * Det er grunnen til at dette ikke går gjennom en `--ka-*`-variabel lenger:
+   * en `var()` som er ugyldig ved beregning setter egenskapen til initial —
+   * altså 0 — i stedet for å falle tilbake på deklarasjonen over.
    */
-  /* stylelint-disable-next-line plugin/browser-compat -- `lh` kom i Safari
-     16.4, så i 16.0–16.3 er hele verdien ugyldig og paddingen blir 0. Raden
-     er fortsatt klikkbar og teksten står som før; det er treffflaten som
-     ikke vokser. Verdt en ekte reserveverdi den dagen noen måler at det
-     betyr noe for målstørrelsen der. */
-  --ka-target-grow: max(0px, calc(24px - 1lh));
-
-  padding-block-end: var(--ka-target-grow);
-  margin-block-end: calc(-1 * var(--ka-target-grow));
+  padding-block-end: 3px;
+  margin-block-end: -3px;
+  /* stylelint-disable plugin/browser-compat -- `lh` er fortsatt ukjent i
+     Safari 16.0–16.3, og det er meningen: de to linjene over er
+     reserveverdien, og disse to overstyrer den der enheten finnes. Linteren
+     ser regelen, ikke rekkefølgen, så den må få beskjed her. */
+  padding-block-end: max(0px, calc(24px - 1lh));
+  margin-block-end: calc(-1 * max(0px, calc(24px - 1lh)));
+  /* stylelint-enable plugin/browser-compat */
 }
 
 .filters-view__corpus-detail {
