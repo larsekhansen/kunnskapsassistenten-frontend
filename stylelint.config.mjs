@@ -14,13 +14,18 @@
  * | | caniuse-baserte | MDN-baserte (valgt) |
  * | --- | --- | --- |
  * | uprefikset `line-clamp` | ikke flagget | flagget |
- * | treff på `src/**` | 6, hvorav 4 er støy | 4, alle ekte |
- * | oppløsning | per caniuse-«feature» | per egenskap |
+ * | treff på `src/**` | 6, hvorav 4 er støy | 5, alle ekte |
+ * | oppløsning | per caniuse-«feature» | per egenskap, med lenke |
  *
  * Den caniuse-baserte melder «multicolumn er bare delvis støttet» tre steder
  * og «css3-cursors» på en `cursor`, som ingen kan gjøre noe med og ingen
  * skal gjøre noe med. Den MDN-baserte sier hvilken egenskap i hvilken
- * nettleser, med en lenke.
+ * nettleser.
+ *
+ * Tallene er målt mot nettleserlista som gjaldt da, og lista er siden blitt
+ * videre (`.browserslistrc`). Det som avgjorde valget henger ikke på lista:
+ * den caniuse-baserte flagger ikke uprefikset `line-clamp` uansett hvilke
+ * nettlesere man peker på, fordi den ikke ser prefikset i det hele tatt.
  */
 export default {
   plugins: ['stylelint-browser-compat'],

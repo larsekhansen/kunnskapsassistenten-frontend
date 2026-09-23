@@ -244,6 +244,9 @@
   position: absolute;
   inset-inline-start: 0;
   /* Centres the dot on the first line, whatever the size mode. */
+  /* stylelint-disable-next-line plugin/browser-compat -- `lh` kom i Safari
+     16.4. I 16.0–16.3 faller erklæringen bort og prikken står litt høyere på
+     første linje. Rent kosmetisk. */
   inset-block-start: calc((1lh - var(--ds-size-2)) / 2);
   block-size: var(--ds-size-2);
   inline-size: var(--ds-size-2);
@@ -533,6 +536,11 @@
  */
 .ka-composer:focus-within {
   box-shadow: var(--dsc-focus-boxShadow);
+  /* stylelint-disable-next-line plugin/browser-compat -- MDN fører `outline`
+     som delvis implementert før Safari 16.4: ringen følger ikke
+     `border-radius`, så den blir rektangulær rundt et avrundet felt. Den er
+     der, den er synlig, og fokuskravet er dermed oppfylt — det er formen som
+     avviker. */
   outline: var(--dsc-focus-outline);
   outline-offset: var(--ds-border-width-focus);
 }
@@ -574,6 +582,10 @@
 
 .ka-composer__field textarea:focus-visible {
   box-shadow: none;
+  /* stylelint-disable-next-line plugin/browser-compat -- samme oppføring som
+     over, men her er verdien `none`. Å fjerne en ring virker i alle
+     versjoner; advarselen gjelder formen på en ring som tegnes, og her
+     tegnes ingen. */
   outline: none;
 }
 
