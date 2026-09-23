@@ -74,6 +74,8 @@ eier bare denne mappa.
 | [`natten-2026-09-22.md`](natten-2026-09-22.md)                                                   | Natta 22.–23.: testmiljøet, to hull i chatten, en spike — og et funn som ikke fantes                   |
 | [`brukerblikk-8-2026-09-23.md`](brukerblikk-8-2026-09-23.md)                                     | Brukerblikk runde 8: en lenke appen skriver til seg selv, og ikke kan følge                            |
 | [`fix-thread-identity-2026-09-23.md`](fix-thread-identity-2026-09-23.md)                         | PR #156 og #157, tråden får et navn den kan svare på: og en sammenslåing som måtte måles for seg       |
+| [`chore-lint-and-hooks-2026-09-23.md`](chore-lint-and-hooks-2026-09-23.md)                       | PR #159 og #161, linteren og hookene: en port er en exit-kode, og installerbarhet er en port           |
+| [`feat-thread-list-lars-2026-09-23.md`](feat-thread-list-lars-2026-09-23.md)                     | PR #160, trådlista slik Lars ba om: boksen som måtte bli en del av raden                               |
 
 ## Sånn går en review
 
@@ -92,9 +94,18 @@ eier bare denne mappa.
 
 2. **Kjør alle fire portene** og skriv resultatet i rapporten, også når de er
    grønne:
+
    ```sh
    npm run build && npm run lint && npm run format:check && npm run tokens:verify
    ```
+
+   **Rører PR-en `package.json` eller `package-lock.json`, kjør `npm ci` i en
+   egen klone i tillegg.** Portene kjører mot et `node_modules` som alt står
+   der, så de er grønne på en gren som ikke lar seg installere. Målt på #161:
+   fem porter exit 0, `npm ci` exit 1 på «Missing: yaml from lock file», og
+   CI rød etter 8 sekunder. Egen klone og ikke arbeidstreet, fordi `prepare`
+   kan skrive til den delte `.git`.
+
 3. **Kjør WCAG-sjekken** på rutene PR-en berører:
    ```sh
    docs/review/tools/a11y.sh <branch-med-bindestrek> / /threads/nkom-maaloppnaaelse
@@ -345,6 +356,18 @@ lyver er verre enn ingen måling, fordi den blir stående i en rapport.
   because it is overlapped by another element». `expectNoAxeViolations` leser
   `violations`, så axe alene kan ikke bli rød der. Tallene må måles selv;
   `contrastAgainstBackdrop` i samme fil gjør det.
+
+- **Stilen er ikke virkningen.** En fokusring med `outline: solid 3px` kan
+  ligge helt under noe annet. Målt på #160: en hover-boks som åpner seg på
+  fokus dekket raden, og alle tre prøvepunktene på ringen tilhørte boksen —
+  mens jeg i runden før hadde skrevet «fokusring `solid 3px`» i tabellen.
+  Mål en ring med `elementFromPoint` på pikslene der den tegnes, og se på et
+  skjermbilde.
+
+  Det samme gjelder en rettelse jeg ber om: **prøv hovedhandlingen etterpå.**
+  Jeg ba om `pointer-events: auto` for 1.4.13 og målte at boksen sto, men
+  ikke at raden fortsatt lot seg klikke. Den gjorde ikke det, og e2e fant det
+  runden etter.
 
 ## Verktøyet
 
