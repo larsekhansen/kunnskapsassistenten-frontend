@@ -117,6 +117,9 @@ describe('ThreadLink', () => {
     fireEvent.pointerEnter(link());
 
     expect(overlay()?.closest('a')).toBe(link());
+    // Direkte barn, ikke bare etterkommer: fokusringen på boksen henger på
+    // `.threads-view__thread:focus-visible > .threads-view__overlay`.
+    expect(overlay()?.parentElement).toBe(link());
   });
 
   it('blir stående når pekeren går fra raden og inn i boksen', () => {
@@ -151,6 +154,37 @@ describe('ThreadLink', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(overlay()).toBeNull();
+  });
+
+  it('lar den første Escape være boksens, ikke skuffas', () => {
+    /*
+     * I skuffemodus er panelet en `dialog`, og Escape er dialogens egen
+     * lukkeforespørsel: ett trykk lukket både boksen og skuffa, og flyttet
+     * fokus (KA CC på #160). `preventDefault` i fangstfasen er rekkefølgen
+     * plattformen bruker selv — popoveren inni dialogen lukkes først.
+     *
+     * `fireEvent` returnerer false når standardhandlingen er avverget.
+     */
+    withWidths(420, 300);
+    renderLink();
+    fireEvent.focus(link());
+
+    const gikkGjennom = fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(gikkGjennom).toBe(false);
+    expect(overlay()).toBeNull();
+
+    // Og andre trykk er skuffas: lytteren forsvant med boksen.
+    expect(fireEvent.keyDown(document, { key: 'Escape' })).toBe(true);
+  });
+
+  it('lar andre taster gå sin vei mens boksen står', () => {
+    withWidths(420, 300);
+    renderLink();
+    fireEvent.focus(link());
+
+    expect(fireEvent.keyDown(document, { key: 'Tab' })).toBe(true);
+    expect(overlay()).toBeTruthy();
   });
 
   it('viser ingen boks når hele tittelen får plass', () => {

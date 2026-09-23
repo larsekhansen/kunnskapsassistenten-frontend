@@ -261,9 +261,11 @@
  * The row again, whole, drawn over whatever the panel would have clipped.
  *
  * Same surface and same radius as a hovered row, anchored at the row's own
- * corner, so it reads as the row growing. `position: fixed` and a portal on
- * the body, because the panel is a scrolling region and clips its own
- * children — see RowOverlay in ThreadLink.tsx.
+ * corner, so it reads as the row growing. `position: fixed`, because the
+ * panel is a scrolling region and clips its own children, and crossing that
+ * edge is what the box is for. It sits INSIDE the link all the same — fixed
+ * takes it out of the scrolling box without taking it out of the DOM — so a
+ * click on it is a click on the row. See RowOverlay in ThreadLink.tsx.
  *
  * The box DOES take the pointer, and that is the fix from KA CC on #160: with
  * `pointer-events: none` the part that hangs past the panel edge was not over
@@ -287,6 +289,29 @@
   background: var(--ds-color-accent-surface-hover);
   color: var(--ds-color-accent-text-subtle);
   box-shadow: var(--ds-shadow-md);
+}
+
+/*
+ * Fokusringen på boksen, når raden under har fokus.
+ *
+ * Boksen dekker raden, og radens egen ring tegnes innenfor kanten — så på en
+ * klippet rad lå ringen UNDER boksen, og fokus så ut som hover (KA CC på
+ * #160). Står pekeren samtidig på en annen klippet rad, er det bare skyggen
+ * som sier hvilken av dem som har fokus.
+ *
+ * Designsystemets egne `ds-focus`-klasser når ikke hit: `.ds-link:focus-visible *`
+ * tømmer `--_ds--focus` for alt inne i lenka. `--dsc-focus-outline` er
+ * variabelen radens egen ring kommer fra, så ringen er den samme, og offset
+ * er radens egen: en ring utenfor boksen ville ligget i nabo-radens luft.
+ *
+ * Direkte barn (`>`), fordi boksen er et barn av lenka — det er også det som
+ * gjør at et klikk på den åpner tråden.
+ */
+.threads-view__thread:focus-visible > .threads-view__overlay {
+  outline-color: var(--ds-color-focus-outer);
+  outline-style: solid;
+  outline-width: var(--ds-border-width-focus);
+  outline-offset: calc(-1 * var(--ds-border-width-focus));
 }
 
 /*

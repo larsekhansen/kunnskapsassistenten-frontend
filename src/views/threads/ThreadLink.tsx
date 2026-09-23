@@ -264,16 +264,32 @@ export type RowOverlayProps = {
  */
 export function RowOverlay({ anchor, onDismiss, onPointerLeave, ref, children }: RowOverlayProps) {
   useEffect(() => {
+    /*
+     * Escape lukker boksen, og BARE boksen.
+     *
+     * I skuffemodus er panelet en `dialog`, og det samme tastetrykket er
+     * dialogens egen lukkeforespørsel: én Escape lukket både boksen og
+     * skuffa, og flyttet fokus til «Vis tråder og filter» (KA CC på #160).
+     * 1.4.13 ber om en måte å lukke boksen på UTEN å flytte fokus, og i
+     * skuffa fantes ingen.
+     *
+     * `preventDefault` i fangstfasen, før dialogen får tastetrykket, er
+     * rekkefølgen plattformen bruker selv: en popover inni en dialog lukkes
+     * før dialogen. Andre Escape lukker skuffa, fordi lytteren er borte med
+     * boksen.
+     */
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onDismiss();
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      onDismiss();
     };
-    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keydown', onKeyDown, true);
     // Capture, so a scroll inside the panel closes it too: a scroll on an
     // inner region never reaches the window by bubbling.
     window.addEventListener('scroll', onDismiss, true);
     window.addEventListener('resize', onDismiss);
     return () => {
-      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('scroll', onDismiss, true);
       window.removeEventListener('resize', onDismiss);
     };
