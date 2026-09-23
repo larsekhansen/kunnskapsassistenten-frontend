@@ -3,7 +3,7 @@
 Anmeldt av KA CC 2026-09-23. `feat/thread-list-lars-2026-09-23`, fire runder.
 Sju punkter fra Lars, pluss understreken, og en hover-boks som skulle vise det
 én linje med ellipse kutter bort. Punktene holdt hver gang de ble målt.
-Boksen trengte tre runder.
+Boksen trengte fire runder.
 
 ## Lars sine punkter, målt
 
@@ -112,10 +112,45 @@ bor nå inne i begge. En motor som gir `container-type` layout containment
 ville klippet den ved skuffkanten. Safari 16 er ikke målt. Står på listen til
 #5.
 
-## Runde 4
+## Runde 4: `5e5657a`, 0 blokkerende, 1 bør, 1 kan
 
-_Fylles inn når #2 har rettet de to bør-ene og tekstene som fortsatt beskrev
-portalen (kommentaren over `.threads-view__overlay` og PR-beskrivelsen)._
+Begge bør fra runde 3 er lukket, og tekstene som beskrev portalen er rettet.
+E2E 151/151.
+
+**Fokusringen, ved ekte Tab.** En regel på
+`.threads-view__thread:focus-visible > .threads-view__overlay`, skrevet med
+lengdeformer fordi linteren fra #159 avviser `outline`-kortformen for Safari
+16.0:
+
+|                                           | Radens ring                               | Boksens ring        |
+| ----------------------------------------- | ----------------------------------------- | ------------------- |
+| 1440 lys                                  | `solid 3px rgb(31, 44, 61)`, offset −3    | samme               |
+| 1440 mørk                                 | `solid 3px rgb(235, 236, 237)`, offset −3 | samme               |
+| 1100, skuff                               | `solid 3px rgb(31, 44, 61)`, offset −3    | samme               |
+| hover alene                               | —                                         | `none`              |
+| peker på én klippet rad, Tab til en annen | den hoverte: hover-flate, ingen ring      | den fokuserte: ring |
+
+Sett på skjermbildene, ikke bare lest av stilen, som var fella i runde 2.
+
+**Escape i rekkefølge.** `preventDefault()` i fangstfasen mens boksen står:
+
+|             | 1. Escape                                  | 2. Escape                                       |
+| ----------- | ------------------------------------------ | ----------------------------------------------- |
+| 1440, Tab   | boksen lukket, fokus på raden              | —                                               |
+| 1100, peker | boksen lukket, skuffa står, fokus urørt    | skuffa lukket, fokus til «Vis tråder og filter» |
+| 1100, Tab   | boksen lukket, skuffa står, fokus på raden | skuffa lukket, fokus til «Vis tråder og filter» |
+
+De to andre Escape-lytterne i appen, i `AnswerSearch` og `SourceExcerpt`,
+leser ikke `defaultPrevented`, så fangstlytteren tar ingenting fra dem.
+
+**bør: fire kommentarblokker på norsk**, mot `regler.md`: over
+`--ka-sidebar-padding-inline` i `global.css`, 1lh-reserven i `filters.css`,
+Escape-lytteren i `ThreadLink.tsx` og fokusregelen i `threads.css`. De to
+første sto der fra runde 1, og jeg meldte dem ikke før nå.
+
+**kan:** kommentaren over fokusregelen nevner `--dsc-focus-outline`, som
+regelen ikke bruker. Lengdeformene er det samme, men den som leser leter
+etter en variabel som ikke står der.
 
 ## Om min egen måling
 
