@@ -145,9 +145,14 @@
  */
 .threads-view__thread {
   display: -webkit-box;
+  /* stylelint-disable plugin/browser-compat -- de tre under er med vilje: den
+     prefiksede skrivemåten er den eneste som virker (se avsnittet over), og
+     den uprefiksede står klar for dagen det endrer seg. Linteren har rett i
+     begge deler; det er derfor den er slått på. */
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+  /* stylelint-enable plugin/browser-compat */
   overflow: hidden;
   padding: var(--ds-size-1) var(--ds-size-2);
   border-radius: var(--ds-border-radius-md);

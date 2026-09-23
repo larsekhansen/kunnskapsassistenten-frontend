@@ -557,9 +557,15 @@
  * every keystroke in every other browser.
  */
 .ka-composer__field textarea {
+  /* stylelint-disable-next-line plugin/browser-compat -- Firefox mangler den
+     fortsatt, og avsnittet over sier hvorfor det er greit: feltet blir én rad
+     der, men ruller og sender som ellers. */
   field-sizing: content; /* grows with the content, answer 54 */
   max-block-size: var(--ka-composer-max-height);
   overflow-y: auto;
+  /* stylelint-disable-next-line plugin/browser-compat -- iOS Safari har ingen
+     `resize`, og det er uten betydning her: verdien er `none`, og et felt
+     uten dradhåndtak er nøyaktig det iOS gir fra før. */
   resize: none; /* the height follows the text; a drag handle would fight it */
   border: 0;
   background: transparent;

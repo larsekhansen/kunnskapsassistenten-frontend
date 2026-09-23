@@ -6,12 +6,20 @@
   "engines": {
     "node": ">=24"
   },
+  "browserslist": [
+    "last 2 chrome versions",
+    "last 2 edge versions",
+    "last 2 firefox versions",
+    "last 2 safari versions",
+    "last 2 ios_saf versions"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "start": "node server/index.ts",
-    "lint": "oxlint",
+    "lint": "oxlint && npm run lint:css",
+    "lint:css": "stylelint \"src/**/*.css\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
@@ -43,6 +51,8 @@
     "jsdom": "29.1.1",
     "oxlint": "^1.81.0",
     "prettier": "^3.9.6",
+    "stylelint": "16.26.1",
+    "stylelint-browser-compat": "1.0.0-beta.180",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "vitest": "5.0.0"
