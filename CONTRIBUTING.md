@@ -168,6 +168,55 @@ npm run tokens:verify
 
 Alle fem, hver gang.
 
+## Hooks: det maskinen sjekker for deg
+
+`npm install` setter opp to git-hooks (`simple-git-hooks`, via `prepare`).
+De erstatter ikke lista over — de fanger det billigste av den før du rekker
+å glemme det.
+
+| når          | hva                                                                                                    | målt                              |
+| ------------ | ------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| `git commit` | bare de **stagede** filene: `stylelint` på `.css`, `oxlint` på `.ts`/`.tsx`, `prettier --check` på alt | 0,9 s for to filer, 1,8 s for sju |
+| `git push`   | `tsc -b`                                                                                               | 3 s varm, 8,6 s første gang       |
+
+`stylelint` her er kompatibilitetsregelen: den stopper en commit med en
+CSS-egenskap nettleserne i `.browserslistrc` ikke støtter. Det var det den
+ble installert for — en uprefikset `line-clamp` stoppes på 1,9 sekunder, med
+nettleser og versjon i meldinga.
+
+**Vitest er ikke i hookene**, og det er et valg med et tall bak: suiten tar
+47,9 sekunder, fjorten ganger `tsc`. En hook som legger et minutt på hver
+push er en hook folk slår av, og da mister vi `tsc` også. Suiten kjøres av
+deg før push (lista over) og av CI på hver PR.
+
+**Hookene er delte mellom arbeidstrærne.** Vi har hver vår `.git`-fil, men de
+peker på den samme `commondir`, og det er den git leter i etter hooks — så en
+`npm install` i ett arbeidstre setter dem opp for alle. Det gjelder også
+arbeidstrær som står på en gren fra før verktøyet fantes, og det var en ekte
+smell: den første utgaven kjørte `lint-staged` rett fra hooken, og de andre
+kunne ikke committe i det hele tatt (23.09).
+
+Derfor sjekker hookene at verktøyet finnes før de bruker det:
+
+| situasjon                                              | hva hooken gjør                      |
+| ------------------------------------------------------ | ------------------------------------ |
+| verktøyet er der                                       | kjører, som i tabellen over          |
+| `package.json` kjenner det, men `node_modules` mangler | stopper og sier «kjør `npm install`» |
+| grenen kjenner det ikke                                | går videre, uten en lyd              |
+
+Den siste raden er poenget: en gren som ikke har bedt om hooken skal ikke
+stoppes av den.
+
+Hopp over i nød:
+
+```sh
+git commit --no-verify
+git push --no-verify
+```
+
+Det er en nødutgang og ikke en snarvei: CI kjører alt likevel, så det du
+hopper over her møter deg der.
+
 ## Delte ressurser
 
 - Dev-server: 5173 er grunnmurens. Primary sidebar bruker 5174, main 5175,
