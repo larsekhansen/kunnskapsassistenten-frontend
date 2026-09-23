@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StreamEvent } from '../../model';
-import { LiveChatClient } from './LiveChatClient';
+import { LiveChatClient, resetLiveConversation } from './LiveChatClient';
 
 /**
  * What the client actually puts on the wire.
@@ -395,5 +395,135 @@ describe('korpuset svaret ble hentet fra', () => {
 
     expect(endOf(events).corpusKey).toBeUndefined();
     vi.restoreAllMocks();
+  });
+});
+
+/**
+ * Hvem som navngir en tråd i live.
+ *
+ * Appen skrev `/threads/<uuid klienten fant paa>` mens `POST
+ * /api/conversations` svarte med sin egen id, saa adressen navnga en samtale
+ * ingen kunne aapne - heller ikke den som lagde den (brukerblikk 8).
+ */
+function backendCreating(id: string) {
+  const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+    void init;
+    if (String(url).endsWith('/conversations')) {
+      return new Response(JSON.stringify({ conversation: { id } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(null, { status: 503 });
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
+const standIn = {
+  id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+  title: 'Hva rapporterer Nkom?',
+  createdAt: '2026-09-23T08:00:00.000Z',
+  updatedAt: '2026-09-23T08:00:00.000Z',
+};
+
+describe('tråden heter det backenden kaller den', () => {
+  beforeEach(() => resetLiveConversation());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('gir tråden backendens id, ikke klientens stedfortreder', async () => {
+    backendCreating('rskfhAR3otaiib3NJiKfQ');
+    const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' });
+
+    const real = await client.createThread(standIn);
+
+    expect(real?.id).toBe('rskfhAR3otaiib3NJiKfQ');
+    expect(real?.conversationId).toBe('rskfhAR3otaiib3NJiKfQ');
+    // Alt annet er stedfortrederens: tittelen er spørsmålet leseren stilte.
+    expect(real?.title).toBe('Hva rapporterer Nkom?');
+  });
+
+  it('lager ikke en samtale til når spørsmålet kommer etterpå', async () => {
+    // To opprettere ville gitt to samtaler: adressen peker på den ene og
+    // svaret lander i den andre.
+    const fetchMock = backendCreating('rskfhAR3otaiib3NJiKfQ');
+    const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' });
+
+    await client.createThread(standIn);
+    fetchMock.mockClear();
+    const body = await askAndReadBody(client, fetchMock);
+
+    const created = fetchMock.mock.calls.filter(
+      ([url, init]) =>
+        String(url).endsWith('/conversations') &&
+        (init as RequestInit | undefined)?.method === 'POST',
+    );
+    expect(created).toHaveLength(0);
+    expect(body.params.arguments).toMatchObject({ conversation_id: 'rskfhAR3otaiib3NJiKfQ' });
+  });
+
+  it('lar et spørsmål i samme øyeblikk vente på den samme opprettelsen', async () => {
+    /*
+     * `createThread` og det første `ask` starter innenfor samme tikk.
+     * Publiseres ikke opprettelsen før den ventes på, lager de hver sin
+     * samtale — og da er adressen og svaret i hver sin.
+     */
+    const fetchMock = backendCreating('rskfhAR3otaiib3NJiKfQ');
+    const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' });
+
+    const [, body] = await Promise.all([
+      client.createThread(standIn),
+      askAndReadBody(client, fetchMock),
+    ]);
+
+    const created = fetchMock.mock.calls.filter(
+      ([url, init]) =>
+        String(url).endsWith('/conversations') &&
+        (init as RequestInit | undefined)?.method === 'POST',
+    );
+    expect(created).toHaveLength(1);
+    expect(body.params.arguments).toMatchObject({ conversation_id: 'rskfhAR3otaiib3NJiKfQ' });
+  });
+
+  it('lar stedfortrederen stå når samtalen ikke ble laget', async () => {
+    // Uendret oppførsel: `ask` prøver selv, som den gjorde før dette fantes.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 503 })),
+    );
+    const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' });
+
+    expect(await client.createThread(standIn)).toBeUndefined();
+  });
+
+  it('husker samtale-id-en på tråden, ikke tråd-id-en', async () => {
+    /*
+     * I live er de to den samme strengen for en tråd som finnes, og helt
+     * ulike for en stedfortreder: den har en uuid backenden aldri har sett.
+     * Å lese id-en ville sendt den som `conversation_id`.
+     */
+    const fetchMock = backendCreating('skal-ikke-lages');
+    const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' });
+
+    client.openThread({
+      ...standIn,
+      id: 'rskfhAR3otaiib3NJiKfQ',
+      conversationId: 'rskfhAR3otaiib3NJiKfQ',
+    });
+    const body = await askAndReadBody(client, fetchMock);
+
+    expect(body.params.arguments).toMatchObject({ conversation_id: 'rskfhAR3otaiib3NJiKfQ' });
+  });
+
+  it('glemmer samtalen når en tråd uten en åpnes', async () => {
+    // En ny tråd skal ikke fortsette samtalen leseren nettopp forlot.
+    const fetchMock = backendCreating('ny-samtale');
+    const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' });
+
+    client.openThread({ ...standIn, conversationId: 'gammel-samtale' });
+    client.openThread(standIn);
+    const body = await askAndReadBody(client, fetchMock);
+
+    expect(body.params.arguments).toMatchObject({ conversation_id: 'ny-samtale' });
   });
 });
