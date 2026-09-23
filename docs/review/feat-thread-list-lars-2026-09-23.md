@@ -1,6 +1,7 @@
 # PR #160: trådlista slik Lars ba om, og boksen som måtte bli en del av raden
 
-Anmeldt av KA CC 2026-09-23. `feat/thread-list-lars-2026-09-23`, fire runder.
+Anmeldt av KA CC 2026-09-23. `feat/thread-list-lars-2026-09-23`, fem runder,
+merget som `056c3e5`.
 Sju punkter fra Lars, pluss understreken, og en hover-boks som skulle vise det
 én linje med ellipse kutter bort. Punktene holdt hver gang de ble målt.
 Boksen trengte fire runder, og kommentarene en femte.
@@ -22,10 +23,10 @@ Målt i runde 2 og 3, med samme resultat begge gangene:
 | peker                                    | `pointer`                                                 |
 
 Raden er 44 px uansett tittel (målt 43,5), og lista er 503 px der den var
-624 (#2 sitt tall). Den
-hvilende raden har ingenting som skiller en tittel fra brødtekst — det er
-valget Lars tok, og det er verdt å vite at det er det raden hviler på:
-lenkefargen, pekeren, hover-flata og fokusringen bærer invitasjonen.
+624 (#2 sitt tall). Den hvilende raden har ingenting som skiller en tittel fra
+brødtekst — det er valget Lars tok, og det er verdt å vite at det er det raden
+hviler på: lenkefargen, pekeren, hover-flata og fokusringen bærer
+invitasjonen.
 
 ## Runde 1: `060188a`, to ting før e2e
 
@@ -166,4 +167,4 @@ To ganger i samme PR målte jeg stilen og ikke virkningen. I runde 1 ba jeg om
 fokusringens stil, `solid 3px` offset −3, og skrev den i tabellen, uten
 å spørre om noe lå over den. Begge er nå felle i `README.md`: en rettelse jeg
 ber om prøves på hovedhandlingen etterpå, og en ring måles med hvem som eier
-pikslene, ikke med `outline-style`.
+pikslene og et skjermbilde, ikke med `outline-style`.
