@@ -3,7 +3,7 @@
 Anmeldt av KA CC 2026-09-23. `feat/thread-list-lars-2026-09-23`, fire runder.
 Sju punkter fra Lars, pluss understreken, og en hover-boks som skulle vise det
 én linje med ellipse kutter bort. Punktene holdt hver gang de ble målt.
-Boksen trengte fire runder.
+Boksen trengte fire runder, og kommentarene en femte.
 
 ## Lars sine punkter, målt
 
@@ -151,6 +151,13 @@ første sto der fra runde 1, og jeg meldte dem ikke før nå.
 **kan:** kommentaren over fokusregelen nevner `--dsc-focus-outline`, som
 regelen ikke bruker. Lengdeformene er det samme, men den som leser leter
 etter en variabel som ikke står der.
+
+## Runde 5: `c915da6`, 0 funn
+
+Bare kommentarlinjer mot `5e5657a`, lest linje for linje, så portene og ikke
+e2e. De fire blokkene er engelske med samme innhold, og kan-en er tatt med:
+kommentaren over fokusregelen nevner ikke lenger en variabel regelen ikke
+bruker, og den sier hvorfor regelen er skrevet med lengdeformer.
 
 ## Om min egen måling
 
