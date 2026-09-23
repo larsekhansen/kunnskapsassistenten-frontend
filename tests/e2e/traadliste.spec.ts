@@ -73,7 +73,9 @@ test.describe('trådlista mens en samtale pågår', () => {
      * the question is sent, and the list is a view of the same threads.
      */
     await expect(created).toHaveCount(1);
-    await expect(created).toHaveText(question);
+    // Navnet, ikke teksten: raden bærer også tid og korpus siden 23.09.
+    // Unntak fra dirigenten, som for de andre radpåstandene i runden.
+    await expect(created).toHaveAccessibleName(question);
     await expect(panel.locator('.threads-view__thread')).toHaveCount(before + 1);
 
     // And the reader can see which one they are in. `aria-current`, not the

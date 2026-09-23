@@ -107,20 +107,31 @@
  */
 .filters-view__corpus-toggle {
   /*
-   * The success criterion's own number, so it is not a design value and has
-   * no token. `1lh` is this control's own line: whatever the text measures,
-   * the box reaches 24 px and no further. A browser without `lh` drops both
-   * declarations and gets the line-tall control it had before.
+   * 24 px is the success criterion's own number, so it is not a design value
+   * and has no token. It is written twice on purpose:
+   *
+   * First 3 px, fixed. The line measures 21 px here, and 21 + 3 is 24. That
+   * is the fallback for Safari 16.0–16.3, which is inside our browser list
+   * and does not know `lh` (KA CC on #159): the target fell to 21 px there.
+   *
+   * Then the same thing worked out from `1lh`, the control's own line. It
+   * overrides where it is understood, and follows the text if that should
+   * grow. In older Safari the unit is unknown, so the DECLARATION is dropped
+   * at parse time and the three fixed pixels stand.
+   *
+   * That is also why this no longer goes through a `--ka-*` property: a
+   * `var()` that is invalid at computed-value time sets the property to its
+   * initial value — 0 — rather than falling back on the declaration above.
    */
-  /* stylelint-disable-next-line plugin/browser-compat -- `lh` kom i Safari
-     16.4, så i 16.0–16.3 er hele verdien ugyldig og paddingen blir 0. Raden
-     er fortsatt klikkbar og teksten står som før; det er treffflaten som
-     ikke vokser. Verdt en ekte reserveverdi den dagen noen måler at det
-     betyr noe for målstørrelsen der. */
-  --ka-target-grow: max(0px, calc(24px - 1lh));
-
-  padding-block-end: var(--ka-target-grow);
-  margin-block-end: calc(-1 * var(--ka-target-grow));
+  padding-block-end: 3px;
+  margin-block-end: -3px;
+  /* stylelint-disable plugin/browser-compat -- `lh` is still unknown in
+     Safari 16.0–16.3, and that is the point: the two lines above are the
+     fallback, and these two override it where the unit exists. The linter
+     sees the rule and not the order, so it has to be told here. */
+  padding-block-end: max(0px, calc(24px - 1lh));
+  margin-block-end: calc(-1 * max(0px, calc(24px - 1lh)));
+  /* stylelint-enable plugin/browser-compat */
 }
 
 .filters-view__corpus-detail {

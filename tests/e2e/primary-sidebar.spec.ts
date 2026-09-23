@@ -299,7 +299,11 @@ test.describe('navigasjonspanelet', () => {
         insideLink: element.closest('a') !== null,
       }));
 
-      expect(insideLink, `rad ${index}: tida står utenfor lenka`).toBe(false);
+      // Unntak fra dirigenten for denne påstanden (Lars, 23.09): hele raden
+      // er lenka nå, tidsstempelet med, så den som trykker under tittelen
+      // åpner tråden i stedet for ingenting. Navnet er fortsatt tittelen
+      // alene — se påstanden nederst i testen.
+      expect(insideLink, `rad ${index}: tida står inne i lenka`).toBe(true);
       expect(Number.isNaN(Date.parse(dateTime)), `rad ${index}: datetime er lesbar`).toBe(false);
       expect(title.length, `rad ${index}: title har hele datoen`).toBeGreaterThan(text.length);
       // Kort, fordi den leses ved siden av en gruppeoverskrift som alt sier
@@ -308,8 +312,14 @@ test.describe('navigasjonspanelet', () => {
     }
 
     // Og navnet på lenka er tittelen, ikke tittelen pluss et klokkeslett.
+    // Teksten i raden bærer begge deler; navnet kommer fra `aria-labelledby`,
+    // som peker på tittel-spannet alene.
     const firstLink = page.locator('.threads-view__item a').first();
-    const name = (await firstLink.textContent())?.trim() ?? '';
+    const name = await firstLink.evaluate((element) => {
+      const id = element.getAttribute('aria-labelledby');
+      const labelled = id ? document.getElementById(id) : null;
+      return (labelled?.textContent ?? element.textContent ?? '').trim();
+    });
     const firstTime = (await rows.first().locator('time').textContent())?.trim() ?? '';
     expect(name, 'lenkens navn bærer ikke tidsstempelet').not.toContain(firstTime);
   });
@@ -394,7 +404,10 @@ test.describe('navigasjonspanelet', () => {
     await expect(page).toHaveURL(/\/threads\/nkom-maaloppnaaelse$/);
     // aria-current, not colour, is what carries «you are here».
     await expect(panel.locator('[aria-current="page"]')).toHaveCount(1);
-    await expect(panel.locator('[aria-current="page"]')).toHaveText('NKOM måloppnåelse');
+    // Navnet, ikke teksten: hele raden er lenka siden 23.09, så tid og korpus
+    // står inni den — men `aria-labelledby` holder navnet på tittelen alene.
+    // Unntak fra dirigenten for denne påstanden, som de to andre i runden.
+    await expect(panel.locator('[aria-current="page"]')).toHaveAccessibleName('NKOM måloppnåelse');
   });
 
   test('en tråd fra lista åpner en hel samtale, med kildene bak svaret', async ({

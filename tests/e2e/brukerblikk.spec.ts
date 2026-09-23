@@ -44,16 +44,54 @@ test.describe('brukerblikk-funnene holder', () => {
     const row = page.locator('nav a[href^="/threads"]').first();
     await expect(row).toBeVisible();
 
-    // Underline and the accent colour are what Designsystemet's link style
-    // says, and what the row lost by being painted as body text. Measured
-    // rather than asserted on a class name: the rule that matters is what a
-    // reader sees, not which selector produced it.
-    const looks = await row.evaluate((element) => {
+    /*
+     * Unntak fra dirigenten for denne påstanden (Lars, 23.09): trådradene
+     * skal ikke være understreket. Funnet står — en rad må se klikkbar ut —
+     * men det som bærer det er nå pekerformen, hover-flata over HELE raden og
+     * fokusringen, slik Designsystemets egen sidemeny gjør det. Målt, ikke
+     * lest av et klassenavn: det er det en leser ser som er regelen.
+     */
+    const hvile = await row.evaluate((element) => {
       const style = getComputedStyle(element);
-      return { decoration: style.textDecorationLine, cursor: style.cursor, color: style.color };
+      return {
+        decoration: style.textDecorationLine,
+        cursor: style.cursor,
+        background: style.backgroundColor,
+      };
     });
-    expect(looks.decoration, 'trådraden er understreket').toContain('underline');
-    expect(looks.cursor).toBe('pointer');
+    expect(hvile.decoration, 'trådraden er ikke understreket').toBe('none');
+    expect(hvile.cursor, 'pekeren sier at raden kan trykkes').toBe('pointer');
+
+    // Hover-flata dekker hele raden, tidsstempelet med: raden ER lenka.
+    await row.hover();
+    const hover = await row.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const time = element.querySelector('time');
+      return {
+        background: style.backgroundColor,
+        rowBottom: element.getBoundingClientRect().bottom,
+        timeBottom: time?.getBoundingClientRect().bottom ?? 0,
+        timeInside: time?.closest('a') === element,
+      };
+    });
+    expect(hover.background, 'hover tegner en flate').not.toBe(hvile.background);
+    expect(hover.timeInside, 'tidsstempelet ligger inne i lenka').toBe(true);
+    expect(
+      hover.rowBottom,
+      'flata rekker under tidsstempelet, så hele raden er trykkflate',
+    ).toBeGreaterThanOrEqual(hover.timeBottom);
+
+    // Og fokusringen, for den som ikke har peker.
+    await page.keyboard.press('Tab');
+    await row.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    const fokus = await row.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { style: style.outlineStyle, width: Number.parseFloat(style.outlineWidth) };
+    });
+    expect(fokus.style, 'fokusringen tegnes').not.toBe('none');
+    expect(fokus.width, 'fokusringen har bredde').toBeGreaterThan(0);
   });
 
   test('funn 12: overskriftene i panelet blir mindre nedover', async ({ page }, testInfo) => {

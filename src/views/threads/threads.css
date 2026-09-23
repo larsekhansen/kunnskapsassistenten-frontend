@@ -46,6 +46,17 @@
 }
 
 /*
+ * The label over a group of rows (Lars, 23.09): bigger than the `2xs` it was,
+ * and in the text colour rather than the subtle one, so it reads as a
+ * heading. Designsystemet's Heading carries the size; the colour is set here
+ * because `PanelHeader` — which used to wrap it, and whose box Lars asked to
+ * remove — is the shell's and paints its own.
+ */
+.threads-view__group-title {
+  color: var(--ds-color-neutral-text-default);
+}
+
+/*
  * A navigation list, not body text, so it carries none of the ds-list
  * styling. See design/designsystemet/behov-til-komponent.md.
  */
@@ -90,6 +101,12 @@
   flex-wrap: wrap;
   align-items: baseline;
   column-gap: var(--ds-size-2);
+  /*
+   * Inside the link since 23.09, so the underline the link draws would run
+   * under the time and the corpus too. The row is the link; this line is what
+   * the row is about, and it reads as context, not as a second place to go.
+   */
+  text-decoration: none;
 }
 
 .threads-view__meta[hidden] {
@@ -106,11 +123,11 @@
 }
 
 /*
- * The timestamp. Indented to line up with the link text above it, which sits
- * inside the link's own padding.
+ * The timestamp. The indent is gone with 23.09: the time is inside the link
+ * now, so it sits in the same padding as the title and lines up with it
+ * without help.
  */
 .threads-view__time {
-  padding-inline: var(--ds-size-2);
   color: var(--ds-color-neutral-text-subtle);
   font-size: var(--ds-font-size-1);
 }
@@ -126,36 +143,54 @@
  * ours: the padding and the radius that give the row a surface to sit on.
  */
 /*
- * Two lines, and an ellipsis after them.
+ * A thread row is a link, and it says so without an underline.
  *
- * `Thread.title` is the reader's own question until a backend writes titles,
- * so the thread they just started was the one row in the panel that was raw
- * question text — three lines against one for «NKOM måloppnåelse»
- * (brukerblikk runde 3, funn 5). The whole title stays in the DOM and is read
- * by a screen reader; ThreadLink.tsx puts it in a tooltip for the rows where
- * something is actually hidden.
+ * It used to be painted as neutral body text, and a reader met a column of
+ * dark headings under a bright blue «Ny tråd» button with nothing saying the
+ * titles could be clicked (brukerblikk, funn 8). The underline was the answer
+ * then; it is not the only one, and Designsystemet's own sidebar is the
+ * evidence — measured on designsystemet.no 22.09, their rows are links with
+ * the underline taken off.
  *
- * The `-webkit-` properties are not a vendor prefix to clean up later: they
- * are how line clamping is spelled in every browser that ships it, including
- * Firefox and Safari. The unprefixed `line-clamp` is written beside them for
- * the day that changes; it is ignored where it is not understood.
+ * So the element stays `<a href>` — the address changes, middle-click and
+ * «open in new tab» work, the history gets an entry, and a screen reader says
+ * «lenke» — and what carries the invitation visually is the link colour, the
+ * pointer cursor, a hover surface across the whole row and the focus ring
+ * (Lars, 23.09). The e2e guard for funn 8 measures those instead.
  *
- * `overflow: hidden` clips the children, never the element's own outline, so
- * the focus ring around the row is untouched.
+ * The WHOLE row is inside the link now (Lars, 23.09), so this is a column:
+ * the title on one line, the time and the corpus under it. The bottom of the
+ * row used to be outside the link and dead to the pointer.
+ *
+ * `padding-block-end: 0` (Lars, 23.09): the two lines belong to each other
+ * and read as one row, and the panel is over its height budget, so the air
+ * under the metadata is the air to give up. The gap between rows is the
+ * list's own `gap`, which is still there.
  */
 .threads-view__thread {
-  display: -webkit-box;
-  /* stylelint-disable plugin/browser-compat -- de tre under er med vilje: den
-     prefiksede skrivemåten er den eneste som virker (se avsnittet over), og
-     den uprefiksede står klar for dagen det endrer seg. Linteren har rett i
-     begge deler; det er derfor den er slått på. */
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  /* stylelint-enable plugin/browser-compat */
-  overflow: hidden;
-  padding: var(--ds-size-1) var(--ds-size-2);
+  display: flex;
+  flex-direction: column;
+  padding: var(--ds-size-1) var(--ds-size-2) 0;
   border-radius: var(--ds-border-radius-md);
+  text-decoration: none;
+}
+
+/*
+ * One line, always, with an ellipsis (Lars, 23.09).
+ *
+ * `Thread.title` is the reader's own question until a backend writes titles,
+ * so the thread they just started was the row that took two lines where
+ * «NKOM måloppnåelse» took one (brukerblikk runde 3, funn 5). `line-clamp`
+ * is gone with it: the unprefixed property is the one DevTools strikes out,
+ * and a single line needs none of it.
+ *
+ * The whole title stays in the DOM and is the link's accessible name;
+ * ThreadLink.tsx measures this box and shows the rest on hover and on focus.
+ */
+.threads-view__thread-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .threads-view__thread:hover {
@@ -171,20 +206,14 @@
  * px apart. The ring cut through «09:14» on every row a keyboard user passed
  * (brukerblikk runde 3).
  *
- * Moving it in rather than adding air, because air here is not free: the
- * panel is already over its height budget, and 4 px under twelve rows is
- * another 48 px of it. The row's own vertical padding is where the ring goes
- * instead — and it is exactly one ring wide: the row is `data-size="sm"`, so
- * `--ds-size-1` measures 3 px there, the same as the ring (measured, KA CC on
- * #91). The ring therefore fills the padding rather than sitting in it, and
- * ends flush against the text box. Nothing is left over as slack; what keeps
- * the letters off the ring is the line box's own half-leading, 2 px here.
- *
- * A whole ring width, not a guess: an outline is drawn OUTWARD from the
- * offset edge, so `-2px` on a 3 px ring still left 1 px over the timestamp
- * (measured). One ring width inward puts its outer edge exactly on the
- * border box. Colour, width and style stay Designsystemet's — only the offset
- * is ours, and it is written from the same token the width comes from.
+ * The timestamp is inside the link now, so the ring no longer has anything of
+ * its own to cut through — but the rule stays, because the rows under it are
+ * a gap apart and an outward ring would sit in the next row's air instead.
+ * Moving it in rather than adding air: the panel is over its height budget,
+ * and 4 px under twelve rows is another 48 px of it. The row's own vertical
+ * padding is where the ring goes, and it is exactly one ring wide (measured,
+ * KA CC on #91). Colour, width and style stay Designsystemet's — only the
+ * offset is ours, and it is written from the same token the width comes from.
  */
 .threads-view__thread:focus-visible {
   outline-offset: calc(-1 * var(--ds-border-width-focus));
@@ -199,10 +228,9 @@
  * panel, so it cannot be the signal on its own. Semibold rather than medium
  * is what actually carries the state at 14 px.
  *
- * Dropping the underline is the third difference, and it is what keeps the
- * selected row apart from a hovered one now that both draw a surface: the
- * page you are on is not a place to go. Weight, surface and underline all
- * differ, so the two states cannot be confused at a glance.
+ * No row is underlined since 23.09, so what keeps the selected row apart from
+ * a hovered one is weight, colour and a surface that stays when the pointer
+ * leaves. Two of the three are readable without colour vision.
  *
  * The text colour is set with it, and it has to be. The link colour the other
  * rows now carry is `accent-text-subtle`, which reaches only 4.01:1 light and
@@ -214,15 +242,92 @@
   background: var(--ds-color-accent-surface-active);
   color: var(--ds-color-accent-text-default);
   font-weight: var(--ds-font-weight-semibold);
-  text-decoration: none;
 }
 
 /*
- * The hit count is rendered even when there is nothing to say, so that the
- * live region exists before its text does. Collapse the empty box; never
- * `display: none`, which would take the region out of the accessibility tree
- * and bring the announcement problem back.
+ * The time and the corpus on the open row take the row's colour.
+ *
+ * Measured, and it is the price of putting them inside the link: the subtle
+ * neutral they carry on the panel reaches only 4,02:1 light and 4,15:1 dark
+ * on the active surface, and they are 11 px (axe caught both). The row's own
+ * `accent-text-default` measures 8,62 and 8,44 there. What still separates
+ * them from the title is size and weight, not colour — on this one row.
  */
+.threads-view__thread[aria-current='page'] :is(.threads-view__time, .threads-view__corpus) {
+  color: inherit;
+}
+
+/*
+ * The row again, whole, drawn over whatever the panel would have clipped.
+ *
+ * Same surface and same radius as a hovered row, anchored at the row's own
+ * corner, so it reads as the row growing. `position: fixed`, because the
+ * panel is a scrolling region and clips its own children, and crossing that
+ * edge is what the box is for. It sits INSIDE the link all the same — fixed
+ * takes it out of the scrolling box without taking it out of the DOM — so a
+ * click on it is a click on the row. See RowOverlay in ThreadLink.tsx.
+ *
+ * The box DOES take the pointer, and that is the fix from KA CC on #160: with
+ * `pointer-events: none` the part that hangs past the panel edge was not over
+ * the row either, so moving out there ended the row's hover and shut the box
+ * while the reader was standing on it — the classic way to fail WCAG 1.4.13
+ * «hoverable». ThreadLink reads `relatedTarget` and treats the row and the
+ * box as one surface; nothing in here is interactive, so taking the pointer
+ * costs nothing else.
+ *
+ * The z-index is the drawer's, one step up: the box may cross the panel edge,
+ * and below the drawer it would slide under the main column at 1139 px.
+ */
+.threads-view__overlay {
+  position: fixed;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  inline-size: max-content;
+  padding: var(--ds-size-1) var(--ds-size-2) var(--ds-size-1);
+  border-radius: var(--ds-border-radius-md);
+  background: var(--ds-color-accent-surface-hover);
+  color: var(--ds-color-accent-text-subtle);
+  box-shadow: var(--ds-shadow-md);
+}
+
+/*
+ * The focus ring on the box, when the row under it has focus.
+ *
+ * The box covers the row, and the row's own ring is drawn inside its edge —
+ * so on a clipped row the ring lay UNDER the box, and focus looked exactly
+ * like hover (KA CC on #160). With the pointer on another clipped row at the
+ * same time, only the shadow said which of the two had focus.
+ *
+ * Designsystemet's own `ds-focus` classes do not reach in here:
+ * `.ds-link:focus-visible *` empties `--_ds--focus` for everything inside the
+ * link. The colour and the width are the ones the row's own ring comes from,
+ * and the offset is the row's too: a ring outside the box would sit in the
+ * next row's air.
+ *
+ * Longhands rather than the `outline` shorthand, which the CSS compatibility
+ * linter from #159 rejects for Safari 16.0.
+ *
+ * A direct child (`>`), because the box is a child of the link — which is
+ * also what makes a click on it open the thread.
+ */
+.threads-view__thread:focus-visible > .threads-view__overlay {
+  outline-color: var(--ds-color-focus-outer);
+  outline-style: solid;
+  outline-width: var(--ds-border-width-focus);
+  outline-offset: calc(-1 * var(--ds-border-width-focus));
+}
+
+/*
+ * The title in the box wraps: the box exists to show what the row could not,
+ * and a title long enough to be cut is long enough to need two lines when the
+ * window is narrow. `max-inline-size` on the element keeps it inside the
+ * window; see RowOverlay.
+ */
+.threads-view__overlay-title {
+  overflow-wrap: anywhere;
+}
+
 .threads-view__search-status:empty {
   margin: 0;
   block-size: 0;

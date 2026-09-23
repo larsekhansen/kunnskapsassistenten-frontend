@@ -82,12 +82,18 @@ describe('korpus på trådraden', () => {
     expect(container.querySelectorAll('.threads-view__corpus')).toHaveLength(0);
   });
 
-  it('holder korpuset utenfor lenkas navn', () => {
+  it('holder korpuset utenfor lenkas navn, men inne i raden', () => {
     // Samme grunn som tidsstempelet: navnet på raden er tittelen, ikke
-    // tittelen pluss hvor den ble spurt.
+    // tittelen pluss hvor den ble spurt. Siden 23.09 er hele raden lenka, så
+    // korpuset STÅR inni den – navnet kommer fra `aria-labelledby`, som
+    // peker på tittel-spannet alene.
     renderList();
 
     const link = screen.getByRole('link', { name: 'Måloppnåelse i Nkom' });
-    expect(link.textContent).toBe('Måloppnåelse i Nkom');
+    expect(link.textContent).toContain('Kudos-pilot');
+
+    const labelledBy = link.getAttribute('aria-labelledby');
+    expect(labelledBy).toBeTruthy();
+    expect(document.getElementById(labelledBy as string)?.textContent).toBe('Måloppnåelse i Nkom');
   });
 });
