@@ -292,20 +292,24 @@
 }
 
 /*
- * Fokusringen på boksen, når raden under har fokus.
+ * The focus ring on the box, when the row under it has focus.
  *
- * Boksen dekker raden, og radens egen ring tegnes innenfor kanten — så på en
- * klippet rad lå ringen UNDER boksen, og fokus så ut som hover (KA CC på
- * #160). Står pekeren samtidig på en annen klippet rad, er det bare skyggen
- * som sier hvilken av dem som har fokus.
+ * The box covers the row, and the row's own ring is drawn inside its edge —
+ * so on a clipped row the ring lay UNDER the box, and focus looked exactly
+ * like hover (KA CC on #160). With the pointer on another clipped row at the
+ * same time, only the shadow said which of the two had focus.
  *
- * Designsystemets egne `ds-focus`-klasser når ikke hit: `.ds-link:focus-visible *`
- * tømmer `--_ds--focus` for alt inne i lenka. `--dsc-focus-outline` er
- * variabelen radens egen ring kommer fra, så ringen er den samme, og offset
- * er radens egen: en ring utenfor boksen ville ligget i nabo-radens luft.
+ * Designsystemet's own `ds-focus` classes do not reach in here:
+ * `.ds-link:focus-visible *` empties `--_ds--focus` for everything inside the
+ * link. The colour and the width are the ones the row's own ring comes from,
+ * and the offset is the row's too: a ring outside the box would sit in the
+ * next row's air.
  *
- * Direkte barn (`>`), fordi boksen er et barn av lenka — det er også det som
- * gjør at et klikk på den åpner tråden.
+ * Longhands rather than the `outline` shorthand, which the CSS compatibility
+ * linter from #159 rejects for Safari 16.0.
+ *
+ * A direct child (`>`), because the box is a child of the link — which is
+ * also what makes a click on it open the thread.
  */
 .threads-view__thread:focus-visible > .threads-view__overlay {
   outline-color: var(--ds-color-focus-outer);

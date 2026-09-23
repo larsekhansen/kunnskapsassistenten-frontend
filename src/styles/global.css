@@ -34,12 +34,13 @@
    */
   --ka-slot-gap: var(--ds-size-8); /* 32 px */
   /*
-   * 20 px, Lars 23.09. Det var 36, og 36 var mest av et smalt panel: på 1440
-   * med begge sidekolonnene åpne står kildepanelet på gulvet sitt, 336 px, og
-   * 72 px padding lot et utdrag få 246 px å sette tekst i — to–tre ord på
-   * linja (målt av #4 i #24). Den gang var 20 px et unntak for panelet som
-   * var klemt, skrevet som en beholderspørring under 380 px; nå er det
-   * verdien for begge sidepanelene, og spørringen som sa det samme er borte.
+   * 20 px, Lars 23.09. It was 36, and 36 was most of a narrow panel: at 1440
+   * with both sidebars open the sources panel sits on its 336 px floor, and
+   * 72 px of padding left an excerpt 246 px to set text in — two or three
+   * words a line (measured by #4 in #24). Back then 20 px was the exception
+   * for a panel being squeezed, written as a container query under 380 px;
+   * now it is the value for both sidebars, and the query that said the same
+   * thing is gone.
    */
   --ka-sidebar-padding-inline: var(--ds-size-5); /* 20 px */
   --ka-rail-padding-inline: var(--ds-size-3); /* 12 px, the 24 in railWidth */

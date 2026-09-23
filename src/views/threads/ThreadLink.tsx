@@ -265,18 +265,18 @@ export type RowOverlayProps = {
 export function RowOverlay({ anchor, onDismiss, onPointerLeave, ref, children }: RowOverlayProps) {
   useEffect(() => {
     /*
-     * Escape lukker boksen, og BARE boksen.
+     * Escape closes the box, and ONLY the box.
      *
-     * I skuffemodus er panelet en `dialog`, og det samme tastetrykket er
-     * dialogens egen lukkeforespørsel: én Escape lukket både boksen og
-     * skuffa, og flyttet fokus til «Vis tråder og filter» (KA CC på #160).
-     * 1.4.13 ber om en måte å lukke boksen på UTEN å flytte fokus, og i
-     * skuffa fantes ingen.
+     * In drawer mode the panel is a `dialog`, and the same key press is the
+     * dialog's own close request: one Escape closed the box AND the drawer,
+     * and moved focus to «Vis tråder og filter» (KA CC on #160). 1.4.13 asks
+     * for a way to dismiss the box WITHOUT moving either, and in the drawer
+     * there was none.
      *
-     * `preventDefault` i fangstfasen, før dialogen får tastetrykket, er
-     * rekkefølgen plattformen bruker selv: en popover inni en dialog lukkes
-     * før dialogen. Andre Escape lukker skuffa, fordi lytteren er borte med
-     * boksen.
+     * `preventDefault` in the capture phase, before the dialog gets the key,
+     * is the order the platform uses itself: a popover inside a dialog closes
+     * before the dialog does. The second Escape closes the drawer, because
+     * this listener left with the box.
      */
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;

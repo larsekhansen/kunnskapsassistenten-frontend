@@ -107,28 +107,28 @@
  */
 .filters-view__corpus-toggle {
   /*
-   * 24 px er kriteriets eget tall, så det er ingen designverdi og har ikke
-   * noe token. Det skrives to ganger med vilje:
+   * 24 px is the success criterion's own number, so it is not a design value
+   * and has no token. It is written twice on purpose:
    *
-   * Først 3 px fast. Linja måler 21 px her, og 21 + 3 er 24. Det er
-   * reserveverdien for Safari 16.0–16.3, som er innenfor nettleserlista vår
-   * og ikke kjenner `lh` (KA CC på #159): der falt treffhøyden til 21 px.
+   * First 3 px, fixed. The line measures 21 px here, and 21 + 3 is 24. That
+   * is the fallback for Safari 16.0–16.3, which is inside our browser list
+   * and does not know `lh` (KA CC on #159): the target fell to 21 px there.
    *
-   * Så det samme regnet ut av `1lh`, altså kontrollens egen linje. Den
-   * overstyrer der den forstås, og følger teksten om den skulle vokse. I
-   * eldre Safari er enheten ukjent, så DEKLARASJONEN forkastes ved parsing
-   * og de tre faste pikslene blir stående.
+   * Then the same thing worked out from `1lh`, the control's own line. It
+   * overrides where it is understood, and follows the text if that should
+   * grow. In older Safari the unit is unknown, so the DECLARATION is dropped
+   * at parse time and the three fixed pixels stand.
    *
-   * Det er grunnen til at dette ikke går gjennom en `--ka-*`-variabel lenger:
-   * en `var()` som er ugyldig ved beregning setter egenskapen til initial —
-   * altså 0 — i stedet for å falle tilbake på deklarasjonen over.
+   * That is also why this no longer goes through a `--ka-*` property: a
+   * `var()` that is invalid at computed-value time sets the property to its
+   * initial value — 0 — rather than falling back on the declaration above.
    */
   padding-block-end: 3px;
   margin-block-end: -3px;
-  /* stylelint-disable plugin/browser-compat -- `lh` er fortsatt ukjent i
-     Safari 16.0–16.3, og det er meningen: de to linjene over er
-     reserveverdien, og disse to overstyrer den der enheten finnes. Linteren
-     ser regelen, ikke rekkefølgen, så den må få beskjed her. */
+  /* stylelint-disable plugin/browser-compat -- `lh` is still unknown in
+     Safari 16.0–16.3, and that is the point: the two lines above are the
+     fallback, and these two override it where the unit exists. The linter
+     sees the rule and not the order, so it has to be told here. */
   padding-block-end: max(0px, calc(24px - 1lh));
   margin-block-end: calc(-1 * max(0px, calc(24px - 1lh)));
   /* stylelint-enable plugin/browser-compat */
