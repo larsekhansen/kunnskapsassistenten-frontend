@@ -265,10 +265,13 @@
  * the body, because the panel is a scrolling region and clips its own
  * children — see RowOverlay in ThreadLink.tsx.
  *
- * `pointer-events: none` is what keeps it open: the box is drawn on top of
- * the row that opened it, and a box that took the pointer would take the
- * hover with it and close itself. The row underneath keeps both. Nothing in
- * here is interactive, so nothing is lost by it (WCAG 1.4.13, hoverable).
+ * The box DOES take the pointer, and that is the fix from KA CC on #160: with
+ * `pointer-events: none` the part that hangs past the panel edge was not over
+ * the row either, so moving out there ended the row's hover and shut the box
+ * while the reader was standing on it — the classic way to fail WCAG 1.4.13
+ * «hoverable». ThreadLink reads `relatedTarget` and treats the row and the
+ * box as one surface; nothing in here is interactive, so taking the pointer
+ * costs nothing else.
  *
  * The z-index is the drawer's, one step up: the box may cross the panel edge,
  * and below the drawer it would slide under the main column at 1139 px.
@@ -276,7 +279,6 @@
 .threads-view__overlay {
   position: fixed;
   z-index: 3;
-  pointer-events: none;
   display: flex;
   flex-direction: column;
   inline-size: max-content;

@@ -1,5 +1,14 @@
 import { Link } from '@digdir/designsystemet-react';
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { Link as RouterLink } from 'react-router';
 import { threadTime } from '../../components';
@@ -48,6 +57,7 @@ export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
   const titleId = useId();
   const titleRef = useRef<HTMLSpanElement>(null);
   const rowRef = useRef<HTMLAnchorElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const [clipped, setClipped] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | undefined>(undefined);
   const when = threadTime(thread.updatedAt);
@@ -121,6 +131,33 @@ export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
 
   const hide = useCallback(() => setAnchor(undefined), []);
 
+  /*
+   * The pointer left the row — or the box — but not necessarily the pair.
+   *
+   * The box hangs past the row's right edge, and moving out there is moving
+   * off the row: with a plain `pointerleave` the box shut itself while the
+   * pointer was standing on it, which is the classic failure of WCAG 1.4.13
+   * «hoverable» (KA CC on #160). `relatedTarget` is where the pointer went,
+   * so the two elements can be treated as one surface — and it is read
+   * rather than timed, so nothing depends on how fast anybody moves.
+   *
+   * `null` means it left for somewhere with no element under it, the window
+   * included. That is a leave.
+   */
+  const leave = useCallback((event: PointerEvent<Element>) => {
+    /*
+     * `instanceof Node` and not a cast: `relatedTarget` is typed as an
+     * element but is not always one. It is `null` when the pointer left for
+     * nowhere, and in jsdom it is a bare object — which `Node.contains`
+     * rejects with a TypeError, so a cast would throw inside the handler and
+     * leave the box open for ever (measured while writing the test below).
+     */
+    const to = event.relatedTarget;
+    const node = to instanceof Node ? to : null;
+    if (node && (rowRef.current?.contains(node) || overlayRef.current?.contains(node))) return;
+    setAnchor(undefined);
+  }, []);
+
   return (
     <>
       <Link asChild data-size="sm" className="threads-view__thread">
@@ -142,7 +179,7 @@ export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
           aria-labelledby={titleId}
           to={`/threads/${thread.id}`}
           onPointerEnter={show}
-          onPointerLeave={hide}
+          onPointerLeave={leave}
           onFocus={show}
           onBlur={hide}
         >
@@ -167,7 +204,7 @@ export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
       </Link>
 
       {anchor && (
-        <RowOverlay anchor={anchor} onDismiss={hide}>
+        <RowOverlay ref={overlayRef} anchor={anchor} onDismiss={hide} onPointerLeave={leave}>
           <span className="threads-view__overlay-title">{thread.title}</span>
           <span className="threads-view__meta">
             {when && <span className="threads-view__time">{when.text}</span>}
@@ -183,6 +220,10 @@ export type RowOverlayProps = {
   anchor: Anchor;
   /** Escape, a scroll, a resize — anything that ends the hover from outside. */
   onDismiss: () => void;
+  /** The pointer left the box. The row decides whether that ends the hover. */
+  onPointerLeave: (event: PointerEvent<Element>) => void;
+  /** So the row can tell «the pointer moved onto the box» from «it left». */
+  ref: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 };
 
@@ -206,15 +247,17 @@ export type RowOverlayProps = {
  *   it, and then nothing in the row has focus to catch a key.
  *   Persistent — it stays until the pointer leaves the row, focus leaves it,
  *   or Escape. Nothing times it out.
- *   Hoverable — the box takes no pointer events (see threads.css), so the row
- *   under it keeps the hover that opened it: the pointer can rest anywhere
- *   over the box and read. Nothing in it is interactive, and what it covers
- *   is the same link.
+ *   Hoverable — the box takes the pointer, and the row treats the two as one
+ *   surface: a move from the row onto the box is not a leave, and neither is
+ *   the way back. It had `pointer-events: none` until KA CC measured #160:
+ *   the part that hangs past the panel edge is NOT over the row, so the
+ *   pointer going there ended the hover and shut the box the reader was
+ *   reading.
  *
  * It is anchored to a place in the window rather than to the row, so a scroll
  * or a resize moves the row out from under it. Both close it.
  */
-export function RowOverlay({ anchor, onDismiss, children }: RowOverlayProps) {
+export function RowOverlay({ anchor, onDismiss, onPointerLeave, ref, children }: RowOverlayProps) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onDismiss();
@@ -233,8 +276,10 @@ export function RowOverlay({ anchor, onDismiss, children }: RowOverlayProps) {
 
   return createPortal(
     <div
+      ref={ref}
       aria-hidden="true"
       className="threads-view__overlay"
+      onPointerLeave={onPointerLeave}
       /*
        * The row's own size scale. Designsystemet's `data-size` rescales the
        * font and spacing tokens for everything under it, and the row is `sm`:

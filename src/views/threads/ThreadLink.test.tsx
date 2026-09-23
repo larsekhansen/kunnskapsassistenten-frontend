@@ -104,6 +104,27 @@ describe('ThreadLink', () => {
     expect(overlay()).toBeNull();
   });
 
+  it('blir stående når pekeren går fra raden og inn i boksen', () => {
+    /*
+     * WCAG 1.4.13, «hoverable»: boksen henger utenfor radens høyre kant, så
+     * å flytte pekeren dit ER å forlate raden. Uten at de to behandles som én
+     * flate lukket boksen seg mens leseren sto på den (KA CC på #160).
+     */
+    withWidths(420, 300);
+    renderLink();
+
+    fireEvent.pointerEnter(link());
+    const boks = overlay();
+    expect(boks).toBeTruthy();
+
+    fireEvent.pointerLeave(link(), { relatedTarget: boks });
+    expect(overlay()).toBeTruthy();
+
+    // Og ut av boksen igjen lukker den.
+    fireEvent.pointerLeave(boks as HTMLElement, { relatedTarget: document.body });
+    expect(overlay()).toBeNull();
+  });
+
   it('åpner boksen på fokus, og lukker den med Escape', () => {
     // WCAG 1.4.13: innhold som kommer på peker eller fokus må kunne lukkes
     // uten å flytte noen av delene.
