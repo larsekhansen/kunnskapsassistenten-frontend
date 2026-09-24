@@ -1,12 +1,15 @@
+import { filterDimensions } from '../../model';
 import type {
   Citation,
   Excerpt,
+  FilterSelection,
   RelevanceLevel,
   RetrievalDetails,
   SourceDocument,
   StreamEvent,
   ThinkingStep,
 } from '../../model';
+import type { DatasetFilterFields } from '../filterFields';
 
 /**
  * The MCP wire format, translated into our own events.
@@ -67,6 +70,85 @@ export function datasetArguments(
   }
 
   return {};
+}
+
+/** One field of the backend's own filter, as it is spelled on the wire. */
+type WireFilterField = {
+  field: string;
+  'selected-options': string[];
+  'value-type'?: string;
+};
+
+/** `overrides` as `tools/call` takes it, or nothing at all. */
+export type FilterArguments =
+  { overrides: { 'retrieve-filter-by': { fields: WireFilterField[] } } } | Record<string, never>;
+
+/**
+ * The reader's filter, as the backend's own filter format, or nothing.
+ *
+ * `overrides.retrieve-filter-by` is not an interface built for us: it is the
+ * per-call form of the setting the backend already filters by, and the same
+ * shape its auto-filter and the agent's own search tool use. That is why the
+ * filter belongs on the wire this way and why this function is generic — it
+ * knows the three dimensions the design draws, and nothing about any corpus.
+ * The field names come from `fields`, which is configuration
+ * (src/api/filterFields.ts).
+ *
+ * The backend ANDs the fields and ORs the values inside one, so three ticked
+ * years and one document type is «årsrapport fra 2022, 2023 eller 2024».
+ * Nothing here has to say so; it is what `:=[a,b]` means over there.
+ *
+ * Four ways to send nothing, and each is a different fact:
+ * - nothing ticked anywhere — the reader is asking the whole corpus
+ * - a dimension with nothing ticked — no restriction on that one
+ * - a dimension with no configured field — this corpus has not said what it
+ *   calls it, and a guessed name would filter on a field Typesense does not
+ *   have. Silence is the honest answer (docs/arkitektur/0001)
+ * - no configured fields at all, which includes the dataset the backend
+ *   picked for itself
+ *
+ * All four leave `overrides` out of the arguments entirely rather than
+ * sending an empty one, because an empty override is still an override: it
+ * would replace whatever the backend had configured for the dataset with a
+ * filter that matches nothing in particular, and the difference between «no
+ * opinion» and «an empty opinion» is not one worth testing against a running
+ * backend on every release.
+ *
+ * `value-type` rides along only when the configuration gives one. Measured
+ * 2026-09-24: `concerned_years = 2024` without it gives 0 hits, because a
+ * quoted number is not a number to Typesense. The values themselves stay
+ * strings — the type is stated beside them, not by rewriting them.
+ */
+export function filterArguments(
+  selection: FilterSelection | undefined,
+  fields: DatasetFilterFields | undefined,
+): FilterArguments {
+  if (!selection || !fields) return {};
+
+  const wire: WireFilterField[] = [];
+
+  // Walked in the design's order rather than the selection's own key order,
+  // so the same choice builds the same request every time. See
+  // `filterDimensions`.
+  for (const dimension of filterDimensions) {
+    const mapping = fields[dimension];
+    if (!mapping) continue;
+
+    // A blank is a value nobody can have ticked, and it would reach the
+    // backend as `field:=[""]`. Dropping it here keeps a stray one from
+    // turning a working filter into no hits at all.
+    const values = (selection[dimension] ?? []).map((value) => value.trim()).filter(Boolean);
+    if (values.length === 0) continue;
+
+    wire.push({
+      field: mapping.field,
+      'selected-options': values,
+      ...(mapping.valueType ? { 'value-type': mapping.valueType } : {}),
+    });
+  }
+
+  if (wire.length === 0) return {};
+  return { overrides: { 'retrieve-filter-by': { fields: wire } } };
 }
 
 type ProgressMeta = {

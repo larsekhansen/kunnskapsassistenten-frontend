@@ -2,11 +2,14 @@ import { chatErrorCode } from '../../model';
 import type { ChatError, FilterFacet, StreamEvent, Thread, ThreadDetail } from '../../model';
 import type { AskParams, ChatClient } from '../chatClient';
 import { CORPUS_TAG_PREFIX } from '../corpus';
+import { filterFieldsFor } from '../filterFields';
+import type { DatasetFilterFields } from '../filterFields';
 import {
   DEFAULT_TOOL_NAME,
   MCP_PROTOCOL_VERSION,
   McpStreamState,
   datasetArguments,
+  filterArguments,
   toCitations,
   toSourceDocuments,
 } from './mcp';
@@ -46,6 +49,19 @@ export type LiveChatClientOptions = {
    * argument rather than a direct import.
    */
   datasetConfigKey?: string | (() => string | undefined);
+  /**
+   * What the corpus in question calls the design's three filter dimensions.
+   *
+   * A function of the dataset key, because a client outlives a corpus choice:
+   * the reader may switch corpus between two questions, and the second one
+   * has to be filtered by the second corpus's field names.
+   *
+   * Defaults to the deployment's configuration in src/api/filterFields.ts,
+   * so nothing has to be wired in `createChatClient` — the field names are
+   * read once at startup and do not change while the app runs. It is an
+   * option at all so a test can state a mapping without an environment.
+   */
+  filterFields?: (datasetKey: string | undefined) => DatasetFilterFields | undefined;
   /**
    * Which agent owns a conversation this client creates. Derived from the
    * tool name when left out; see `agentIdFromToolName` for why the two are
@@ -127,6 +143,7 @@ export class LiveChatClient implements ChatClient {
   readonly #toolName: string;
   readonly #tenant: string | undefined;
   readonly #corpusKey: () => string | undefined;
+  readonly #filterFields: (datasetKey: string | undefined) => DatasetFilterFields | undefined;
   readonly #agentId: string;
 
   constructor(options: LiveChatClientOptions = {}) {
@@ -137,6 +154,7 @@ export class LiveChatClient implements ChatClient {
       typeof options.datasetConfigKey === 'function'
         ? options.datasetConfigKey
         : () => options.datasetConfigKey as string | undefined;
+    this.#filterFields = options.filterFields ?? filterFieldsFor;
     this.#agentId = options.agentId ?? agentIdFromToolName(this.#toolName);
   }
 
@@ -295,6 +313,20 @@ export class LiveChatClient implements ChatClient {
       params.conversationId ??
       (await openConversation) ??
       (await this.#createConversation(params.query, dataset.dataset_config_key, params.signal));
+    /*
+      The reader's filter, in the backend's own filter format.
+
+      Resolved from the same `dataset` the query is sent with, so the field
+      names belong to the corpus being asked — reading the corpus store a
+      second time could translate the filter with one corpus's field names
+      and search another's, which would be a filter on a field that is not
+      there and no hits for a question that has answers.
+
+      Empty when nothing is ticked, when this corpus has no configured field
+      for what is ticked, or when the backend is picking the dataset itself.
+      See `filterArguments`.
+    */
+    const filters = filterArguments(params.filters, this.#filterFields(dataset.dataset_config_key));
     const body = {
       jsonrpc: '2.0',
       id: 1,
@@ -304,6 +336,7 @@ export class LiveChatClient implements ChatClient {
         arguments: {
           query: params.query,
           ...dataset,
+          ...filters,
           ...(conversationId ? { conversation_id: conversationId } : {}),
         },
         _meta: {

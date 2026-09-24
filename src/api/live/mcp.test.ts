@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { emptyFilterSelection } from '../../model';
+import type { DatasetFilterFields } from '../filterFields';
 import {
   McpStreamState,
   datasetArguments,
+  filterArguments,
   parseHeadingPath,
   relevanceFromRank,
   toCitations,
@@ -303,5 +306,113 @@ describe('datasetArguments', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     datasetArguments(undefined, undefined);
     expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Leserens filtervalg, i backendens eget filterformat.
+ *
+ * Feltnavna under er Kudos sine, og de står HER med vilje: i en test er de et
+ * eksempel på en konfigurasjon, mens i `src/` ville de vært en frontend som
+ * bare virker mot ett korpus (docs/arkitektur/0001).
+ */
+const kudosFields: DatasetFilterFields = {
+  documentType: { field: 'type' },
+  organisation: { field: 'orgs_long' },
+  year: { field: 'concerned_years', valueType: 'integer' },
+};
+
+describe('filterArguments', () => {
+  it('oversetter én dimensjon til feltet korpuset kaller det', () => {
+    expect(
+      filterArguments({ ...emptyFilterSelection, documentType: ['Årsrapport'] }, kudosFields),
+    ).toEqual({
+      overrides: {
+        'retrieve-filter-by': {
+          fields: [{ field: 'type', 'selected-options': ['Årsrapport'] }],
+        },
+      },
+    });
+  });
+
+  it('sender verditypen der konfigurasjonen gir en', () => {
+    // Målt 2026-09-24: uten `value-type` gir `concerned_years = 2024` 0
+    // treff. Verdien er fortsatt en streng — typen står ved siden av, den
+    // skrives ikke om.
+    expect(filterArguments({ ...emptyFilterSelection, year: ['2024'] }, kudosFields)).toEqual({
+      overrides: {
+        'retrieve-filter-by': {
+          fields: [
+            { field: 'concerned_years', 'selected-options': ['2024'], 'value-type': 'integer' },
+          ],
+        },
+      },
+    });
+  });
+
+  it('sender flere felt og flere verdier, i designets rekkefølge', () => {
+    // Backenden AND-er felt og OR-er verdiene i ett felt. Rekkefølgen er
+    // `filterDimensions` sin og ikke nøkkelrekkefølgen i objektet, så samme
+    // valg gir samme forespørsel hver gang.
+    const selection = {
+      year: ['2023', '2024'],
+      documentType: ['Årsrapport'],
+      organisation: ['Digitaliseringsdirektoratet'],
+    };
+
+    const args = filterArguments(selection, kudosFields);
+
+    expect('overrides' in args && args.overrides['retrieve-filter-by'].fields).toEqual([
+      { field: 'type', 'selected-options': ['Årsrapport'] },
+      { field: 'orgs_long', 'selected-options': ['Digitaliseringsdirektoratet'] },
+      {
+        field: 'concerned_years',
+        'selected-options': ['2023', '2024'],
+        'value-type': 'integer',
+      },
+    ]);
+  });
+
+  it('sender ingen overrides når ingenting er huket av', () => {
+    // Tomt valg er «hele korpuset», ikke «et tomt filter». Et tomt override
+    // ville overstyrt det datasettet selv er satt opp med.
+    expect(filterArguments(emptyFilterSelection, kudosFields)).toEqual({});
+    expect(filterArguments(undefined, kudosFields)).toEqual({});
+  });
+
+  it('utelater en dimensjon uten valg', () => {
+    const args = filterArguments(
+      { ...emptyFilterSelection, documentType: ['Årsrapport'], year: [] },
+      kudosFields,
+    );
+
+    expect('overrides' in args && args.overrides['retrieve-filter-by'].fields).toHaveLength(1);
+  });
+
+  it('utelater en dimensjon korpuset ikke har sagt hva heter', () => {
+    // Gjetter aldri. Et gjettet feltnavn er et filter på et felt Typesense
+    // ikke har, og leseren ville sett «ingen treff» for et korpus som har
+    // dokumentene.
+    const args = filterArguments(
+      { ...emptyFilterSelection, documentType: ['Årsrapport'], year: ['2024'] },
+      { documentType: { field: 'type' } },
+    );
+
+    expect(args).toEqual({
+      overrides: {
+        'retrieve-filter-by': { fields: [{ field: 'type', 'selected-options': ['Årsrapport'] }] },
+      },
+    });
+  });
+
+  it('sender ingenting når datasettet ikke er beskrevet i det hele tatt', () => {
+    expect(filterArguments({ ...emptyFilterSelection, year: ['2024'] }, undefined)).toEqual({});
+    expect(filterArguments({ ...emptyFilterSelection, year: ['2024'] }, {})).toEqual({});
+  });
+
+  it('dropper en blank verdi i stedet for å filtrere på tomt', () => {
+    expect(filterArguments({ ...emptyFilterSelection, documentType: ['  '] }, kudosFields)).toEqual(
+      {},
+    );
   });
 });
