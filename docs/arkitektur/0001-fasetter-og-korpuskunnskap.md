@@ -81,7 +81,7 @@ Et valgt filter sendes til backenden som
 backendens eget interne format, som auto-filteret og agentens søkeverktøy også
 bruker. Det er generisk og korpusuavhengig.
 
-Det virket ikke før 2026-09-24, av tre grunner i headless-rag, rettet på lokal
+Det virket ikke før 2026-09-24, av fem grunner i headless-rag, rettet på lokal
 gren `fix/mcp-retrieve-filter-by` (ikke sendt inn ennå):
 
 1. `retrieve-filter-by` manglet på hvitelista over per-kall-innstillinger.
@@ -89,9 +89,16 @@ gren `fix/mcp-retrieve-filter-by` (ikke sendt inn ennå):
    per-kall-innstilling har virket via MCP — målt: `retrieve-top-k 7` ga 100.
 3. Agentens søk lot modellens filter, som regel tomt, erstatte leserens. Nå
    gjelder begge, og fallbacken slipper bare modellens del.
+4. `value-type` kom som tekst og ble sammenlignet med et keyword, så et
+   årsfilter sitertes som streng og Typesense avviste det — stille 0 treff.
+5. En filterverdi kunne bli filtersyntaks. Målt: et årsfilter på 1 883
+   dokumenter ble til 4 706 når «året» var `2024] || type:=[…`. Utrygge
+   verdier droppes nå. Det ble nåbart med punkt 1–3: før nådde et
+   kallervalgt filter aldri søket. Funnet av KA CC.
 
-Målt etterpå mot hele Kudos-korpuset: et umulig filter gir 0 treff, og DFØ +
-Årsrapport gir bare DFØs årsrapport 2024 — der det før kom Statens vegvesen.
+Målt etterpå mot hele Kudos-korpuset: et umulig filter gir 0 treff, DFØ +
+Årsrapport gir bare DFØs årsrapport 2024 — der det før kom Statens vegvesen —
+og Årsrapport + 2024 gir bare årsrapporter fra 2024.
 
 ## Prisen
 

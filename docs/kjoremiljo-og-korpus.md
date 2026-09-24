@@ -86,7 +86,7 @@ riktig oppførsel, men det ser ut som en feil; bruk det store korpuset.
 | DFØ + Årsrapport, gjennom agenten            | bare DFØs årsrapport 2024               |
 | uten filter                                  | 5 dokumenter på tvers av typer, som før |
 
-Uten den grenen slippes filteret stille — tre feil i headless-rag, beskrevet i
+Uten den grenen slippes filteret stille — fem feil i headless-rag, beskrevet i
 arkitekturnotatet.
 
 **Fasettene kommer ikke fra backenden ennå.** `LiveChatClient.listFacets`
