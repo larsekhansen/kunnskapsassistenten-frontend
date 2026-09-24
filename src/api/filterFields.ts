@@ -41,10 +41,7 @@ export type FilterFieldMapping = {
    * refuses a quoted number on a numeric field. So it is required for year,
    * not decoration.
    *
-   * Passed through as written rather than checked against a list of known
-   * types. The set of types is the backend's and Typesense's to grow, and a
-   * frontend that validated it would reject a working configuration the day
-   * one of them added `float`.
+   * One of `KNOWN_VALUE_TYPES`, and nothing else gets through.
    */
   valueType?: string;
 };
@@ -57,6 +54,28 @@ export type FilterFieldConfig = Record<string, DatasetFilterFields>;
 
 /** The dimensions, as a set, for telling a name from a typo. */
 const KNOWN_DIMENSIONS = new Set<string>(filterDimensions);
+
+/**
+ * The value types the backend actually tells apart, and the reason there are
+ * only two.
+ *
+ * `format-filter-value` in server/src/digdir/rag/filters.cljc compares the
+ * type BY NAME against the one string `"integer"`; everything else — a type
+ * it has never heard of as much as `string` itself — falls through to
+ * backtick-quoting the value, which is string behaviour.
+ *
+ * So a misspelt `integr` is not rejected over there. It is quietly treated as
+ * a string, Typesense is handed a quoted number on a numeric field, and the
+ * reader gets 0 hits for a question the corpus can answer — the exact silent
+ * failure this whole round has been about (KA CC on #164). The typo has to be
+ * caught here, because the only place downstream that could catch it does
+ * not.
+ *
+ * Exact spelling, lower case, as the backend compares it. A type in the wrong
+ * case is a typo too, and the honest thing is to say so rather than to repair
+ * it and hope.
+ */
+const KNOWN_VALUE_TYPES = new Set(['integer', 'string']);
 
 /**
  * `"kudos-full=documentType:type|organisation:orgs_long|year:concerned_years:integer"`
@@ -81,13 +100,15 @@ const KNOWN_DIMENSIONS = new Set<string>(filterDimensions);
  * - a dimension that is not one of the three (a typo would otherwise be a
  *   filter that silently never reached the backend)
  * - a mapping with no field name
+ * - a value type the backend does not tell apart — see `KNOWN_VALUE_TYPES`
+ * - a dataset key, or a dimension inside one dataset, written twice
  * - a dataset left with no valid dimension at all, which says nothing that
  *   an absent entry does not
  *
- * First wins for a repeated dataset key and for a repeated dimension inside
- * one, for the reason corpus.ts gives: one thing written twice is a mistake,
- * and picking the later one silently is not more right than picking the
- * earlier one loudly.
+ * First wins for a repeat, for the reason corpus.ts gives: one thing written
+ * twice is a mistake, and picking the later one silently is not more right
+ * than picking the earlier one loudly. The one written second is what the
+ * warning names, because it is the one that did not take effect.
  */
 export function parseFilterFields(raw: string | undefined): FilterFieldConfig {
   if (!raw?.trim()) return {};
@@ -106,7 +127,10 @@ export function parseFilterFields(raw: string | undefined): FilterFieldConfig {
       dropped.push(entry.trim());
       continue;
     }
-    if (config[key]) continue;
+    if (config[key]) {
+      dropped.push(entry.trim());
+      continue;
+    }
 
     const fields: DatasetFilterFields = {};
     for (const mapping of rest.split('|')) {
@@ -117,9 +141,20 @@ export function parseFilterFields(raw: string | undefined): FilterFieldConfig {
         dropped.push(mapping.trim());
         continue;
       }
+      // Dropped whole rather than kept without the type: a mapping stripped
+      // of its `integer` is a filter that quietly finds nothing, which is
+      // the failure being guarded against. Not filtering on that dimension
+      // is the wrong answer too, but it is a loud one.
+      if (valueType && !KNOWN_VALUE_TYPES.has(valueType)) {
+        dropped.push(mapping.trim());
+        continue;
+      }
 
       const named = dimension as FilterDimension;
-      if (fields[named]) continue;
+      if (fields[named]) {
+        dropped.push(mapping.trim());
+        continue;
+      }
       fields[named] = { field, ...(valueType ? { valueType } : {}) };
     }
 
@@ -136,9 +171,11 @@ export function parseFilterFields(raw: string | undefined): FilterFieldConfig {
 
   if (dropped.length > 0) {
     console.warn(
-      `KA: hopper over ${dropped.length} ugyldig(e) oppføring(er) i VITE_KA_FILTER_FIELDS. ` +
+      `KA: hopper over ${dropped.length} ugyldig(e) eller gjentatt(e) oppføring(er) ` +
+        `i VITE_KA_FILTER_FIELDS. ` +
         `Formatet er "datasett=dimensjon:felt|dimensjon:felt:verditype;…", ` +
-        `der dimensjonen er ${filterDimensions.join(', ')}. ` +
+        `der dimensjonen er ${filterDimensions.join(', ')} ` +
+        `og verditypen ${[...KNOWN_VALUE_TYPES].join(' eller ')}. ` +
         `Hoppet over: ${dropped.join(', ')}`,
     );
   }

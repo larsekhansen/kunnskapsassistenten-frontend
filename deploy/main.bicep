@@ -34,6 +34,9 @@ param tenant string = 'digdir'
 @description('Korpusene velgeren tilbyr: "nøkkel=Navn|beskrivelse;nøkkel=Navn". Tom = ett korpus og ingen velger.')
 param datasets string = ''
 
+@description('Hva hvert korpus kaller filterdimensjonene: "datasett=dimensjon:felt|dimensjon:felt:verditype;…". En dimensjon uten oppføring filtreres det ikke på.')
+param filterFields string = 'kudos=documentType:type|organisation:orgs_long|year:concerned_years:integer'
+
 @secure()
 param digdirApiKey string
 
@@ -103,6 +106,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'VITE_KA_TENANT', value: tenant }
             { name: 'VITE_KA_DATASET_CONFIG_KEY', value: datasetConfigKey }
             { name: 'VITE_KA_DATASETS', value: datasets }
+            { name: 'VITE_KA_FILTER_FIELDS', value: filterFields }
           ]
           probes: [
             {

@@ -107,6 +107,53 @@ describe('parseFilterFields', () => {
     });
   });
 
+  it('sier fra om en gjentatt nøkkel og en gjentatt dimensjon', () => {
+    // Kommentaren i koden lovte «høyt», og koden var taus (KA CC på #164).
+    // Den andre oppføringa er den som nevnes: det er den som ikke slo inn.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    parseFilterFields('a=year:foerste;a=year:andre');
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain('a=year:andre');
+
+    warn.mockClear();
+    parseFilterFields('a=year:foerste|year:andre');
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain('year:andre');
+  });
+
+  it('dropper en verditype backenden ikke skiller på', () => {
+    /*
+     * `format-filter-value` i backendens rag/filters.cljc sammenligner typen
+     * med den ene strengen «integer». En feilstavet «integr» avvises ikke
+     * der; den leses stille som streng, Typesense får et sitert tall på et
+     * tallfelt, og leseren får 0 treff på et spørsmål korpuset kan svare på.
+     * Hele dimensjonen droppes, ikke bare typen: et felt uten sin `integer`
+     * er nettopp det stille null-treffet.
+     */
+    expect(parseFilterFields('kudos-full=year:concerned_years:integr')).toEqual({});
+    expect(parseFilterFields('kudos-full=year:concerned_years:Integer')).toEqual({});
+  });
+
+  it('godtar begge typene backenden faktisk skiller på', () => {
+    expect(parseFilterFields('a=year:aar:integer|documentType:type:string')).toEqual({
+      a: {
+        year: { field: 'aar', valueType: 'integer' },
+        documentType: { field: 'type', valueType: 'string' },
+      },
+    });
+  });
+
+  it('sier fra om verditypen den droppet, og hvilke som finnes', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    parseFilterFields('kudos-full=documentType:type|year:concerned_years:integr');
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain('year:concerned_years:integr');
+    expect(warn.mock.calls[0][0]).toContain('integer');
+  });
+
   it('sier fra i konsollen om det den hoppet over', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 

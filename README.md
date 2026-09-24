@@ -930,8 +930,18 @@ Semikolon mellom datasettene og `=` etter datasettnøkkelen, som i
 `VITE_KA_DATASETS` — de to variablene beskriver de samme datasettene og skal
 ikke kreve to grammatikker. Inne i ett datasett: `|` mellom dimensjonene og
 `:` inne i én, som `dimensjon:felt` eller `dimensjon:felt:verditype`.
-Dimensjonene heter `documentType`, `organisation` og `year`. En ugyldig
-oppføring hoppes over med én advarsel i konsollen.
+Dimensjonene heter `documentType`, `organisation` og `year`, og verditypen er
+`integer` eller `string`. En ugyldig eller gjentatt oppføring hoppes over med
+én advarsel i konsollen.
+
+**Verditypen godtas ikke fritt, og det er med vilje.** `format-filter-value` i
+backendens `rag/filters.cljc` sammenligner typen med den ene strengen
+`integer`; alt annet — en type den aldri har hørt om like mye som `string` —
+faller gjennom til å sitere verdien som en streng. En feilstavet `integr` blir
+altså ikke avvist der borte. Den blir stille lest som streng, Typesense får et
+sitert tall på et tallfelt, og leseren får 0 treff på et spørsmål korpuset kan
+svare på. Skrivefeilen må tas her, for det eneste stedet nedstrøms som kunne
+tatt den, tar den ikke.
 
 **En dimensjon uten oppføring sendes ikke, og gjettes aldri.** Et gjettet
 feltnavn er et filter på et felt Typesense ikke har, og leseren ville sett
@@ -967,6 +977,13 @@ et tomt override ville overstyrt det datasettet selv er satt opp med.
 
 Se `src/api/filterFields.ts` for konfigurasjonen og `filterArguments()` i
 `src/api/live/mcp.ts` for trådformatet.
+
+**Filteret når bare fram med en patchet backend.** Tre feil i headless-rag
+slapp det stille: `retrieve-filter-by` manglet på hvitelista over
+per-kall-innstillinger, MCP-transporten gjorde ikke nøklene om til keywords,
+og agentens søk lot modellens filter erstatte leserens. De er rettet på grenen
+`fix/mcp-retrieve-filter-by` i headless-rag, som ikke er sendt inn ennå. Mot
+headless-rag fra `main` sendes filteret, men gjør ingenting.
 
 **Fasettene finnes ikke i live ennå.** `listFacets` returnerer tom liste, så
 panelet sier «Filtrering er ikke tilgjengelig ennå» og ingen kan huke av noe
