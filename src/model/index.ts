@@ -9,7 +9,7 @@
  */
 export type { Citation } from './citation';
 export type { FacetValue, FilterDimension, FilterFacet, FilterSelection } from './filter';
-export { emptyFilterSelection, isEmptySelection } from './filter';
+export { emptyFilterSelection, filterDimensions, isEmptySelection } from './filter';
 export type { Message, MessageRole, MessageStatus } from './message';
 export type { RetrievalDetails, ThinkingStep, ThinkingStepKind } from './retrieval';
 export type {

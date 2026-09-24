@@ -27,6 +27,7 @@ export type ClientConfig = {
   VITE_KA_TENANT?: string;
   VITE_KA_DATASET_CONFIG_KEY?: string;
   VITE_KA_DATASETS?: string;
+  VITE_KA_FILTER_FIELDS?: string;
   VITE_MOCK_SPEED?: string;
 };
 
@@ -91,6 +92,7 @@ export function readConfig(
       VITE_KA_TENANT: value(env.VITE_KA_TENANT),
       VITE_KA_DATASET_CONFIG_KEY: value(env.VITE_KA_DATASET_CONFIG_KEY),
       VITE_KA_DATASETS: value(env.VITE_KA_DATASETS),
+      VITE_KA_FILTER_FIELDS: value(env.VITE_KA_FILTER_FIELDS),
       VITE_MOCK_SPEED: value(env.VITE_MOCK_SPEED),
     },
   };

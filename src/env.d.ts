@@ -22,6 +22,16 @@ interface ImportMetaEnv {
    */
   readonly VITE_KA_DATASETS?: string;
   /**
+   * What each corpus calls the design's three filter dimensions:
+   * `"kudos-full=documentType:type|organisation:orgs_long|year:concerned_years:integer"`.
+   *
+   * Semicolons between datasets, `=` after the dataset key, `|` between
+   * dimensions and `:` inside one. Corpus knowledge, so it is configuration
+   * and not code — a dimension with no entry is simply not filtered on. See
+   * src/api/filterFields.ts.
+   */
+  readonly VITE_KA_FILTER_FIELDS?: string;
+  /**
    * How fast mock mode answers: `fast`, `realistic` (default) or `slow`.
    * See `mockSpeeds` in src/api/mock/MockChatClient.ts.
    */

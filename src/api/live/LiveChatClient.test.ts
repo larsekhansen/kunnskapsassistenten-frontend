@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { StreamEvent } from '../../model';
+import { emptyFilterSelection } from '../../model';
+import type { FilterSelection, StreamEvent } from '../../model';
 import { LiveChatClient, resetLiveConversation } from './LiveChatClient';
 
 /**
@@ -16,10 +17,14 @@ function captureRequest() {
 }
 
 /** Runs one question to completion and hands back the parsed request body. */
-async function askAndReadBody(client: LiveChatClient, fetchMock: ReturnType<typeof vi.fn>) {
+async function askAndReadBody(
+  client: LiveChatClient,
+  fetchMock: ReturnType<typeof vi.fn>,
+  filters?: FilterSelection,
+) {
   // The stubbed 503 makes `ask` yield one error event and stop, which is all
   // this needs: the request has already been built by then.
-  for await (const _event of client.ask({ query: 'Hva rapporterer Nkom?' })) {
+  for await (const _event of client.ask({ query: 'Hva rapporterer Nkom?', filters })) {
     // drained on purpose
   }
   /*
@@ -35,6 +40,99 @@ async function askAndReadBody(client: LiveChatClient, fetchMock: ReturnType<type
     params: { arguments: Record<string, unknown> };
   };
 }
+
+/**
+ * Filtervalget, hele veien ut på tråden.
+ *
+ * Oversettelsen selv er målt i mcp.test.ts. Det som er spørsmålet her er at
+ * resultatet når `tools/call`-argumentene, ved siden av spørsmålet og
+ * datasettet, og at feltnavna kommer fra datasettet som faktisk spørres.
+ */
+describe('LiveChatClient og filtervalg', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** En klient som kjenner feltnavna til ett datasett, og bare det. */
+  function clientWithKudosFields(datasetConfigKey: string | (() => string | undefined)) {
+    return new LiveChatClient({
+      tenant: 'kudos',
+      datasetConfigKey,
+      filterFields: (key) =>
+        key === 'kudos-full'
+          ? {
+              documentType: { field: 'type' },
+              year: { field: 'concerned_years', valueType: 'integer' },
+            }
+          : undefined,
+    });
+  }
+
+  it('sender overrides.retrieve-filter-by ved siden av spørsmålet', async () => {
+    const fetchMock = captureRequest();
+    const client = clientWithKudosFields('kudos-full');
+
+    const body = await askAndReadBody(client, fetchMock, {
+      ...emptyFilterSelection,
+      documentType: ['Årsrapport'],
+      year: ['2024'],
+    });
+
+    expect(body.params.arguments).toMatchObject({
+      query: 'Hva rapporterer Nkom?',
+      tenant: 'kudos',
+      dataset_config_key: 'kudos-full',
+      overrides: {
+        'retrieve-filter-by': {
+          fields: [
+            { field: 'type', 'selected-options': ['Årsrapport'] },
+            {
+              field: 'concerned_years',
+              'selected-options': ['2024'],
+              'value-type': 'integer',
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  it('sender ingen overrides når ingenting er huket av', async () => {
+    const fetchMock = captureRequest();
+    const client = clientWithKudosFields('kudos-full');
+
+    const body = await askAndReadBody(client, fetchMock, emptyFilterSelection);
+
+    expect(body.params.arguments).not.toHaveProperty('overrides');
+  });
+
+  it('sender ingen overrides når ingen filtre følger med spørsmålet', async () => {
+    const fetchMock = captureRequest();
+    const client = clientWithKudosFields('kudos-full');
+
+    const body = await askAndReadBody(client, fetchMock);
+
+    expect(body.params.arguments).not.toHaveProperty('overrides');
+  });
+
+  it('oversetter med feltnavna til korpuset som faktisk spørres', async () => {
+    // Leseren bytter korpus mellom to spørsmål. Det andre korpuset har ikke
+    // sagt hva det kaller dimensjonene, så filteret blir ikke sendt — i
+    // stedet for å bli sendt med det forrige korpusets feltnavn.
+    const fetchMock = captureRequest();
+    let corpus = 'kudos-full';
+    const client = clientWithKudosFields(() => corpus);
+    const filters = { ...emptyFilterSelection, documentType: ['Årsrapport'] };
+
+    const first = await askAndReadBody(client, fetchMock, filters);
+    expect(first.params.arguments).toHaveProperty('overrides');
+
+    corpus = 'norquad-docs';
+    fetchMock.mockClear();
+    const second = await askAndReadBody(client, fetchMock, filters);
+
+    expect(second.params.arguments).toMatchObject({ dataset_config_key: 'norquad-docs' });
+    expect(second.params.arguments).not.toHaveProperty('overrides');
+  });
+});
 
 describe('LiveChatClient og datasettvalg', () => {
   afterEach(() => vi.unstubAllGlobals());

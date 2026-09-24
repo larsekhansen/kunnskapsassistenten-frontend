@@ -4,6 +4,21 @@
  */
 export type FilterDimension = 'documentType' | 'organisation' | 'year';
 
+/**
+ * The three, in the order the design draws them.
+ *
+ * A `Record<FilterDimension, …>` has whatever key order the object was built
+ * with, and anything that walks a selection to put it on the wire would then
+ * send the dimensions in one order here and another there. One list, so the
+ * order is a stated thing rather than a side effect of how a test wrote its
+ * literal.
+ */
+export const filterDimensions: readonly FilterDimension[] = [
+  'documentType',
+  'organisation',
+  'year',
+];
+
 /** One selectable value inside a dimension. */
 export interface FacetValue {
   /** Stable key sent to the backend. Not shown to the user. */

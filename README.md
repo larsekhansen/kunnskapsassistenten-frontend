@@ -915,6 +915,79 @@ velger. Views leser det hele gjennom `useCorpus()` i `src/layout/`:
 `{ options, active, option, choosable, set }`, der `option` bærer etikett og
 beskrivelse for det aktive korpuset.
 
+### Hva korpuset kaller filterdimensjonene
+
+Filterpanelet tegner tre dimensjoner — «Dokumenttyper», «Virksomheter» og
+«År» — mens backendens filter vil ha korpusets egne feltnavn. De er
+forskjellige fra korpus til korpus, og **den oversettelsen er kunnskap om et
+korpus, så den er konfigurasjon og ikke kode**. Ingen feltnavn står i `src/`.
+
+```sh
+VITE_KA_FILTER_FIELDS="kudos-full=documentType:type|organisation:orgs_long|year:concerned_years:integer"
+```
+
+Semikolon mellom datasettene og `=` etter datasettnøkkelen, som i
+`VITE_KA_DATASETS` — de to variablene beskriver de samme datasettene og skal
+ikke kreve to grammatikker. Inne i ett datasett: `|` mellom dimensjonene og
+`:` inne i én, som `dimensjon:felt` eller `dimensjon:felt:verditype`.
+Dimensjonene heter `documentType`, `organisation` og `year`, og verditypen er
+`integer` eller `string`. En ugyldig eller gjentatt oppføring hoppes over med
+én advarsel i konsollen.
+
+**Verditypen godtas ikke fritt, og det er med vilje.** `format-filter-value` i
+backendens `rag/filters.cljc` sammenligner typen med den ene strengen
+`integer`; alt annet — en type den aldri har hørt om like mye som `string` —
+faller gjennom til å sitere verdien som en streng. En feilstavet `integr` blir
+altså ikke avvist der borte. Den blir stille lest som streng, Typesense får et
+sitert tall på et tallfelt, og leseren får 0 treff på et spørsmål korpuset kan
+svare på. Skrivefeilen må tas her, for det eneste stedet nedstrøms som kunne
+tatt den, tar den ikke.
+
+**En dimensjon uten oppføring sendes ikke, og gjettes aldri.** Et gjettet
+feltnavn er et filter på et felt Typesense ikke har, og leseren ville sett
+«ingen treff» for et korpus som har dokumentene. Det samme gjelder et datasett
+som ikke er beskrevet, og live-modus uten `VITE_KA_TENANT` og
+`VITE_KA_DATASET_CONFIG_KEY`, der backenden velger datasett selv og ingenting
+på denne sida vet hvilket.
+
+**`verditype` er påkrevd for tallfelt.** Målt mot hele Kudos-korpuset
+2026-09-24: `concerned_years = 2024` uten den gir 0 treff, fordi Typesense
+avviser et sitert tall på et tallfelt. Verdiene sendes fortsatt som strenger —
+typen står ved siden av dem.
+
+På tråden blir valget til backendens eget filterformat, i
+`tools/call`-argumentene ved siden av `query`:
+
+```json
+{
+  "overrides": {
+    "retrieve-filter-by": {
+      "fields": [
+        { "field": "type", "selected-options": ["Årsrapport"] },
+        { "field": "concerned_years", "selected-options": ["2024"], "value-type": "integer" }
+      ]
+    }
+  }
+}
+```
+
+Flere felt AND-es, flere verdier i samme felt OR-es. Er ingenting huket av,
+sendes ingen `overrides` i det hele tatt: tomt valg er «hele korpuset», mens
+et tomt override ville overstyrt det datasettet selv er satt opp med.
+
+Se `src/api/filterFields.ts` for konfigurasjonen og `filterArguments()` i
+`src/api/live/mcp.ts` for trådformatet.
+
+**Filteret når bare fram med en patchet backend.** Rettelsene som får det til
+å virke ligger på grenen `fix/mcp-retrieve-filter-by` i headless-rag, som ikke
+er sendt inn ennå. Mot headless-rag fra `main` sendes filteret, men gjør
+ingenting. Hva som var galt står på den grenen; her ville lista blitt foreldet
+neste gang den endrer seg.
+
+**Fasettene finnes ikke i live ennå.** `listFacets` returnerer tom liste, så
+panelet sier «Filtrering er ikke tilgjengelig ennå» og ingen kan huke av noe
+der. Dette er grunnarbeidet under det.
+
 ### Tråder i live-modus
 
 Trådlista og lagringen kommer fra `/api/conversations`, målt mot kjørende

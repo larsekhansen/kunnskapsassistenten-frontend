@@ -29,15 +29,21 @@ til modusen det ble bygget i. Serveren skriver derfor `window.__KA_CONFIG__` i
 `/config.js`, som klienten leser før bundelen kjører (`src/api/runtimeConfig.ts`).
 Ett bilde, og modusen og korpuset er miljøvariabler.
 
-| Variabel                     | Hva                                                      | Standard                |
-| ---------------------------- | -------------------------------------------------------- | ----------------------- |
-| `PORT`                       | Porten serveren lytter på.                               | `8787`                  |
-| `KA_MODE`                    | `mock` eller `live`. Alt annet enn `live` er mock.       | `mock`                  |
-| `DIGDIR_API_BASE`            | Backenden `/api/*` går til.                              | `http://localhost:8080` |
-| `DIGDIR_API_KEY`             | Nøkkelen. Container Apps-secret, aldri i repoet.         | tom                     |
-| `VITE_KA_TENANT`             | Tenant. Begge eller ingen, se under.                     | tom                     |
-| `VITE_KA_DATASET_CONFIG_KEY` | Datasettnøkkel. `kudos` hostet, `default` lokalt.        | tom                     |
-| `VITE_KA_DATASETS`           | Korpusene velgeren tilbyr: `nøkkel=Navn\|beskrivelse;…`. | tom                     |
+| Variabel                     | Hva                                                       | Standard                |
+| ---------------------------- | --------------------------------------------------------- | ----------------------- |
+| `PORT`                       | Porten serveren lytter på.                                | `8787`                  |
+| `KA_MODE`                    | `mock` eller `live`. Alt annet enn `live` er mock.        | `mock`                  |
+| `DIGDIR_API_BASE`            | Backenden `/api/*` går til.                               | `http://localhost:8080` |
+| `DIGDIR_API_KEY`             | Nøkkelen. Container Apps-secret, aldri i repoet.          | tom                     |
+| `VITE_KA_TENANT`             | Tenant. Begge eller ingen, se under.                      | tom                     |
+| `VITE_KA_DATASET_CONFIG_KEY` | Datasettnøkkel. `kudos` hostet, `default` lokalt.         | tom                     |
+| `VITE_KA_DATASETS`           | Korpusene velgeren tilbyr: `nøkkel=Navn\|beskrivelse;…`.  | tom                     |
+| `VITE_KA_FILTER_FIELDS`      | Feltnavn per datasett: `datasett=dimensjon:felt:type\|…`. | tom                     |
+
+`VITE_KA_FILTER_FIELDS` sier hva hvert korpus kaller filterdimensjonene
+`documentType`, `organisation` og `year`, så feltnavna ikke står i koden. En
+dimensjon uten oppføring filtreres det ikke på. Se README, «Hva korpuset
+kaller filterdimensjonene».
 
 `VITE_KA_TENANT` og `VITE_KA_DATASET_CONFIG_KEY` er **begge eller ingen**.
 Backenden bygger datasett-scopet bare når den har begge, så én alene blir
