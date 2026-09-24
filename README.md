@@ -978,12 +978,11 @@ et tomt override ville overstyrt det datasettet selv er satt opp med.
 Se `src/api/filterFields.ts` for konfigurasjonen og `filterArguments()` i
 `src/api/live/mcp.ts` for trådformatet.
 
-**Filteret når bare fram med en patchet backend.** Tre feil i headless-rag
-slapp det stille: `retrieve-filter-by` manglet på hvitelista over
-per-kall-innstillinger, MCP-transporten gjorde ikke nøklene om til keywords,
-og agentens søk lot modellens filter erstatte leserens. De er rettet på grenen
-`fix/mcp-retrieve-filter-by` i headless-rag, som ikke er sendt inn ennå. Mot
-headless-rag fra `main` sendes filteret, men gjør ingenting.
+**Filteret når bare fram med en patchet backend.** Rettelsene som får det til
+å virke ligger på grenen `fix/mcp-retrieve-filter-by` i headless-rag, som ikke
+er sendt inn ennå. Mot headless-rag fra `main` sendes filteret, men gjør
+ingenting. Hva som var galt står på den grenen; her ville lista blitt foreldet
+neste gang den endrer seg.
 
 **Fasettene finnes ikke i live ennå.** `listFacets` returnerer tom liste, så
 panelet sier «Filtrering er ikke tilgjengelig ennå» og ingen kan huke av noe
