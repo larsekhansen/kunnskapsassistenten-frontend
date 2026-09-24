@@ -1,12 +1,40 @@
 # Å kjøre opp Kunnskapsassistenten lokalt, og hva korpuset faktisk inneholder
 
-Målt 2026-09-23 mot `main` (0232d27) og den lokale RAG-stacken. Skrevet fordi
-det ellers må måles på nytt hver gang noen lurer, og fordi flere av tallene
-forklarer ting som ser ut som feil og ikke er det.
+Målt 2026-09-23 og 2026-09-24 mot `main` og den lokale RAG-stacken. Skrevet
+fordi det ellers må måles på nytt hver gang noen lurer, og fordi flere av
+tallene forklarer ting som ser ut som feil og ikke er det.
 
 `docs/deploy.md` har kommandoene for Azure og for containeren. Denne fila er
-det som er målt: hvor lang tid det tar, hva som svarer, og hvorfor to av
-panelene står tomme i live når de er fulle i mock.
+det som er målt. Hvorfor fasettene ikke kommer fra backenden står i
+`docs/arkitektur/0001-fasetter-og-korpuskunnskap.md`.
+
+## Det store korpuset
+
+**Hele Kudos er 10 064 dokumenter**, ferdig indeksert av Benjamin i Typesense
+som `KUDOS_preprod_v4_*` på `typesense-test.digdir.cloud`:
+
+| samling    | antall    |
+| ---------- | --------- |
+| dokumenter | 10 064    |
+| biter      | 621 244   |
+| fraser     | 6 564 478 |
+
+Det er et øyeblikksbilde fra februar 2026. Årsrapporter for 2025 finnes derfor
+ikke ennå — de publiseres utover våren.
+
+Lokalt nås det gjennom en egen tenant, så de lokale demodatasettene blir
+stående:
+
+|                                 |              |
+| ------------------------------- | ------------ |
+| tenant                          | `kudos`      |
+| datasett (`dataset_config_key`) | `kudos-full` |
+
+Tilgangen står i `digdir-headless-rag/.env.benjamin`. Navnene der er
+backendens egne config-stier (`services.typesense.api-host`,
+`pipeline.storage.docs-collection`), ikke miljøvariabler, og skal ikke gis nye
+navn. De to nakne linjene `url` og `key` nederst er ColBERT-reranker-en
+(`services.colbert.api-url` og `api-key`), en annen tjeneste enn Typesense.
 
 ## Å kjøre det opp
 
@@ -18,86 +46,66 @@ npm run build             # 16,5 s
 PORT=8799 KA_MODE=live \
   DIGDIR_API_BASE=http://localhost:8080 \
   DIGDIR_API_KEY=<nøkkel> \
-  VITE_KA_TENANT=demo \
-  VITE_KA_DATASET_CONFIG_KEY=kudos-pilot \
+  VITE_KA_TENANT=kudos \
+  VITE_KA_DATASET_CONFIG_KEY=kudos-full \
   npm start
 ```
 
-Fra ingenting til en kjørende app i live-modus: **under 25 sekunder** når
-stacken alt står. `curl localhost:8799/healthz` svarer
-`{"ok":true,"mode":"live"}`.
+Fra ingenting til en kjørende app i live-modus: under 25 sekunder når stacken
+alt står.
 
-Målt i nettleseren, headless mot den kjørende stacken:
+Målt i nettleseren mot det store korpuset, «Hva står i DFØs årsrapport for 2024
+om kundetilfredshet?»:
 
-|                                |                                                               |
-| ------------------------------ | ------------------------------------------------------------- |
-| forsida lastet                 | 1,3 s                                                         |
-| svar ferdig etter spørsmålet   | 21,5 s (målt fra 14,9 s til 33,5 s over fire spørsmål)        |
-| konsollfeil                    | 0                                                             |
-| adressen etter første spørsmål | `/threads/U3CoiKzj8BaujUwldgqVE` — backendens egen samtale-id |
+|               |                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------- |
+| svar ferdig   | 16,5 s                                                                                |
+| dokumentlista | «Årsrapport Direktoratet for forvaltning og økonomistyring 2024» — og ingenting annet |
+| konsollfeil   | 0                                                                                     |
+| auto-filter   | «Auto-filtered by orgs_long» i tenkepanelet                                           |
 
-## Hva korpusene inneholder
+Over flere spørsmål tar et svar fra 16 til 80 sekunder.
 
-Lest ut av Typesense 2026-09-23.
+## Pilot-korpuset
 
-| datasett       | dokumenter | biter |
-| -------------- | ---------- | ----- |
-| `kudos-pilot`  | 5          | 360   |
-| `norquad-docs` | 351        | 7 109 |
+`kudos-pilot` (tenant `demo`) er **fem årsrapporter fra 2025**, med vilje —
+`:document-limit 5` i `design/_sources/tools/seed_kudos_pilot.clj`. Et
+spørsmål om noe utenfor de fem gir null kilder og et tomt kildepanel. Det er
+riktig oppførsel, men det ser ut som en feil; bruk det store korpuset.
 
-**Kudos-piloten er fem årsrapporter, alle fra 2025:**
+## Filter
 
-- Årsrapport Statens pensjonskasse 2025 (AID)
-- Årsrapport Statens graderte plattformtjenester 2025 (FD)
-- Årsrapport Forsvaret 2025 (FD)
-- Årsrapport Forsvarets forskningsinstitutt (FFI) 2025 (FD)
-- Årsrapport Forsvarsbygg 2025 (FD)
+**Et valgt filter virker**, med backenden fra grenen
+`fix/mcp-retrieve-filter-by` i headless-rag. Det sendes som
+`overrides.retrieve-filter-by`. Målt:
 
-Det er verdt å lese den lista før man tester. Et spørsmål om DFØ, om et annet
-årstall eller om en virksomhet som ikke står der, kan ikke besvares med
-kilder — og appen tegner det som et tomt kildepanel, som ser ut som en feil.
+|                                              | resultat                                |
+| -------------------------------------------- | --------------------------------------- |
+| umulig filter (`type = ZZZ_ingen_slik_type`) | 0 treff                                 |
+| `type = Årsrapport`                          | bare årsrapporter                       |
+| DFØ + Årsrapport, gjennom agenten            | bare DFØs årsrapport 2024               |
+| uten filter                                  | 5 dokumenter på tvers av typer, som før |
 
-Målt, samme app og samme korpus:
+Uten den grenen slippes filteret stille — tre feil i headless-rag, beskrevet i
+arkitekturnotatet.
 
-| spørsmål                                                                    | kilder |
-| --------------------------------------------------------------------------- | ------ |
-| «Hva er de viktigste forskjellene mellom DFØs årsrapport for 2025 og 2024?» | **0**  |
-| «Hva rapporterer Statens pensjonskasse om måloppnåelse i 2025?»             | **4**  |
+**Fasettene kommer ikke fra backenden ennå.** `LiveChatClient.listFacets`
+returnerer tom liste, så panelet sier «Filtrering er ikke tilgjengelig ennå».
+I mock regnes de ut av fixturkorpuset. Kudos-skjemaet har feltene som trengs —
+`type`, `orgs_long` og `concerned_years`, alle som fasetter — men hvor de skal
+hentes fra er ikke avgjort.
 
-Agenten svarte selv «Kunnskapsbasen inneholder ikke …» på det første. Det er
-riktig oppførsel; det er innholdet i korpuset som er grensa, ikke klienten.
-
-## Hvorfor to paneler er tomme i live og fulle i mock
-
-Begge er med vilje, og ingen av dem henger på metadata i Kudos-korpuset.
-
-**Filtrering.** Live-backenden har ingen fasett-telling i det hele tatt
-(API-bestilling A2), så `LiveChatClient.listFacets` returnerer tom liste og
-panelet sier «Filtrering er ikke tilgjengelig ennå». Mock regner fasettene ut
-av fixturkorpuset sitt, og derfor virker det der. Det gjelder alle datasett i
-live, ikke bare Kudos.
-
-**Dokumentlista og kildepanelet.** De viser dokumentene og utdragene _dette
-svaret_ hentet. Fikk turen null biter, er begge tomme — og det er sant. Se
-tabellen over: samme korpus gir fire kilder på et spørsmål det finnes
-dokumenter for.
+**Auto-filteret virker, men har en svakhet.** Det henter årstall fra agentens
+_omskrevne_ søk, ikke bare fra spørsmålet. Målt: det la på «2023» og «2024» på
+et spørsmål uten årstall.
 
 ## Grenser som er målt, ikke antatt
 
 **En delt lenke virker ikke for mottakeren.** Identiteten er `ka.user.v1` i
-`localStorage`, og backenden filtrerer samtaler på `X-User-Id`. Målt begge
-veier på samme adresse:
+`localStorage`, og backenden filtrerer samtaler på `X-User-Id`. Samme adresse:
+full sidelast i samme nettleser henter tråden tilbake; en annen nettleser får
+«Fant ikke tråden». Adressen er riktig — den navngir backendens egen samtale
+(#157). Det er identitetsmodellen som mangler.
 
-|                                        | resultat                                 |
-| -------------------------------------- | ---------------------------------------- |
-| full sidelast i **samme** nettleser    | tråden kommer tilbake, spørsmålet synlig |
-| samme adresse i en **annen** nettleser | «Fant ikke tråden»                       |
-
-«Kopier lenke til tråden» lover altså mer enn live kan holde. Det er en egen
-sak, ikke en feil i adressen: adressen er riktig, den navngir backendens egen
-samtale (fikset i #157).
-
-**Svarkvaliteten varierer med spørsmålet.** Ett av fire spørsmål kom tilbake
-med «verktøyets lesebudsjett hindrer uthenting», riktig dokument funnet og
-null kilder, etter 33,5 s. Det er agentsida. Verdt å vite før man demonstrerer
-for noen: velg spørsmål mot dokumenter som finnes, og prøv dem på forhånd.
+**Svarkvaliteten varierer med spørsmålet.** Velg spørsmål mot dokumenter som
+finnes, og prøv dem på forhånd før du viser noe fram.
