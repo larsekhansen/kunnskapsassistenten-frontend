@@ -111,7 +111,7 @@ og Årsrapport + 2024 gir bare årsrapporter fra 2024.
 ## Neste steg
 
 1. Avklare med Nikolai om han har løst filter på en annen måte, og med
-   Benjamin om D og de tre rettelsene over.
+   Benjamin om D og de fem rettelsene over.
 2. Imens: la live-klienten sende valgt filter. Den delen er riktig uansett
    hvor fasettene ender, fordi formatet er backendens eget.
 3. Midlertidig bro for fasettene: vår tynne server leverer dem i det generiske
