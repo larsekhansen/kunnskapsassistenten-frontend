@@ -61,10 +61,10 @@ utrulling» og står grønn, så `main` ikke blir rød av et miljø som ikke fin
 
 ## Live for én person
 
-Hele appen i live for én person, før Entra: bak en adresseliste, uten roller
-og uten GitHub. Contributor på `rg-ka-test` holder. Appen henter bildet med
-registerets eget passord i stedet for AcrPull, og nøkkelen står bak
-adresselista. Oppsettet står i `deploy/test.bicepparam`: `KA_MODE=live`,
+Hele appen i live, før Entra: bak [den delte hemmeligheten](#delt-hemmelighet)
+eller en adresseliste, uten roller og uten GitHub. Contributor på `rg-ka-test`
+holder. Appen henter bildet med registerets eget passord i stedet for AcrPull,
+og nøkkelen står bak hemmeligheten eller lista. Oppsettet står i `deploy/test.bicepparam`: `KA_MODE=live`,
 backenden på `http://ka-rag-test` (den interne fra `docs/deploy-backend.md`),
 tenant `kudos`, datasett `kudos-full` og feltnavna for det. Nøkkelen, bildet
 og adressene leses fra miljøvariabler når malen kjøres, så fila har ingen
@@ -113,9 +113,12 @@ build_image
 
 ### 4. Appen, i live
 
-`read -rs` leser nøkkelen uten å vise den. Adressen som slipper inn, er den
-maskinen går ut på; bak en VPN eller en exit-node er det dens adresse. Flere
-skilles med komma.
+`read -rs` leser nøkkelen uten å vise den.
+
+Finnes hemmelighetsfila fra [Delt hemmelighet](#delt-hemmelighet), står appen
+bak den og virker fra hvor som helst; da settes ingen adresseliste. Ellers
+slipper bare adressen maskinen går ut på inn. Bak en VPN eller en exit-node er
+det dens adresse.
 
 Funksjonen stopper hvis taggen fra steg 3 mangler, som den gjør i et nytt
 skall; uten den ville malen bare laget grunnmuren. Lista settes bare når
@@ -127,12 +130,18 @@ stopper også på et element uten adresse og på et nett bredere enn /8.
 deploy_live() {
   [ -n "$KA_IMAGE_TAG" ] || { echo "KA_IMAGE_TAG er tom. Kjør steg 3, eller sett den til taggen som kjører."; return 1; }
   KA_ALLOWED_IPS=""
-  IP=$(curl -fsS https://api.ipify.org) && KA_ALLOWED_IPS="$IP/32"
-  echo "Adresseliste: ${KA_ALLOWED_IPS:-tom}"
+  KA_ACCESS_SECRET=""
+  if [ -r ~/.config/ka-rag-test/access-secret ]; then
+    KA_ACCESS_SECRET=$(cat ~/.config/ka-rag-test/access-secret)
+    echo "Delt hemmelighet: ${#KA_ACCESS_SECRET} tegn, ingen adresseliste"
+  else
+    IP=$(curl -fsS https://api.ipify.org) && KA_ALLOWED_IPS="$IP/32"
+    echo "Adresseliste: ${KA_ALLOWED_IPS:-tom}"
+  fi
   read -rs DIGDIR_API_KEY
-  export KA_IMAGE_TAG DIGDIR_API_KEY KA_ALLOWED_IPS
+  export KA_IMAGE_TAG DIGDIR_API_KEY KA_ALLOWED_IPS KA_ACCESS_SECRET
   az deployment group create --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-app --parameters deploy/test.bicepparam --query properties.outputs.fqdn.value -o tsv
-  unset DIGDIR_API_KEY
+  unset DIGDIR_API_KEY KA_ACCESS_SECRET
 }
 deploy_live
 ```
@@ -146,8 +155,8 @@ curl -fsS "https://$FQDN/healthz"
 
 Den skal svare `{"ok":true,"mode":"live"}`.
 
-Fra en annen adresse, for eksempel en mobil delt tilkobling, skal ingen av
-disse to gi `200`. Den andre prøver om ingressen stoler på et `X-Forwarded-For`
+Med adresseliste, fra en annen adresse, for eksempel en mobil delt tilkobling,
+skal ingen av disse to gi `200`. Den andre prøver om ingressen stoler på et `X-Forwarded-For`
 klienten har satt selv, med `IP` fra steg 4. Hva de svarer i stedet, er ikke
 målt.
 
@@ -177,6 +186,68 @@ Admin-brukeren følger `registryAdminUser` i `main.bicep`, som er på som
 standard. En kjøring av `main.bicep` uten `test.bicepparam`, som i «Slå den
 på» eller «Første gang», slår den derfor ikke av. Sett `registryAdminUser=false`
 bare når ingenting i ressursgruppa henter med passordet.
+
+## Delt hemmelighet
+
+Til Entra er koblet på: én lenke med en hemmelighet, som Lars deler selv, og
+som virker fra hvor som helst. Koden er `server/access.ts`.
+
+- `?secret=` på en hvilken som helst adresse sammenlignes i konstant tid.
+  Stemmer den, setter serveren en informasjonskapsel og sender til samme
+  adresse **uten** hemmeligheten, med `Referrer-Policy: no-referrer`.
+- Uten gyldig kapsel gir alt 401: sidene med en kort norsk tekst, `/api/*`
+  med JSON. `/config.js` og filene i `dist/` også. `/healthz` er åpen, fordi
+  utrullingen sjekker den. Feil hemmelighet gir samme 401 som ingen.
+- Kapselen er ikke hemmeligheten, men en HMAC av en fast streng med
+  hemmeligheten som nøkkel. `HttpOnly`, `SameSite=Lax`, `Secure` utenfor
+  localhost, og 30 dager: lenge nok til at ingen trenger lenken hver dag, kort
+  nok til at en mistet maskin går ut av seg selv. Byttes hemmeligheten, virker
+  ingen gamle kapsler.
+- Kortere enn 24 tegn stopper både malen og serveren. Tom er av.
+
+Hemmeligheten skrives aldri ut i terminalen. Den lages rett inn i en fil bare
+du kan lese, leses derfra når malen kjøres, og lenken går rett til
+utklippstavla. Den står i lenken du deler, så den er ikke hemmeligere enn
+stedet du deler den. Om nettleserens historikk tar vare på den første
+adressen, er ikke målt.
+
+### Lage den
+
+URL-trygg, 43 tegn, i `~/.config/ka-rag-test/`. Den siste linja skriver
+lengden, ikke verdien.
+
+```sh
+mkdir -p ~/.config/ka-rag-test
+chmod 700 ~/.config/ka-rag-test
+(umask 077; openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n' > ~/.config/ka-rag-test/access-secret)
+wc -c < ~/.config/ka-rag-test/access-secret
+```
+
+### Rulle den ut
+
+Steg 4 i [Live for én person](#live-for-én-person). `deploy_live` finner fila
+selv.
+
+### Dele lenken
+
+Lenken bygges og legges på utklippstavla med `pbcopy` (macOS), uten å vises.
+Lim den inn der du deler den.
+
+```sh
+FQDN=$(az containerapp show --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-test --query properties.configuration.ingress.fqdn -o tsv)
+printf 'https://%s/?secret=%s' "$FQDN" "$(cat ~/.config/ka-rag-test/access-secret)" | pbcopy
+curl -sS -o /dev/null -w '%{http_code}\n' "https://$FQDN/"
+curl -fsS "https://$FQDN/healthz"
+```
+
+Forsiden uten lenken skal gi `401`, og `/healthz` skal svare
+`{"ok":true,"mode":"live"}`.
+
+### Bytte den
+
+Lag fila på nytt med blokka under «Lage den», kjør steg 4, og del den nye
+lenken. Gamle kapsler slutter å virke når den nye revisjonen svarer; til da
+svarer den gamle, med den gamle hemmeligheten.
 
 ## Første gang
 
@@ -609,17 +680,18 @@ til modusen det ble bygget i. Serveren skriver derfor `window.__KA_CONFIG__` i
 `/config.js`, som klienten leser før bundelen kjører (`src/api/runtimeConfig.ts`).
 Ett bilde, og modusen og korpuset er miljøvariabler.
 
-| Variabel                     | Hva                                                                               | Standard                |
-| ---------------------------- | --------------------------------------------------------------------------------- | ----------------------- |
-| `PORT`                       | Porten serveren lytter på.                                                        | `8787`                  |
-| `KA_MODE`                    | `mock` eller `live`. Alt annet enn `live` er mock.                                | `mock`                  |
-| `DIGDIR_API_BASE`            | Backenden `/api/*` går til.                                                       | `http://localhost:8080` |
-| `DIGDIR_API_KEY`             | Nøkkelen. Container Apps-secret, aldri i repoet.                                  | tom                     |
-| `KA_USER_ID_FROM`            | `browser` eller `platform`, se [Innlogging](#innlogging). Annet stopper serveren. | `browser`               |
-| `VITE_KA_TENANT`             | Tenant. Begge eller ingen, se under.                                              | tom                     |
-| `VITE_KA_DATASET_CONFIG_KEY` | Datasettnøkkel. `kudos` hostet, `default` lokalt.                                 | tom                     |
-| `VITE_KA_DATASETS`           | Korpusene velgeren tilbyr: `nøkkel=Navn\|beskrivelse;…`.                          | tom                     |
-| `VITE_KA_FILTER_FIELDS`      | Feltnavn per datasett: `datasett=dimensjon:felt:type\|…`.                         | tom                     |
+| Variabel                     | Hva                                                                                       | Standard                |
+| ---------------------------- | ----------------------------------------------------------------------------------------- | ----------------------- |
+| `PORT`                       | Porten serveren lytter på.                                                                | `8787`                  |
+| `KA_MODE`                    | `mock` eller `live`. Alt annet enn `live` er mock.                                        | `mock`                  |
+| `DIGDIR_API_BASE`            | Backenden `/api/*` går til.                                                               | `http://localhost:8080` |
+| `DIGDIR_API_KEY`             | Nøkkelen. Container Apps-secret, aldri i repoet.                                          | tom                     |
+| `KA_USER_ID_FROM`            | `browser` eller `platform`, se [Innlogging](#innlogging). Annet stopper serveren.         | `browser`               |
+| `KA_ACCESS_SECRET`           | Den delte hemmeligheten, se [Delt hemmelighet](#delt-hemmelighet). Container Apps-secret. | tom                     |
+| `VITE_KA_TENANT`             | Tenant. Begge eller ingen, se under.                                                      | tom                     |
+| `VITE_KA_DATASET_CONFIG_KEY` | Datasettnøkkel. `kudos` hostet, `default` lokalt.                                         | tom                     |
+| `VITE_KA_DATASETS`           | Korpusene velgeren tilbyr: `nøkkel=Navn\|beskrivelse;…`.                                  | tom                     |
+| `VITE_KA_FILTER_FIELDS`      | Feltnavn per datasett: `datasett=dimensjon:felt:type\|…`.                                 | tom                     |
 
 `VITE_KA_FILTER_FIELDS` sier hva hvert korpus kaller filterdimensjonene
 `documentType`, `organisation` og `year`, så feltnavna ikke står i koden. En
