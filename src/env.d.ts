@@ -3,8 +3,8 @@
  * names reach the bundle, which is the point: no secret belongs here.
  */
 interface ImportMetaEnv {
-  /** `mock` (default) or `live`. See src/api/index.ts. */
-  readonly VITE_API_MODE?: 'mock' | 'live';
+  /** `mock` (default), `live` or `bff`. See src/api/index.ts. */
+  readonly VITE_API_MODE?: 'mock' | 'live' | 'bff';
   /**
    * Which corpus live mode asks. Both or neither — the backend only honours
    * the pair. Unset means the backend picks, which today is the demo corpus.
