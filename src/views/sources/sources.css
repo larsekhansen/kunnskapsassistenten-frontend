@@ -181,6 +181,16 @@
   color: var(--ds-color-neutral-text-default);
 }
 
+/*
+  The quote keeps the chunk's paragraphs, list items and table rows as line
+  breaks (readableText.ts), and this is what draws them. Not the closed
+  preview: it is the first 180 characters, and breaks there would only take
+  the room the ellipsis is saving.
+*/
+.source-excerpt__quote {
+  white-space: pre-line;
+}
+
 .source-excerpt__page,
 .source-excerpt__uncited {
   color: var(--ds-color-neutral-text-subtle);

@@ -177,7 +177,7 @@ export function SourceExcerpt({
         </Details.Summary>
         <Details.Content>
           {quoteHeading}
-          <Paragraph data-size="sm" variant="long">
+          <Paragraph data-size="sm" variant="long" className="source-excerpt__quote">
             <HighlightedText
               text={text}
               hits={hits}
