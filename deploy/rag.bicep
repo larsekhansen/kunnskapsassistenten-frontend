@@ -6,13 +6,18 @@
 // Lages i tillegg til main.bicep, som må være kjørt først: miljøet og
 // registeret er `existing` her. Oppskriften er docs/deploy-backend.md, og den
 // kjøres i to omganger:
-//   1. uten `withApp`: lagring, deling og seed-jobben, så databasen kan seedes
-//      før noen server har den åpen;
+//   1. uten `withApp`: Postgres, delingen og seed-jobben, så databasen kan
+//      seedes før noen server har den åpen;
 //   2. med `withApp=true`: selve backenden.
 //
-// Databasen er Datahike på fil, på en Azure Files-deling. Den tåler én
-// skriver, og derfor er det én replika, og jobben kjøres bare mens appen ikke
-// svarer.
+// Databasen er Datahike i Postgres (Flexible Server), med headless-rags egen
+// jdbc-backend. Datahike tåler én skriver, og derfor er det én replika, og
+// jobben kjøres bare når appen ikke finnes.
+//
+// Ikke på Azure Files: Datahikes filbackend skriver en ny fil og gir den det
+// gamle navnet, og SMB på Azure Files nekter det. Målt av dirigenten 28.09:
+// seed-jobben feilet med AccessDeniedException på `.ksv.new -> .ksv`.
+// Delingen har nå bare seed-skriptet.
 //
 // IKKE KJØRT. Bevist lokalt i samme form under Colima, se «Prøve det lokalt» i
 // docs/deploy-backend.md.
@@ -39,7 +44,16 @@ param withApp bool = false
 @maxLength(24)
 param storageAccountName string = 'karag${uniqueString(resourceGroup().id)}'
 
+@description('Delingen seed-skriptet ligger på. Navnet er fra da databasen lå der.')
 param shareName string = 'ka-rag-db'
+
+@description('Postgres-serveren. Globalt unikt navn, derfor avledet av ressursgruppa.')
+param postgresServerName string = '${name}-${uniqueString(resourceGroup().id)}'
+
+param postgresAdminLogin string = 'karagadmin'
+
+@description('Databasen Datahike bruker, og tabellen i den.')
+param postgresDatabase string = 'datahike'
 
 param tenant string = 'kudos'
 param dataset string = 'kudos-full'
@@ -77,6 +91,10 @@ param typesenseApiKeyAdmin string
 @secure()
 param colbertApiKey string
 
+@secure()
+@description('Admin-passordet til Postgres. Azure krever 8–128 tegn fra minst tre av: store, små, sifre, andre tegn.')
+param postgresAdminPassword string
+
 resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: environmentName
 }
@@ -100,6 +118,53 @@ var registryLogin = [
 ]
 var registrySecret = { name: 'registry-password', value: registry.listCredentials().passwords[0].value }
 
+// Postgres for Datahike. Burstable B1ms er det minste som finnes, og
+// databasen er 12 MB etter seeding og én tråd (målt lokalt).
+//
+// Offentlig adresse, fordi miljøet fra main.bicep ikke er i et eget virtuelt
+// nettverk. Brannmurregelen under slipper bare inn fra Azure, men fra hele
+// Azure og ikke bare fra vårt miljø; passordet og TLS er det som skiller.
+resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
+  name: postgresServerName
+  location: location
+  sku: { name: 'Standard_B1ms', tier: 'Burstable' }
+  properties: {
+    version: '16'
+    administratorLogin: postgresAdminLogin
+    administratorLoginPassword: postgresAdminPassword
+    storage: { storageSizeGB: 32 }
+    backup: { backupRetentionDays: 7, geoRedundantBackup: 'Disabled' }
+    highAvailability: { mode: 'Disabled' }
+    network: { publicNetworkAccess: 'Enabled' }
+    authConfig: { activeDirectoryAuth: 'Disabled', passwordAuth: 'Enabled' }
+  }
+}
+
+// Barna etter hverandre og ikke samtidig: en Flexible Server tar én endring
+// om gangen og avviser resten mens den holder på.
+resource postgresDb 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08-01' = {
+  parent: postgres
+  name: postgresDatabase
+  properties: { charset: 'UTF8', collation: 'en_US.utf8' }
+}
+
+// 0.0.0.0–0.0.0.0 er Azures egen måte å si «tjenester i Azure».
+resource postgresAzureServices 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = {
+  parent: postgres
+  name: 'AllowAllAzureServicesAndResourcesWithinAzureIps'
+  properties: { startIpAddress: '0.0.0.0', endIpAddress: '0.0.0.0' }
+  dependsOn: [postgresDb]
+}
+
+// På som standard, men satt her så det står og ikke kan skrus av i
+// portalen uten at malen skrur det på igjen.
+resource postgresTls 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2024-08-01' = {
+  parent: postgres
+  name: 'require_secure_transport'
+  properties: { value: 'on', source: 'user-defined' }
+  dependsOn: [postgresAzureServices]
+}
+
 // Container Apps monterer Azure Files med kontonøkkelen, så den må være på.
 // Ingen blob-tilgang utenfra; kontoen har bare delingen.
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
@@ -115,8 +180,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   }
 }
 
-// En slettet deling kan hentes tilbake i sju dager. Databasen er alt som er
-// her, og den tar tid å seede på nytt.
+// En slettet deling kan hentes tilbake i sju dager.
 resource fileService 'Microsoft.Storage/storageAccounts/fileServices@2023-05-01' = {
   parent: storage
   name: 'default'
@@ -149,24 +213,33 @@ resource envStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
   }
 }
 
-// Datahike-filene og seed-skriptet ligger på delingen, på samme sti som i
-// headless-rags egen compose-fil.
-var dbVolume = { name: 'db', storageType: 'AzureFile', storageName: envStorage.name }
-var dbMount = { volumeName: 'db', mountPath: '/var/lib/digdir' }
+// Bare jobben monterer delingen, og bare for å lese seed-skriptet.
+var seedVolume = { name: 'seed', storageType: 'AzureFile', storageName: envStorage.name }
+var seedMount = { volumeName: 'seed', mountPath: '/seed' }
 
 // Standard er en fjerdedel av minnet til heapen. Et svar med agenten bruker
 // mer enn det, og containeren har ikke annet å bruke minnet til.
 var jvmEnv = { name: 'JAVA_TOOL_OPTIONS', value: '-XX:MaxRAMPercentage=75' }
 
+// Uten DATAHIKE_FILE_PATH, og med ADH_POSTGRES_URL, velger headless-rag
+// jdbc-backenden (`load-bootstrap-config` i digdir.config.core). Passordet
+// står i en secret og ikke i adressen. `sslmode=require` krever TLS fra vår
+// side også.
 var bootstrapEnv = [
-  { name: 'DATAHIKE_FILE_PATH', value: '/var/lib/digdir/db' }
+  {
+    name: 'ADH_POSTGRES_URL'
+    value: 'jdbc:postgresql://${postgres.properties.fullyQualifiedDomainName}:5432/${postgresDatabase}?sslmode=require'
+  }
+  { name: 'ADH_POSTGRES_USER', value: postgresAdminLogin }
+  { name: 'ADH_POSTGRES_PWD', secretRef: 'postgres-password' }
+  { name: 'ADH_POSTGRES_TABLE', value: postgresDatabase }
   { name: 'CONFIG_MASTER_KEY', secretRef: 'config-master-key' }
   { name: 'JWT_SECRET', secretRef: 'jwt-secret' }
   jvmEnv
 ]
 
 // Seed-jobben: scripts/kudos-full/seed.clj fra headless-rag-grenen, som
-// oppskriften legger på delingen. Den skriver tenanten, datasettet og
+// oppskriften legger på delingen, og som jobben leser fra /seed. Den skriver tenanten, datasettet og
 // tjenestene (Typesense, ColBERT, Azure OpenAI) inn i config-databasen,
 // kryptert med CONFIG_MASTER_KEY, og avslutter med et frasesøk som må gi treff.
 //
@@ -182,6 +255,7 @@ var bootstrapEnv = [
 resource seedJob 'Microsoft.App/jobs@2024-03-01' = {
   name: '${name}-seed'
   location: location
+  dependsOn: [postgresTls]
   properties: {
     environmentId: containerEnv.id
     configuration: {
@@ -199,6 +273,7 @@ resource seedJob 'Microsoft.App/jobs@2024-03-01' = {
         { name: 'azure-openai-api-key', value: azureOpenAiApiKey }
         { name: 'typesense-api-key-admin', value: typesenseApiKeyAdmin }
         { name: 'colbert-api-key', value: colbertApiKey }
+        { name: 'postgres-password', value: postgresAdminPassword }
       ]
     }
     template: {
@@ -213,7 +288,7 @@ resource seedJob 'Microsoft.App/jobs@2024-03-01' = {
             'clojure.main'
             '-e'
             '(require \'digdir.setup.common) (digdir.setup.common/refuse-if-server-running! "seed-kudos-full.clj")'
-            '/var/lib/digdir/seed-kudos-full.clj'
+            '/seed/seed-kudos-full.clj'
           ]
           resources: { cpu: json('1'), memory: '2Gi' }
           env: concat(bootstrapEnv, [
@@ -235,10 +310,10 @@ resource seedJob 'Microsoft.App/jobs@2024-03-01' = {
             { name: 'AZURE_OPENAI_DEPLOYMENT_NAME', value: azureOpenAiDeployment }
             { name: 'AZURE_OPENAI_API_KEY', secretRef: 'azure-openai-api-key' }
           ])
-          volumeMounts: [dbMount]
+          volumeMounts: [seedMount]
         }
       ]
-      volumes: [dbVolume]
+      volumes: [seedVolume]
     }
   }
 }
@@ -255,6 +330,7 @@ resource seedJob 'Microsoft.App/jobs@2024-03-01' = {
 resource app 'Microsoft.App/containerApps@2024-03-01' = if (withApp) {
   name: name
   location: location
+  dependsOn: [postgresTls]
   properties: {
     managedEnvironmentId: containerEnv.id
     configuration: {
@@ -275,6 +351,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (withApp) {
         { name: 'config-master-key', value: configMasterKey }
         { name: 'jwt-secret', value: jwtSecret }
         { name: 'api-key', value: apiKey }
+        { name: 'postgres-password', value: postgresAdminPassword }
       ]
     }
     template: {
@@ -288,7 +365,6 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (withApp) {
             { name: 'DATASET_CONFIG_KEY', value: dataset }
             { name: 'E2E_API_KEY', secretRef: 'api-key' }
           ])
-          volumeMounts: [dbMount]
           // /up svarer først når oppstarten er ferdig: skjema, agenter og
           // nøkkel skrives før serveren lytter.
           probes: [
@@ -313,7 +389,6 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (withApp) {
           ]
         }
       ]
-      volumes: [dbVolume]
       // Én, fordi databasen tåler én skriver. Aldri null: en kaldstart her tar
       // like lang tid som oppstarten over.
       scale: { minReplicas: 1, maxReplicas: 1 }
@@ -326,3 +401,4 @@ output apiBase string = 'http://${name}'
 output storageAccountName string = storage.name
 output shareName string = share.name
 output seedJobName string = seedJob.name
+output postgresServer string = postgres.properties.fullyQualifiedDomainName
