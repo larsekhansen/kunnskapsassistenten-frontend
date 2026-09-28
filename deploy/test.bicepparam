@@ -25,6 +25,8 @@ param kaMode = 'live'
 param digdirApiBase = 'http://ka-rag-test'
 param tenant = 'kudos'
 param datasetConfigKey = 'kudos-full'
+// Navnet panelet viser. Uten det står datasettnøkkelen «kudos-full» der.
+param datasets = 'kudos-full=Kudos|10 064 dokumenter fra kudos.dfo.no'
 param filterFields = 'kudos-full=documentType:type|organisation:orgs_long|year:concerned_years:integer'
 
 param digdirApiKey = readEnvironmentVariable('DIGDIR_API_KEY', '')

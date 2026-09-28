@@ -73,7 +73,9 @@ hemmeligheter, og en ny kjøring setter ikke appen tilbake til mock.
 Kommandoene her har abonnement og ressursgruppe skrevet ut, i denne
 rekkefølgen, så de kan kjøres som de står.
 
-**Ikke prøvd mot Azure.** Malen og parameterfila bygger uten advarsler.
+**Rullet ut av dirigenten 28.09**, bak adresselista: bildet hentet med
+registerets passord, innloggingen av, og 403 fra andre adresser (se steg 4).
+Den delte hemmeligheten er ikke prøvd i Azure ennå.
 
 **Bygg ikke parameterfila selv mens nøkkelen står i miljøet.**
 `az bicep build-params` uten `--stdout` skriver `deploy/test.json`, med
@@ -605,8 +607,8 @@ mot ARM.
 Malen setter appen slik parameterne sier, også modus og nøkkel. Var live slått
 på for hånd, slås den på igjen etterpå. Kjøres malen senere uten
 innloggingsparameterne, slår den innloggingen av, fordi den alltid tar med
-innloggingsoppsettet og da med `enabled: false`. Det er ikke prøvd mot ARM at
-et oppsett med bare det godtas.
+innloggingsoppsettet og da med `enabled: false`. Målt i Azure 28.09: et
+oppsett med bare det godtas.
 
 Sjekk etterpå. `/healthz` svarer uten innlogging, forsiden sender videre til
 Microsoft, og et API-kall med plattformens hode satt av klienten slipper ikke
@@ -834,9 +836,10 @@ som et rettighetsproblem.
 **Innloggingen er ikke prøvd mot Azure**, og uten den er adressen åpen, eller
 bare åpen for adresselista. Se [Innlogging](#innlogging) for hva som trengs.
 
-**Ikke prøvd mot ARM:** at `fail()` stopper utrullingen, at et
-innloggingsoppsett med bare `enabled: false` godtas, og at appen henter
-bildet med registerets passord. Malen bygger uten advarsler, og det er alt.
+**Ikke prøvd mot ARM:** at `fail()` stopper utrullingen. Målt av dirigenten i
+Azure 28.09: appen henter bildet med registerets passord, og et
+innloggingsoppsett med bare `enabled: false` godtas, slik at appen svarer uten
+innlogging.
 
 **Med adresseliste når ikke GitHub fram.** Helsesjekken i `deploy.yml` kommer
 fra GitHubs maskiner, og de står ikke i lista. [Live for én
