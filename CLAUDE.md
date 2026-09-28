@@ -7,17 +7,17 @@ kommandoer under gjelder fra mappa denne fila ligger i.
 
 ## Kommandoer
 
-| Kommando                | Hva                                                           |
-| ----------------------- | ------------------------------------------------------------- |
-| `npm ci`                | Avhengighetene, akkurat som i `package-lock.json`.            |
-| `npm run dev`           | Utviklingsserver på http://localhost:5173, i mock.            |
-| `npm run build`         | `tsc -b` og produksjonsbygg til `dist/`.                      |
-| `npm run lint`          | oxlint, med `jsx-a11y`.                                       |
-| `npm run format:check`  | Prettier. `npm run format` skriver.                           |
-| `npm test`              | vitest, klient og server.                                     |
-| `npm run test:e2e`      | Playwright mot bygget app. Se under om porten.                |
-| `npm run tokens:verify` | At temaet i `design-tokens-build/` er det som er sjekket inn. |
-| `npm start`             | Serveren i `server/` mot `dist/`, slik containeren kjører.    |
+| Kommando                | Hva                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| `npm ci`                | Avhengighetene, akkurat som i `package-lock.json`.                           |
+| `npm run dev`           | Utviklingsserver på http://localhost:5173, i mock.                           |
+| `npm run build`         | `tsc -b` og produksjonsbygg til `dist/`.                                     |
+| `npm run lint`          | oxlint med `jsx-a11y`, og stylelint på CSS-en. Den verste exit-koden vinner. |
+| `npm run format:check`  | Prettier. `npm run format` skriver.                                          |
+| `npm test`              | vitest, klient og server.                                                    |
+| `npm run test:e2e`      | Playwright mot bygget app. Se under om porten.                               |
+| `npm run tokens:verify` | At temaet i `design-tokens-build/` er det som er sjekket inn.                |
+| `npm start`             | Serveren i `server/` mot `dist/`, slik containeren kjører.                   |
 
 Før push: `lint`, `format:check`, `npm test` og `build` grønne. Les exit-koden,
 ikke bare summeringslinja: vitest kan avslutte med 1 selv når alle tester står
@@ -71,7 +71,8 @@ Oppsett, rollback og logger: `docs/deploy.md`.
 - **Aldri hemmeligheter i repoet.** Ingen nøkler i kode, commits eller
   `VITE_`-variabler; `.env.local` er gitignored og blir der.
 - **E2E på egen port** når noe annet kan kjøre på maskinen:
-  `KA_E2E_PORT=<ledig port> CI=true npm run test:e2e`. Standardporten 4173
-  gjenbruker en annens server og melder rødt uten grunn.
+  `KA_E2E_PORT=<ledig port> CI=true npm run test:e2e`. Serveren starter med
+  `--strictPort`, så en annen kjøring på samme port får e2e til å feile på
+  porten før en eneste test har kjørt.
 - Ikke overstyr taket på vitest- og Playwright-arbeidere lokalt.
 - Legg til filer eksplisitt i commits, ikke `git add -A`.

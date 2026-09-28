@@ -10,9 +10,9 @@ Du får:
 - Claude Code i samme mappe, som gjør endringene når du ber om dem;
 - endringen ute på testadressen noen minutter etter at pull requesten er merget.
 
-**Testadressen** står øverst til høyre på
+**Testadressen** står på
 [repoets side på GitHub](https://github.com/larsekhansen/kunnskapsassistenten-frontend),
-under «About», og under **Deployments → test** lenger ned i samme spalte.
+i sidespalta: under **Deployments → test**, og øverst under «About».
 
 ## Ord som går igjen
 
