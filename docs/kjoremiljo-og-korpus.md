@@ -36,9 +36,13 @@ backendens egne config-stier (`services.typesense.api-host`,
 navn. De to nakne linjene `url` og `key` nederst er ColBERT-reranker-en
 (`services.colbert.api-url` og `api-key`), en annen tjeneste enn Typesense.
 
-## Å kjøre det opp
+## Å kjøre det opp fra ingenting
 
-Backenden først — se `CLAUDE.md` i paraplymappa for Colima og compose. Så:
+1. **Backenden.** Klon `digdir/digdir-headless-rag`, bytt til grenen
+   `fix/mcp-retrieve-filter-by` og følg `docs/runbooks/kudos-full-lokalt.md`
+   der: stacken med compose, `.env.benjamin` fra Benjamin i repo-rota, og
+   `scripts/kudos-full/seed.sh`. Siste linje fra skriptet skal vise treff.
+2. **Frontenden**, med API-nøkkelen fra backendens `E2E_API_KEY`:
 
 ```sh
 npm ci                    # 7,2 s
@@ -48,6 +52,8 @@ PORT=8799 KA_MODE=live \
   DIGDIR_API_KEY=<nøkkel> \
   VITE_KA_TENANT=kudos \
   VITE_KA_DATASET_CONFIG_KEY=kudos-full \
+  VITE_KA_DATASETS='kudos-full=Kudos|10 064 dokumenter fra kudos.dfo.no' \
+  VITE_KA_FILTER_FIELDS='kudos-full=documentType:type|organisation:orgs_long|year:concerned_years:integer' \
   npm start
 ```
 
@@ -86,8 +92,8 @@ riktig oppførsel, men det ser ut som en feil; bruk det store korpuset.
 | DFØ + Årsrapport, gjennom agenten            | bare DFØs årsrapport 2024               |
 | uten filter                                  | 5 dokumenter på tvers av typer, som før |
 
-Uten den grenen slippes filteret stille — fem feil i headless-rag, beskrevet i
-arkitekturnotatet.
+Uten den grenen slippes filteret stille. Grenen retter seks feil i
+headless-rag, beskrevet i arkitekturnotatet.
 
 **Fasettene kommer ikke fra backenden ennå.** `LiveChatClient.listFacets`
 returnerer tom liste, så panelet sier «Filtrering er ikke tilgjengelig ennå».

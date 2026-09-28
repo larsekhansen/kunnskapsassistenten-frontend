@@ -81,8 +81,8 @@ Et valgt filter sendes til backenden som
 backendens eget interne format, som auto-filteret og agentens søkeverktøy også
 bruker. Det er generisk og korpusuavhengig.
 
-Det virket ikke før 2026-09-24, av fem grunner i headless-rag, rettet på lokal
-gren `fix/mcp-retrieve-filter-by` (ikke sendt inn ennå):
+Det virket ikke før 2026-09-24, av fem grunner i headless-rag, rettet på
+grenen `fix/mcp-retrieve-filter-by` (ingen PR ennå):
 
 1. `retrieve-filter-by` manglet på hvitelista over per-kall-innstillinger.
 2. MCP-transporten gjorde ikke nøklene om til keywords, så **ingen**
@@ -95,6 +95,13 @@ gren `fix/mcp-retrieve-filter-by` (ikke sendt inn ennå):
    dokumenter ble til 4 706 når «året» var `2024] || type:=[…`. Utrygge
    verdier droppes nå. Det ble nåbart med punkt 1–3: før nådde et
    kallervalgt filter aldri søket. Funnet av KA CC.
+
+En sjette, funnet 2026-09-25, gjelder fasettene direkte. Backenden **har**
+alt en fasettfunksjon, `fetch-facets`, som agentens `inspect_filters` bruker.
+Den krasjet hver gang, fordi en lokal binding skygget funksjonen den kalte, og
+formatereren leste `:name` i stedet for `:value`. Agenten svarte «ett
+dokument» på hvor mange dokumenter Kudos har. Etter rettelsen: «over 10 000».
+Funksjonen er et naturlig utgangspunkt for mekanismen i D.
 
 Målt etterpå mot hele Kudos-korpuset: et umulig filter gir 0 treff, DFØ +
 Årsrapport gir bare DFØs årsrapport 2024 — der det før kom Statens vegvesen —
@@ -111,7 +118,7 @@ og Årsrapport + 2024 gir bare årsrapporter fra 2024.
 ## Neste steg
 
 1. Avklare med Nikolai om han har løst filter på en annen måte, og med
-   Benjamin om D og de fem rettelsene over.
+   Benjamin om D og de seks rettelsene over.
 2. Imens: la live-klienten sende valgt filter. Den delen er riktig uansett
    hvor fasettene ender, fordi formatet er backendens eget.
 3. Midlertidig bro for fasettene: vår tynne server leverer dem i det generiske
