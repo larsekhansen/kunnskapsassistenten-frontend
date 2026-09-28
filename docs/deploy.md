@@ -142,7 +142,7 @@ deploy_live() {
     IP=$(curl -fsS https://api.ipify.org) && KA_ALLOWED_IPS="$IP/32"
     echo "Adresseliste: ${KA_ALLOWED_IPS:-tom}"
   fi
-  [ -n "$KA_ALLOWED_IPS" ] || [ -n "$KA_ACCESS_SECRET" ] || [ -n "$KA_ENTRA_CLIENT_ID" ] || { echo "Verken adresseliste, hemmelighet eller Entra er satt. Ingenting er rullet ut."; return 1; }
+  [ -n "$KA_ALLOWED_IPS" ] || [ -n "${KA_ACCESS_SECRET//[[:space:]]/}" ] || [ -n "$KA_ENTRA_CLIENT_ID" ] || { echo "Verken adresseliste, hemmelighet eller Entra er satt. Ingenting er rullet ut."; return 1; }
   read -rs DIGDIR_API_KEY
   export KA_IMAGE_TAG DIGDIR_API_KEY KA_ALLOWED_IPS KA_ACCESS_SECRET
   az deployment group create --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-app --parameters deploy/test.bicepparam --query properties.outputs.fqdn.value -o tsv

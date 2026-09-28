@@ -116,13 +116,16 @@ var checkedRanges = empty(badRanges)
   ? allowedIps
   : fail(format('allowedIps må være adresser i CIDR-form, ikke bredere enn /8. Avvist: {0}', join(badRanges, ', ')))
 
-// Den delte hemmeligheten. Serveren nekter å starte med en kortere enn 24
-// tegn (server/access.ts); her stopper utrullingen før det, med en melding i
-// stedet for en revisjon som aldri blir klar.
-var hasAccessSecret = !empty(accessSecret)
-var checkedAccessSecret = hasAccessSecret && length(accessSecret) < 24
+// Den delte hemmeligheten, trimmet som serveren trimmer den. Bare mellomrom
+// er av der, og skal ikke telle som vern her (KA CC på #171). Serveren nekter
+// å starte med en kortere enn 24 tegn (server/access.ts); her stopper
+// utrullingen før det, med en melding i stedet for en revisjon som aldri blir
+// klar.
+var trimmedAccessSecret = trim(accessSecret)
+var hasAccessSecret = !empty(trimmedAccessSecret)
+var checkedAccessSecret = hasAccessSecret && length(trimmedAccessSecret) < 24
   ? fail('accessSecret er kortere enn 24 tegn. Se «Delt hemmelighet» i docs/deploy.md.')
-  : accessSecret
+  : trimmedAccessSecret
 
 // En nøkkel skal ha noe foran seg: innloggingen, en adresseliste eller den
 // delte hemmeligheten. Uten noen av dem ville den stått på hvert kall fra hvem
