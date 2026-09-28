@@ -180,6 +180,23 @@ klienten har satt, og en liste med bare `Allow` stenger alle andre.
 Ny adresse, for eksempel hjemmefra: kjør steg 4 på nytt med den nye. Kjøres
 steg 4 uten nøkkel, står appen i live uten nøkkel, og backenden svarer 401.
 
+### Fasettene i filterpanelet
+
+Uten Typesense-variablene sier panelet at filtrering ikke er tilgjengelig; se
+[Fasettene i filterpanelet](#fasettene-i-filterpanelet). Med dem: sett de tre
+under og kjør steg 4 igjen. Nøkkelen leses med `read -rs`. En søkenøkkel for
+samlingen holder, og er det testmiljøet bør få; adminnøkkelen virker, men gir
+mer enn ruta trenger.
+
+```sh
+read -rs TYPESENSE_API_KEY
+TYPESENSE_URL="lim-inn-typesense-adressen-her"
+KA_FACET_COLLECTIONS="kudos-full=lim-inn-samlingsnavnet-her"
+export TYPESENSE_URL TYPESENSE_API_KEY KA_FACET_COLLECTIONS
+```
+
+Etter steg 4: `unset TYPESENSE_API_KEY`.
+
 ### Ny versjon
 
 ```sh
