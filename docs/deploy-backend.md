@@ -243,7 +243,8 @@ som `@secure()`, så de lagres ikke i utrullingshistorikken.
 
 `scripts/kudos-full/seed.clj` er ikke i bildet: `server.Dockerfile` kopierer
 bare `server/`. Jobben kjører det fra delingen, fra samme commit som bildet.
-Med `--auth-mode key` og uten nøkkel henter `az` kontonøkkelen selv.
+Med `--auth-mode key` og uten nøkkel henter `az` kontonøkkelen selv. Målt i
+Azure 28.09: `seed-kudos-full.clj` ble lastet opp med 4 372 byte.
 
 ```sh
 az storage file upload --subscription Altinn-AI-Assistant --auth-mode key --account-name karagvxd2q2aj52lqw --share-name ka-rag-db --source "$HOME/.cache/ka-rag-test/src/scripts/kudos-full/seed.clj" --path seed-kudos-full.clj
@@ -350,7 +351,9 @@ kan ses med `ps` i det øyeblikket. I historikken står bare `$(jq …)`.
 `http://ka-rag-test` er appens navn inne i miljøet; adressen finnes ikke
 utenfra. Åpne frontendens adresse og still et spørsmål. Målt i Azure:
 DFØ-spørsmålet med filteret Årsrapport svarte på 38 s, med 915 tegn og DFØs
-årsrapport 2024 som kilde. Antallsspørsmålet: 19 s. I nettleseren: 19,8 s.
+årsrapport 2024 som kilde. Antallsspørsmålet: 19 s. I nettleseren svarte
+«Hva skriver Statens vegvesen om trafikksikkerhet i årsrapporten for 2024?» på
+19,8 s, med svar og kilde og 0 konsollfeil.
 
 **Kjøres `main.bicep` på nytt, må den få de samme verdiene**, ellers setter den
 frontenden tilbake til mock mot `test.rag.digdir.cloud`: `kaMode=live`,
@@ -607,19 +610,20 @@ mens backenden svarte, ble nektet med exit 1, og backenden brukte 1,4 GiB av
 
 Målt av dirigenten i `rg-ka-test`.
 
-| Hva                                               | Målt                                                                                                                                    |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Backendbildet `ka-rag-test:a836b91` (amd64)       | bygget med `az acr build` fra kildemappa på 6 min 59 s; kjørte i jobben og appen                                                        |
-| Admin-passordet via `listCredentials()`           | begge appene og jobben hentet bildene sine med det                                                                                      |
-| Datahike på Azure Files                           | virket ikke: `AccessDeniedException` ved omdøping fra `.ksv.new` til `.ksv` etter 1 min 33 s                                            |
-| Postgres B1ms gjennom regelen for Azure-tjenester | jobben og appen koblet til (`init-db env=:remote backend=:jdbc`)                                                                        |
-| `require_secure_transport`                        | `user-defined` ga `InvalidParameterValue`, `user-override` virker; steg 3 tok 2 min 46 s med serveren alt laget                         |
-| Seedingen                                         | `Succeeded` på om lag 1,5 minutter; frasesøket «DFØ årsrapport 2024» ga 20 treff                                                        |
-| Backendappen (steg 6)                             | utrullingen tok 2 min 49 s; `Running`, bare intern ingress                                                                              |
-| Intern DNS og `allowInsecure`                     | frontenden når `http://ka-rag-test`                                                                                                     |
-| Typesense og Azure OpenAI fra Container Apps      | svar med kilder kom fram                                                                                                                |
-| Svartid gjennom frontenden                        | DFØ-spørsmålet med filteret Årsrapport: 38 s, 915 tegn, DFØs årsrapport 2024 som kilde. Antallsspørsmålet: 19 s. I nettleseren: 19,8 s. |
-| Korpuset                                          | agenten svarte «10 064 dokumenter» med fordeling per type, som stemmer med Typesense (10 064 dokumenter og 621 244 biter)               |
+| Hva                                               | Målt                                                                                                                                                                                                                                                       |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backendbildet `ka-rag-test:a836b91` (amd64)       | bygget med `az acr build` fra kildemappa på 6 min 59 s; kjørte i jobben og appen                                                                                                                                                                           |
+| Admin-passordet via `listCredentials()`           | begge appene og jobben hentet bildene sine med det                                                                                                                                                                                                         |
+| Datahike på Azure Files                           | virket ikke: `AccessDeniedException` ved omdøping fra `.ksv.new` til `.ksv` etter 1 min 33 s                                                                                                                                                               |
+| Postgres B1ms gjennom regelen for Azure-tjenester | jobben og appen koblet til (`init-db env=:remote backend=:jdbc`)                                                                                                                                                                                           |
+| `require_secure_transport`                        | `user-defined` ga `InvalidParameterValue`, `user-override` virker; steg 3 tok 2 min 46 s med serveren alt laget                                                                                                                                            |
+| Opplastingen av seed-skriptet (steg 4)            | `--auth-mode key` uten nøkkel hentet kontonøkkelen selv; `seed-kudos-full.clj` ble lastet opp med 4 372 byte                                                                                                                                               |
+| Seedingen                                         | `Succeeded` på om lag 1,5 minutter; frasesøket «DFØ årsrapport 2024» ga 20 treff                                                                                                                                                                           |
+| Backendappen (steg 6)                             | utrullingen tok 2 min 49 s; `Running`, bare intern ingress                                                                                                                                                                                                 |
+| Intern DNS og `allowInsecure`                     | frontenden når `http://ka-rag-test`                                                                                                                                                                                                                        |
+| Typesense og Azure OpenAI fra Container Apps      | svar med kilder kom fram                                                                                                                                                                                                                                   |
+| Svartid gjennom frontenden                        | DFØ-spørsmålet med filteret Årsrapport: 38 s, 915 tegn, DFØs årsrapport 2024 som kilde. Antallsspørsmålet: 19 s. I nettleseren: «Hva skriver Statens vegvesen om trafikksikkerhet i årsrapporten for 2024?» på 19,8 s, med svar og kilde og 0 konsollfeil. |
+| Korpuset                                          | agenten svarte «10 064 dokumenter» med fordeling per type, som stemmer med Typesense (10 064 dokumenter og 621 244 biter)                                                                                                                                  |
 
 ## Det som ikke er målt
 
@@ -638,5 +642,4 @@ Ikke målt i Azure 28.09:
 - **Hvor lang tid det tar å opprette Postgres-serveren.** Steg 3 ble målt med
   serveren alt laget.
 - **Miljøets kobling til delingen** når `main.bicep` kjøres på nytt.
-- **At `az storage file upload` henter kontonøkkelen selv**, som hjelpeteksten
-  sier.
+  `main.bicep` ble kjørt før steg 3, så det har ikke skjedd.
