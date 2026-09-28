@@ -75,6 +75,11 @@ rekkefølgen, så de kan kjøres som de står.
 
 **Ikke prøvd mot Azure.** Malen og parameterfila bygger uten advarsler.
 
+**Bygg ikke parameterfila selv mens nøkkelen står i miljøet.**
+`az bicep build-params` uten `--stdout` skriver `deploy/test.json`, med
+nøkkelen i klartekst. `deploy/*.json` er i `.gitignore`, men fila blir
+liggende på disken. `az deployment group create` bygger den i minnet.
+
 ### 1. Grunnmuren
 
 I et nytt skall, fra repo-rota. Uten `KA_IMAGE_TAG` lager malen bare register,
@@ -110,15 +115,26 @@ build_image
 
 `read -rs` leser nøkkelen uten å vise den. Adressen som slipper inn, er den
 maskinen går ut på; bak en VPN eller en exit-node er det dens adresse. Flere
-skilles med komma. Malen stopper hvis nøkkelen er satt og lista er tom.
+skilles med komma.
+
+Funksjonen stopper hvis taggen fra steg 3 mangler, som den gjør i et nytt
+skall; uten den ville malen bare laget grunnmuren. Lista settes bare når
+`curl` virker. Feiler den, blir lista tom, og da stopper malen i stedet for å
+slippe nøkkelen gjennom bak en liste med bare `/32` (KA CC på #169). Malen
+stopper også på et element uten adresse og på et nett bredere enn /8.
 
 ```sh
-read -rs DIGDIR_API_KEY
-KA_ALLOWED_IPS="$(curl -fsS https://api.ipify.org)/32"
-echo "$KA_ALLOWED_IPS"
-export KA_IMAGE_TAG DIGDIR_API_KEY KA_ALLOWED_IPS
-az deployment group create --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-app --parameters deploy/test.bicepparam --query properties.outputs.fqdn.value -o tsv
-unset DIGDIR_API_KEY
+deploy_live() {
+  [ -n "$KA_IMAGE_TAG" ] || { echo "KA_IMAGE_TAG er tom. Kjør steg 3, eller sett den til taggen som kjører."; return 1; }
+  KA_ALLOWED_IPS=""
+  IP=$(curl -fsS https://api.ipify.org) && KA_ALLOWED_IPS="$IP/32"
+  echo "Adresseliste: ${KA_ALLOWED_IPS:-tom}"
+  read -rs DIGDIR_API_KEY
+  export KA_IMAGE_TAG DIGDIR_API_KEY KA_ALLOWED_IPS
+  az deployment group create --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-app --parameters deploy/test.bicepparam --query properties.outputs.fqdn.value -o tsv
+  unset DIGDIR_API_KEY
+}
+deploy_live
 ```
 
 Siste linje fra `az` er adressen. Sjekk den:
@@ -128,8 +144,17 @@ FQDN=$(az containerapp show --subscription Altinn-AI-Assistant -g rg-ka-test -n 
 curl -fsS "https://$FQDN/healthz"
 ```
 
-Den skal svare `{"ok":true,"mode":"live"}`. Fra en adresse som ikke står i
-lista, skal den ikke svare med det. Hva den svarer i stedet, er ikke målt.
+Den skal svare `{"ok":true,"mode":"live"}`.
+
+Fra en annen adresse, for eksempel en mobil delt tilkobling, skal ingen av
+disse to gi `200`. Den andre prøver om ingressen stoler på et `X-Forwarded-For`
+klienten har satt selv, med `IP` fra steg 4. Hva de svarer i stedet, er ikke
+målt.
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' "https://$FQDN/healthz"
+curl -sS -o /dev/null -w '%{http_code}\n' -H "X-Forwarded-For: $IP" "https://$FQDN/healthz"
+```
 
 Ny adresse, for eksempel hjemmefra: kjør steg 4 på nytt med den nye. Kjøres
 steg 4 uten nøkkel, står appen i live uten nøkkel, og backenden svarer 401.
@@ -147,12 +172,11 @@ kjøre steg 4 igjen gjør det samme, og setter i tillegg alt fra fila.
 
 ### Samme passord for backenden
 
-`rag.bicep` henter i dag bildet med identiteten `ka-frontend-test-id`, som
-trenger AcrPull. For å klare seg uten, gjør den som `main.bicep`: med
-`registryAuth=admin` er `registries` `{ server, username:
-registry.listCredentials().username, passwordSecretRef: 'registry-password' }`,
-og secreten `registry-password` får `registry.listCredentials().passwords[0].value`.
-Admin-brukeren slås på av `main.bicep` i steg 1.
+Backenden henter bildet med det samme passordet; se `deploy/rag.bicep`.
+Admin-brukeren følger `registryAdminUser` i `main.bicep`, som er på som
+standard. En kjøring av `main.bicep` uten `test.bicepparam`, som i «Slå den
+på» eller «Første gang», slår den derfor ikke av. Sett `registryAdminUser=false`
+bare når ingenting i ressursgruppa henter med passordet.
 
 ## Første gang
 
@@ -490,7 +514,8 @@ az deployment group create --subscription "$SUB" -g $RG -n ka-frontend-innloggin
 Kom appen fra [Live for én person](#live-for-én-person), kjøres ikke blokka
 over. Der settes `KA_ENTRA_CLIENT_ID` og `KA_ENTRA_CLIENT_SECRET` (den siste
 med `read -rs`), eksporteres sammen med de andre, og steg 4 kjøres på nytt.
-Ellers ville malen gått tilbake til AcrPull, som ingen har gitt.
+Ellers ville frontenden gått tilbake til AcrPull, som ingen har gitt.
+Admin-brukeren blir stående uansett, så backenden henter som før.
 
 Klient-ID uten secret stopper utrullingen med en melding i stedet for å falle
 tilbake til implisitt flyt, som Microsoft fraråder. Det er bygd, ikke prøvd

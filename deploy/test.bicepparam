@@ -5,6 +5,11 @@
 // Ingen hemmeligheter her. Nøkkelen, bildet og adressene som slipper inn,
 // leses fra miljøvariabler når malen kjøres, så fila kan sjekkes inn og en
 // ny kjøring setter ikke appen tilbake til mock.
+//
+// Bygg den aldri med `az bicep build-params` mens miljøvariablene er satt.
+// Uten `--stdout` skriver den deploy/test.json med nøkkelen i klartekst
+// (målt av KA CC på #169). `az deployment group create` bygger den i
+// minnet. deploy/*.json er i .gitignore, men fila blir liggende på disken.
 using './main.bicep'
 
 param name = 'ka-frontend-test'
