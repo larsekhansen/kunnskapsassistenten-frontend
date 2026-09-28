@@ -17,15 +17,17 @@ misbrukes. Se [Bytte mellom mock og live](#bytte-mellom-mock-og-live).
 
 ## Hva som finnes
 
-| Fil                            | Hva                                                                         |
-| ------------------------------ | --------------------------------------------------------------------------- |
-| `server/`                      | Serveren. Node uten rammeverk og uten avhengigheter.                        |
-| `Dockerfile`                   | To steg: bygg med devDependencies, kjøretid uten node_modules.              |
-| `deploy/main.bicep`            | Register, Container App, miljø, logganalyse, to identiteter og innloggingen |
-| `.github/workflows/deploy.yml` | Bygger, pusher og ruller ut ved hver push til `main`.                       |
-| `.github/workflows/ci.yml`     | Bygger og starter bildet på hver PR, uten å pushe.                          |
+| Fil                            | Hva                                                                                |
+| ------------------------------ | ---------------------------------------------------------------------------------- |
+| `server/`                      | Serveren. Node uten rammeverk og uten avhengigheter.                               |
+| `Dockerfile`                   | To steg: bygg med devDependencies, kjøretid uten node_modules.                     |
+| `deploy/main.bicep`            | Register, Container App, miljø, logganalyse, to identiteter og innloggingen        |
+| `deploy/test.bicepparam`       | Live-oppsettet for [Live for én person](#live-for-én-person). Ingen hemmeligheter. |
+| `.github/workflows/deploy.yml` | Bygger, pusher og ruller ut ved hver push til `main`.                              |
+| `.github/workflows/ci.yml`     | Bygger og starter bildet på hver PR, uten å pushe.                                 |
 
-Serveren gjør fire ting: proxyer `/api/*` til backenden med `X-API-Key` påsatt,
+Serveren gjør fire ting: proxyer `/api/*` til backenden med `X-API-Key` påsatt
+(bare i live; i mock svarer `/api/*` 404),
 serverer `dist/` med SPA-fallback, svarer på `/healthz`, og skriver
 `/config.js` med de variablene klienten skal lese. Bak innloggingen setter den
 også `X-User-Id` fra plattformen; se [Innlogging](#innlogging).
@@ -57,6 +59,101 @@ For hånd, uten ny commit: **Actions → Deploy → Run workflow**, eller
 Før engangsoppsettet er gjort, hopper workflowen over med meldingen «Ingen
 utrulling» og står grønn, så `main` ikke blir rød av et miljø som ikke finnes.
 
+## Live for én person
+
+Hele appen i live for én person, før Entra: bak en adresseliste, uten roller
+og uten GitHub. Contributor på `rg-ka-test` holder. Appen henter bildet med
+registerets eget passord i stedet for AcrPull, og nøkkelen står bak
+adresselista. Oppsettet står i `deploy/test.bicepparam`: `KA_MODE=live`,
+backenden på `http://ka-rag-test` (den interne fra `docs/deploy-backend.md`),
+tenant `kudos`, datasett `kudos-full` og feltnavna for det. Nøkkelen, bildet
+og adressene leses fra miljøvariabler når malen kjøres, så fila har ingen
+hemmeligheter, og en ny kjøring setter ikke appen tilbake til mock.
+
+Kommandoene her har abonnement og ressursgruppe skrevet ut, i denne
+rekkefølgen, så de kan kjøres som de står.
+
+**Ikke prøvd mot Azure.** Malen og parameterfila bygger uten advarsler.
+
+### 1. Grunnmuren
+
+I et nytt skall, fra repo-rota. Uten `KA_IMAGE_TAG` lager malen bare register,
+miljø, logger og identiteter, med admin-brukeren på registeret. Den andre
+linja henter registerets navn; kjør den igjen i hvert nytt skall senere.
+
+```sh
+az deployment group create --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-grunnmur --parameters deploy/test.bicepparam
+ACR=$(az deployment group show --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-grunnmur --query properties.outputs.registryName.value -o tsv)
+```
+
+### 2. Backenden
+
+Etter `docs/deploy-backend.md`, i miljøet steg 1 laget. Frontenden når den på
+`http://ka-rag-test`.
+
+### 3. Bildet
+
+`az acr build` laster opp arbeidstreet og bygger i registeret. Funksjonen
+stopper hvis arbeidstreet har endringer som ikke er committet, fordi taggen
+er commiten.
+
+```sh
+build_image() {
+  git diff --quiet HEAD || { echo "Ucommittede endringer. Commit først."; return 1; }
+  KA_IMAGE_TAG=$(git rev-parse HEAD)
+  az acr build --subscription Altinn-AI-Assistant --registry "$ACR" --image "ka-frontend-test:$KA_IMAGE_TAG" .
+}
+build_image
+```
+
+### 4. Appen, i live
+
+`read -rs` leser nøkkelen uten å vise den. Adressen som slipper inn, er den
+maskinen går ut på; bak en VPN eller en exit-node er det dens adresse. Flere
+skilles med komma. Malen stopper hvis nøkkelen er satt og lista er tom.
+
+```sh
+read -rs DIGDIR_API_KEY
+KA_ALLOWED_IPS="$(curl -fsS https://api.ipify.org)/32"
+echo "$KA_ALLOWED_IPS"
+export KA_IMAGE_TAG DIGDIR_API_KEY KA_ALLOWED_IPS
+az deployment group create --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-app --parameters deploy/test.bicepparam --query properties.outputs.fqdn.value -o tsv
+unset DIGDIR_API_KEY
+```
+
+Siste linje fra `az` er adressen. Sjekk den:
+
+```sh
+FQDN=$(az containerapp show --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-test --query properties.configuration.ingress.fqdn -o tsv)
+curl -fsS "https://$FQDN/healthz"
+```
+
+Den skal svare `{"ok":true,"mode":"live"}`. Fra en adresse som ikke står i
+lista, skal den ikke svare med det. Hva den svarer i stedet, er ikke målt.
+
+Ny adresse, for eksempel hjemmefra: kjør steg 4 på nytt med den nye. Kjøres
+steg 4 uten nøkkel, står appen i live uten nøkkel, og backenden svarer 401.
+
+### Ny versjon
+
+```sh
+build_image
+az containerapp update --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-test \
+  --image "$ACR.azurecr.io/ka-frontend-test:$KA_IMAGE_TAG" --revision-suffix hand${KA_IMAGE_TAG:0:7}
+```
+
+`update` tar med seg nøkkelen, modusen og adresselista fra revisjonen før. Å
+kjøre steg 4 igjen gjør det samme, og setter i tillegg alt fra fila.
+
+### Samme passord for backenden
+
+`rag.bicep` henter i dag bildet med identiteten `ka-frontend-test-id`, som
+trenger AcrPull. For å klare seg uten, gjør den som `main.bicep`: med
+`registryAuth=admin` er `registries` `{ server, username:
+registry.listCredentials().username, passwordSecretRef: 'registry-password' }`,
+og secreten `registry-password` får `registry.listCredentials().passwords[0].value`.
+Admin-brukeren slås på av `main.bicep` i steg 1.
+
 ## Første gang
 
 Oppskriften kjøres ovenfra og ned, i ett skall, fra repo-rota. Alt havner i
@@ -76,7 +173,8 @@ verdiene i steg 0 hvis det blir andre.
 | `Microsoft.App`, `Microsoft.OperationalInsights` og `Microsoft.ContainerRegistry` registrert (sjekkes i steg 0) | abonnementet               | 0    |
 
 Ingen rettigheter i `altinnaicontainers` eller andre steder utenfor
-ressursgruppa. Steg 2 og 6 er de eneste som krever rett til å gi roller. Har du
+ressursgruppa. Steg 2 og 6 er de eneste som krever rett til å gi roller. Uten
+den og uten GitHub: [Live for én person](#live-for-én-person). Har du
 den ikke, kan noen som har den kjøre akkurat de to stegene; kommandoene står
 ferdige. Er Contributor bak PIM, aktiver den før du begynner.
 
@@ -306,7 +404,10 @@ ACR=$(gh variable get KA_REGISTRY -R $REPO)
 Container Apps' egen innlogging («Easy Auth»), med Entra som leverandør. Den
 står foran alt appen svarer på, unntatt `/healthz`, og sender den som ikke er
 logget inn til Microsofts innloggingsside. Malen slår den på når den får
-`entraClientId`. Uten er appen åpen, som før.
+`entraClientId`. Uten er appen åpen, eller bare åpen for adresselista.
+
+Entra venter til etter lanseringen. Til da er det
+[Live for én person](#live-for-én-person) som gjelder.
 
 **Ikke prøvd mot Azure.** Malen bygger uten advarsler, og serveren er testet
 med plattformens hode satt for hånd. Selve innloggingen kan ikke prøves før
@@ -386,13 +487,20 @@ az deployment group create --subscription "$SUB" -g $RG -n ka-frontend-innloggin
   --query properties.outputs.loginRedirectUri.value -o tsv
 ```
 
+Kom appen fra [Live for én person](#live-for-én-person), kjøres ikke blokka
+over. Der settes `KA_ENTRA_CLIENT_ID` og `KA_ENTRA_CLIENT_SECRET` (den siste
+med `read -rs`), eksporteres sammen med de andre, og steg 4 kjøres på nytt.
+Ellers ville malen gått tilbake til AcrPull, som ingen har gitt.
+
 Klient-ID uten secret stopper utrullingen med en melding i stedet for å falle
-tilbake til implisitt flyt, som Microsoft fraråder.
+tilbake til implisitt flyt, som Microsoft fraråder. Det er bygd, ikke prøvd
+mot ARM.
 
 Malen setter appen slik parameterne sier, også modus og nøkkel. Var live slått
-på for hånd, slås den på igjen etterpå. Og når innloggingen er på, kjøres malen
-alltid med de to innloggingsparameterne: uten dem forsvinner secreten, og
-innloggingen feiler.
+på for hånd, slås den på igjen etterpå. Kjøres malen senere uten
+innloggingsparameterne, slår den innloggingen av, fordi den alltid tar med
+innloggingsoppsettet og da med `enabled: false`. Det er ikke prøvd mot ARM at
+et oppsett med bare det godtas.
 
 Sjekk etterpå. `/healthz` svarer uten innlogging, forsiden sender videre til
 Microsoft, og et API-kall med plattformens hode satt av klienten slipper ikke
@@ -411,16 +519,28 @@ fra plattformens innlogging».
 
 ### Slå den av
 
-Plattformens innlogging av, og serveren tilbake til nettleserens id. Uten den
-andre linja svarer hvert API-kall 401, som er den trygge siden å feile på.
+Rekkefølgen er poenget. Serveren går først over til mock uten nøkkel og uten
+`KA_USER_ID_FROM`, og innloggingen slås av først når den revisjonen er den
+som svarer. Omvendt ville serveren stått uten noe foran seg og stolt på
+plattformens hode fra hvem som helst, med nøkkelen på (KA CC på #169). I mock
+sender den ingenting til backenden.
+
+```sh
+az containerapp update --subscription "$SUB" -n $APP -g $RG \
+  --set-env-vars KA_MODE=mock --remove-env-vars DIGDIR_API_KEY KA_USER_ID_FROM \
+  --revision-suffix open$(date +%H%M%S)
+az containerapp show --subscription "$SUB" -n $APP -g $RG --query '{klar:properties.latestReadyRevisionName, siste:properties.latestRevisionName}' -o table
+```
+
+Kjør den siste linja til begge kolonnene viser samme revisjon. `--set-env-vars`
+og `--remove-env-vars` i samme kall brukes etter hverandre, ifølge kildekoden
+til `containerapp`-utvidelsen; det er ikke kjørt. Så:
 
 ```sh
 az containerapp auth update --subscription "$SUB" -n $APP -g $RG --enabled false
-az containerapp update --subscription "$SUB" -n $APP -g $RG \
-  --remove-env-vars KA_USER_ID_FROM --revision-suffix open$(date +%H%M%S)
 ```
 
-Da er adressen åpen igjen: sett modusen til mock først.
+Da er adressen åpen, i mock.
 
 ## Rulle tilbake
 
@@ -438,6 +558,10 @@ Da er adressen åpen igjen: sett modusen til mock først.
   az containerapp update --subscription "$SUB" -n $APP -g $RG \
     --image "$ACR.azurecr.io/$APP:$COMMIT" --revision-suffix rollback$(date +%H%M%S)
   ```
+
+Ikke tilbake forbi #169 med innloggingen på: et eldre bilde leser ikke
+`KA_USER_ID_FROM`, og da gjelder nettleserens `X-User-Id` igjen bak
+innloggingen. Det sender heller ikke `/api/*` bort i mock.
 
 ## Logger
 
@@ -484,10 +608,10 @@ oppsett ser ut som om det peker på pilotkorpuset og svarer fra demodataene.
 
 ## Bytte mellom mock og live
 
-**Ikke slå på live uten innloggingen foran** ([Innlogging](#innlogging)). I
-live setter serveren nøkkelen på hvert kall, for hvem som helst som kommer til
-adressen. Bak innloggingen er det bare de som kan logge inn i tenanten. I mock
-finnes det ingen nøkkel å misbruke.
+**Ikke slå på live uten noe foran** ([Innlogging](#innlogging), eller
+adresselista i [Live for én person](#live-for-én-person)). I live setter
+serveren nøkkelen på hvert kall, for hvem som helst som kommer til adressen.
+I mock sender serveren ingenting til backenden, heller ikke med nøkkelen satt.
 
 Nøkkelen legges inn som secret. Første gang lager dette
 secreten. `read -rs` leser den uten å vise den og uten å legge den i
@@ -505,8 +629,12 @@ Tilbake til mock:
 
 ```sh
 az containerapp update --subscription "$SUB" -n $APP -g $RG \
-  --set-env-vars KA_MODE=mock --revision-suffix mock$(date +%H%M%S)
+  --set-env-vars KA_MODE=mock --remove-env-vars DIGDIR_API_KEY \
+  --revision-suffix mock$(date +%H%M%S)
 ```
+
+Nøkkelen tas bort også, selv om serveren ikke bruker den i mock: en variabel
+som står, blir med til neste gang noen setter modusen til live.
 
 `secret set` alene endrer ingenting som kjører: verdien plukkes opp av en ny
 revisjon, som `update` tvinger fram. Et modusbytte trenger ingen ny bygging —
@@ -596,8 +724,17 @@ opplasting i ærlig utilgjengelig-tilstand.
 kall med «API key is not allowed to access the requested dataset», som leser
 som et rettighetsproblem.
 
-**Innloggingen er ikke prøvd mot Azure**, og uten den er adressen åpen. Se
-[Innlogging](#innlogging) for hva som trengs.
+**Innloggingen er ikke prøvd mot Azure**, og uten den er adressen åpen, eller
+bare åpen for adresselista. Se [Innlogging](#innlogging) for hva som trengs.
+
+**Ikke prøvd mot ARM:** at `fail()` stopper utrullingen, at et
+innloggingsoppsett med bare `enabled: false` godtas, og at appen henter
+bildet med registerets passord. Malen bygger uten advarsler, og det er alt.
+
+**Med adresseliste når ikke GitHub fram.** Helsesjekken i `deploy.yml` kommer
+fra GitHubs maskiner, og de står ikke i lista. [Live for én
+person](#live-for-én-person) bruker ikke GitHub, og uten repo-variablene hopper
+workflowen over.
 
 **Ikke målt: en økt som går ut midt i bruk.** Plattformen sender da API-kallet
 videre til Microsofts innloggingsside, på et annet domene, og et `fetch`-kall

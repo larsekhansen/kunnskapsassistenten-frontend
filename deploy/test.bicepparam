@@ -30,3 +30,8 @@ param allowedIps = map(
   filter(split(readEnvironmentVariable('KA_ALLOWED_IPS', ''), ','), range => !empty(trim(range))),
   range => trim(range)
 )
+
+// Innloggingen, når den kommer: «Innlogging» i docs/deploy.md. Tom = av, og
+// malen slår den da av også om den var på.
+param entraClientId = readEnvironmentVariable('KA_ENTRA_CLIENT_ID', '')
+param entraClientSecret = readEnvironmentVariable('KA_ENTRA_CLIENT_SECRET', '')
