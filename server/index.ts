@@ -40,6 +40,10 @@ server.listen(config.port, () => {
     config.apiKey ? 'satt' : 'IKKE SATT',
     config.userIdFrom === 'platform' ? 'plattformens innlogging' : 'nettleseren',
   );
+  console.log(
+    '[ka] delt hemmelighet: %s',
+    config.accessSecret ? 'på, alt unntatt /healthz krever lenken' : 'av',
+  );
   if (config.mode === 'live' && !config.apiKey) {
     console.warn('[ka] KA_MODE=live uten DIGDIR_API_KEY. Spørringer vil gi 401.');
   }
