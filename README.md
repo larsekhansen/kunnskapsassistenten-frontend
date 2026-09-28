@@ -994,9 +994,10 @@ er sendt inn ennå. Mot headless-rag fra `main` sendes filteret, men gjør
 ingenting. Hva som var galt står på den grenen; her ville lista blitt foreldet
 neste gang den endrer seg.
 
-**Fasettene finnes ikke i live ennå.** `listFacets` returnerer tom liste, så
-panelet sier «Filtrering er ikke tilgjengelig ennå» og ingen kan huke av noe
-der. Dette er grunnarbeidet under det.
+**Fasettene i live teller vår egen server** fra Typesense, fordi backenden
+ikke har noe fasett-API (`server/facets.ts`, «Fasettene i filterpanelet» i
+`docs/deploy.md`). Uten Typesense-variablene sier panelet «Filtrering er ikke
+tilgjengelig ennå», som før.
 
 ### Tråder i live-modus
 
@@ -1071,9 +1072,8 @@ Tre ekte spørringer mot `localhost:8080`, agenten
   poengsum, men rangerer utdragene, så posisjonen er det eneste signalet.
 - **Overskriftsstien parses ut av en Clojure-streng**, ikke et objekt, selv om
   skjemaet sier `object`. «Birkebeinerne › Kong Sverre».
-- **Trådhistorikk og fasetter finnes ikke** i live-modus. `listThreads()` og
-  `listFacets()` svarer tomt med vilje: en samtale fra `tools/call` er ikke
-  synlig i samtale-API-et, og backenden filtrerer på hele datasett.
+- **Fasettene kommer ikke fra backenden** i live-modus, som ikke har noe
+  fasett-API. Vår egen server teller dem fra Typesense til den har.
 
 ## Views og plasser i kode
 

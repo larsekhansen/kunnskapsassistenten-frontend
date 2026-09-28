@@ -704,6 +704,9 @@ Ett bilde, og modusen og korpuset er miljøvariabler.
 | `VITE_KA_DATASET_CONFIG_KEY` | Datasettnøkkel. `kudos` hostet, `default` lokalt.                                         | tom                     |
 | `VITE_KA_DATASETS`           | Korpusene velgeren tilbyr: `nøkkel=Navn\|beskrivelse;…`.                                  | tom                     |
 | `VITE_KA_FILTER_FIELDS`      | Feltnavn per datasett: `datasett=dimensjon:felt:type\|…`.                                 | tom                     |
+| `TYPESENSE_URL`              | Typesense for fasettene, med skjema og port.                                              | tom                     |
+| `TYPESENSE_API_KEY`          | Nøkkelen til den. Container Apps-secret, aldri i repoet.                                  | tom                     |
+| `KA_FACET_COLLECTIONS`       | Dokumentsamlingen per datasett: `datasett=samling;…`.                                     | tom                     |
 
 `VITE_KA_FILTER_FIELDS` sier hva hvert korpus kaller filterdimensjonene
 `documentType`, `organisation` og `year`, så feltnavna ikke står i koden. En
@@ -714,6 +717,33 @@ kaller filterdimensjonene».
 Backenden bygger datasett-scopet bare når den har begge, så én alene blir
 forkastet der og svaret kommer fra standardkorpuset likevel — et halvt
 oppsett ser ut som om det peker på pilotkorpuset og svarer fra demodataene.
+
+## Fasettene i filterpanelet
+
+Backenden har ikke noe fasett-API, så serveren teller fasettene selv fra
+Typesense og svarer på `GET /api/facets?dataset=…` uten å sende den videre.
+Det er broen i `docs/arkitektur/0001-fasetter-og-korpuskunnskap.md`, og
+formatet er det samme som BFF-en bruker. Den dagen backenden kan telle, byttes
+kilden bak ruta og klienten endres ikke. Koden er `server/facets.ts`.
+
+- **Feltene** er de i `VITE_KA_FILTER_FIELDS` for datasettet, og ingen andre.
+- **Policyen:** år bare mellom 1990 og 2035 og nyeste først, resten etter
+  antall. Tomme verdier og felt uten verdier er ute. Høyst 500 verdier per
+  felt.
+- **Tallene** gjelder hele korpuset. Klienten viser dem ikke når en annen
+  dimensjon er avgrenset, som for BFF-en. Derfor går ingen verdi fra
+  nettleseren inn i spørringen; datasettnøkkelen slås bare opp i
+  `KA_FACET_COLLECTIONS`.
+- **Svaret** lagres i ti minutter per datasett, så panelet ikke spør Typesense
+  ved hvert klikk.
+- **Uten** `TYPESENSE_URL`, `TYPESENSE_API_KEY` og samlingen for datasettet
+  svarer ruta tom liste, og panelet sier som før at filtrering ikke er
+  tilgjengelig. Svarer Typesense med feil, blir det 502, og panelet tilbyr å
+  prøve igjen.
+
+Ruta gjør bare søk, så en søkenøkkel med tilgang til samlingene holder, og det
+er den et testmiljø bør få, ikke adminnøkkelen. Dev-serveren svarer på den
+samme ruta med de samme variablene fra `.env.local`, unntatt i bff-modus.
 
 ## Bytte mellom mock og live
 
