@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { passesGate } from './access.ts';
 import { configScript, type ServerConfig } from './config.ts';
 import { proxy } from './proxy.ts';
 import { serveStatic } from './static.ts';
@@ -80,6 +81,10 @@ export function createHandler(config: ServerConfig) {
       response.end(JSON.stringify({ ok: true, mode: config.mode }));
       return;
     }
+
+    // Everything after /healthz is behind the shared secret, when there is
+    // one: the client, /config.js and the API alike. See access.ts.
+    if (config.accessSecret && !passesGate(request, response, config.accessSecret)) return;
 
     if (path === '/config.js') {
       response.writeHead(200, {

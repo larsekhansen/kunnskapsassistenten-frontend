@@ -10,6 +10,7 @@
  * name, so adding a secret to it has to be a deliberate act.
  */
 
+import { accessSecretFrom } from './access.ts';
 import { userIdSourceFrom, type UserIdSource } from './identity.ts';
 
 /** Which backend the client talks to: fixtures, or the real thing. */
@@ -42,6 +43,8 @@ export type ServerConfig = {
   mode: KaMode;
   /** Whose `X-User-Id` reaches the backend. See identity.ts. */
   userIdFrom: UserIdSource;
+  /** The shared secret in front of everything, or undefined for none. See access.ts. */
+  accessSecret: string | undefined;
   /** The built client. Absolute, so the static handler can refuse to escape it. */
   distDir: string;
   /**
@@ -87,6 +90,7 @@ export function readConfig(
     apiKey: value(env.DIGDIR_API_KEY),
     mode,
     userIdFrom: userIdSourceFrom(env.KA_USER_ID_FROM),
+    accessSecret: accessSecretFrom(env.KA_ACCESS_SECRET),
     distDir,
     // 25 MB. A question is a few hundred bytes; the only thing near this is a
     // reader's own uploaded document, and the client caps those at 20 MB
