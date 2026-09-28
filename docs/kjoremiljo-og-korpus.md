@@ -42,14 +42,17 @@ navn. De to nakne linjene `url` og `key` nederst er ColBERT-reranker-en
    `fix/mcp-retrieve-filter-by` og følg `docs/runbooks/kudos-full-lokalt.md`
    der: stacken med compose, `.env.benjamin` fra Benjamin i repo-rota, og
    `scripts/kudos-full/seed.sh`. Siste linje fra skriptet skal vise treff.
-2. **Frontenden**, med API-nøkkelen fra backendens `E2E_API_KEY`:
+2. **Frontenden**, med API-nøkkelen fra backendens `E2E_API_KEY`. `read -rs`
+   leser den uten å vise den og uten å legge den i historikken. `npm ci` tok
+   7,2 s og `npm run build` 16,5 s.
 
 ```sh
-npm ci                    # 7,2 s
-npm run build             # 16,5 s
+read -rs KEY
+npm ci
+npm run build
 PORT=8799 KA_MODE=live \
   DIGDIR_API_BASE=http://localhost:8080 \
-  DIGDIR_API_KEY=<nøkkel> \
+  DIGDIR_API_KEY="$KEY" \
   VITE_KA_TENANT=kudos \
   VITE_KA_DATASET_CONFIG_KEY=kudos-full \
   VITE_KA_DATASETS='kudos-full=Kudos|10 064 dokumenter fra kudos.dfo.no' \
