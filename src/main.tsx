@@ -11,7 +11,7 @@ if (import.meta.env.PROD) {
 }
 
 // Applies the stored colour scheme and exposes window.ka.colorScheme before
-// the first render. index.html has already applied the same value inline, so
+// the first render. colorSchemeBoot.js has already applied the same value, so
 // this installs the console API rather than preventing a flash.
 initColorScheme();
 

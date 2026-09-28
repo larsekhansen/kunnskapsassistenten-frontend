@@ -190,10 +190,33 @@ export const MOCK_WIKIPEDIA_CORPUS: CorpusOption = {
  */
 const env = kaEnv();
 
-const { options: corpusOptions, fallback } =
-  (env.VITE_API_MODE ?? 'mock') === 'live'
-    ? resolveCorpus(env.VITE_KA_DATASETS, env.VITE_KA_DATASET_CONFIG_KEY)
-    : { options: [MOCK_CORPUS, MOCK_WIKIPEDIA_CORPUS], fallback: MOCK_CORPUS.key };
+/**
+ * The corpora a mode can reach.
+ *
+ * `bff` has one at most, whatever the list says. The BFF answers from the one
+ * dataset in its own environment and takes no dataset from the browser, so a
+ * chooser there would change the label and not the answer. The configured
+ * key names that one — it has to be the dataset the BFF is set to — and the
+ * list may still give it a nicer name.
+ */
+export function corpusForMode(
+  mode: string,
+  datasets: string | undefined,
+  configured: string | undefined,
+): { options: CorpusOption[]; fallback: string | undefined } {
+  if (mode === 'live') return resolveCorpus(datasets, configured);
+  if (mode === 'bff') {
+    const { options, fallback } = resolveCorpus(datasets, configured);
+    return { options: options.filter((option) => option.key === fallback), fallback };
+  }
+  return { options: [MOCK_CORPUS, MOCK_WIKIPEDIA_CORPUS], fallback: MOCK_CORPUS.key };
+}
+
+const { options: corpusOptions, fallback } = corpusForMode(
+  env.VITE_API_MODE ?? 'mock',
+  env.VITE_KA_DATASETS,
+  env.VITE_KA_DATASET_CONFIG_KEY,
+);
 
 export { corpusOptions };
 

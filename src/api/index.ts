@@ -1,4 +1,5 @@
 import type { ChatClient } from './chatClient';
+import { BffChatClient } from './bff';
 import { activeCorpusKey } from './corpus';
 import { kaEnv } from './runtimeConfig';
 import { LiveChatClient } from './live';
@@ -32,10 +33,15 @@ export {
  * the key never reaches the bundle, because the backend sends no CORS headers
  * and a browser could not call it directly anyway.
  * See design/eksisterende/api-for-frontend.md.
+ *
+ * `bff` is the third: Nikolai's BFF in front of the backend, holding the key
+ * and the sign-in, and serving this client from its own origin
+ * (docs/arkitektur/0002-klienten-bak-bff.md).
  */
 export function createChatClient(): ChatClient {
   const env = kaEnv();
   const mode = env.VITE_API_MODE ?? 'mock';
+  if (mode === 'bff') return new BffChatClient({ datasetConfigKey: activeCorpusKey });
   if (mode !== 'live') {
     // `VITE_MOCK_SPEED` decides how long the mock takes to answer. The default
     // is the slow, lifelike one on purpose: a mock that answers instantly

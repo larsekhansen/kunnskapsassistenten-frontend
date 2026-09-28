@@ -82,7 +82,7 @@ export type LiveChatClientOptions = {
  * The status number stays in the text: it is the one thing anyone debugging
  * this from a screenshot has to go on.
  */
-function errorFromStatus(status: number): ChatError {
+export function errorFromStatus(status: number): ChatError {
   switch (status) {
     case 401:
     case 403:

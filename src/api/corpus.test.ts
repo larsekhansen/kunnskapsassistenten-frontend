@@ -3,6 +3,7 @@ import {
   CORPUS_TAG_PREFIX,
   corpusDisplayName,
   corpusDisplayNameFor,
+  corpusForMode,
   corpusKeyFromTags,
   parseCorpusOptions,
   resolveCorpus,
@@ -120,6 +121,30 @@ describe('resolveCorpus', () => {
 
   it('er tom når verken liste eller nøkkel er satt', () => {
     expect(resolveCorpus(undefined, undefined)).toEqual({ options: [], fallback: undefined });
+  });
+});
+
+describe('corpusForMode', () => {
+  it('gir bff-modus bare det ene korpuset BFF-en svarer fra, med navnet fra lista', () => {
+    // BFF-en tar ikke imot datasett fra nettleseren, så en velger ville bare
+    // byttet etiketten.
+    expect(corpusForMode('bff', 'a=Alfa;kudos-full=Kudos|10 064 dokumenter', 'kudos-full')).toEqual(
+      {
+        options: [{ key: 'kudos-full', label: 'Kudos', description: '10 064 dokumenter' }],
+        fallback: 'kudos-full',
+      },
+    );
+  });
+
+  it('lar live-modus velge mellom alle, som før', () => {
+    expect(corpusForMode('live', 'a=Alfa;b=Beta', 'b').options).toHaveLength(2);
+  });
+
+  it('gir mock sine to egne korpus uansett hva som er satt', () => {
+    expect(corpusForMode('mock', 'a=Alfa', 'a').options.map((option) => option.key)).toEqual([
+      'mock',
+      'norquad-mock',
+    ]);
   });
 });
 
