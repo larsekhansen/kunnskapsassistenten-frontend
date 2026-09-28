@@ -1,3 +1,4 @@
+import { once } from 'node:events';
 import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import type { ServerResponse } from 'node:http';
@@ -68,8 +69,15 @@ async function sendFile(
   path: string,
   cacheControl: string,
 ): Promise<void> {
+  const file = createReadStream(path);
+  /*
+   * Opened before the status line is written. A file that is there but cannot
+   * be read then fails while a 500 can still be said, rather than after a 200
+   * has promised a body that never comes.
+   */
+  await once(file, 'open');
   response.writeHead(200, { 'Content-Type': contentType(path), 'Cache-Control': cacheControl });
-  await pipeline(createReadStream(path), response);
+  await pipeline(file, response);
 }
 
 /**
