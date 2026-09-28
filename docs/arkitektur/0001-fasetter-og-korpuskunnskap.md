@@ -112,6 +112,10 @@ Den skiller seg fra vår gren på tre punkter:
 - Et ugyldig filter avvises med en feil i stedet for å droppes.
 - Feltnavn valideres også.
 
+Den har også to ting vi kan bruke. `retrieve-auto-filter: false` slår av
+auto-filteret, som i dag henter årstall fra agentens omskrevne søk. Og
+`filters_applied` i `structuredContent` sier hvilke filtre som faktisk ble brukt.
+
 Klienten vår sender filteret i en form den godtar, også årstall som tekst med
 `value-type integer`. Nr. 6 har den ikke. Forslag: bruk #15 for 1–5, og send
 nr. 6 og seed-skriptet som egen PR oppå.
