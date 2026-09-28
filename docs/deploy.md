@@ -17,13 +17,13 @@ misbrukes. Se [Bytte mellom mock og live](#bytte-mellom-mock-og-live).
 
 ## Hva som finnes
 
-| Fil                            | Hva                                                                          |
-| ------------------------------ | ---------------------------------------------------------------------------- |
-| `server/`                      | Serveren. Node uten rammeverk og uten avhengigheter.                         |
-| `Dockerfile`                   | To steg: bygg med devDependencies, kjøretid uten node_modules.               |
-| `deploy/main.bicep`            | Container App, miljø, logganalyse, appens identitet og utrullingsidentiteten |
-| `.github/workflows/deploy.yml` | Bygger, pusher og ruller ut ved hver push til `main`.                        |
-| `.github/workflows/ci.yml`     | Bygger og starter bildet på hver PR, uten å pushe.                           |
+| Fil                            | Hva                                                            |
+| ------------------------------ | -------------------------------------------------------------- |
+| `server/`                      | Serveren. Node uten rammeverk og uten avhengigheter.           |
+| `Dockerfile`                   | To steg: bygg med devDependencies, kjøretid uten node_modules. |
+| `deploy/main.bicep`            | Register, Container App, miljø, logganalyse og to identiteter  |
+| `.github/workflows/deploy.yml` | Bygger, pusher og ruller ut ved hver push til `main`.          |
+| `.github/workflows/ci.yml`     | Bygger og starter bildet på hver PR, uten å pushe.             |
 
 Serveren gjør fire ting: proxyer `/api/*` til backenden med `X-API-Key` påsatt,
 serverer `dist/` med SPA-fallback, svarer på `/healthz`, og skriver
@@ -33,7 +33,8 @@ serverer `dist/` med SPA-fallback, svarer på `/healthz`, og skriver
 
 Merge til `main`, og `Deploy`-workflowen gjør resten:
 
-1. bygger bildet og pusher det som `altinnaicontainers.azurecr.io/ka-frontend-test:<commit>`;
+1. bygger bildet og pusher det som `ka-frontend-test:<commit>` til vårt eget
+   register;
 2. peker appen på det med `az containerapp update`, som gir en ny revisjon
    `ka-frontend-test--sha<7 tegn>-<kjøring>-<forsøk>`;
 3. spør `/healthz` på **den nye revisjonens** egen adresse, og feiler hvis den
@@ -57,56 +58,52 @@ utrulling» og står grønn, så `main` ikke blir rød av et miljø som ikke fin
 
 ## Første gang
 
-Oppskriften kjøres ovenfra og ned, i ett skall, fra repo-rota. Den lager alt i
-`rg-ka-app` og bruker registeret `altinnaicontainers`, som resten av dette
-dokumentet. Bytt verdiene i steg 0 hvis det blir andre.
+Oppskriften kjøres ovenfra og ned, i ett skall, fra repo-rota. Alt havner i
+`rg-ka-app`, også registeret bildene ligger i; se
+[Hvorfor eget register](#hvorfor-eget-register). Bytt verdiene i steg 0 hvis
+det blir andre.
 
 ### Rettigheter du trenger først
 
-| Hva                                                                              | Hvor                            | Steg |
-| -------------------------------------------------------------------------------- | ------------------------------- | ---- |
-| Contributor (eller Owner)                                                        | ressursgruppa `rg-ka-app`       | 1, 5 |
-| Owner, User Access Administrator eller Role Based Access Control Administrator   | registeret `altinnaicontainers` | 2    |
-| Samme som over                                                                   | ressursgruppa `rg-ka-app`       | 6    |
-| Admin i repoet (for variablene)                                                  | GitHub                          | 3    |
-| `Microsoft.App` og `Microsoft.OperationalInsights` registrert (sjekkes i steg 0) | abonnementet                    | 0    |
+| Hva                                                                                                             | Hvor                      | Steg |
+| --------------------------------------------------------------------------------------------------------------- | ------------------------- | ---- |
+| Contributor (eller Owner)                                                                                       | ressursgruppa `rg-ka-app` | 1, 5 |
+| Owner, User Access Administrator eller Role Based Access Control Administrator                                  | ressursgruppa `rg-ka-app` | 2, 6 |
+| Admin i repoet (for variablene)                                                                                 | GitHub                    | 3    |
+| `Microsoft.App`, `Microsoft.OperationalInsights` og `Microsoft.ContainerRegistry` registrert (sjekkes i steg 0) | abonnementet              | 0    |
 
-Steg 2 og 6 er de eneste som krever rett til å gi roller. Har du den ikke, kan
-noen som har den kjøre akkurat de to stegene; kommandoene står ferdige. Er
-Contributor bak PIM, aktiver den før du begynner.
+Ingen rettigheter i `altinnaicontainers` eller andre steder utenfor
+ressursgruppa. Steg 2 og 6 er de eneste som krever rett til å gi roller. Har du
+den ikke, kan noen som har den kjøre akkurat de to stegene; kommandoene står
+ferdige. Er Contributor bak PIM, aktiver den før du begynner.
 
 ### Steg 0: verdiene, og en sjekk
 
 ```sh
 RG=rg-ka-app
-ACR=altinnaicontainers
 APP=ka-frontend-test
 REPO=larsekhansen/kunnskapsassistenten-frontend
 
 az account show --query '{abonnement:name, id:id}' -o table
 az extension add --name containerapp --upgrade --only-show-errors
-az provider show -n Microsoft.App --query registrationState -o tsv                  # Registered
-az provider show -n Microsoft.OperationalInsights --query registrationState -o tsv  # Registered
+for provider in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistry; do
+  echo "$provider $(az provider show -n $provider --query registrationState -o tsv)"   # Registered
+done
 az group show -n $RG --query location -o tsv    # finnes ikke? az group create -n $RG -l <region>
-
-# Registeret må ligge i samme abonnement, ellers trenger kommandoene under --subscription.
-ACR_ID=$(az acr show -n $ACR --query id -o tsv)
-az acr show -n $ACR --query roleAssignmentMode -o tsv
 ```
-
-Sier den siste `AbacRepositoryPermissions`, gjelder ikke `AcrPull` og `AcrPush`
-i registeret. Bruk da `Container Registry Repository Reader` og
-`Container Registry Repository Writer` i steg 2 i stedet.
 
 ### Steg 1: grunnmuren
 
-Uten `image` lager malen miljøet, loggene og de to identitetene, men ingen app.
-Da kan rollene gis før appen prøver å hente et bilde.
+Uten `imageTag` lager malen registeret, miljøet, loggene og de to
+identitetene, men ingen app. Da kan rollene gis før appen prøver å hente et
+bilde.
 
 ```sh
-az deployment group create -g $RG --template-file deploy/main.bicep \
-  --parameters githubRepository=$REPO
+az deployment group create -g $RG -n ka-frontend-grunnmur \
+  --template-file deploy/main.bicep --parameters githubRepository=$REPO
 
+ACR=$(az deployment group show -g $RG -n ka-frontend-grunnmur --query properties.outputs.registryName.value -o tsv)
+ACR_ID=$(az acr show -n $ACR -g $RG --query id -o tsv)
 RUNTIME_ID=$(az identity show -n $APP-id -g $RG --query principalId -o tsv)
 DEPLOY_ID=$(az identity show -n $APP-deploy -g $RG --query principalId -o tsv)
 DEPLOY_CLIENT_ID=$(az identity show -n $APP-deploy -g $RG --query clientId -o tsv)
@@ -117,6 +114,8 @@ DEPLOY_CLIENT_ID=$(az identity show -n $APP-deploy -g $RG --query clientId -o ts
 logge inn som den, og det ligger ingen hemmelighet noe sted.
 
 ### Steg 2: roller i registeret (krever rett til å gi roller)
+
+Registeret er vårt eget, så begge rollene gjelder bare våre bilder.
 
 ```sh
 # Appen henter bildet.
@@ -138,13 +137,13 @@ Ingen av dem er hemmelige, derfor variabler og ikke secrets.
 gh variable set AZURE_CLIENT_ID       -R $REPO --body "$DEPLOY_CLIENT_ID"
 gh variable set AZURE_TENANT_ID       -R $REPO --body "$(az account show --query tenantId -o tsv)"
 gh variable set AZURE_SUBSCRIPTION_ID -R $REPO --body "$(az account show --query id -o tsv)"
+gh variable set KA_REGISTRY           -R $REPO --body "$ACR"
 ```
 
 Bare hvis du brukte andre navn i steg 0 (standardverdiene står i workflowen):
 
 ```sh
 gh variable set KA_RESOURCE_GROUP -R $REPO --body "$RG"
-gh variable set KA_REGISTRY       -R $REPO --body "$ACR"
 gh variable set KA_APP_NAME       -R $REPO --body "$APP"
 ```
 
@@ -156,19 +155,18 @@ gh run watch -R $REPO "$(gh run list -R $REPO -w Deploy -L 1 --json databaseId -
 ```
 
 Denne kjøringen **blir rød, og det er ventet**: bildet pushes, men appen finnes
-ikke ennå. Feilmeldingen «Appen finnes ikke» har med bildenavnet. Slik slipper
-du å ha push-rett i registeret selv.
+ikke ennå. Feilmeldingen «Appen finnes ikke» sier hvilken tagg den pushet.
 
 ```sh
 # Commiten kjøringen bygde, ikke din lokale main, som kan være eldre.
-IMAGE=$ACR.azurecr.io/$APP:$(gh run list -R $REPO -w Deploy -L 1 --json headSha -q '.[0].headSha')
+TAG=$(gh run list -R $REPO -w Deploy -L 1 --json headSha -q '.[0].headSha')
 ```
 
 ### Steg 5: appen
 
 ```sh
-az deployment group create -g $RG --template-file deploy/main.bicep \
-  --parameters githubRepository=$REPO image=$IMAGE acrLoginServer=$ACR.azurecr.io \
+az deployment group create -g $RG -n ka-frontend-app \
+  --template-file deploy/main.bicep --parameters githubRepository=$REPO imageTag=$TAG \
   --query properties.outputs.fqdn.value -o tsv
 ```
 
@@ -192,18 +190,16 @@ az role assignment create --role "Managed Identity Operator" \
 Contributor på appen og ikke på ressursgruppa: `rg-ka-app` kan ha andre ting i
 seg, og utrullingen trenger ikke røre dem.
 
-### Steg 7: en ekte utrulling
+### Steg 7: en ekte utrulling, og adressen på forsiden
 
 ```sh
 gh workflow run deploy.yml -R $REPO
-```
-
-Grønn, og adressen står i sammendraget. Legg den gjerne øverst på repoets
-forside også, der den er lettest å finne:
-
-```sh
 gh repo edit $REPO --homepage "https://$(az containerapp show -n $APP -g $RG --query properties.configuration.ingress.fqdn -o tsv)"
 ```
+
+Kjøringen blir grønn, og adressen står i sammendraget og under **Deployments →
+test**. Den andre linja legger den også øverst på repoets forside, under
+«About», der `docs/kom-i-gang.md` sier at den står.
 
 ### Når repoet flyttes til digdir
 
@@ -211,6 +207,42 @@ Den federerte legitimasjonen gjelder bare `repo:larsekhansen/kunnskapsassistente
 Den dagen repoet flyttes, slutter utrullingen å kunne logge inn. Kjør steg 1 på
 nytt med det nye navnet (`REPO=digdir/<navn>`), og sett variablene i steg 3 i
 det nye repoet. Resten står.
+
+## Hvorfor eget register
+
+Bildene ligger i et register malen lager i `rg-ka-app`, og ikke i det delte
+`altinnaicontainers`. Der bygger også Nikolais `ka-app`, og `AcrPush` gjelder
+hele registeret den gis på: en kjøring fra `main` her kunne da ha overskrevet
+bildene hans. Utrullingen skal bare kunne skrive til sine egne.
+
+Alternativene, og hvorfor de ikke ble valgt:
+
+- **Rettigheter per repository i `altinnaicontainers`** (ABAC, rollen
+  `Container Registry Repository Writer` med en betingelse på
+  `ka-frontend-test`). Da må registeret slås over til ABAC-modus, og i den
+  modusen gjelder ikke `AcrPull` og `AcrPush`
+  ([Microsofts dokumentasjon](https://learn.microsoft.com/azure/container-registry/container-registry-rbac-abac-repository-permissions)).
+  `ka-app` ville mistet rollen den henter bildene sine med, til noen ga den nye.
+- **Token med scope map.** Kan begrenses til ett repository, men er et passord,
+  og det måtte ligget som hemmelighet i GitHub. Hele utrullingen er bygget for
+  å klare seg uten.
+
+Prisen, fra Azures offentlige prisliste for Norway East 28.09: Basic koster
+0,1666 USD per dag, altså ca. 5 USD i måneden, med 10 GiB lagring inkludert og
+0,10 USD per GB i måneden utover det. Basic har Entra-innlogging, som er alt
+utrullingen bruker ([SKU-oversikten](https://learn.microsoft.com/azure/container-registry/container-registry-skus)).
+Hvert nytt bilde legger bare til de lagene som endrer seg, målt til ca. 2 MB
+(klienten og serveren; Node-laget på ca. 60 MB lagres én gang), så 10 GiB
+holder lenge.
+
+Malen låser registeret til den klassiske rollemodusen. Microsoft skal gjøre
+ABAC til standard for nye registre, og da ville `AcrPull` og `AcrPush` i steg 2
+ikke virket. ABAC gir heller ikke noe her, der registeret bare har våre egne
+bilder.
+
+Registerets navn er `kafrontend` pluss en verdi avledet av ressursgruppa, fordi
+navnet må være unikt i hele Azure. Det står i utdataene fra steg 1 og i
+GitHub-variabelen `KA_REGISTRY`.
 
 ## Rulle tilbake
 
@@ -292,22 +324,24 @@ az containerapp update -n $APP -g $RG \
 revisjon, som `update` tvinger fram. Et modusbytte trenger ingen ny bygging —
 `/config.js` skrives ved hver forespørsel og lagres aldri.
 
-**Kjør ikke malen på nytt for å bytte modus.** Den setter bildet til det
-`image` sier, og da ruller du tilbake til den versjonen. Må den kjøres igjen,
-gi den bildet som kjører nå:
+**Kjør ikke malen på nytt med en gammel `imageTag` for å bytte modus.** Den
+setter bildet til den taggen, og da ruller du tilbake til den versjonen. Må den
+kjøres igjen, gi den taggen som kjører nå:
 
 ```sh
-az containerapp show -n $APP -g $RG --query 'properties.template.containers[0].image' -o tsv
+TAG=$(az containerapp show -n $APP -g $RG --query 'properties.template.containers[0].image' -o tsv | cut -d: -f2)
 ```
+
+Uten `imageTag` rører malen ikke appen i det hele tatt, bare grunnmuren.
 
 Uten `digdirApiKey` utelater malen både secreten og variabelen. Det er ikke
 målt om Container Apps godtar en secret med tom verdi; utelatt virker uansett.
 
 ## Bygge og rulle ut for hånd
 
-For når GitHub ikke er et alternativ. `az acr build` laster opp arbeidstreet,
-så ingenting må pushes først, men den krever rett til å kjøre oppgaver i
-registeret.
+For når GitHub ikke er et alternativ. `az acr build` laster opp arbeidstreet
+og bygger i registeret, så ingenting må pushes først. Contributor på
+ressursgruppa holder, siden registeret ligger der.
 
 ```sh
 git diff --quiet HEAD || { echo 'ucommittede endringer'; exit 1; }

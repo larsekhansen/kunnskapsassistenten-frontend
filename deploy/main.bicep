@@ -8,9 +8,14 @@
 // ikke lekke. Innlogging er steg 5 i design/plan-testmiljo-2026-09-22.md.
 //
 // Kjøres i to omganger, se «Første gang» i docs/deploy.md:
-//   1. uten `image`: miljø, logger og begge identitetene, så rollene kan gis
-//      før appen finnes og første henting av bildet ikke feiler;
-//   2. med `image`: selve appen.
+//   1. uten `imageTag`: register, miljø, logger og begge identitetene, så
+//      rollene kan gis før appen finnes og første henting av bildet ikke feiler;
+//   2. med `imageTag`: selve appen.
+//
+// Registeret er vårt eget og ikke det delte `altinnaicontainers`. Der bygger
+// også Nikolais `ka-app`, og AcrPush på det registeret ville latt en kjøring
+// fra `main` her overskrive bildene hans. Grunnlaget står i docs/deploy.md,
+// «Hvorfor eget register».
 //
 // IKKE KJØRT. Første utrulling gjør et menneske med Contributor på
 // ressursgruppa; rolletildelingene er et eget steg fordi de krever Owner eller
@@ -20,9 +25,13 @@
 param name string = 'ka-frontend-test'
 param location string = resourceGroup().location
 
-@description('Bildet i registeret, f.eks. altinnaicontainers.azurecr.io/ka-frontend-test:<sha>. Tom = bare grunnmuren, ingen app.')
-param image string = ''
-param acrLoginServer string = 'altinnaicontainers.azurecr.io'
+@description('Taggen på bildet i vårt register, som er commit-sha-en. Tom = bare grunnmuren, ingen app.')
+param imageTag string = ''
+
+@description('Registerets navn. Globalt unikt i Azure, derfor avledet av ressursgruppa.')
+@minLength(5)
+@maxLength(50)
+param registryName string = 'kafrontend${uniqueString(resourceGroup().id)}'
 
 @description('Repoet som får rulle ut, som «eier/navn». Byttes den dagen repoet flyttes til digdir.')
 param githubRepository string = 'larsekhansen/kunnskapsassistenten-frontend'
@@ -71,6 +80,23 @@ var plainEnv = filter(
 )
 var keyEnv = hasKey ? [{ name: 'DIGDIR_API_KEY', secretRef: 'digdir-api-key' }] : []
 
+// Basic: 10 GiB inkludert, og hvert bilde legger bare til de ca. 2 MB som
+// endrer seg (målt 28.09). Uten admin-bruker: alt går med Entra-identiteter.
+//
+// Rollemodusen står eksplisitt. Microsoft skal gjøre ABAC til standard for nye
+// registre, og der gjelder ikke AcrPull og AcrPush, som er rollene
+// docs/deploy.md gir. ABAC ville heller ikke gitt noe her: registeret har bare
+// våre egne bilder, så det er ingen andre å skille ut.
+resource registry 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
+  name: registryName
+  location: location
+  sku: { name: 'Basic' }
+  properties: {
+    adminUserEnabled: false
+    roleAssignmentMode: 'LegacyRegistryPermissions'
+  }
+}
+
 resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: '${name}-logs'
   location: location
@@ -94,8 +120,8 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-// Appens egen identitet: henter bildet fra registeret (AcrPull), og ingenting
-// annet.
+// Appens egen identitet: henter bildet fra vårt register (AcrPull), og
+// ingenting annet.
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${name}-id'
   location: location
@@ -121,7 +147,7 @@ resource github 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdent
   }
 }
 
-resource app 'Microsoft.App/containerApps@2024-03-01' = if (!empty(image)) {
+resource app 'Microsoft.App/containerApps@2024-03-01' = if (!empty(imageTag)) {
   name: name
   location: location
   identity: {
@@ -142,14 +168,14 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (!empty(image)) {
         // mot et tregt korpus nærmer seg grensa.
         stickySessions: { affinity: 'none' }
       }
-      registries: [{ server: acrLoginServer, identity: identity.id }]
+      registries: [{ server: registry.properties.loginServer, identity: identity.id }]
       secrets: hasKey ? [{ name: 'digdir-api-key', value: digdirApiKey }] : []
     }
     template: {
       containers: [
         {
           name: name
-          image: image
+          image: '${registry.properties.loginServer}/${name}:${imageTag}'
           resources: { cpu: json('0.5'), memory: '1Gi' }
           env: concat(plainEnv, keyEnv)
           probes: [
@@ -170,7 +196,9 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (!empty(image)) {
   }
 }
 
-output fqdn string = empty(image) ? '' : app!.properties.configuration.ingress.fqdn
+output fqdn string = empty(imageTag) ? '' : app!.properties.configuration.ingress.fqdn
+@description('Settes som GitHub-variabelen KA_REGISTRY.')
+output registryName string = registry.name
 output principalId string = identity.properties.principalId
 @description('Settes som GitHub-variabelen AZURE_CLIENT_ID.')
 output deployClientId string = deployer.properties.clientId

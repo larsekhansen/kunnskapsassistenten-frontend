@@ -25,9 +25,11 @@ concurrency:
 permissions:
   contents: read
 
+# The registry has no default: it is ours alone, made by deploy/main.bicep
+# with a name derived from the resource group, and the template prints it.
 env:
   RESOURCE_GROUP: ${{ vars.KA_RESOURCE_GROUP || 'rg-ka-app' }}
-  REGISTRY: ${{ vars.KA_REGISTRY || 'altinnaicontainers' }}
+  REGISTRY: ${{ vars.KA_REGISTRY }}
   APP: ${{ vars.KA_APP_NAME || 'ka-frontend-test' }}
 
 jobs:
@@ -54,11 +56,11 @@ jobs:
             echo "ready=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if [ -n "$CLIENT_ID" ] && [ -n "$TENANT_ID" ] && [ -n "$SUBSCRIPTION_ID" ]; then
+          if [ -n "$CLIENT_ID" ] && [ -n "$TENANT_ID" ] && [ -n "$SUBSCRIPTION_ID" ] && [ -n "$REGISTRY" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          message="Hopper over utrullingen: AZURE_CLIENT_ID, AZURE_TENANT_ID og AZURE_SUBSCRIPTION_ID er ikke satt som repo-variabler. Se «Første gang» i docs/deploy.md."
+          message="Hopper over utrullingen: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID og KA_REGISTRY er ikke alle satt som repo-variabler. Se «Første gang» i docs/deploy.md."
           echo "::notice title=Ingen utrulling::$message"
           echo "$message" >> "$GITHUB_STEP_SUMMARY"
           echo "ready=false" >> "$GITHUB_OUTPUT"
@@ -91,8 +93,9 @@ jobs:
         id: image
         run: |
           image="$REGISTRY.azurecr.io/$APP:$GITHUB_SHA"
-          # AcrPush is all the identity has. Without read on the registry in
-          # ARM, `az acr login` falls back to <name>.azurecr.io by itself.
+          # AcrPush on our own registry is all the identity has there. Without
+          # read on it in ARM, `az acr login` falls back to <name>.azurecr.io
+          # by itself (az 2.89.1, acr/_docker_utils.py).
           az acr login --name "$REGISTRY"
           docker build --tag "$image" .
           docker push "$image"
@@ -105,7 +108,7 @@ jobs:
         run: |
           az extension add --name containerapp --upgrade --only-show-errors
           if ! az containerapp show -n "$APP" -g "$RESOURCE_GROUP" --query name -o tsv > /dev/null; then
-            echo "::error title=Appen finnes ikke::Bildet er pushet som $IMAGE, men $APP i $RESOURCE_GROUP finnes ikke eller kan ikke leses. Første gang er det ventet: kjør steg 5 i docs/deploy.md med dette bildet."
+            echo "::error title=Appen finnes ikke::Bildet er pushet som $IMAGE, men $APP i $RESOURCE_GROUP finnes ikke eller kan ikke leses. Første gang er det ventet: kjør steg 5 i docs/deploy.md med imageTag=$GITHUB_SHA."
             exit 1
           fi
           # Unique per run, so re-running the same commit is a new revision
