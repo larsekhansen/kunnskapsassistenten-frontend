@@ -162,10 +162,38 @@ describe('/config.js', () => {
   });
 });
 
+describe('mock-modus', () => {
+  it('sender ingenting til backend, heller ikke med en nøkkel satt fra live', async () => {
+    // KA CC på #169: «Tilbake til mock» lot nøkkelen stå, og proxyen så ikke
+    // på modusen, så kallet gikk videre med X-API-Key og nettleserens id.
+    const apiBase = await startBackend();
+    await start({ mode: 'mock', apiBase, apiKey: 'rag_hemmelig_verdi' });
+
+    for (const path of ['/api/conversations', '/api/mcp']) {
+      const response = await fetch(`${base}${path}`, {
+        method: path === '/api/mcp' ? 'POST' : 'GET',
+        headers: { 'X-User-Id': 'ka-noen', 'X-MS-CLIENT-PRINCIPAL-ID': 'offerets-oid' },
+        ...(path === '/api/mcp' ? { body: '{}' } : {}),
+      });
+
+      expect({ path, status: response.status }).toEqual({ path, status: 404 });
+      expect(response.headers.get('content-type')).toContain('application/json');
+      expect({ path, sett: lastSeen() }).toEqual({ path, sett: undefined });
+    }
+  });
+
+  it('svarer fortsatt på helsesjekken og klienten', async () => {
+    await start({ mode: 'mock', apiKey: 'rag_hemmelig_verdi' });
+
+    expect((await fetch(`${base}/healthz`)).status).toBe(200);
+    expect((await fetch(`${base}/`)).status).toBe(200);
+  });
+});
+
 describe('proxy mot backend', () => {
   it('setter nøkkelen på serveren og slipper gjennom protokollhodene', async () => {
     const apiBase = await startBackend();
-    await start({ apiBase, apiKey: 'rag_hemmelig_verdi' });
+    await start({ mode: 'live', apiBase, apiKey: 'rag_hemmelig_verdi' });
 
     const response = await fetch(`${base}/api/mcp`, {
       method: 'POST',
@@ -193,7 +221,7 @@ describe('proxy mot backend', () => {
     // Allowlista er poenget: en proxy som sender Authorization videre er en
     // proxy noen kan prøve andres legitimasjon gjennom.
     const apiBase = await startBackend();
-    await start({ apiBase, apiKey: 'rag_serverens_egen' });
+    await start({ mode: 'live', apiBase, apiKey: 'rag_serverens_egen' });
 
     await fetch(`${base}/api/mcp`, {
       method: 'POST',
@@ -211,7 +239,7 @@ describe('proxy mot backend', () => {
 
   it('ber mellomledd la være å buffre svaret', async () => {
     const apiBase = await startBackend();
-    await start({ apiBase });
+    await start({ mode: 'live', apiBase });
 
     const response = await fetch(`${base}/api/mcp`, { method: 'POST', body: '{}' });
 
@@ -230,7 +258,7 @@ describe('proxy mot backend', () => {
      * noe av det i det hele tatt.
      */
     const apiBase = await startBackend();
-    await start({ apiBase, apiKey: 'rag_hemmelig_verdi' });
+    await start({ mode: 'live', apiBase, apiKey: 'rag_hemmelig_verdi' });
 
     for (const path of ['/api/../console-api/x', '/api/%2e%2e/auth', '/api/..%2fauth']) {
       const response = await raw(portOf(base), path);
@@ -250,7 +278,7 @@ describe('proxy mot backend', () => {
      * de videresendes ikke.
      */
     const apiBase = await startBackend();
-    await start({ apiBase, apiKey: 'rag_hemmelig_verdi' });
+    await start({ mode: 'live', apiBase, apiKey: 'rag_hemmelig_verdi' });
 
     for (const path of [
       '/api/..;/auth',
@@ -272,7 +300,7 @@ describe('proxy mot backend', () => {
     // Vakta over er en blokkeringsliste, og en blokkeringsliste som tar med
     // seg vanlige adresser er verre enn ingen. Målt begge veier.
     const apiBase = await startBackend();
-    await start({ apiBase });
+    await start({ mode: 'live', apiBase });
 
     for (const path of [
       '/api/mcp',
@@ -294,7 +322,7 @@ describe('proxy mot backend', () => {
   it('lar en vanlig sti med spørrestreng gå gjennom som før', async () => {
     // Vakta over skal stenge omveier, ikke veien.
     const apiBase = await startBackend();
-    await start({ apiBase });
+    await start({ mode: 'live', apiBase });
 
     const response = await fetch(`${base}/api/conversations?page_size=100`);
 
@@ -306,7 +334,7 @@ describe('proxy mot backend', () => {
     // Uten tak er det bare klientens egen tilbakeholdenhet som står mellom
     // en strøm og containerens minne.
     const apiBase = await startBackend();
-    await start({ apiBase, maxBodyBytes: 64 });
+    await start({ mode: 'live', apiBase, maxBodyBytes: 64 });
 
     const response = await fetch(`${base}/api/mcp`, { method: 'POST', body: 'x'.repeat(200) });
 
@@ -316,7 +344,7 @@ describe('proxy mot backend', () => {
 
   it('slipper en forespørsel under taket gjennom', async () => {
     const apiBase = await startBackend();
-    await start({ apiBase, maxBodyBytes: 64 });
+    await start({ mode: 'live', apiBase, maxBodyBytes: 64 });
 
     const response = await fetch(`${base}/api/mcp`, { method: 'POST', body: 'x'.repeat(32) });
 
@@ -327,7 +355,7 @@ describe('proxy mot backend', () => {
   it('svarer 502 når backend ikke er der, ikke en side', async () => {
     // En klient som får HTML der den ventet JSON feiler i parseren, og da
     // sier feilmeldingen noe helt annet enn det som er galt.
-    await start({ apiBase: 'http://127.0.0.1:1' });
+    await start({ mode: 'live', apiBase: 'http://127.0.0.1:1' });
 
     const response = await fetch(`${base}/api/mcp`, { method: 'POST', body: '{}' });
 
@@ -345,7 +373,7 @@ describe('hvem som spør', () => {
     // Uten dette kan hvem som helst bak innloggingen lese andres tråder ved å
     // sende deres id.
     const apiBase = await startBackend();
-    await start({ apiBase, userIdFrom: 'platform' });
+    await start({ mode: 'live', apiBase, userIdFrom: 'platform' });
 
     const response = await fetch(`${base}/api/conversations`, {
       headers: { 'X-User-Id': 'ka-noen-andre', [PLATFORM]: SIGNED_IN },
@@ -359,7 +387,7 @@ describe('hvem som spør', () => {
 
   it('setter brukeren også når nettleseren ikke sendte noen', async () => {
     const apiBase = await startBackend();
-    await start({ apiBase, userIdFrom: 'platform' });
+    await start({ mode: 'live', apiBase, userIdFrom: 'platform' });
 
     await fetch(`${base}/api/mcp`, {
       method: 'POST',
@@ -372,7 +400,7 @@ describe('hvem som spør', () => {
 
   it('svarer 401 og ikke som en anonym bruker når plattformens hode mangler', async () => {
     const apiBase = await startBackend();
-    await start({ apiBase, userIdFrom: 'platform', apiKey: 'rag_hemmelig_verdi' });
+    await start({ mode: 'live', apiBase, userIdFrom: 'platform', apiKey: 'rag_hemmelig_verdi' });
 
     for (const headers of [{ 'X-User-Id': 'ka-noen-andre' }, { [PLATFORM]: '  ' }, {}]) {
       const response = await fetch(`${base}/api/conversations`, { headers });
@@ -387,7 +415,7 @@ describe('hvem som spør', () => {
     // Uten innloggingen foran kan nettleseren sette plattformens hode selv, så
     // det skal ikke bety noe da.
     const apiBase = await startBackend();
-    await start({ apiBase });
+    await start({ mode: 'live', apiBase });
 
     const response = await fetch(`${base}/api/conversations`, {
       headers: { 'X-User-Id': 'ka-denne-nettleseren', [PLATFORM]: SIGNED_IN },
@@ -519,7 +547,7 @@ describe('en leser som går', () => {
   });
 
   it('tar ikke ned serveren når forespørselen avbrytes før kroppen er lest', async () => {
-    await start({ apiBase: await startBackend() });
+    await start({ mode: 'live', apiBase: await startBackend() });
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const call = httpRequest(`${base}/api/mcp`, {

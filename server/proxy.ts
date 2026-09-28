@@ -185,6 +185,22 @@ export async function proxy(
   config: ServerConfig,
 ): Promise<void> {
   /*
+   * In mock nothing goes to the backend, key or no key. The client in mock
+   * answers from its fixtures and never calls here, so a call that does is
+   * somebody else's, and a key left set from a spell in live would otherwise
+   * be put on it (KA CC on #169). The mode now means what docs/deploy.md
+   * says it means.
+   */
+  if (config.mode === 'mock') {
+    response.writeHead(404, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
+    response.end(JSON.stringify({ error: 'Ingen backend i mock-modus.' }));
+    return;
+  }
+
+  /*
    * Behind the login, a call without the platform's user is refused rather
    * than sent on as nobody or as whoever the browser claims to be. The login
    * in front means this should not happen; if it does, the login is not in
