@@ -69,6 +69,13 @@ param entraClientSecret string = ''
 @description('Tenanten registreringen ligger i. Standard er tenanten abonnementet hører til.')
 param entraTenantId string = subscription().tenantId
 
+@description('Hvordan appen henter bildet: `identity` med AcrPull (krever noen som kan gi roller), eller `admin` med registerets eget passord (holder med Contributor).')
+@allowed(['identity', 'admin'])
+param registryAuth string = 'identity'
+
+@description('Adressene som slipper inn, i CIDR-form ("1.2.3.4/32"). Tom = ingen begrensning.')
+param allowedIps array = []
+
 // Uten nøkkel står både secret og variabel utenfor. Det er ikke målt om
 // Container Apps godtar en secret med tom verdi, og en app i mock har ingen
 // bruk for en; utelatt er riktig uansett hva svaret er.
@@ -82,6 +89,28 @@ var loginSecretName = 'microsoft-provider-authentication-secret'
 var loginSecret = hasLogin && empty(entraClientSecret)
   ? fail('entraClientId er satt uten entraClientSecret. Se «Innlogging» i docs/deploy.md.')
   : entraClientSecret
+
+// En nøkkel skal ha noe foran seg: innloggingen eller en adresseliste. Uten
+// begge ville den stått på hvert kall fra hvem som helst med adressen (KA CC
+// på #169). En glemt parameter blir da en stopp, og ikke en åpen app i live.
+var apiKey = hasKey && !hasLogin && empty(allowedIps)
+  ? fail('digdirApiKey er gitt uten entraClientId og uten allowedIps. Se «Live for én person» i docs/deploy.md.')
+  : digdirApiKey
+
+// Registerets passord, lest av malen selv og lagt som secret. Det skrives
+// aldri ut: det står ikke i utdataene, og et ternært uttrykk evaluerer bare
+// grenen som gjelder, så `listCredentials()` kalles ikke med admin av.
+var useAdmin = registryAuth == 'admin'
+var registryPasswordSecret = 'registry-password'
+
+// Én regel per adresse. Er alle `Allow`, slipper ingen andre inn.
+var ipRules = [
+  for (range, index) in allowedIps: {
+    name: 'tillatt-${index}'
+    ipAddressRange: range
+    action: 'Allow'
+  }
+]
 
 // Tomme verdier utelates av samme grunn. Serveren leser en tom variabel og en
 // manglende likt (`value()` i server/config.ts), så ingenting endrer mening.
@@ -102,12 +131,15 @@ var plainEnv = filter(
 )
 var keyEnv = hasKey ? [{ name: 'DIGDIR_API_KEY', secretRef: 'digdir-api-key' }] : []
 var secrets = concat(
-  hasKey ? [{ name: 'digdir-api-key', value: digdirApiKey }] : [],
-  hasLogin ? [{ name: loginSecretName, value: loginSecret }] : []
+  hasKey ? [{ name: 'digdir-api-key', value: apiKey }] : [],
+  hasLogin ? [{ name: loginSecretName, value: loginSecret }] : [],
+  useAdmin ? [{ name: registryPasswordSecret, value: registry.listCredentials().passwords[0].value }] : []
 )
 
 // Basic: 10 GiB inkludert, og hvert bilde legger bare til de ca. 2 MB som
-// endrer seg (målt 28.09). Uten admin-bruker: alt går med Entra-identiteter.
+// endrer seg (målt 28.09). Admin-brukeren er av, med mindre `registryAuth`
+// er `admin`: da er passordet det appen henter bildet med, fordi den som
+// ruller ut ikke kan gi AcrPull.
 //
 // Rollemodusen står eksplisitt. Microsoft skal gjøre ABAC til standard for nye
 // registre, og der gjelder ikke AcrPull og AcrPush, som er rollene
@@ -118,7 +150,7 @@ resource registry 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
   location: location
   sku: { name: 'Basic' }
   properties: {
-    adminUserEnabled: false
+    adminUserEnabled: useAdmin
     roleAssignmentMode: 'LegacyRegistryPermissions'
   }
 }
@@ -147,7 +179,7 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 }
 
 // Appens egen identitet: henter bildet fra vårt register (AcrPull), og
-// ingenting annet.
+// ingenting annet. Med `registryAuth=admin` er den ubrukt, men står.
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${name}-id'
   location: location
@@ -190,6 +222,9 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (!empty(imageTag)) {
         // Standardverdien, skrevet ut: innloggingen skal bare brukes over
         // HTTPS, sier Microsoft.
         allowInsecure: false
+        // Tom liste er ingen begrensning. Med adresser slipper bare de inn,
+        // også til /healthz, så GitHub sin helsesjekk når ikke fram.
+        ipSecurityRestrictions: ipRules
         // Ingen timeout satt her, fordi det ikke finnes noen å sette:
         // Container Apps' ingress har 240 sekunder som plattformverdi og
         // eksponerer den ikke i denne API-versjonen. Det holder for et svar
@@ -197,7 +232,15 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (!empty(imageTag)) {
         // mot et tregt korpus nærmer seg grensa.
         stickySessions: { affinity: 'none' }
       }
-      registries: [{ server: registry.properties.loginServer, identity: identity.id }]
+      registries: [
+        useAdmin
+          ? {
+              server: registry.properties.loginServer
+              username: registry.listCredentials().username
+              passwordSecretRef: registryPasswordSecret
+            }
+          : { server: registry.properties.loginServer, identity: identity.id }
+      ]
       secrets: secrets
     }
     template: {
@@ -228,30 +271,39 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (!empty(imageTag)) {
 // Plattformens innlogging med Entra, foran alt appen svarer på. Den kjører
 // som en sidevogn i hver replika, og serveren ser bare forespørsler som har
 // kommet gjennom den, med den innloggede brukeren i X-MS-CLIENT-PRINCIPAL-ID.
-resource login 'Microsoft.App/containerApps/authConfigs@2024-03-01' = if (!empty(imageTag) && hasLogin) {
+//
+// Alltid med når appen er det, av eller på som `entraClientId` sier. Malen
+// eier da hele tilstanden: en ny kjøring uten innloggingsparameterne slår den
+// av, i stedet for å la en gammel klient-ID stå uten secret, fordi en
+// inkrementell utrulling ikke sletter noe (KA CC på #169). Av er det samme
+// som `az containerapp auth update --enabled false` lager. Ikke prøvd mot
+// ARM at bare `platform.enabled: false` godtas.
+resource login 'Microsoft.App/containerApps/authConfigs@2024-03-01' = if (!empty(imageTag)) {
   parent: app
   name: 'current'
-  properties: {
-    platform: { enabled: true }
-    globalValidation: {
-      unauthenticatedClientAction: 'RedirectToLoginPage'
-      // Helsesjekken i deploy.yml spør revisjonens adresse uten å være
-      // innlogget, og ville ellers fått en omdirigering til Microsoft.
-      // /healthz sier bare `ok` og modusen.
-      excludedPaths: ['/healthz']
-    }
-    identityProviders: {
-      azureActiveDirectory: {
-        enabled: true
-        registration: {
-          clientId: entraClientId
-          clientSecretSettingName: loginSecretName
-          openIdIssuer: '${environment().authentication.loginEndpoint}${entraTenantId}/v2.0'
+  properties: hasLogin
+    ? {
+        platform: { enabled: true }
+        globalValidation: {
+          unauthenticatedClientAction: 'RedirectToLoginPage'
+          // Helsesjekken i deploy.yml spør revisjonens adresse uten å være
+          // innlogget, og ville ellers fått en omdirigering til Microsoft.
+          // /healthz sier bare `ok` og modusen.
+          excludedPaths: ['/healthz']
         }
+        identityProviders: {
+          azureActiveDirectory: {
+            enabled: true
+            registration: {
+              clientId: entraClientId
+              clientSecretSettingName: loginSecretName
+              openIdIssuer: '${environment().authentication.loginEndpoint}${entraTenantId}/v2.0'
+            }
+          }
+        }
+        httpSettings: { requireHttps: true }
       }
-    }
-    httpSettings: { requireHttps: true }
-  }
+    : { platform: { enabled: false } }
 }
 
 output fqdn string = empty(imageTag) ? '' : app!.properties.configuration.ingress.fqdn
