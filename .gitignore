@@ -37,3 +37,7 @@ design-tokens-build/*
 .env
 .env.local
 .env.*.local
+
+# Det az bicep build-params skriver uten --stdout. Med miljøvariablene
+# satt står nøkkelen i klartekst i den; se deploy/test.bicepparam.
+deploy/*.json

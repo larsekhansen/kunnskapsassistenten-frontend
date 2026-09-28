@@ -1012,13 +1012,14 @@ bruker nøkkelen. Opprettet av oss bærer den vår id og vår tittel, og
 `tools/call` skriver turene inn i den når den får id-en med. Målt: eier og
 emne overlevde turen.
 
-**Bruker-id-en er en plassholder.** Det finnes ingen innlogging, så
-`src/api/live/userId.ts` lager en tilfeldig id og husker den i `localStorage`
-under `ka.user.v1`. Den er ikke en hemmelighet og beviser ingenting: hvem som
-helst med API-nøkkelen kan sende hvilken som helst id og lese den brukerens
+**Bruker-id-en er en plassholder.** Uten innlogging lager
+`src/api/live/userId.ts` en tilfeldig id og husker den i `localStorage` under
+`ka.user.v1`. Den er ikke en hemmelighet og beviser ingenting: hvem som helst
+med API-nøkkelen kan sende hvilken som helst id og lese den brukerens
 samtaler. Den finnes for at én nettleser skal se sine egne tråder og ikke alle
-trådene nøkkelen har laget. Den dagen det finnes innlogging kommer id-en
-derfra og fila kan gå.
+trådene nøkkelen har laget. Bak testmiljøets innlogging bytter serveren den ut
+med den innloggede brukeren (`server/identity.ts`, «Innlogging» i
+`docs/deploy.md`). Fila kan gå den dagen klienten bare kjører bak innlogging.
 
 **Agent-id-en utledes av verktøynavnet.** Samme agent har to skrivemåter, og
 bare én virker hvert sted: `builtin.agent-rag-agent__agent-rag-graph-bundled`

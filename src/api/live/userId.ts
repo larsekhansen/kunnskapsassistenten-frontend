@@ -1,18 +1,19 @@
 /**
- * Who the backend thinks is asking, until there is a login.
+ * Who the backend thinks is asking, when there is no login.
  *
  * `/api/conversations` refuses a request without `X-User-Id` (400) and lists
- * only the conversations whose `conversation/user-id` equals it. There is no
- * sign-in anywhere in this app yet, so the id is one we make up and keep: a
- * random value in `localStorage` under `ka.user.v1`.
+ * only the conversations whose `conversation/user-id` equals it. Without a
+ * sign-in the id is one we make up and keep: a random value in `localStorage`
+ * under `ka.user.v1`. Behind the test environment's login the server throws
+ * this one away and sends the signed-in user instead (`server/identity.ts`).
  *
  * **This is a stand-in, not an identity.** It is not a secret and it proves
  * nothing — anyone holding the API key can pass any id and read that user's
  * conversations, because the backend checks the header against the stored
  * value and nothing else. It exists so that one browser sees its own threads
- * and not every thread the key has ever created. The day there is a real
- * login, the id comes from there and this file goes away. Written up in
- * README under «Live-modus».
+ * and not every thread the key has ever created. The day the client only
+ * runs behind a login, this file goes away. Written up in README under
+ * «Live-modus».
  *
  * The version in the key is there for the day the shape changes: a stored id
  * that no longer means what it meant is a new key, not a migration.
