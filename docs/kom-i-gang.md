@@ -127,7 +127,7 @@ Be Claude Code om det:
 > Kjør sjekkene, commit endringen, push grenen og åpne en pull request.
 
 Den svarer med en lenke til pull requesten. Åpne den. Nederst ser du sjekkene
-(CI). De tar **ca. 8 minutter**. Når alle er grønne, trykk **Merge pull
+(CI). De tar **ca. 7 minutter**. Når alle er grønne, trykk **Merge pull
 request** og så **Confirm merge**.
 
 Etter merge starter utrullingen av seg selv. Du ser den under **Actions →
