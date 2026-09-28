@@ -45,8 +45,10 @@ git config --global user.email "deg@digdir.no"
 den igjen, og sjekk:
 
 ```sh
-node --version    # v24.noe
+node --version
 ```
+
+Det skal stå `v24` og noe mer.
 
 **GitHub.** Du trenger en konto på [github.com](https://github.com), og Lars må
 gi den skrivetilgang til repoet. Du får en invitasjon på e-post; godta den.

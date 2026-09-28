@@ -20,8 +20,10 @@ testadressen.
 
 ```sh
 npm install
-npm run dev            # utviklingsserver på http://localhost:5173
+npm run dev
 ```
+
+Utviklingsserveren svarer på <http://localhost:5173>.
 
 Node 24 eller nyere.
 

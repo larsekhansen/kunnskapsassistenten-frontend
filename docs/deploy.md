@@ -77,20 +77,40 @@ ressursgruppa. Steg 2 og 6 er de eneste som krever rett til å gi roller. Har du
 den ikke, kan noen som har den kjøre akkurat de to stegene; kommandoene står
 ferdige. Er Contributor bak PIM, aktiver den før du begynner.
 
+Står ikke `Altinn-AI-Assistant` i `az account list --refresh -o table`, har du
+ingen rolle i abonnementet ennå, og den første kommandoen i steg 0 feiler. Da
+må noen med tilgang gi deg Contributor på `rg-ka-app`, eller kjøre
+oppskriften.
+
 ### Steg 0: verdiene, og en sjekk
 
+**Hver `az`-kommando i dokumentet har `--subscription "$SUB"`.**
+Standardabonnementet på maskinen kan være et helt annet teams. Hos Lars var
+det `dis-core-prod` 28.09, og uten parameteren ville kommandoene skrevet dit.
+Oppskriften bruker ikke `az account set`, fordi den endrer standardvalget for
+alle skall på maskinen.
+
+Kommandoblokkene har heller ingen kommentarer. zsh på macOS tolker ikke `#`
+som kommentar i et interaktivt skall, så en kommentar bak en kommando blir
+argumenter til den.
+
 ```sh
+SUB=Altinn-AI-Assistant
 RG=rg-ka-app
 APP=ka-frontend-test
 REPO=larsekhansen/kunnskapsassistenten-frontend
 
-az account show --query '{abonnement:name, id:id}' -o table
+az account show --subscription "$SUB" --query '{abonnement:name, id:id}' -o table
 az extension add --name containerapp --upgrade --only-show-errors
 for provider in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistry; do
-  echo "$provider $(az provider show -n $provider --query registrationState -o tsv)"   # Registered
+  echo "$provider $(az provider show --subscription "$SUB" -n $provider --query registrationState -o tsv)"
 done
-az group show -n $RG --query location -o tsv    # finnes ikke? az group create -n $RG -l <region>
+az group show --subscription "$SUB" -n $RG --query location -o tsv
 ```
+
+Den første linja skal vise `Altinn-AI-Assistant`. Gir den en feil, har du ikke
+tilgang, og da stopper du her. Alle tre providerne skal stå som `Registered`.
+Den siste linja skal vise regionen til `rg-ka-app`.
 
 Steg 4 og 7 starter `Deploy` og venter på den. Denne funksjonen gjør det, og den
 venter på **akkurat den kjøringen den startet**. `gh run list -L 1` rett etter
@@ -121,14 +141,14 @@ identitetene, men ingen app. Da kan rollene gis før appen prøver å hente et
 bilde.
 
 ```sh
-az deployment group create -g $RG -n ka-frontend-grunnmur \
+az deployment group create --subscription "$SUB" -g $RG -n ka-frontend-grunnmur \
   --template-file deploy/main.bicep --parameters name=$APP githubRepository=$REPO
 
-ACR=$(az deployment group show -g $RG -n ka-frontend-grunnmur --query properties.outputs.registryName.value -o tsv)
-ACR_ID=$(az acr show -n $ACR -g $RG --query id -o tsv)
-RUNTIME_ID=$(az identity show -n $APP-id -g $RG --query principalId -o tsv)
-DEPLOY_ID=$(az identity show -n $APP-deploy -g $RG --query principalId -o tsv)
-DEPLOY_CLIENT_ID=$(az identity show -n $APP-deploy -g $RG --query clientId -o tsv)
+ACR=$(az deployment group show --subscription "$SUB" -g $RG -n ka-frontend-grunnmur --query properties.outputs.registryName.value -o tsv)
+ACR_ID=$(az acr show --subscription "$SUB" -n $ACR -g $RG --query id -o tsv)
+RUNTIME_ID=$(az identity show --subscription "$SUB" -n $APP-id -g $RG --query principalId -o tsv)
+DEPLOY_ID=$(az identity show --subscription "$SUB" -n $APP-deploy -g $RG --query principalId -o tsv)
+DEPLOY_CLIENT_ID=$(az identity show --subscription "$SUB" -n $APP-deploy -g $RG --query clientId -o tsv)
 ```
 
 `$APP-deploy` har en federert legitimasjon for
@@ -137,15 +157,13 @@ logge inn som den, og det ligger ingen hemmelighet noe sted.
 
 ### Steg 2: roller i registeret (krever rett til å gi roller)
 
-Registeret er vårt eget, så begge rollene gjelder bare våre bilder.
+Registeret er vårt eget, så begge rollene gjelder bare våre bilder. Appen
+henter bildet med `AcrPull`, og GitHub pusher det med `AcrPush`.
 
 ```sh
-# Appen henter bildet.
-az role assignment create --role AcrPull --scope "$ACR_ID" \
+az role assignment create --subscription "$SUB" --role AcrPull --scope "$ACR_ID" \
   --assignee-object-id "$RUNTIME_ID" --assignee-principal-type ServicePrincipal
-
-# GitHub pusher bildet.
-az role assignment create --role AcrPush --scope "$ACR_ID" \
+az role assignment create --subscription "$SUB" --role AcrPush --scope "$ACR_ID" \
   --assignee-object-id "$DEPLOY_ID" --assignee-principal-type ServicePrincipal
 ```
 
@@ -157,8 +175,8 @@ Ingen av dem er hemmelige, derfor variabler og ikke secrets.
 
 ```sh
 gh variable set AZURE_CLIENT_ID       -R $REPO --body "$DEPLOY_CLIENT_ID"
-gh variable set AZURE_TENANT_ID       -R $REPO --body "$(az account show --query tenantId -o tsv)"
-gh variable set AZURE_SUBSCRIPTION_ID -R $REPO --body "$(az account show --query id -o tsv)"
+gh variable set AZURE_TENANT_ID       -R $REPO --body "$(az account show --subscription "$SUB" --query tenantId -o tsv)"
+gh variable set AZURE_SUBSCRIPTION_ID -R $REPO --body "$(az account show --subscription "$SUB" --query id -o tsv)"
 gh variable set KA_REGISTRY           -R $REPO --body "$ACR"
 ```
 
@@ -177,16 +195,17 @@ deploy_and_watch
 
 Denne kjøringen **blir rød, og det er ventet**: bildet pushes, men appen finnes
 ikke ennå. Feilmeldingen «Appen finnes ikke» sier hvilken tagg den pushet.
+Taggen er commiten akkurat denne kjøringen bygde, ikke din lokale `main`, som
+kan være eldre:
 
 ```sh
-# Commiten akkurat denne kjøringen bygde, ikke din lokale main, som kan være eldre.
 TAG=$(gh run view -R $REPO "$RUN" --json headSha -q .headSha)
 ```
 
 ### Steg 5: appen
 
 ```sh
-az deployment group create -g $RG -n ka-frontend-app \
+az deployment group create --subscription "$SUB" -g $RG -n ka-frontend-app \
   --template-file deploy/main.bicep --parameters name=$APP githubRepository=$REPO imageTag=$TAG \
   --query properties.outputs.fqdn.value -o tsv
 ```
@@ -195,16 +214,16 @@ Siste linje er adressen. Mock, ingen nøkkel.
 
 ### Steg 6: roller på appen (krever rett til å gi roller)
 
-```sh
-# GitHub oppdaterer appen, og bare den.
-az role assignment create --role Contributor \
-  --scope "$(az containerapp show -n $APP -g $RG --query id -o tsv)" \
-  --assignee-object-id "$DEPLOY_ID" --assignee-principal-type ServicePrincipal
+GitHub får oppdatere appen, og bare den. En oppdatering av en app med egen
+identitet krever også rett til å «tildele» den identiteten, selv når den ikke
+endres. Derfor trengs den andre rollen.
 
-# En oppdatering av en app med egen identitet krever også rett til å «tildele»
-# den identiteten, selv når den ikke endres.
-az role assignment create --role "Managed Identity Operator" \
-  --scope "$(az identity show -n $APP-id -g $RG --query id -o tsv)" \
+```sh
+az role assignment create --subscription "$SUB" --role Contributor \
+  --scope "$(az containerapp show --subscription "$SUB" -n $APP -g $RG --query id -o tsv)" \
+  --assignee-object-id "$DEPLOY_ID" --assignee-principal-type ServicePrincipal
+az role assignment create --subscription "$SUB" --role "Managed Identity Operator" \
+  --scope "$(az identity show --subscription "$SUB" -n $APP-id -g $RG --query id -o tsv)" \
   --assignee-object-id "$DEPLOY_ID" --assignee-principal-type ServicePrincipal
 ```
 
@@ -215,7 +234,7 @@ seg, og utrullingen trenger ikke røre dem.
 
 ```sh
 deploy_and_watch
-gh repo edit $REPO --homepage "https://$(az containerapp show -n $APP -g $RG --query properties.configuration.ingress.fqdn -o tsv)"
+gh repo edit $REPO --homepage "https://$(az containerapp show --subscription "$SUB" -n $APP -g $RG --query properties.configuration.ingress.fqdn -o tsv)"
 ```
 
 Kjøringen blir grønn, og adressen står i sammendraget og under **Deployments →
@@ -272,6 +291,7 @@ skall der den ikke er kjørt, hentes de slik; registernavnet ligger i
 GitHub-variabelen fra steg 3.
 
 ```sh
+SUB=Altinn-AI-Assistant
 RG=rg-ka-app
 APP=ka-frontend-test
 REPO=larsekhansen/kunnskapsassistenten-frontend
@@ -286,19 +306,24 @@ ACR=$(gh variable get KA_REGISTRY -R $REPO)
 - **Raskere, uten ny PR:** åpne en eldre, grønn kjøring under **Actions →
   Deploy** og velg **Re-run all jobs**. En omkjøring bygger den commiten den
   gjaldt, og ruller den ut. Neste merge ruller ut `main` igjen.
-- **Fra kommandolinja:** et eldre bilde, med en ny revisjon.
+- **Fra kommandolinja:** et eldre bilde, med en ny revisjon. Bytt ut verdien
+  av `COMMIT` med hele commit-sha-en fra en eldre, grønn kjøring.
 
   ```sh
-  az containerapp update -n $APP -g $RG \
-    --image $ACR.azurecr.io/$APP:<commit> --revision-suffix rollback$(date +%H%M%S)
+  COMMIT="lim-inn-commit-sha-her"
+  az containerapp update --subscription "$SUB" -n $APP -g $RG \
+    --image "$ACR.azurecr.io/$APP:$COMMIT" --revision-suffix rollback$(date +%H%M%S)
   ```
 
 ## Logger
 
+Serverens egne linjer, så plattformens (henting av bildet, oppstart og
+prober), og til slutt hvilke revisjoner som finnes og kjører:
+
 ```sh
-az containerapp logs show -n $APP -g $RG --follow --tail 100    # serverens egne linjer
-az containerapp logs show -n $APP -g $RG --type system          # plattformen: henting, oppstart, prober
-az containerapp revision list -n $APP -g $RG -o table           # hvilke revisjoner som finnes og kjører
+az containerapp logs show --subscription "$SUB" -n $APP -g $RG --follow --tail 100
+az containerapp logs show --subscription "$SUB" -n $APP -g $RG --type system
+az containerapp revision list --subscription "$SUB" -n $APP -g $RG -o table
 ```
 
 I portalen: appen → **Log stream**. Utrullingens egen logg er kjøringen under
@@ -338,19 +363,22 @@ oppsett ser ut som om det peker på pilotkorpuset og svarer fra demodataene.
 serveren nøkkelen på hvert kall, for hvem som helst som har adressen. I mock
 finnes det ingen nøkkel å misbruke. Live bak innlogging er en egen runde.
 
-Når den tid kommer:
+Når den tid kommer, legges nøkkelen inn som secret. Første gang lager dette
+secreten. `read -rs` leser den uten å vise den og uten å legge den i
+historikken. Deretter settes modus og nøkkel inn i en ny revisjon:
 
 ```sh
-# Nøkkelen, som secret. Første gang lager dette secreten.
-az containerapp secret set -n $APP -g $RG --secrets digdir-api-key=<verdi>
-
-# Modus og nøkkel inn i en ny revisjon.
-az containerapp update -n $APP -g $RG \
+read -rs KEY
+az containerapp secret set --subscription "$SUB" -n $APP -g $RG --secrets digdir-api-key="$KEY"
+az containerapp update --subscription "$SUB" -n $APP -g $RG \
   --set-env-vars KA_MODE=live DIGDIR_API_KEY=secretref:digdir-api-key \
   --revision-suffix live$(date +%H%M%S)
+```
 
-# Tilbake til mock.
-az containerapp update -n $APP -g $RG \
+Tilbake til mock:
+
+```sh
+az containerapp update --subscription "$SUB" -n $APP -g $RG \
   --set-env-vars KA_MODE=mock --revision-suffix mock$(date +%H%M%S)
 ```
 
@@ -363,7 +391,7 @@ setter bildet til den taggen, og da ruller du tilbake til den versjonen. Må den
 kjøres igjen, gi den taggen som kjører nå:
 
 ```sh
-TAG=$(az containerapp show -n $APP -g $RG --query 'properties.template.containers[0].image' -o tsv | cut -d: -f2)
+TAG=$(az containerapp show --subscription "$SUB" -n $APP -g $RG --query 'properties.template.containers[0].image' -o tsv | cut -d: -f2)
 ```
 
 Uten `imageTag` rører malen ikke appen i det hele tatt, bare grunnmuren.
@@ -377,20 +405,29 @@ For når GitHub ikke er et alternativ. `az acr build` laster opp arbeidstreet
 og bygger i registeret, så ingenting må pushes først. Contributor på
 ressursgruppa holder, siden registeret ligger der.
 
-```sh
-git diff --quiet HEAD || { echo 'ucommittede endringer'; exit 1; }
-SHA=$(git rev-parse HEAD)
+Funksjonen stopper hvis arbeidstreet har endringer som ikke er committet. Den
+bruker `return` og ikke `exit`, for `exit` i et interaktivt skall lukker
+terminalen.
 
-az acr build --registry $ACR --image $APP:$SHA .
-az containerapp update -n $APP -g $RG \
-  --image $ACR.azurecr.io/$APP:$SHA --revision-suffix hand${SHA:0:7}
+```sh
+deploy_by_hand() {
+  git diff --quiet HEAD || { echo "Ucommittede endringer. Commit først."; return 1; }
+  SHA=$(git rev-parse HEAD)
+  az acr build --subscription "$SUB" --registry $ACR --image $APP:$SHA . || return 1
+  az containerapp update --subscription "$SUB" -n $APP -g $RG \
+    --image $ACR.azurecr.io/$APP:$SHA --revision-suffix hand${SHA:0:7}
+}
+deploy_by_hand
 ```
 
 ## Prøve det lokalt før Azure
 
+Nøkkelen leses med `read -rs`, som over:
+
 ```sh
+read -rs KEY
 npm run build
-KA_MODE=live DIGDIR_API_BASE=http://localhost:8080 DIGDIR_API_KEY=<verdi> npm start
+KA_MODE=live DIGDIR_API_BASE=http://localhost:8080 DIGDIR_API_KEY="$KEY" npm start
 ```
 
 Eller i container. I mock, som testmiljøet:
@@ -398,8 +435,10 @@ Eller i container. I mock, som testmiljøet:
 ```sh
 docker build -t ka-frontend-test:local .
 docker run --rm -p 8787:8787 -e KA_MODE=mock ka-frontend-test:local
-curl -fsS localhost:8787/healthz   # {"ok":true,"mode":"mock"}
+curl -fsS localhost:8787/healthz
 ```
+
+Den siste linja skal svare `{"ok":true,"mode":"mock"}`.
 
 Mot stacken på maskinen:
 
@@ -407,7 +446,7 @@ Mot stacken på maskinen:
 docker run --rm -p 8787:8787 \
   -e KA_MODE=live \
   -e DIGDIR_API_BASE=http://host.docker.internal:8080 \
-  -e DIGDIR_API_KEY=<verdi> \
+  -e DIGDIR_API_KEY="$KEY" \
   -e VITE_KA_TENANT=demo -e VITE_KA_DATASET_CONFIG_KEY=norquad-docs \
   ka-frontend-test:local
 ```
