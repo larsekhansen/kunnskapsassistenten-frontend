@@ -86,8 +86,14 @@ cat "$HOME/.cache/ka-rag-test/commit"
 ```
 
 ```sh
-az acr build --subscription Altinn-AI-Assistant --registry kafrontendvxd2q2aj52lqw --image "ka-rag-test:$(cat "$HOME/.cache/ka-rag-test/commit")" --file server.Dockerfile --build-arg VERSION="$(cat "$HOME/.cache/ka-rag-test/commit")" "$HOME/.cache/ka-rag-test/src"
+(cd "$HOME/.cache/ka-rag-test/src" && az acr build --subscription Altinn-AI-Assistant --registry kafrontendvxd2q2aj52lqw --image "ka-rag-test:$(cat "$HOME/.cache/ka-rag-test/commit")" --file server.Dockerfile --build-arg VERSION="$(cat "$HOME/.cache/ka-rag-test/commit")" .)
 ```
+
+`--file` leses fra mappa kommandoen kjøres i, ikke fra kilden, så kommandoen
+går inn i kildemappa først og bygger `.`. Parentesene holder `cd` inne i
+kommandoen, så skallet står i repo-rota etterpå, der steg 3 og 6 finner
+`deploy/rag.bicep`. Denne formen er målt i Azure 28.09: bygget tok 6 minutter
+og 59 sekunder.
 
 Bildet bygges fra en `git archive` av commiten, ikke fra repo-mappa.
 headless-rag har ingen `.dockerignore`, så `az acr build` fra mappa ville
@@ -96,7 +102,6 @@ som er committet (84 MB for `a836b91`).
 
 `VERSION` er det samme headless-rags egen `deploy.yml` sender med, og gjør at
 commiten står i serverens diagnosepanel. Lokalt tar bygget om lag ti minutter.
-I registeret er det ikke målt.
 
 ## Steg 2: parameterfila
 
