@@ -641,5 +641,8 @@ Ikke målt i Azure 28.09:
   hindrer en seeding mens appen kjører.
 - **Hvor lang tid det tar å opprette Postgres-serveren.** Steg 3 ble målt med
   serveren alt laget.
-- **Miljøets kobling til delingen** når `main.bicep` kjøres på nytt.
-  `main.bicep` ble kjørt før steg 3, så det har ikke skjedd.
+- **Miljøets kobling til delingen** når `main.bicep` kjøres på nytt. Ikke
+  rent målt: etter steg 3 (17:49 UTC) ble `main.bicep` kjørt 17:50–17:51 og
+  17:54–17:55. Seed-jobben på SMB (17:49–17:51) monterte delingen, men gikk
+  samtidig med den første av dem, og siste steg 3 (18:20) kom etter siste
+  `main.bicep`.
