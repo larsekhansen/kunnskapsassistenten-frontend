@@ -45,6 +45,15 @@ jobs:
           TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
         run: |
+          # A manual run can be started from any branch, and Azure accepts the
+          # token only from main. Saying so beats a login error.
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            message="Hopper over utrullingen: bare main rulles ut, og dette er $GITHUB_REF."
+            echo "::notice title=Ingen utrulling::$message"
+            echo "$message" >> "$GITHUB_STEP_SUMMARY"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ -n "$CLIENT_ID" ] && [ -n "$TENANT_ID" ] && [ -n "$SUBSCRIPTION_ID" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
             exit 0
