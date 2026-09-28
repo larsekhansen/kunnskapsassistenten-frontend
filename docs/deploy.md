@@ -123,8 +123,10 @@ det dens adresse.
 Funksjonen stopper hvis taggen fra steg 3 mangler, som den gjør i et nytt
 skall; uten den ville malen bare laget grunnmuren. Lista settes bare når
 `curl` virker. Feiler den, blir lista tom, og da stopper malen i stedet for å
-slippe nøkkelen gjennom bak en liste med bare `/32` (KA CC på #169). Malen
-stopper også på et element uten adresse og på et nett bredere enn /8.
+slippe nøkkelen gjennom bak en liste med bare `/32` (KA CC på #169). Er
+verken lista, hemmeligheten eller Entra satt, stopper funksjonen selv før den
+ber om nøkkelen. Malen stopper også på et element uten adresse og på et nett
+bredere enn /8.
 
 ```sh
 deploy_live() {
@@ -138,6 +140,7 @@ deploy_live() {
     IP=$(curl -fsS https://api.ipify.org) && KA_ALLOWED_IPS="$IP/32"
     echo "Adresseliste: ${KA_ALLOWED_IPS:-tom}"
   fi
+  [ -n "$KA_ALLOWED_IPS" ] || [ -n "$KA_ACCESS_SECRET" ] || [ -n "$KA_ENTRA_CLIENT_ID" ] || { echo "Verken adresseliste, hemmelighet eller Entra er satt. Ingenting er rullet ut."; return 1; }
   read -rs DIGDIR_API_KEY
   export KA_IMAGE_TAG DIGDIR_API_KEY KA_ALLOWED_IPS KA_ACCESS_SECRET
   az deployment group create --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-app --parameters deploy/test.bicepparam --query properties.outputs.fqdn.value -o tsv
@@ -156,14 +159,21 @@ curl -fsS "https://$FQDN/healthz"
 Den skal svare `{"ok":true,"mode":"live"}`.
 
 Med adresseliste, fra en annen adresse, for eksempel en mobil delt tilkobling,
-skal ingen av disse to gi `200`. Den andre prøver om ingressen stoler på et `X-Forwarded-For`
-klienten har satt selv, med `IP` fra steg 4. Hva de svarer i stedet, er ikke
-målt.
+skal ingen av disse gi `200`. De tre siste prøver om ingressen stoler på et
+hode klienten har satt selv, med `IP` fra steg 4.
 
 ```sh
 curl -sS -o /dev/null -w '%{http_code}\n' "https://$FQDN/healthz"
 curl -sS -o /dev/null -w '%{http_code}\n' -H "X-Forwarded-For: $IP" "https://$FQDN/healthz"
+curl -sS -o /dev/null -w '%{http_code}\n' -H "X-Real-IP: $IP" "https://$FQDN/healthz"
+curl -sS -o /dev/null -w '%{http_code}\n' -H "Forwarded: for=$IP" "https://$FQDN/healthz"
 ```
+
+Målt av dirigenten i Azure 28.09, med lista satt til en annen adresse enn
+maskinens: `403` med «RBAC: access denied» for alle fire, også med begge
+adressene i `X-Forwarded-For`. Med maskinens egen adresse i lista svarte
+`/healthz` `{"ok":true,"mode":"live"}`. Ingressen stoler altså ikke på hoder
+klienten har satt, og en liste med bare `Allow` stenger alle andre.
 
 Ny adresse, for eksempel hjemmefra: kjør steg 4 på nytt med den nye. Kjøres
 steg 4 uten nøkkel, står appen i live uten nøkkel, og backenden svarer 401.

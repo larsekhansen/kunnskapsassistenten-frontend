@@ -97,19 +97,20 @@ var loginSecret = hasLogin && empty(entraClientSecret)
   ? fail('entraClientId er satt uten entraClientSecret. Se «Innlogging» i docs/deploy.md.')
   : entraClientSecret
 
-// Adresselista, sjekket før den brukes. Et element uten adresse foran `/`,
-// uten `/` i det hele tatt, eller med et nett bredere enn /8, stopper
-// utrullingen. `"/32"` er det en feilet `curl` i oppskriften gir, og `/0`
-// slipper inn alle; begge ville ellers sett ut som en liste og latt nøkkelen
-// passere under (KA CC på #169). Strengsjekker og ikke `int()`, fordi et
-// element uten `/` ellers ville feilet på tallet i stedet for med meldingen.
+// Adresselista, sjekket før den brukes. Nøyaktig én `/`, en adresse foran
+// den, og et prefiks som ikke begynner på 0, ikke har mellomrom og ikke er
+// bredere enn /8. `"/32"` er det en feilet `curl` i oppskriften ga, og `/0`
+// (eller `/000`) slipper inn alle; begge ville ellers sett ut som en liste og
+// latt nøkkelen passere under (KA CC på #169). Strengsjekker og ikke `int()`,
+// fordi et element uten `/` ellers ville feilet på tallet i stedet for med
+// meldingen. Om det foran `/` er en adresse, avgjør ARM.
 var badRanges = filter(
   allowedIps,
   range =>
-    startsWith(range, '/') || !contains(range, '/') || contains(
-      ['', '0', '00', '1', '2', '3', '4', '5', '6', '7'],
-      last(split(range, '/'))
-    )
+    length(split(range, '/')) != 2 || startsWith(range, '/') || startsWith(last(split(range, '/')), '0') || contains(
+      last(split(range, '/')),
+      ' '
+    ) || contains(['', '1', '2', '3', '4', '5', '6', '7'], last(split(range, '/')))
 )
 var checkedRanges = empty(badRanges)
   ? allowedIps
