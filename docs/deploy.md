@@ -77,14 +77,22 @@ ressursgruppa. Steg 2 og 6 er de eneste som krever rett til å gi roller. Har du
 den ikke, kan noen som har den kjøre akkurat de to stegene; kommandoene står
 ferdige. Er Contributor bak PIM, aktiver den før du begynner.
 
+Står ikke `Altinn-AI-Assistant` i `az account list --refresh -o table`, har du
+ingen rolle i abonnementet ennå, og steg 0 stopper på `az account set`. Da må
+noen med tilgang gi deg Contributor på `rg-ka-app`, eller kjøre oppskriften.
+
 ### Steg 0: verdiene, og en sjekk
 
 ```sh
+SUB=Altinn-AI-Assistant
 RG=rg-ka-app
 APP=ka-frontend-test
 REPO=larsekhansen/kunnskapsassistenten-frontend
 
-az account show --query '{abonnement:name, id:id}' -o table
+# Velg abonnementet selv. Alt under skriver dit az peker, og standardvalget
+# kan være et helt annet team sitt, målt 28.09 hos Lars: dis-core-prod.
+az account set --subscription "$SUB"
+az account show --query '{abonnement:name, id:id}' -o table    # må være $SUB, ellers stopp her
 az extension add --name containerapp --upgrade --only-show-errors
 for provider in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistry; do
   echo "$provider $(az provider show -n $provider --query registrationState -o tsv)"   # Registered
