@@ -56,6 +56,9 @@ async function start(env: NodeJS.ProcessEnv = {}, ttlMs?: number) {
 
   const config: ServerConfig = {
     ...readConfig({}, '/dist'),
+    // Live, fordi serveren i mock ikke sender noe til backend, og testen
+    // under måler at alt annet enn /api/facets går dit.
+    mode: 'live',
     apiBase,
     facets: {
       ...facetConfigFrom({
