@@ -14,6 +14,10 @@ Navnereglene står under [Naming](#naming), og kortversjonen av arbeidsreglene i
 
 ## Kom i gang
 
+**Designer, eller ny her?** Start med [docs/kom-i-gang.md](docs/kom-i-gang.md):
+installere, kjøre appen, endre den med Claude Code og få endringen ut på
+testadressen.
+
 ```sh
 npm install
 npm run dev            # utviklingsserver på http://localhost:5173
@@ -42,6 +46,10 @@ det informasjonen du vil ha: les diffen før du sjekker inn.
 hver pull request og hver push til `main`. Den trenger ingen hemmeligheter:
 suiten kjører i mock-modus, så CI snakker aldri med KA-backenden. Feiler
 e2e-steget, lastes Playwright-rapporten opp som artefakt på kjøringen.
+
+På pull requests bygger og starter CI også Docker-bildet, uten å pushe det.
+Hver push til `main` rulles ut til testmiljøet av
+`.github/workflows/deploy.yml`; se [docs/deploy.md](docs/deploy.md).
 
 ## Mappestruktur
 
