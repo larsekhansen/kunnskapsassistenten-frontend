@@ -2,7 +2,8 @@
 
 Klienten til Kunnskapsassistenten (KA) i Digdir. Vite, React, TypeScript,
 React Router 8.3.1 i klientmodus, Designsystemet 1.21.0. Node 24 eller nyere.
-Mer i `README.md`, kortversjonen av reglene i `CONTRIBUTING.md`.
+Mer i `README.md`, kortversjonen av reglene i `CONTRIBUTING.md`. Stier og
+kommandoer under gjelder fra mappa denne fila ligger i.
 
 ## Kommandoer
 
