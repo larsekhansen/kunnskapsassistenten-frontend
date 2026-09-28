@@ -3,8 +3,8 @@
 // datasett `kudos-full` mot Benjamins Typesense), i det samme Container
 // Apps-miljøet som frontenden, og bare med intern adresse.
 //
-// Lages i tillegg til main.bicep, som må være kjørt først: miljøet, identiteten
-// og registeret er `existing` her. Oppskriften er docs/deploy-backend.md, og den
+// Lages i tillegg til main.bicep, som må være kjørt først: miljøet og
+// registeret er `existing` her. Oppskriften er docs/deploy-backend.md, og den
 // kjøres i to omganger:
 //   1. uten `withApp`: lagring, deling og seed-jobben, så databasen kan seedes
 //      før noen server har den åpen;
@@ -24,10 +24,7 @@ param location string = resourceGroup().location
 @description('Miljøet main.bicep laget.')
 param environmentName string = 'ka-frontend-test-env'
 
-@description('Identiteten som alt har AcrPull på registeret (docs/deploy.md, steg 2).')
-param identityName string = 'ka-frontend-test-id'
-
-@description('Registeret main.bicep laget. Samme uttrykk som der, så standarden treffer i samme ressursgruppe.')
+@description('Registeret main.bicep laget, med admin-brukeren på. Samme uttrykk som der, så standarden treffer i samme ressursgruppe.')
 param registryName string = 'kafrontend${uniqueString(resourceGroup().id)}'
 
 @description('Taggen på headless-rag-bildet, som er commit-sha-en det er bygget fra.')
@@ -84,15 +81,24 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' existing = 
   name: environmentName
 }
 
-resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: identityName
-}
-
 resource registry 'Microsoft.ContainerRegistry/registries@2025-11-01' existing = {
   name: registryName
 }
 
 var image = '${registry.properties.loginServer}/${name}:${imageTag}'
+
+// Bildet hentes med registerets admin-bruker, ikke med en identitet: en
+// identitet trenger AcrPull, og den rollen kan ingen av oss gi (Contributor gir
+// ikke rett til å tildele roller). main.bicep slår admin-brukeren på. Passordet
+// hentes her, ved utrulling, og står aldri i oppskriften eller i en variabel.
+var registryLogin = [
+  {
+    server: registry.properties.loginServer
+    username: registry.name
+    passwordSecretRef: 'registry-password'
+  }
+]
+var registrySecret = { name: 'registry-password', value: registry.listCredentials().passwords[0].value }
 
 // Container Apps monterer Azure Files med kontonøkkelen, så den må være på.
 // Ingen blob-tilgang utenfra; kontoen har bare delingen.
@@ -165,16 +171,17 @@ var bootstrapEnv = [
 // kryptert med CONFIG_MASTER_KEY, og avslutter med et frasesøk som må gi treff.
 //
 // Vakta foran skriptet (`refuse-if-server-running!`) avslutter med 1 hvis appen
-// svarer på /up. Uten den ville en seeding mens appen står, meldt suksess og
-// mistet skrivingen (headless-rag #493). Adressen er appens interne navn, fordi
+// svarer på /up. En seeding mens appen står, melder suksess og mister
+// skrivingen (headless-rag #493). Adressen er appens interne navn, fordi
 // vaktas egne standardadresser gjelder docker compose.
+//
+// Vakta er en reserve, ikke en stopper: den slipper gjennom på alt annet enn
+// 2xx innen 500 ms, altså også på en omdirigering, mens appen starter og når
+// navnet ikke slås opp. Oppskriften kjører derfor jobben bare når appen ikke
+// finnes.
 resource seedJob 'Microsoft.App/jobs@2024-03-01' = {
   name: '${name}-seed'
   location: location
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: { '${identity.id}': {} }
-  }
   properties: {
     environmentId: containerEnv.id
     configuration: {
@@ -184,8 +191,9 @@ resource seedJob 'Microsoft.App/jobs@2024-03-01' = {
       // Ingen ny runde av seg selv: en ny kjøring over en tenant som alt er
       // seedet, er ikke prøvd.
       replicaRetryLimit: 0
-      registries: [{ server: registry.properties.loginServer, identity: identity.id }]
+      registries: registryLogin
       secrets: [
+        registrySecret
         { name: 'config-master-key', value: configMasterKey }
         { name: 'jwt-secret', value: jwtSecret }
         { name: 'azure-openai-api-key', value: azureOpenAiApiKey }
@@ -247,10 +255,6 @@ resource seedJob 'Microsoft.App/jobs@2024-03-01' = {
 resource app 'Microsoft.App/containerApps@2024-03-01' = if (withApp) {
   name: name
   location: location
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: { '${identity.id}': {} }
-  }
   properties: {
     managedEnvironmentId: containerEnv.id
     configuration: {
@@ -265,8 +269,9 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (withApp) {
         // finnes bare inne i miljøet.
         allowInsecure: true
       }
-      registries: [{ server: registry.properties.loginServer, identity: identity.id }]
+      registries: registryLogin
       secrets: [
+        registrySecret
         { name: 'config-master-key', value: configMasterKey }
         { name: 'jwt-secret', value: jwtSecret }
         { name: 'api-key', value: apiKey }
