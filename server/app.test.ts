@@ -336,6 +336,78 @@ describe('proxy mot backend', () => {
   });
 });
 
+describe('hvem som spør', () => {
+  /** Slik plattformens innlogging kaller brukeren. Se identity.ts. */
+  const PLATFORM = 'X-MS-CLIENT-PRINCIPAL-ID';
+  const SIGNED_IN = '3f2c9a4e-6b1d-4c8e-9f70-2a5b8d1e4c63';
+
+  it('bruker plattformens bruker og kaster nettleserens X-User-Id bak innloggingen', async () => {
+    // Uten dette kan hvem som helst bak innloggingen lese andres tråder ved å
+    // sende deres id.
+    const apiBase = await startBackend();
+    await start({ apiBase, userIdFrom: 'platform' });
+
+    const response = await fetch(`${base}/api/conversations`, {
+      headers: { 'X-User-Id': 'ka-noen-andre', [PLATFORM]: SIGNED_IN },
+    });
+
+    expect(response.status).toBe(200);
+    expect(seen?.headers['x-user-id']).toBe(SIGNED_IN);
+    // Plattformens hode er vårt å lese, ikke backendens.
+    expect(seen?.headers['x-ms-client-principal-id']).toBeUndefined();
+  });
+
+  it('setter brukeren også når nettleseren ikke sendte noen', async () => {
+    const apiBase = await startBackend();
+    await start({ apiBase, userIdFrom: 'platform' });
+
+    await fetch(`${base}/api/mcp`, {
+      method: 'POST',
+      headers: { [PLATFORM]: SIGNED_IN },
+      body: '{}',
+    });
+
+    expect(seen?.headers['x-user-id']).toBe(SIGNED_IN);
+  });
+
+  it('svarer 401 og ikke som en anonym bruker når plattformens hode mangler', async () => {
+    const apiBase = await startBackend();
+    await start({ apiBase, userIdFrom: 'platform', apiKey: 'rag_hemmelig_verdi' });
+
+    for (const headers of [{ 'X-User-Id': 'ka-noen-andre' }, { [PLATFORM]: '  ' }, {}]) {
+      const response = await fetch(`${base}/api/conversations`, { headers });
+
+      expect({ headers, status: response.status }).toEqual({ headers, status: 401 });
+      expect(response.headers.get('content-type')).toContain('application/json');
+      expect({ headers, sett: lastSeen() }).toEqual({ headers, sett: undefined });
+    }
+  });
+
+  it('er som før uten innloggingen: nettleserens X-User-Id går, plattformens hode ikke', async () => {
+    // Uten innloggingen foran kan nettleseren sette plattformens hode selv, så
+    // det skal ikke bety noe da.
+    const apiBase = await startBackend();
+    await start({ apiBase });
+
+    const response = await fetch(`${base}/api/conversations`, {
+      headers: { 'X-User-Id': 'ka-denne-nettleseren', [PLATFORM]: SIGNED_IN },
+    });
+
+    expect(response.status).toBe(200);
+    expect(seen?.headers['x-user-id']).toBe('ka-denne-nettleseren');
+    expect(seen?.headers['x-ms-client-principal-id']).toBeUndefined();
+  });
+
+  it('leser KA_USER_ID_FROM strengt, med nettleseren som standard', () => {
+    expect(readConfig({}, '/dist').userIdFrom).toBe('browser');
+    expect(readConfig({ KA_USER_ID_FROM: ' ' }, '/dist').userIdFrom).toBe('browser');
+    expect(readConfig({ KA_USER_ID_FROM: 'platform' }, '/dist').userIdFrom).toBe('platform');
+    // En skrivefeil som falt tilbake til nettleseren, ville latt den velge
+    // hvem den er bak en innlogging som skulle hindre akkurat det.
+    expect(() => readConfig({ KA_USER_ID_FROM: 'platfrom' }, '/dist')).toThrow(/KA_USER_ID_FROM/);
+  });
+});
+
 describe('den bygde klienten', () => {
   it('serverer index.html med config-taggen før bundelen', async () => {
     await start();

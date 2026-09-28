@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { ServerConfig } from './config.ts';
+import { platformUserId } from './identity.ts';
 
 /**
  * The client's headers that are forwarded, and nothing else.
@@ -12,7 +13,7 @@ import type { ServerConfig } from './config.ts';
  * the protocol needs — `Mcp-Method`, `Mcp-Name` and `MCP-Protocol-Version`
  * must agree with the body or the server answers 400 with -32020 — plus
  * `X-User-Id`, which is how `/api/conversations` knows whose threads these
- * are.
+ * are. Behind the login the browser's `X-User-Id` is replaced, see identity.ts.
  *
  * `Authorization` is deliberately absent. Nothing in this app sends one, and
  * a proxy that passes one along is a proxy that can be used to try somebody
@@ -23,13 +24,24 @@ const FORWARDED = /^(content-type|accept|x-user-id|mcp-.*)$/i;
 /** Response headers worth keeping. Length and encoding are ours to decide. */
 const RETURNED = /^(content-type|cache-control)$/i;
 
-function forwardedHeaders(request: IncomingMessage, config: ServerConfig): Headers {
+/**
+ * `userId` is the platform's signed-in user, or undefined when the browser's
+ * own `X-User-Id` is the one that goes (`KA_USER_ID_FROM=browser`).
+ */
+function forwardedHeaders(
+  request: IncomingMessage,
+  config: ServerConfig,
+  userId: string | undefined,
+): Headers {
   const headers = new Headers();
 
   for (const [name, raw] of Object.entries(request.headers)) {
     if (!FORWARDED.test(name) || raw === undefined) continue;
     headers.set(name, Array.isArray(raw) ? raw.join(', ') : raw);
   }
+
+  // Replaces whatever the browser sent, on every call. See identity.ts.
+  if (userId !== undefined) headers.set('X-User-Id', userId);
 
   // The credential, added here and only here. See config.ts.
   if (config.apiKey) headers.set('X-API-Key', config.apiKey);
@@ -172,6 +184,23 @@ export async function proxy(
   response: ServerResponse,
   config: ServerConfig,
 ): Promise<void> {
+  /*
+   * Behind the login, a call without the platform's user is refused rather
+   * than sent on as nobody or as whoever the browser claims to be. The login
+   * in front means this should not happen; if it does, the login is not in
+   * front, and 401 is the answer that says so. First, before the path is
+   * looked at: a caller nobody knows learns nothing about what is here.
+   */
+  const userId = config.userIdFrom === 'platform' ? platformUserId(request) : undefined;
+  if (config.userIdFrom === 'platform' && userId === undefined) {
+    response.writeHead(401, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
+    response.end(JSON.stringify({ error: 'Ikke innlogget.' }));
+    return;
+  }
+
   const target = targetFor(config.apiBase, request.url ?? '');
   if (target === undefined) {
     /*
@@ -203,7 +232,7 @@ export async function proxy(
   try {
     upstream = await fetch(target, {
       method: request.method,
-      headers: forwardedHeaders(request, config),
+      headers: forwardedHeaders(request, config, userId),
       body,
       signal: controller.signal,
     });

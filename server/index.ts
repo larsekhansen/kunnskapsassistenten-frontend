@@ -32,12 +32,13 @@ server.keepAliveTimeout = 65_000;
 
 server.listen(config.port, () => {
   console.log(
-    '[ka] serverer %s på :%d i %s-modus, backend %s, nøkkel %s',
+    '[ka] serverer %s på :%d i %s-modus, backend %s, nøkkel %s, bruker-id fra %s',
     config.distDir,
     config.port,
     config.mode,
     config.apiBase,
     config.apiKey ? 'satt' : 'IKKE SATT',
+    config.userIdFrom === 'platform' ? 'plattformens innlogging' : 'nettleseren',
   );
   if (config.mode === 'live' && !config.apiKey) {
     console.warn('[ka] KA_MODE=live uten DIGDIR_API_KEY. Spørringer vil gi 401.');
