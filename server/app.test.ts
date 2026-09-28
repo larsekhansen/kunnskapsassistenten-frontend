@@ -1,9 +1,9 @@
 // @vitest-environment node
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { createServer, request as httpRequest, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHandler } from './app.ts';
 import { readConfig, type ServerConfig } from './config.ts';
 
@@ -385,5 +385,102 @@ describe('den bygde klienten', () => {
 
   beforeEach(async () => {
     if (!server?.listening) await start();
+  });
+});
+
+/**
+ * En leser som går midt i et svar.
+ *
+ * Demoen på :8799 døde 28.09 av nøyaktig dette: en omlasting mens bundelen
+ * ble sendt, og `pipeline` avviste med ERR_STREAM_PREMATURE_CLOSE uten at
+ * noen fanget det. Node 24 avslutter prosessen på en uhåndtert avvisning, og
+ * i en container er det en omstart som tar med seg alle andres strømmede svar.
+ */
+describe('en leser som går', () => {
+  /** Avvisningene ingen fanget, samlet mens testen kjører. */
+  let unhandled: unknown[];
+  const collect = (reason: unknown) => unhandled.push(reason);
+
+  beforeEach(() => {
+    unhandled = [];
+    process.on('unhandledRejection', collect);
+  });
+
+  afterEach(() => {
+    process.off('unhandledRejection', collect);
+  });
+
+  /*
+   * Lenge nok til at serveren har sett at socketen er borte og at en
+   * avvisning ville ha blitt meldt. Den meldes etter at mikrokøen er tømt,
+   * altså innen samme runde av hendelsesløkka; 100 ms er mange runder.
+   */
+  const settle = () => new Promise((done) => setTimeout(done, 100));
+
+  async function healthy(): Promise<boolean> {
+    return (await fetch(`${base}/healthz`)).ok;
+  }
+
+  it('tar ikke ned serveren når en nedlasting avbrytes', async () => {
+    await start();
+    // Stor nok til at den ikke får plass i socketens buffere på én gang.
+    await writeFile(join(dist, 'assets', 'stor-abc.js'), Buffer.alloc(8 * 1024 * 1024, 'x'));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await new Promise<void>((done, fail) => {
+      const call = httpRequest(`${base}/assets/stor-abc.js`, (response) => {
+        response.once('data', () => {
+          call.destroy();
+          done();
+        });
+      });
+      call.on('error', () => {});
+      call.on('timeout', fail);
+      call.end();
+    });
+    await settle();
+
+    expect(unhandled).toEqual([]);
+    // En leser som gikk er ikke en feil.
+    expect(logged).not.toHaveBeenCalled();
+    expect(await healthy()).toBe(true);
+  });
+
+  it('tar ikke ned serveren når forespørselen avbrytes før kroppen er lest', async () => {
+    await start({ apiBase: await startBackend() });
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const call = httpRequest(`${base}/api/mcp`, {
+      method: 'POST',
+      headers: { 'Content-Length': '1000' },
+    });
+    call.on('error', () => {});
+    call.write('{"halv":');
+    await settle();
+    call.destroy();
+    await settle();
+
+    expect(unhandled).toEqual([]);
+    expect(logged).not.toHaveBeenCalled();
+    // Backend så aldri kallet: kroppen kom aldri fram.
+    expect(lastSeen()).toBeUndefined();
+    expect(await healthy()).toBe(true);
+  });
+
+  it('logger en uventet feil én gang og lukker svaret', async () => {
+    await start();
+    const locked = join(dist, 'assets', 'laast-abc.js');
+    await writeFile(locked, 'console.log(1);\n');
+    // Finnes, men kan ikke leses: `stat` går bra, lesingen feiler.
+    await chmod(locked, 0o000);
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const response = await fetch(`${base}/assets/laast-abc.js`);
+    await settle();
+
+    expect(response.status).toBe(500);
+    expect(unhandled).toEqual([]);
+    expect(logged).toHaveBeenCalledOnce();
+    expect(await healthy()).toBe(true);
   });
 });

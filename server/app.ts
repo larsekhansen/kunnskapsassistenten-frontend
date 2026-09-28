@@ -7,6 +7,54 @@ import { serveStatic } from './static.ts';
 const API_PREFIX = '/api/';
 
 /**
+ * The error codes a reader who left produces, and nothing else does.
+ *
+ * Measured, both of them: `ERR_STREAM_PREMATURE_CLOSE` is `pipeline` finding
+ * the response closed before the file was sent — a reload while a bundle is
+ * loading — and `ECONNRESET` («aborted») is the request closing before its
+ * body was read. Neither is a fault of ours, and a log line per reload would
+ * bury the ones that are.
+ */
+const READER_LEFT = new Set(['ERR_STREAM_PREMATURE_CLOSE', 'ECONNRESET']);
+
+function readerLeft(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === 'string' && READER_LEFT.has(code);
+}
+
+/**
+ * Where a request's work ends up when it fails, instead of nowhere.
+ *
+ * Without this the handler's `void` left the promise's rejection unhandled,
+ * and Node 24 ends the process on one: the demo on :8799 died of a reader
+ * reloading the page on 28.09. In a container that is a restart, and every
+ * other reader's streamed answer goes down with it.
+ *
+ * Caught per request and not with a process-wide `unhandledRejection`: that
+ * would swallow the next unknown fault too and keep the process running in a
+ * state nobody knows. Here the fault is known to belong to one response, and
+ * closing that response is the whole of the damage.
+ */
+function settle(work: Promise<void>, response: ServerResponse): void {
+  work.catch((error: unknown) => {
+    if (readerLeft(error)) {
+      // Nobody to answer; the socket is already closed or closing.
+      response.destroy();
+      return;
+    }
+
+    console.error('[ka] forespørselen feilet: %s', String(error));
+    if (!response.headersSent) {
+      response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end('Noe gikk galt på serveren.\n');
+    } else {
+      // The status line is gone; closing is all that is left to say.
+      response.destroy();
+    }
+  });
+}
+
+/**
  * The one request handler: the API forwarded, the client served, and two
  * small routes of the server's own.
  *
@@ -45,7 +93,7 @@ export function createHandler(config: ServerConfig) {
     }
 
     if (path.startsWith(API_PREFIX)) {
-      void proxy(request, response, config);
+      settle(proxy(request, response, config), response);
       return;
     }
 
@@ -62,6 +110,6 @@ export function createHandler(config: ServerConfig) {
       return;
     }
 
-    void serveStatic(response, config.distDir, path);
+    settle(serveStatic(response, config.distDir, path), response);
   };
 }
