@@ -73,6 +73,10 @@ param entraTenantId string = subscription().tenantId
 @allowed(['identity', 'admin'])
 param registryAuth string = 'identity'
 
+@description('Den delte hemmeligheten i lenken ?secret=. Tom = ingen port. Se «Delt hemmelighet» i docs/deploy.md.')
+@secure()
+param accessSecret string = ''
+
 @description('Registerets admin-bruker. På som standard: backenden (deploy/rag.bicep) henter bildet med passordet, og en kjøring uten test.bicepparam skal ikke slå det av. Av bare når ingenting i ressursgruppa bruker passordet.')
 param registryAdminUser bool = true
 
@@ -111,11 +115,20 @@ var checkedRanges = empty(badRanges)
   ? allowedIps
   : fail(format('allowedIps må være adresser i CIDR-form, ikke bredere enn /8. Avvist: {0}', join(badRanges, ', ')))
 
-// En nøkkel skal ha noe foran seg: innloggingen eller en adresseliste. Uten
-// begge ville den stått på hvert kall fra hvem som helst med adressen (KA CC
-// på #169). En glemt parameter blir da en stopp, og ikke en åpen app i live.
-var apiKey = hasKey && !hasLogin && empty(checkedRanges)
-  ? fail('digdirApiKey er gitt uten entraClientId og uten allowedIps. Se «Live for én person» i docs/deploy.md.')
+// Den delte hemmeligheten. Serveren nekter å starte med en kortere enn 24
+// tegn (server/access.ts); her stopper utrullingen før det, med en melding i
+// stedet for en revisjon som aldri blir klar.
+var hasAccessSecret = !empty(accessSecret)
+var checkedAccessSecret = hasAccessSecret && length(accessSecret) < 24
+  ? fail('accessSecret er kortere enn 24 tegn. Se «Delt hemmelighet» i docs/deploy.md.')
+  : accessSecret
+
+// En nøkkel skal ha noe foran seg: innloggingen, en adresseliste eller den
+// delte hemmeligheten. Uten noen av dem ville den stått på hvert kall fra hvem
+// som helst med adressen (KA CC på #169). En glemt parameter blir da en stopp,
+// og ikke en åpen app i live.
+var apiKey = hasKey && !hasLogin && empty(checkedRanges) && !hasAccessSecret
+  ? fail('digdirApiKey er gitt uten entraClientId, allowedIps og accessSecret. Se «Live for én person» i docs/deploy.md.')
   : digdirApiKey
 
 // Registerets passord, lest av malen selv og lagt som secret. Det skrives
@@ -152,10 +165,14 @@ var plainEnv = filter(
   ],
   entry => !empty(entry.value)
 )
-var keyEnv = hasKey ? [{ name: 'DIGDIR_API_KEY', secretRef: 'digdir-api-key' }] : []
+var secretEnv = concat(
+  hasKey ? [{ name: 'DIGDIR_API_KEY', secretRef: 'digdir-api-key' }] : [],
+  hasAccessSecret ? [{ name: 'KA_ACCESS_SECRET', secretRef: 'ka-access-secret' }] : []
+)
 var secrets = concat(
   hasKey ? [{ name: 'digdir-api-key', value: apiKey }] : [],
   hasLogin ? [{ name: loginSecretName, value: loginSecret }] : [],
+  hasAccessSecret ? [{ name: 'ka-access-secret', value: checkedAccessSecret }] : [],
   useAdmin ? [{ name: registryPasswordSecret, value: registry.listCredentials().passwords[0].value }] : []
 )
 
@@ -272,7 +289,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (!empty(imageTag)) {
           name: name
           image: '${registry.properties.loginServer}/${name}:${imageTag}'
           resources: { cpu: json('0.5'), memory: '1Gi' }
-          env: concat(plainEnv, keyEnv)
+          env: concat(plainEnv, secretEnv)
           probes: [
             {
               type: 'Readiness'

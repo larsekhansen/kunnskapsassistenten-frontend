@@ -29,8 +29,12 @@ param filterFields = 'kudos-full=documentType:type|organisation:orgs_long|year:c
 
 param digdirApiKey = readEnvironmentVariable('DIGDIR_API_KEY', '')
 
+// Den delte hemmeligheten i lenken: «Delt hemmelighet» i docs/deploy.md.
+// Med den trengs ikke adresselista.
+param accessSecret = readEnvironmentVariable('KA_ACCESS_SECRET', '')
+
 // Kommaseparert, i CIDR-form: "1.2.3.4/32,5.6.7.8/32". Malen stopper hvis
-// nøkkelen er satt og lista er tom.
+// nøkkelen er satt og både lista og hemmeligheten er tomme.
 param allowedIps = map(
   filter(split(readEnvironmentVariable('KA_ALLOWED_IPS', ''), ','), range => !empty(trim(range))),
   range => trim(range)
