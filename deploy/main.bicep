@@ -73,6 +73,9 @@ param entraTenantId string = subscription().tenantId
 @allowed(['identity', 'admin'])
 param registryAuth string = 'identity'
 
+@description('Registerets admin-bruker. På som standard: backenden (deploy/rag.bicep) henter bildet med passordet, og en kjøring uten test.bicepparam skal ikke slå det av. Av bare når ingenting i ressursgruppa bruker passordet.')
+param registryAdminUser bool = true
+
 @description('Adressene som slipper inn, i CIDR-form ("1.2.3.4/32"). Tom = ingen begrensning.')
 param allowedIps array = []
 
@@ -90,22 +93,42 @@ var loginSecret = hasLogin && empty(entraClientSecret)
   ? fail('entraClientId er satt uten entraClientSecret. Se «Innlogging» i docs/deploy.md.')
   : entraClientSecret
 
+// Adresselista, sjekket før den brukes. Et element uten adresse foran `/`,
+// uten `/` i det hele tatt, eller med et nett bredere enn /8, stopper
+// utrullingen. `"/32"` er det en feilet `curl` i oppskriften gir, og `/0`
+// slipper inn alle; begge ville ellers sett ut som en liste og latt nøkkelen
+// passere under (KA CC på #169). Strengsjekker og ikke `int()`, fordi et
+// element uten `/` ellers ville feilet på tallet i stedet for med meldingen.
+var badRanges = filter(
+  allowedIps,
+  range =>
+    startsWith(range, '/') || !contains(range, '/') || contains(
+      ['', '0', '00', '1', '2', '3', '4', '5', '6', '7'],
+      last(split(range, '/'))
+    )
+)
+var checkedRanges = empty(badRanges)
+  ? allowedIps
+  : fail(format('allowedIps må være adresser i CIDR-form, ikke bredere enn /8. Avvist: {0}', join(badRanges, ', ')))
+
 // En nøkkel skal ha noe foran seg: innloggingen eller en adresseliste. Uten
 // begge ville den stått på hvert kall fra hvem som helst med adressen (KA CC
 // på #169). En glemt parameter blir da en stopp, og ikke en åpen app i live.
-var apiKey = hasKey && !hasLogin && empty(allowedIps)
+var apiKey = hasKey && !hasLogin && empty(checkedRanges)
   ? fail('digdirApiKey er gitt uten entraClientId og uten allowedIps. Se «Live for én person» i docs/deploy.md.')
   : digdirApiKey
 
 // Registerets passord, lest av malen selv og lagt som secret. Det skrives
 // aldri ut: det står ikke i utdataene, og et ternært uttrykk evaluerer bare
 // grenen som gjelder, så `listCredentials()` kalles ikke med admin av.
-var useAdmin = registryAuth == 'admin'
+var useAdmin = registryAuth == 'admin' && !registryAdminUser
+  ? fail('registryAuth=admin krever registryAdminUser=true.')
+  : registryAuth == 'admin'
 var registryPasswordSecret = 'registry-password'
 
 // Én regel per adresse. Er alle `Allow`, slipper ingen andre inn.
 var ipRules = [
-  for (range, index) in allowedIps: {
+  for (range, index) in checkedRanges: {
     name: 'tillatt-${index}'
     ipAddressRange: range
     action: 'Allow'
@@ -137,9 +160,9 @@ var secrets = concat(
 )
 
 // Basic: 10 GiB inkludert, og hvert bilde legger bare til de ca. 2 MB som
-// endrer seg (målt 28.09). Admin-brukeren er av, med mindre `registryAuth`
-// er `admin`: da er passordet det appen henter bildet med, fordi den som
-// ruller ut ikke kan gi AcrPull.
+// endrer seg (målt 28.09). Admin-brukeren følger `registryAdminUser` og ikke
+// `registryAuth`: backenden henter med passordet uansett hvordan frontenden
+// gjør det, og en kjøring med standardverdiene skal ikke ta det fra den.
 //
 // Rollemodusen står eksplisitt. Microsoft skal gjøre ABAC til standard for nye
 // registre, og der gjelder ikke AcrPull og AcrPush, som er rollene
@@ -150,7 +173,7 @@ resource registry 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
   location: location
   sku: { name: 'Basic' }
   properties: {
-    adminUserEnabled: useAdmin
+    adminUserEnabled: registryAdminUser
     roleAssignmentMode: 'LegacyRegistryPermissions'
   }
 }
