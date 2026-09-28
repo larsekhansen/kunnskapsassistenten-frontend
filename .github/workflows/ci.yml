@@ -115,7 +115,10 @@ jobs:
       - name: Start it and ask
         run: |
           docker run --detach --rm --name ka --publish 8787:8787 -e KA_MODE=mock ka-frontend:ci
-          curl -fsS --retry 10 --retry-connrefused --retry-delay 1 localhost:8787/healthz | tee healthz.json
+          # --retry-all-errors and not --retry-connrefused: Docker's port proxy
+          # accepts the connection before the server listens and then resets
+          # it, which curl does not count as refused. Measured on this PR.
+          curl -fsS --retry 15 --retry-all-errors --retry-delay 1 localhost:8787/healthz | tee healthz.json
           grep -q '"mode":"mock"' healthz.json
           curl -fsS localhost:8787/ | grep -q '/config.js'
           docker stop ka
