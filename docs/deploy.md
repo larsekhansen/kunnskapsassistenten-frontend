@@ -59,18 +59,20 @@ utrulling» og står grønn, så `main` ikke blir rød av et miljø som ikke fin
 ## Første gang
 
 Oppskriften kjøres ovenfra og ned, i ett skall, fra repo-rota. Alt havner i
-`rg-ka-app`, også registeret bildene ligger i; se
-[Hvorfor eget register](#hvorfor-eget-register). Bytt verdiene i steg 0 hvis
-det blir andre.
+`rg-ka-test`, også registeret bildene ligger i; se
+[Hvorfor eget register](#hvorfor-eget-register). Ressursgruppa finnes
+(`norwayeast`, taggene `prosjekt=kunnskapsassistenten` og `miljo=test`), så
+oppskriften lager den ikke. `rg-ka-app` er Nikolais og brukes ikke her. Bytt
+verdiene i steg 0 hvis det blir andre.
 
 ### Rettigheter du trenger først
 
-| Hva                                                                                                             | Hvor                      | Steg |
-| --------------------------------------------------------------------------------------------------------------- | ------------------------- | ---- |
-| Contributor (eller Owner)                                                                                       | ressursgruppa `rg-ka-app` | 1, 5 |
-| Owner, User Access Administrator eller Role Based Access Control Administrator                                  | ressursgruppa `rg-ka-app` | 2, 6 |
-| Admin i repoet (for variablene)                                                                                 | GitHub                    | 3    |
-| `Microsoft.App`, `Microsoft.OperationalInsights` og `Microsoft.ContainerRegistry` registrert (sjekkes i steg 0) | abonnementet              | 0    |
+| Hva                                                                                                             | Hvor                       | Steg |
+| --------------------------------------------------------------------------------------------------------------- | -------------------------- | ---- |
+| Contributor (eller Owner)                                                                                       | ressursgruppa `rg-ka-test` | 1, 5 |
+| Owner, User Access Administrator eller Role Based Access Control Administrator                                  | ressursgruppa `rg-ka-test` | 2, 6 |
+| Admin i repoet (for variablene)                                                                                 | GitHub                     | 3    |
+| `Microsoft.App`, `Microsoft.OperationalInsights` og `Microsoft.ContainerRegistry` registrert (sjekkes i steg 0) | abonnementet               | 0    |
 
 Ingen rettigheter i `altinnaicontainers` eller andre steder utenfor
 ressursgruppa. Steg 2 og 6 er de eneste som krever rett til å gi roller. Har du
@@ -79,7 +81,7 @@ ferdige. Er Contributor bak PIM, aktiver den før du begynner.
 
 Står ikke `Altinn-AI-Assistant` i `az account list --refresh -o table`, har du
 ingen rolle i abonnementet ennå, og den første kommandoen i steg 0 feiler. Da
-må noen med tilgang gi deg Contributor på `rg-ka-app`, eller kjøre
+må noen med tilgang gi deg Contributor på `rg-ka-test`, eller kjøre
 oppskriften.
 
 ### Steg 0: verdiene, og en sjekk
@@ -96,7 +98,7 @@ argumenter til den.
 
 ```sh
 SUB=Altinn-AI-Assistant
-RG=rg-ka-app
+RG=rg-ka-test
 APP=ka-frontend-test
 REPO=larsekhansen/kunnskapsassistenten-frontend
 
@@ -110,7 +112,7 @@ az group show --subscription "$SUB" -n $RG --query location -o tsv
 
 Den første linja skal vise `Altinn-AI-Assistant`. Gir den en feil, har du ikke
 tilgang, og da stopper du her. Alle tre providerne skal stå som `Registered`.
-Den siste linja skal vise regionen til `rg-ka-app`.
+Den siste linja skal vise regionen til `rg-ka-test`.
 
 Steg 4 og 7 starter `Deploy` og venter på den. Denne funksjonen gjør det, og den
 venter på **akkurat den kjøringen den startet**. `gh run list -L 1` rett etter
@@ -227,8 +229,8 @@ az role assignment create --subscription "$SUB" --role "Managed Identity Operato
   --assignee-object-id "$DEPLOY_ID" --assignee-principal-type ServicePrincipal
 ```
 
-Contributor på appen og ikke på ressursgruppa: `rg-ka-app` kan ha andre ting i
-seg, og utrullingen trenger ikke røre dem.
+Contributor på appen og ikke på ressursgruppa: `rg-ka-test` kan få andre ting i
+seg, for eksempel en egen backend, og utrullingen trenger ikke røre dem.
 
 ### Steg 7: en ekte utrulling, og adressen på forsiden
 
@@ -250,7 +252,7 @@ det nye repoet. Resten står.
 
 ## Hvorfor eget register
 
-Bildene ligger i et register malen lager i `rg-ka-app`, og ikke i det delte
+Bildene ligger i et register malen lager i `rg-ka-test`, og ikke i det delte
 `altinnaicontainers`. Der bygger også Nikolais `ka-app`, og `AcrPush` gjelder
 hele registeret den gis på: en kjøring fra `main` her kunne da ha overskrevet
 bildene hans. Utrullingen skal bare kunne skrive til sine egne.
@@ -292,7 +294,7 @@ GitHub-variabelen fra steg 3.
 
 ```sh
 SUB=Altinn-AI-Assistant
-RG=rg-ka-app
+RG=rg-ka-test
 APP=ka-frontend-test
 REPO=larsekhansen/kunnskapsassistenten-frontend
 ACR=$(gh variable get KA_REGISTRY -R $REPO)

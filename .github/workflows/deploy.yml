@@ -28,7 +28,7 @@ permissions:
 # The registry has no default: it is ours alone, made by deploy/main.bicep
 # with a name derived from the resource group, and the template prints it.
 env:
-  RESOURCE_GROUP: ${{ vars.KA_RESOURCE_GROUP || 'rg-ka-app' }}
+  RESOURCE_GROUP: ${{ vars.KA_RESOURCE_GROUP || 'rg-ka-test' }}
   REGISTRY: ${{ vars.KA_REGISTRY }}
   APP: ${{ vars.KA_APP_NAME || 'ka-frontend-test' }}
 
