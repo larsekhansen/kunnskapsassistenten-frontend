@@ -14,6 +14,7 @@ import { SourcesOverview } from './SourcesOverview';
 import { SourcesPlaceholder } from './SourcesPlaceholder';
 import { noAnswerYet, emptyStateFor, type SourcesEmptyState } from './emptyStates';
 import { documentDomId } from './ids';
+import { readableDocuments } from './readableText';
 import { buildSearchIndex } from './search';
 import type { SourcesViewProps } from './types';
 import './sources.css';
@@ -212,7 +213,12 @@ export function SourcesView({
   const activeIndex = chosenIndex >= 0 ? chosenIndex : answersOnScreen.length - 1;
   const activeAnswer = answersOnScreen[activeIndex];
 
-  const documentList = useMemo(() => activeAnswer?.documents ?? [], [activeAnswer]);
+  // Readable once, here, so the search, the closed preview and the open quote
+  // all measure and draw the same string. See `readableText.ts`.
+  const documentList = useMemo(
+    () => readableDocuments(activeAnswer?.documents ?? []),
+    [activeAnswer],
+  );
   const searchIndex = useMemo(() => buildSearchIndex(documentList), [documentList]);
   const hits = useMemo(() => findHits(searchIndex, query), [searchIndex, query]);
   const currentHit = hits[currentHitIndex];

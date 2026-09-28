@@ -696,3 +696,61 @@ describe('SourcesView, korpuset følger svaret og ikke valget', () => {
     expect(screen.queryByRole('link', { name: /på Kudos/ })).toBeNull();
   });
 });
+
+describe('SourcesView, utdrag fra korpuset som lesbar tekst', () => {
+  // 372017/1 i Kudos (DFØs årsrapport 2024), slik live gir overskriften:
+  // `parseHeadingPath` beholder `\"` fra Clojure-strengen den kom i.
+  const markedUp: AnswerSources = {
+    messageId: 'svar-1',
+    status: 'complete',
+    documents: [
+      {
+        id: '372017',
+        title: 'Årsrapport Direktoratet for forvaltning og økonomistyring 2024',
+        excerpts: [
+          {
+            id: '372017-1',
+            citationNumber: 1,
+            relevance: 'high' as const,
+            heading: 'DFØs årsrapport 2024 › <span id=\\"page-4-0\\"></span>**1 Leders beretning**',
+            text: 'Vi har en **viktig** tekst om lønn.<img src="x" onerror="alert(1)">\n\n{5}\n\n------------------------------------------------\n\nNeste side.',
+          },
+        ],
+      },
+    ],
+  };
+
+  function panelText(container: HTMLElement): string {
+    return container.textContent ?? '';
+  }
+
+  it('viser overskriften uten anker, stjerner og skråstreker', () => {
+    const { container } = render(<SourcesView answers={[markedUp]} />);
+
+    expect(screen.getAllByText('DFØs årsrapport 2024 › 1 Leders beretning').length).toBeGreaterThan(
+      0,
+    );
+    expect(panelText(container)).not.toContain('<span');
+    expect(panelText(container)).not.toContain('**');
+    expect(panelText(container)).not.toContain('\\"');
+  });
+
+  it('viser verken sidemerket, streken eller taggene fra sitatet', () => {
+    const { container } = render(<SourcesView answers={[markedUp]} />);
+
+    expect(panelText(container)).not.toContain('{5}');
+    expect(panelText(container)).not.toMatch(/-{3,}/);
+    expect(panelText(container)).not.toContain('<img');
+    expect(container.querySelector('img')).toBeNull();
+  });
+
+  it('søker i teksten leseren ser, ikke i markdownen bak den', () => {
+    render(<SourcesView answers={[markedUp]} />);
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Søk i kildene' }), {
+      target: { value: 'viktig tekst' },
+    });
+
+    expect(screen.getByText('1 av 1 treff')).toBeTruthy();
+  });
+});

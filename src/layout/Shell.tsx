@@ -696,8 +696,22 @@ function Sidebar({
               `data-tooltip` into `aria-label` on an element with no text of
               its own, so this string and the explicit `aria-label` above have
               to agree — and they do, both `toggleName`.
+
+              Placement, measured 2026-09-28 at 1440 and 1920: there is no room
+              above the button, so `top` flips below it, over whatever the view
+              starts with. In the sources panel that was the label «Søk i
+              kildene». Further along the row there is nothing, and a box
+              placed there covers nothing. The navigation panel has no free
+              side: below is «Filtrering», further along the row is «Tråder»,
+              and before the button is the edge of the window. It keeps `top`
+              until its row has room.
             */
-            <Tooltip content={toggleName}>{toggleButton}</Tooltip>
+            <Tooltip
+              content={toggleName}
+              placement={slot === 'secondary-sidebar' ? 'right' : 'top'}
+            >
+              {toggleButton}
+            </Tooltip>
           )}
           {/*
             What the view wants on the panel's own row, beside the collapse

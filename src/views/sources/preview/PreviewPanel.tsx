@@ -4,6 +4,7 @@ import { fixtures } from '../../../api/mock';
 import { SecondarySidebarIcon } from '../../../components/icons';
 import { excerptDomId, type AnswerSources, type SourceDocument } from '../../../model';
 import { SourcesView } from '../SourcesView';
+import { kudosMarkdownSources } from './kudosExcerpts';
 import './preview.css';
 
 /**
@@ -28,7 +29,8 @@ type PreviewState =
   | 'flere-svar'
   | 'avbrutt'
   | 'feil'
-  | 'avklaring';
+  | 'avklaring'
+  | 'kudos-markdown';
 
 const STATE_LABELS: Record<PreviewState, string> = {
   ready: 'Med kilder',
@@ -40,6 +42,7 @@ const STATE_LABELS: Record<PreviewState, string> = {
   avbrutt: 'Avbrutt svar',
   feil: 'Feilet svar',
   avklaring: 'Avklaring',
+  'kudos-markdown': 'Utdrag fra Kudos',
 };
 
 /**
@@ -112,6 +115,10 @@ function answersFor(state: PreviewState): readonly AnswerSources[] | undefined {
       return [answerOne, { messageId: 'svar-2', status: 'error', documents: [] }];
     case 'avklaring':
       return [{ messageId: 'svar-1', status: 'needs-clarification', documents: [] }];
+    // Chunks as the corpus has them: page anchors, Marker's page markers,
+    // tables and emphasis. See `kudosExcerpts.ts`.
+    case 'kudos-markdown':
+      return oneAnswer(kudosMarkdownSources);
     default:
       return oneAnswer(fixtures.nkomSources);
   }
