@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { FACETS_PATH, facetConfigFrom, facetRoute } from './server/facets.ts';
 
 /**
  * The colour-scheme script, linked from `<head>` as a file of its own.
@@ -41,6 +42,31 @@ function colorSchemeScript(): Plugin {
 }
 
 /**
+ * `/api/facets` in development too, answered the way the container's server
+ * answers it (server/facets.ts).
+ *
+ * The route is ours and not the backend's, so the proxy below would send it
+ * to a backend that answers 404, and the filter panel would show an error
+ * where it used to say «Filtrering er ikke tilgjengelig ennå». Vite runs a
+ * plugin's middleware before its own, so this comes ahead of the proxy.
+ *
+ * Not in bff mode: the BFF has its own `/api/facets`, and that is the one
+ * the panel should get there.
+ */
+function facetsInDevelopment(env: Record<string, string>): Plugin {
+  return {
+    name: 'ka-facets',
+    configureServer(server) {
+      const facets = facetRoute(facetConfigFrom(env));
+      server.middlewares.use((request, response, next) => {
+        if ((request.url ?? '').split('?')[0] !== FACETS_PATH) return next();
+        facets(request, response).catch(next);
+      });
+    },
+  };
+}
+
+/**
  * The dev server is also the proxy that holds the API key.
  *
  * The key never reaches the browser, and that is not a preference: the
@@ -74,7 +100,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [react(), colorSchemeScript()],
+    plugins: [react(), colorSchemeScript(), ...(bff ? [] : [facetsInDevelopment(env)])],
     server: {
       proxy: {
         ...(bff ? { '/auth': { target, changeOrigin: true } } : {}),
