@@ -6,10 +6,11 @@ Apps, med samme bilde og samme korpus som lokalt: grenen
 Benjamins Typesense. Backenden har bare intern adresse, og databasen ligger i
 Azure Database for PostgreSQL. Malen er `deploy/rag.bicep`.
 
-**Ikke rullet ut fra denne versjonen.** Oppsettet er prøvd lokalt i samme form
-28.09, med Postgres, seed-jobb, backend og frontend som egne containere på et
-eget nettverk; se [Prøve det lokalt](#prøve-det-lokalt) og
-[Det som ikke er målt](#det-som-ikke-er-målt).
+**Rullet ut i `rg-ka-test` 28.09.** Backenden kjører på Postgres og svarer
+gjennom frontenden. Hva som er målt der, står i
+[Målt i Azure 28.09](#målt-i-azure-2809), og hva som ikke er det, i
+[Det som ikke er målt](#det-som-ikke-er-målt). Oppsettet ble først prøvd
+lokalt i samme form; se [Prøve det lokalt](#prøve-det-lokalt).
 
 `test.rag.digdir.cloud` svarer ikke med agentene (`mode_not_allowed`) og tar
 ikke imot filteret, og det er Benjamins oppsett og kode. Derfor en egen backend.
@@ -228,8 +229,12 @@ kravet om TLS, lagringskontoen, delingen, miljøets kobling til den og jobben,
 men ingen app. Jobben startes ikke av seg selv. Å opprette serveren tar
 «typically 5-10 minutes» ifølge Microsofts
 [hurtigstart for Flexible Server](https://learn.microsoft.com/azure/postgresql/flexible-server/quickstart-create-server);
-det er ikke målt her. Utdataene skal vise `postgresServer` og
-`storageAccountName` lik `karagvxd2q2aj52lqw`.
+selve opprettingen er ikke målt. I Azure tok steg 3 2 min 46 s med serveren
+alt laget. Utdataene skal vise `postgresServer` og `storageAccountName` lik
+`karagvxd2q2aj52lqw`.
+
+`require_secure_transport` settes med `source: 'user-override'`. Med
+`user-defined` stoppet steg 3 i Azure på `InvalidParameterValue`.
 
 Verdiene går til ARM i parameterfila og ikke på kommandolinja. Malen tar dem
 som `@secure()`, så de lagres ikke i utrullingshistorikken.
@@ -279,7 +284,8 @@ done
 **Gå videre til steg 6 bare når siste linje er `Succeeded`.** Skriptet
 avslutter med 0 bare når frasesøket mot Kudos til slutt gir treff. Lokalt, mot
 Postgres, tok jobben 33 sekunder mot en tom database og ga 20 treff. I Azure
-kommer hentingen av bildet på ca. 1 GB i tillegg. Står den på noe annet, eller
+var den `Succeeded` på om lag 1,5 minutter, og frasesøket «DFØ årsrapport
+2024» ga 20 treff. Står den på noe annet, eller
 fortsatt på `Running` etter 30 minutter, er databasen ikke klar; les loggen i
 portalen, under jobben → **Execution history**.
 
@@ -317,7 +323,8 @@ skal vise `:agents-after 8` og `:api-key-existed? false`. Ved senere
 oppstarter står det `true`.
 
 Oppstartsproben venter i inntil 130 sekunder på `/up`. Lokalt, mot Postgres og
-med 2 CPU og 4 GiB som her, svarte den etter 43 sekunder.
+med 2 CPU og 4 GiB som her, svarte den etter 43 sekunder. I Azure tok
+utrullingen 2 min 49 s, og appen sto som `Running` med bare intern ingress.
 
 ## Steg 7: frontenden peker på backenden
 
@@ -341,8 +348,9 @@ Verdien i `secret set` står i argumentene til `az` mens kommandoen kjører, og
 kan ses med `ps` i det øyeblikket. I historikken står bare `$(jq …)`.
 
 `http://ka-rag-test` er appens navn inne i miljøet; adressen finnes ikke
-utenfra. Åpne frontendens adresse og still et spørsmål. Et svar tar fra 16 til
-80 sekunder.
+utenfra. Åpne frontendens adresse og still et spørsmål. Målt i Azure:
+DFØ-spørsmålet med filteret Årsrapport svarte på 38 s, med 915 tegn og DFØs
+årsrapport 2024 som kilde. Antallsspørsmålet: 19 s. I nettleseren: 19,8 s.
 
 **Kjøres `main.bicep` på nytt, må den få de samme verdiene**, ellers setter den
 frontenden tilbake til mock mot `test.rag.digdir.cloud`: `kaMode=live`,
@@ -351,7 +359,8 @@ frontenden tilbake til mock mot `test.rag.digdir.cloud`: `kaMode=live`,
 `digdirApiKey` fra parameterfila. `filterFields` må ha nøkkelen `kudos-full`,
 ikke `kudos` som i standardverdien.
 
-At tråden overlever en omstart av backenden:
+At tråden overlever en omstart av backenden. Det er ikke målt i Azure; lokalt
+sto tråden der etter omstart.
 
 ```sh
 az containerapp revision restart --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-rag-test --revision "$(az containerapp show --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-rag-test --query properties.latestRevisionName -o tsv)"
@@ -410,7 +419,8 @@ er ikke gjort.
   nettverk, med brannmurregelen for tjenester i Azure. Den slipper inn fra hele
   Azure og ikke bare fra vårt miljø. Det som skiller, er passordet og TLS:
   serveren krever TLS (`require_secure_transport`), og adressen backenden
-  bruker har `sslmode=require`.
+  bruker har `sslmode=require`. `sslmode=require` krypterer, men sjekker ikke
+  serverens sertifikat. Det er ikke endret og ikke målt.
 - **Hvem kobler til:** admin-brukeren `karagadmin`, med passordet fra
   parameterfila som secret i appen og jobben. Det står ikke i adressen.
 - **Størrelse:** 12 MB i tabellen `datahike` etter seeding og én tråd (målt
@@ -593,25 +603,40 @@ Fra den første prøven samme dag, med databasen på et docker-volum: seed-jobbe
 mens backenden svarte, ble nektet med exit 1, og backenden brukte 1,4 GiB av
 4 etter ett svar. Vakta er den samme med Postgres.
 
+## Målt i Azure 28.09
+
+Målt av dirigenten i `rg-ka-test`.
+
+| Hva                                               | Målt                                                                                                                                    |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Backendbildet `ka-rag-test:a836b91` (amd64)       | bygget med `az acr build` fra kildemappa på 6 min 59 s; kjørte i jobben og appen                                                        |
+| Admin-passordet via `listCredentials()`           | begge appene og jobben hentet bildene sine med det                                                                                      |
+| Datahike på Azure Files                           | virket ikke: `AccessDeniedException` ved omdøping fra `.ksv.new` til `.ksv` etter 1 min 33 s                                            |
+| Postgres B1ms gjennom regelen for Azure-tjenester | jobben og appen koblet til (`init-db env=:remote backend=:jdbc`)                                                                        |
+| `require_secure_transport`                        | `user-defined` ga `InvalidParameterValue`, `user-override` virker; steg 3 tok 2 min 46 s med serveren alt laget                         |
+| Seedingen                                         | `Succeeded` på om lag 1,5 minutter; frasesøket «DFØ årsrapport 2024» ga 20 treff                                                        |
+| Backendappen (steg 6)                             | utrullingen tok 2 min 49 s; `Running`, bare intern ingress                                                                              |
+| Intern DNS og `allowInsecure`                     | frontenden når `http://ka-rag-test`                                                                                                     |
+| Typesense og Azure OpenAI fra Container Apps      | svar med kilder kom fram                                                                                                                |
+| Svartid gjennom frontenden                        | DFØ-spørsmålet med filteret Årsrapport: 38 s, 915 tegn, DFØs årsrapport 2024 som kilde. Antallsspørsmålet: 19 s. I nettleseren: 19,8 s. |
+| Korpuset                                          | agenten svarte «10 064 dokumenter» med fordeling per type, som stemmer med Typesense (10 064 dokumenter og 621 244 biter)               |
+
 ## Det som ikke er målt
 
-Alt dette kan bare prøves i Azure. De tre første er de som kan gå galt ved
-første kjøring:
+Ikke målt i Azure 28.09:
 
-- At Container Apps når Postgres gjennom brannmurregelen for tjenester i
-  Azure, med TLS, og hvor raskt Datahike skriver mot en B1ms.
-- At Container Apps når Benjamins Typesense, Azure OpenAI og ColBERT. Alle har
-  offentlige adresser, men om noen bare slipper inn bestemte IP-adresser, vet
-  vi ikke.
-- At frontenden når `http://ka-rag-test`, og at `allowInsecure` er det som
-  trengs for `http://` inne i miljøet. Det samme gjelder vakta, som når appen
-  på `ka-rag-test:80`: gir ingressen en omdirigering, slipper vakta gjennom.
-  Oppskriften lar derfor aldri vakta være det eneste som hindrer en seeding
-  mens appen kjører.
-- Hva Datahike gjør når to revisjoner har databasen åpen samtidig.
-- At `listCredentials()` gir passordet når admin-brukeren er på, og at appen og
-  jobben henter bildet med det.
-- At `az acr build` bygger bildet for amd64 uten feil; lokalt er det arm64.
-- At miljøets kobling til delingen står når `main.bicep` kjøres på nytt.
-- At `az storage file upload` henter kontonøkkelen selv, som hjelpeteksten
+- **ColBERT fra Container Apps.** Ikke sjekket for seg. Svarene kom, men loggen
+  er ikke lest for reranking.
+- **Tråden etter en omstart av backenden.** Lokalt sto den der.
+- **Revisjoner som overlapper under en utrulling**, og hva Datahike gjør når to
+  JVM-er har databasen åpen samtidig.
+- **Sertifikatsjekk.** `sslmode=require` sjekker ikke serverens sertifikat, og
+  det er ikke endret.
+- **Vakta over ingressen.** At `refuse-if-server-running!` i jobben ser appen
+  på `ka-rag-test:80`. Oppskriften lar uansett aldri vakta være det eneste som
+  hindrer en seeding mens appen kjører.
+- **Hvor lang tid det tar å opprette Postgres-serveren.** Steg 3 ble målt med
+  serveren alt laget.
+- **Miljøets kobling til delingen** når `main.bicep` kjøres på nytt.
+- **At `az storage file upload` henter kontonøkkelen selv**, som hjelpeteksten
   sier.
