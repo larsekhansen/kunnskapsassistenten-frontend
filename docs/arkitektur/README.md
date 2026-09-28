@@ -6,6 +6,7 @@ ble gjort på en bestemt måte. Små valg står i koden og PR-beskrivelsene.
 Hver fil sier hva som ble valgt, hvilke alternativer som ble vurdert, hva som
 ble målt, og hva det koster.
 
-| nr.                                        | valg                                 | status    |
-| ------------------------------------------ | ------------------------------------ | --------- |
-| [0001](0001-fasetter-og-korpuskunnskap.md) | Hvor kunnskapen om et korpus skal bo | foreslått |
+| nr.                                        | valg                                          | status        |
+| ------------------------------------------ | --------------------------------------------- | ------------- |
+| [0001](0001-fasetter-og-korpuskunnskap.md) | Hvor kunnskapen om et korpus skal bo          | foreslått     |
+| [0002](0002-klienten-bak-bff.md)           | Klienten vår som `apps/web`, bak Nikolais BFF | retning valgt |

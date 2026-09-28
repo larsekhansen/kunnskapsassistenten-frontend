@@ -103,6 +103,19 @@ formatereren leste `:name` i stedet for `:value`. Agenten svarte «ett
 dokument» på hvor mange dokumenter Kudos har. Etter rettelsen: «over 10 000».
 Funksjonen er et naturlig utgangspunkt for mekanismen i D.
 
+**Nikolai har gjort det samme, strengere.** PR #15 i headless-rag
+(«Make tools/call filtering work end to end», åpnet 2026-09-25) retter 1–5.
+Den skiller seg fra vår gren på tre punkter:
+
+- `overrides` godtar bare tre nøkler. Vår nr. 2 gjør alle innstillingene per
+  kall levende, også `model` og `max-tokens`.
+- Et ugyldig filter avvises med en feil i stedet for å droppes.
+- Feltnavn valideres også.
+
+Klienten vår sender filteret i en form den godtar, også årstall som tekst med
+`value-type integer`. Nr. 6 har den ikke. Forslag: bruk #15 for 1–5, og send
+nr. 6 og seed-skriptet som egen PR oppå.
+
 Målt etterpå mot hele Kudos-korpuset: et umulig filter gir 0 treff, DFØ +
 Årsrapport gir bare DFØs årsrapport 2024 — der det før kom Statens vegvesen —
 og Årsrapport + 2024 gir bare årsrapporter fra 2024.
