@@ -10,8 +10,8 @@
  *   window.ka.colorScheme.get()
  *
  * `auto` follows the operating system and is the default. The choice is
- * stored per browser and read before the first paint by a small inline
- * script in index.html, so the page never flashes the wrong scheme. That
+ * stored per browser and read before the first paint by a small script,
+ * colorSchemeBoot.js, so the page never flashes the wrong scheme. That
  * script and this module must agree on STORAGE_KEY and ATTRIBUTE; they are
  * the only two strings duplicated between them.
  *
@@ -77,8 +77,8 @@ declare global {
 
 /**
  * Applies the stored scheme and exposes the console API. Called from
- * main.tsx before the first render; the inline script in index.html has
- * usually applied the same value already, and applying it twice is harmless.
+ * main.tsx before the first render; colorSchemeBoot.js has usually
+ * applied the same value already, and applying it twice is harmless.
  */
 export function initColorScheme(): void {
   document.documentElement.setAttribute(ATTRIBUTE, getColorScheme());
