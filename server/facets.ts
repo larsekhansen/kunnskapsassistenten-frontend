@@ -173,6 +173,20 @@ function countsByField(body: TypesenseFacets): Map<string, FacetOption[]> {
 }
 
 /**
+ * Whether there is anything to ask Typesense for this dataset. Checked before
+ * the cache as well as in `loadFacets`, so a key nobody configured never
+ * becomes an entry that stays (KA CC on #173).
+ */
+function isConfigured(config: FacetConfig, dataset: string): boolean {
+  return Boolean(
+    config.typesenseUrl &&
+    config.typesenseKey &&
+    config.collections.has(dataset) &&
+    Object.hasOwn(config.fields, dataset),
+  );
+}
+
+/**
  * One dataset's facets from Typesense, or none when it is not configured.
  *
  * `Object.hasOwn` and a `Map`, not `fields[dataset]`: the key comes from the
@@ -181,7 +195,7 @@ function countsByField(body: TypesenseFacets): Map<string, FacetOption[]> {
 async function loadFacets(config: FacetConfig, dataset: string): Promise<Facet[]> {
   const collection = config.collections.get(dataset);
   const fields = Object.hasOwn(config.fields, dataset) ? config.fields[dataset] : undefined;
-  if (!config.typesenseUrl || !config.typesenseKey || !collection || !fields) return [];
+  if (!isConfigured(config, dataset) || !collection || !fields) return [];
 
   const wanted = filterDimensions.flatMap((dimension) => {
     const mapping = fields[dimension];
@@ -207,7 +221,18 @@ async function loadFacets(config: FacetConfig, dataset: string): Promise<Facet[]
 
   const byField = countsByField((await response.json()) as TypesenseFacets);
   return wanted.flatMap(({ dimension, field }) => {
-    const options = shapeOptions(dimension, byField.get(field) ?? []);
+    const counts = byField.get(field) ?? [];
+    // As many as asked for means some may be missing: the field has grown
+    // past the limit, and the least frequent values are the ones cut.
+    if (counts.length >= MAX_FACET_VALUES) {
+      console.warn(
+        '[ka] Typesense ga %d verdier for %s i %s, like mange som grensen. Noen kan mangle; se MAX_FACET_VALUES i server/facets.ts.',
+        counts.length,
+        field,
+        dataset,
+      );
+    }
+    const options = shapeOptions(dimension, counts);
     // A field with nothing in it is not a filter anybody can use.
     return options.length > 0 ? [{ field, label: LABELS[dimension], options }] : [];
   });
@@ -233,6 +258,8 @@ export function facetRoute(config: FacetConfig) {
   const cache = new Map<string, { at: number; facets: Promise<Facet[]> }>();
 
   function facetsFor(dataset: string): Promise<Facet[]> {
+    if (!isConfigured(config, dataset)) return Promise.resolve([]);
+
     const hit = cache.get(dataset);
     if (hit && Date.now() - hit.at < config.ttlMs) return hit.facets;
 

@@ -38,7 +38,12 @@ function stop(instance: Server | undefined): Promise<void> {
 }
 
 /** Serveren med Typesense og backend begge på egne porter. */
-async function start(env: NodeJS.ProcessEnv = {}, ttlMs?: number, accessSecret?: string) {
+async function start(
+  env: NodeJS.ProcessEnv = {},
+  ttlMs?: number,
+  accessSecret?: string,
+  mode: 'live' | 'mock' = 'live',
+) {
   typesense = createServer((request, response) => {
     asked.push({
       url: new URL(request.url ?? '', 'http://typesense'),
@@ -59,7 +64,7 @@ async function start(env: NodeJS.ProcessEnv = {}, ttlMs?: number, accessSecret?:
     ...readConfig({}, '/dist'),
     // Live, fordi serveren i mock ikke sender noe til backend, og testen
     // under måler at alt annet enn /api/facets går dit.
-    mode: 'live',
+    mode,
     apiBase,
     accessSecret,
     facets: {
@@ -288,6 +293,47 @@ describe('/api/facets', () => {
     });
     expect(allowed.status).toBe(200);
     expect(asked).toHaveLength(1);
+  });
+
+  it('ber om minst så mange verdier som Kudos har i concerned_years', async () => {
+    // Målt 28.09: 1006 ulike verdier, mest støy. Med 500 kom bare 23 av 46
+    // år tilbake, fordi de minst hyppige ble kuttet før årsspennet ble brukt.
+    // Mot tallet og ikke mot konstanten, så en lavere grense blir rød.
+    await start();
+
+    await fetch(`${base}/api/facets?dataset=kudos-full`);
+
+    expect(Number(asked[0]?.url.searchParams.get('max_facet_values'))).toBeGreaterThanOrEqual(1006);
+  });
+
+  it('advarer når et felt har like mange verdier som grensen', async () => {
+    await start();
+    const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const full = Array.from({ length: MAX_FACET_VALUES }, (_, index) => ({
+      value: `Type ${index}`,
+      count: MAX_FACET_VALUES - index,
+    }));
+    answer = {
+      status: 200,
+      body: JSON.stringify({ facet_counts: [{ field_name: 'type', counts: full }] }),
+    };
+
+    const response = await fetch(`${base}/api/facets?dataset=kudos-full`);
+
+    expect(response.status).toBe(200);
+    expect(warned).toHaveBeenCalledOnce();
+    expect(String(warned.mock.calls[0])).toContain('type');
+  });
+
+  it('spør ikke Typesense i mock', async () => {
+    // Klienten i mock spør aldri, og resten av /api/ er stengt i mock (proxy.ts).
+    await start({}, undefined, undefined, 'mock');
+
+    const response = await fetch(`${base}/api/facets?dataset=kudos-full`);
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    expect(asked).toEqual([]);
   });
 
   it('godtar bare GET', async () => {

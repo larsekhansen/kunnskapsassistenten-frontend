@@ -104,8 +104,19 @@ export function createHandler(config: ServerConfig) {
     }
 
     // Before the proxy, or it would be forwarded to a backend that has no
-    // such route. The exact path only: `/api/facets/x` is the backend's.
+    // such route. The exact path only: `/api/facets/x` is the backend's. In
+    // mock it is shut as the rest of /api/ is (proxy.ts): the client in mock
+    // never asks, and Typesense should not be asked on its behalf (KA CC on
+    // #173).
     if (path === FACETS_PATH) {
+      if (config.mode === 'mock') {
+        response.writeHead(404, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+        });
+        response.end(JSON.stringify({ error: 'Ingen backend i mock-modus.' }));
+        return;
+      }
       settle(facets(request, response), response);
       return;
     }
