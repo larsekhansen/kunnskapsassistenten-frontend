@@ -161,7 +161,7 @@ resource postgresAzureServices 'Microsoft.DBforPostgreSQL/flexibleServers/firewa
 resource postgresTls 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2024-08-01' = {
   parent: postgres
   name: 'require_secure_transport'
-  properties: { value: 'on', source: 'user-defined' }
+  properties: { value: 'on', source: 'user-override' }
   dependsOn: [postgresAzureServices]
 }
 
