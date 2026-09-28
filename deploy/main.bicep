@@ -2,10 +2,10 @@
 // serveren som holder API-nøkkelen, og en identitet GitHub ruller ut med.
 //
 // Kopi av Nikolais `src/deploy/main.bicep` fra digdir/kunnskapsassistenten,
-// tilpasset vår app. Det som er tatt bort er innlogging (Supabase og Entra),
-// Typesense og øktnøkkelen: første runde er et internt miljø på en
-// azurecontainerapps.io-adresse uten pålogging, og alt som ikke er der kan
-// ikke lekke. Innlogging er steg 5 i design/plan-testmiljo-2026-09-22.md.
+// tilpasset vår app. Det som er tatt bort er Supabase, Typesense og
+// øktnøkkelen. Innlogging med Entra er plattformens egen («Easy Auth») og slås
+// på med `entraClientId`; uten den er appen åpen som før. Se «Innlogging» i
+// docs/deploy.md.
 //
 // Kjøres i to omganger, se «Første gang» i docs/deploy.md:
 //   1. uten `imageTag`: register, miljø, logger og begge identitetene, så
@@ -59,10 +59,29 @@ param filterFields string = 'kudos=documentType:type|organisation:orgs_long|year
 @secure()
 param digdirApiKey string = ''
 
+@description('Klient-ID-en til app-registreringen innloggingen bruker. Tom = ingen innlogging.')
+param entraClientId string = ''
+
+@description('Client secret til registreringen. Må være med når entraClientId er satt.')
+@secure()
+param entraClientSecret string = ''
+
+@description('Tenanten registreringen ligger i. Standard er tenanten abonnementet hører til.')
+param entraTenantId string = subscription().tenantId
+
 // Uten nøkkel står både secret og variabel utenfor. Det er ikke målt om
 // Container Apps godtar en secret med tom verdi, og en app i mock har ingen
 // bruk for en; utelatt er riktig uansett hva svaret er.
 var hasKey = !empty(digdirApiKey)
+
+// Innloggingen er på når klient-ID-en er gitt, og da må secreten også være
+// det. Uten secret bruker plattformen implisitt flyt, som Microsoft fraråder,
+// og det skal ikke skje fordi noen glemte en parameter ved en ny kjøring.
+var hasLogin = !empty(entraClientId)
+var loginSecretName = 'microsoft-provider-authentication-secret'
+var loginSecret = hasLogin && empty(entraClientSecret)
+  ? fail('entraClientId er satt uten entraClientSecret. Se «Innlogging» i docs/deploy.md.')
+  : entraClientSecret
 
 // Tomme verdier utelates av samme grunn. Serveren leser en tom variabel og en
 // manglende likt (`value()` i server/config.ts), så ingenting endrer mening.
@@ -75,10 +94,17 @@ var plainEnv = filter(
     { name: 'VITE_KA_DATASET_CONFIG_KEY', value: datasetConfigKey }
     { name: 'VITE_KA_DATASETS', value: datasets }
     { name: 'VITE_KA_FILTER_FIELDS', value: filterFields }
+    // Bare bak innloggingen. Uten den kan nettleseren sende plattformens
+    // hode selv, og da er det ikke en identitet. Se server/identity.ts.
+    { name: 'KA_USER_ID_FROM', value: hasLogin ? 'platform' : '' }
   ],
   entry => !empty(entry.value)
 )
 var keyEnv = hasKey ? [{ name: 'DIGDIR_API_KEY', secretRef: 'digdir-api-key' }] : []
+var secrets = concat(
+  hasKey ? [{ name: 'digdir-api-key', value: digdirApiKey }] : [],
+  hasLogin ? [{ name: loginSecretName, value: loginSecret }] : []
+)
 
 // Basic: 10 GiB inkludert, og hvert bilde legger bare til de ca. 2 MB som
 // endrer seg (målt 28.09). Uten admin-bruker: alt går med Entra-identiteter.
@@ -161,6 +187,9 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (!empty(imageTag)) {
         external: true
         targetPort: 8787
         transport: 'auto'
+        // Standardverdien, skrevet ut: innloggingen skal bare brukes over
+        // HTTPS, sier Microsoft.
+        allowInsecure: false
         // Ingen timeout satt her, fordi det ikke finnes noen å sette:
         // Container Apps' ingress har 240 sekunder som plattformverdi og
         // eksponerer den ikke i denne API-versjonen. Det holder for et svar
@@ -169,7 +198,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (!empty(imageTag)) {
         stickySessions: { affinity: 'none' }
       }
       registries: [{ server: registry.properties.loginServer, identity: identity.id }]
-      secrets: hasKey ? [{ name: 'digdir-api-key', value: digdirApiKey }] : []
+      secrets: secrets
     }
     template: {
       containers: [
@@ -196,7 +225,40 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (!empty(imageTag)) {
   }
 }
 
+// Plattformens innlogging med Entra, foran alt appen svarer på. Den kjører
+// som en sidevogn i hver replika, og serveren ser bare forespørsler som har
+// kommet gjennom den, med den innloggede brukeren i X-MS-CLIENT-PRINCIPAL-ID.
+resource login 'Microsoft.App/containerApps/authConfigs@2024-03-01' = if (!empty(imageTag) && hasLogin) {
+  parent: app
+  name: 'current'
+  properties: {
+    platform: { enabled: true }
+    globalValidation: {
+      unauthenticatedClientAction: 'RedirectToLoginPage'
+      // Helsesjekken i deploy.yml spør revisjonens adresse uten å være
+      // innlogget, og ville ellers fått en omdirigering til Microsoft.
+      // /healthz sier bare `ok` og modusen.
+      excludedPaths: ['/healthz']
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          clientId: entraClientId
+          clientSecretSettingName: loginSecretName
+          openIdIssuer: '${environment().authentication.loginEndpoint}${entraTenantId}/v2.0'
+        }
+      }
+    }
+    httpSettings: { requireHttps: true }
+  }
+}
+
 output fqdn string = empty(imageTag) ? '' : app!.properties.configuration.ingress.fqdn
+@description('Redirect-URI-en app-registreringen må ha. Lik for alle revisjoner.')
+output loginRedirectUri string = empty(imageTag)
+  ? ''
+  : 'https://${app!.properties.configuration.ingress.fqdn}/.auth/login/aad/callback'
 @description('Settes som GitHub-variabelen KA_REGISTRY.')
 output registryName string = registry.name
 output principalId string = identity.properties.principalId
