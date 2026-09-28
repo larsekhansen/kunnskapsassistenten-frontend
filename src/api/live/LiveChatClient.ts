@@ -1,7 +1,16 @@
 import { chatErrorCode } from '../../model';
-import type { ChatError, FilterFacet, StreamEvent, Thread, ThreadDetail } from '../../model';
+import type { Facet } from '../../../shared/facets.ts';
+import type {
+  ChatError,
+  FilterFacet,
+  FilterSelection,
+  StreamEvent,
+  Thread,
+  ThreadDetail,
+} from '../../model';
 import type { AskParams, ChatClient } from '../chatClient';
 import { CORPUS_TAG_PREFIX } from '../corpus';
+import { facetsFrom } from '../facets';
 import { filterFieldsFor } from '../filterFields';
 import type { DatasetFilterFields } from '../filterFields';
 import {
@@ -112,9 +121,8 @@ export function errorFromStatus(status: number): ChatError {
  * all — it can, once the conversation is created with an owner this reader
  * can be listed by.
  *
- * `listFacets` still returns nothing on purpose: the backend filters by whole
- * dataset, so there are no counts to give (API-bestilling A2). Mock mode has
- * the data, live mode says the truth.
+ * `listFacets` asks our own server, which counts the facets from Typesense
+ * until the backend can (server/facets.ts, docs/arkitektur/0001).
  */
 /**
  * The conversation the questions that follow belong to.
@@ -466,11 +474,31 @@ export class LiveChatClient implements ChatClient {
   }
 
   /**
-   * backend: mangler, se API-bestilling A2 — the backend filters by whole
-   * dataset, so there are no facets to count within one.
+   * The facets for the corpus this call is made against, counted by our own
+   * server from Typesense (server/facets.ts) — the backend has no facet API
+   * yet. Whole-corpus counts, so `facetsFrom` leaves them out once another
+   * dimension is narrowed, as it does for the BFF.
+   *
+   * None, without asking, when there is nothing to draw them with: no dataset
+   * pair, or no field names for this dataset. The panel then says
+   * «Filtrering er ikke tilgjengelig ennå», as before. The dataset is read off
+   * `#dataset()`, as `ask` reads it, so the facets belong to the corpus a
+   * question would be asked of.
+   *
+   * Throws when the server cannot answer, so the panel can offer to try again.
    */
-  async listFacets(): Promise<FilterFacet[]> {
-    return [];
+  async listFacets(signal?: AbortSignal, selection?: FilterSelection): Promise<FilterFacet[]> {
+    const dataset = this.#dataset().dataset_config_key;
+    const fields = this.#filterFields(dataset);
+    if (!dataset || !fields) return [];
+
+    const response = await fetch(
+      `${this.#basePath}/facets?dataset=${encodeURIComponent(dataset)}`,
+      { signal },
+    );
+    if (!response.ok) throw new Error(`Filtrene svarte ${response.status}.`);
+    const body = (await response.json()) as { facets?: Facet[] };
+    return facetsFrom(body.facets ?? [], fields, selection);
   }
 }
 

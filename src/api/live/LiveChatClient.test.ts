@@ -625,3 +625,111 @@ describe('tråden heter det backenden kaller den', () => {
     expect(body.params.arguments).toMatchObject({ conversation_id: 'ny-samtale' });
   });
 });
+
+/**
+ * Fasettene i live, fra vår egen server (server/facets.ts). Formatet er det
+ * generiske fra 0001, det samme BFF-en svarer med, så mappingen er den samme.
+ */
+describe('fasettene i live', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const FACETS = {
+    facets: [
+      { field: 'type', label: 'dokumenttyper', options: [{ value: 'Årsrapport', count: 1418 }] },
+      { field: 'concerned_years', label: 'år', options: [{ value: '2024', count: 1883 }] },
+      // Et felt ingen dimensjon peker på, skal ikke bli en nedtrekksliste.
+      { field: 'title', label: 'titler', options: [{ value: 'x', count: 1 }] },
+    ],
+  };
+
+  function answering(status: number, body: unknown = FACETS) {
+    const fetchMock = vi.fn(
+      async (_url: unknown, _init?: RequestInit) =>
+        new Response(JSON.stringify(body), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  function client(datasetConfigKey: string | undefined, { withTenant = true } = {}) {
+    return new LiveChatClient({
+      tenant: withTenant ? 'kudos' : undefined,
+      datasetConfigKey,
+      filterFields: (key) =>
+        key === 'kudos-full'
+          ? {
+              documentType: { field: 'type' },
+              year: { field: 'concerned_years', valueType: 'integer' },
+            }
+          : undefined,
+    });
+  }
+
+  it('spør serverens egen rute for datasettet, og tegner det som nedtrekkslister', async () => {
+    const fetchMock = answering(200);
+
+    const facets = await client('kudos-full').listFacets();
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('/api/facets?dataset=kudos-full');
+    expect(facets).toEqual([
+      {
+        dimension: 'documentType',
+        label: 'Dokumenttyper',
+        values: [{ value: 'Årsrapport', label: 'Årsrapport', count: 1418 }],
+      },
+      {
+        dimension: 'year',
+        label: 'År',
+        values: [{ value: '2024', label: '2024', count: 1883 }],
+      },
+    ]);
+  });
+
+  it('dropper antallet i en dimensjon når en annen er avgrenset', async () => {
+    // Tallene gjelder hele korpuset, og er ikke svaret under et filter.
+    answering(200);
+
+    const facets = await client('kudos-full').listFacets(undefined, {
+      ...emptyFilterSelection,
+      year: ['2024'],
+    });
+
+    expect(facets.find((facet) => facet.dimension === 'documentType')?.values).toEqual([
+      { value: 'Årsrapport', label: 'Årsrapport' },
+    ]);
+    // Egen dimensjon snevrer aldri inn sine egne tall.
+    expect(facets.find((facet) => facet.dimension === 'year')?.values[0]?.count).toBe(1883);
+  });
+
+  it('spør ikke, og svarer ingen, uten datasettpar eller uten feltnavn', async () => {
+    const fetchMock = answering(200);
+    const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(await client(undefined).listFacets()).toEqual([]);
+    expect(await client('kudos-pilot').listFacets()).toEqual([]);
+    // Bare datasettet, uten tenant: backend velger selv, og ingen her vet hva.
+    expect(await client('kudos-full', { withTenant: false }).listFacets()).toEqual([]);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(warned).toHaveBeenCalled();
+  });
+
+  it('kaster når serveren ikke kan svare, så panelet kan tilby å prøve igjen', async () => {
+    answering(502, { error: 'Fikk ikke hentet filtrene.' });
+
+    await expect(client('kudos-full').listFacets()).rejects.toThrow();
+  });
+
+  it('sender avbruddet videre', async () => {
+    const fetchMock = answering(200);
+    const abort = new AbortController();
+
+    await client('kudos-full').listFacets(abort.signal);
+
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(abort.signal);
+  });
+});

@@ -46,3 +46,9 @@ param allowedIps = map(
 // malen slår den da av også om den var på.
 param entraClientId = readEnvironmentVariable('KA_ENTRA_CLIENT_ID', '')
 param entraClientSecret = readEnvironmentVariable('KA_ENTRA_CLIENT_SECRET', '')
+
+// Fasettene i filterpanelet: «Fasettene i filterpanelet» i docs/deploy.md.
+// Tomme = panelet sier at filtrering ikke er tilgjengelig.
+param typesenseUrl = readEnvironmentVariable('TYPESENSE_URL', '')
+param typesenseApiKey = readEnvironmentVariable('TYPESENSE_API_KEY', '')
+param facetCollections = readEnvironmentVariable('KA_FACET_COLLECTIONS', '')

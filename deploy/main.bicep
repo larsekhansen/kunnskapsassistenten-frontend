@@ -83,6 +83,16 @@ param registryAdminUser bool = true
 @description('Adressene som slipper inn, i CIDR-form ("1.2.3.4/32"). Tom = ingen begrensning.')
 param allowedIps array = []
 
+@description('Typesense for fasettene i filterpanelet, med skjema og port. Tom = ingen fasetter; se «Fasettene i filterpanelet» i docs/deploy.md.')
+param typesenseUrl string = ''
+
+@description('Nøkkelen til Typesense. En søkenøkkel for samlingene holder. Blir Container Apps-secret.')
+@secure()
+param typesenseApiKey string = ''
+
+@description('Dokumentsamlingen per datasett: "datasett=samling;…".')
+param facetCollections string = ''
+
 // Uten nøkkel står både secret og variabel utenfor. Det er ikke målt om
 // Container Apps godtar en secret med tom verdi, og en app i mock har ingen
 // bruk for en; utelatt er riktig uansett hva svaret er.
@@ -166,17 +176,23 @@ var plainEnv = filter(
     // Bare bak innloggingen. Uten den kan nettleseren sende plattformens
     // hode selv, og da er det ikke en identitet. Se server/identity.ts.
     { name: 'KA_USER_ID_FROM', value: hasLogin ? 'platform' : '' }
+    // Fasettene fra Typesense (server/facets.ts). Nøkkelen er i secretene.
+    { name: 'TYPESENSE_URL', value: typesenseUrl }
+    { name: 'KA_FACET_COLLECTIONS', value: facetCollections }
   ],
   entry => !empty(entry.value)
 )
+var hasTypesenseKey = !empty(typesenseApiKey)
 var secretEnv = concat(
   hasKey ? [{ name: 'DIGDIR_API_KEY', secretRef: 'digdir-api-key' }] : [],
-  hasAccessSecret ? [{ name: 'KA_ACCESS_SECRET', secretRef: 'ka-access-secret' }] : []
+  hasAccessSecret ? [{ name: 'KA_ACCESS_SECRET', secretRef: 'ka-access-secret' }] : [],
+  hasTypesenseKey ? [{ name: 'TYPESENSE_API_KEY', secretRef: 'typesense-api-key' }] : []
 )
 var secrets = concat(
   hasKey ? [{ name: 'digdir-api-key', value: apiKey }] : [],
   hasLogin ? [{ name: loginSecretName, value: loginSecret }] : [],
   hasAccessSecret ? [{ name: 'ka-access-secret', value: checkedAccessSecret }] : [],
+  hasTypesenseKey ? [{ name: 'typesense-api-key', value: typesenseApiKey }] : [],
   useAdmin ? [{ name: registryPasswordSecret, value: registry.listCredentials().passwords[0].value }] : []
 )
 

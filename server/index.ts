@@ -47,4 +47,11 @@ server.listen(config.port, () => {
   if (config.mode === 'live' && !config.apiKey) {
     console.warn('[ka] KA_MODE=live uten DIGDIR_API_KEY. Spørringer vil gi 401.');
   }
+  const { typesenseUrl, typesenseKey, collections } = config.facets;
+  console.log(
+    '[ka] fasetter fra Typesense: %s',
+    typesenseUrl && typesenseKey && collections.size > 0
+      ? [...collections.keys()].join(', ')
+      : 'av (TYPESENSE_URL, TYPESENSE_API_KEY og KA_FACET_COLLECTIONS er ikke alle satt)',
+  );
 });

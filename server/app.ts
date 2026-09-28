@@ -1,10 +1,14 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { passesGate } from './access.ts';
 import { configScript, type ServerConfig } from './config.ts';
+import { FACETS_PATH, facetRoute } from './facets.ts';
 import { proxy } from './proxy.ts';
 import { serveStatic } from './static.ts';
 
-/** Everything under this goes to the backend, and nothing else does. */
+/**
+ * Everything under this goes to the backend, and nothing else does — except
+ * `/api/facets`, which this server answers itself (facets.ts).
+ */
 const API_PREFIX = '/api/';
 
 /**
@@ -64,6 +68,8 @@ function settle(work: Promise<void>, response: ServerResponse): void {
  * 8787 it happens to use in a container.
  */
 export function createHandler(config: ServerConfig) {
+  const facets = facetRoute(config.facets);
+
   return function handle(request: IncomingMessage, response: ServerResponse): void {
     const path = (request.url ?? '/').split('?')[0] ?? '/';
 
@@ -94,6 +100,24 @@ export function createHandler(config: ServerConfig) {
         'Cache-Control': 'no-store',
       });
       response.end(configScript(config.clientConfig));
+      return;
+    }
+
+    // Before the proxy, or it would be forwarded to a backend that has no
+    // such route. The exact path only: `/api/facets/x` is the backend's. In
+    // mock it is shut as the rest of /api/ is (proxy.ts): the client in mock
+    // never asks, and Typesense should not be asked on its behalf (KA CC on
+    // #173).
+    if (path === FACETS_PATH) {
+      if (config.mode === 'mock') {
+        response.writeHead(404, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+        });
+        response.end(JSON.stringify({ error: 'Ingen backend i mock-modus.' }));
+        return;
+      }
+      settle(facets(request, response), response);
       return;
     }
 

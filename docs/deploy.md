@@ -146,7 +146,7 @@ deploy_live() {
   read -rs DIGDIR_API_KEY
   export KA_IMAGE_TAG DIGDIR_API_KEY KA_ALLOWED_IPS KA_ACCESS_SECRET
   az deployment group create --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-app --parameters deploy/test.bicepparam --query properties.outputs.fqdn.value -o tsv
-  unset DIGDIR_API_KEY KA_ACCESS_SECRET
+  unset DIGDIR_API_KEY KA_ACCESS_SECRET TYPESENSE_API_KEY
 }
 deploy_live
 ```
@@ -179,6 +179,22 @@ klienten har satt, og en liste med bare `Allow` stenger alle andre.
 
 Ny adresse, for eksempel hjemmefra: kjør steg 4 på nytt med den nye. Kjøres
 steg 4 uten nøkkel, står appen i live uten nøkkel, og backenden svarer 401.
+
+### Fasettene i filterpanelet
+
+Uten Typesense-variablene sier panelet at filtrering ikke er tilgjengelig; se
+[Fasettene i filterpanelet](#fasettene-i-filterpanelet). Med dem: sett de tre
+under og kjør steg 4 igjen. Nøkkelen leses med `read -rs`, og `deploy_live`
+fjerner den fra skallet etterpå. Det skal være en nøkkel som bare kan søke i
+dokumentsamlingen, **ikke adminnøkkelen**; se
+[Fasettene i filterpanelet](#fasettene-i-filterpanelet).
+
+```sh
+read -rs TYPESENSE_API_KEY
+TYPESENSE_URL="lim-inn-typesense-adressen-her"
+KA_FACET_COLLECTIONS="kudos-full=lim-inn-samlingsnavnet-her"
+export TYPESENSE_URL TYPESENSE_API_KEY KA_FACET_COLLECTIONS
+```
 
 ### Ny versjon
 
@@ -704,6 +720,9 @@ Ett bilde, og modusen og korpuset er miljøvariabler.
 | `VITE_KA_DATASET_CONFIG_KEY` | Datasettnøkkel. `kudos` hostet, `default` lokalt.                                         | tom                     |
 | `VITE_KA_DATASETS`           | Korpusene velgeren tilbyr: `nøkkel=Navn\|beskrivelse;…`.                                  | tom                     |
 | `VITE_KA_FILTER_FIELDS`      | Feltnavn per datasett: `datasett=dimensjon:felt:type\|…`.                                 | tom                     |
+| `TYPESENSE_URL`              | Typesense for fasettene, med skjema og port.                                              | tom                     |
+| `TYPESENSE_API_KEY`          | Nøkkelen til den. Container Apps-secret, aldri i repoet.                                  | tom                     |
+| `KA_FACET_COLLECTIONS`       | Dokumentsamlingen per datasett: `datasett=samling;…`.                                     | tom                     |
 
 `VITE_KA_FILTER_FIELDS` sier hva hvert korpus kaller filterdimensjonene
 `documentType`, `organisation` og `year`, så feltnavna ikke står i koden. En
@@ -714,6 +733,40 @@ kaller filterdimensjonene».
 Backenden bygger datasett-scopet bare når den har begge, så én alene blir
 forkastet der og svaret kommer fra standardkorpuset likevel — et halvt
 oppsett ser ut som om det peker på pilotkorpuset og svarer fra demodataene.
+
+## Fasettene i filterpanelet
+
+Backenden har ikke noe fasett-API, så serveren teller fasettene selv fra
+Typesense og svarer på `GET /api/facets?dataset=…` uten å sende den videre.
+Det er broen i `docs/arkitektur/0001-fasetter-og-korpuskunnskap.md`, og
+formatet er det samme som BFF-en bruker. Den dagen backenden kan telle, byttes
+kilden bak ruta og klienten endres ikke. Koden er `server/facets.ts`.
+
+- **Feltene** er de i `VITE_KA_FILTER_FIELDS` for datasettet, og ingen andre.
+- **Policyen:** år bare mellom 1990 og 2035 og nyeste først, resten etter
+  antall. Tomme verdier og felt uten verdier er ute. Typesense bes om opptil
+  2000 verdier per felt, så det er policyen og ikke grensen som velger.
+- **Tallene** gjelder hele korpuset. Klienten viser dem ikke når en annen
+  dimensjon er avgrenset, som for BFF-en. Derfor går ingen verdi fra
+  nettleseren inn i spørringen; datasettnøkkelen slås bare opp i
+  `KA_FACET_COLLECTIONS`.
+- **Svaret** lagres i ti minutter per datasett, så panelet ikke spør Typesense
+  ved hvert klikk.
+- **Uten** `TYPESENSE_URL`, `TYPESENSE_API_KEY` og samlingen for datasettet
+  svarer ruta tom liste, og panelet sier som før at filtrering ikke er
+  tilgjengelig. Svarer Typesense med feil, blir det 502, og panelet tilbyr å
+  prøve igjen.
+
+**Adminnøkkelen til Typesense skal ikke til Azure.** Den kan slette
+samlinger, og frontenden står mot internett; i dag ligger den bare i
+backenden, som har intern adresse. Ruta gjør bare søk, så frontenden trenger en
+nøkkel som bare kan søke i dokumentsamlingen (`documents:search` på den ene
+samlingen). Hvordan den skaffes, avgjør Lars. Lokalt kan adminnøkkelen fra
+`.env.benjamin` brukes, som i `docs/kjoremiljo-og-korpus.md`.
+
+I mock svarer ruta 404 og spør ikke Typesense, som resten av `/api/`.
+Dev-serveren svarer på den samme ruta med de samme variablene fra
+`.env.local`, unntatt i bff-modus.
 
 ## Bytte mellom mock og live
 

@@ -46,6 +46,21 @@ navn. De to nakne linjene `url` og `key` nederst er ColBERT-reranker-en
    leser den uten å vise den og uten å legge den i historikken. `npm ci` tok
    7,2 s og `npm run build` 16,5 s.
 
+   Fasettene i filterpanelet teller serveren selv fra Typesense
+   (`docs/deploy.md`, «Fasettene i filterpanelet»). Uten blokka under sier
+   panelet at filtrering ikke er tilgjengelig. Verdiene står i `.env.benjamin`:
+   `services.typesense.api-host` med `https://` foran når `api-tls` er `true`,
+   `api-key-admin` og `pipeline.storage.docs-collection`. Adminnøkkelen er for
+   kjøring på maskinen og skal ikke til Azure; der trengs en nøkkel som bare
+   kan søke (`docs/deploy.md`, «Fasettene i filterpanelet»).
+
+```sh
+read -rs TYPESENSE_API_KEY
+TYPESENSE_URL="lim-inn-typesense-adressen-her"
+KA_FACET_COLLECTIONS="kudos-full=lim-inn-samlingsnavnet-her"
+export TYPESENSE_URL TYPESENSE_API_KEY KA_FACET_COLLECTIONS
+```
+
 ```sh
 read -rs KEY
 npm ci
@@ -98,11 +113,10 @@ riktig oppførsel, men det ser ut som en feil; bruk det store korpuset.
 Uten den grenen slippes filteret stille. Grenen retter seks feil i
 headless-rag, beskrevet i arkitekturnotatet.
 
-**Fasettene kommer ikke fra backenden ennå.** `LiveChatClient.listFacets`
-returnerer tom liste, så panelet sier «Filtrering er ikke tilgjengelig ennå».
-I mock regnes de ut av fixturkorpuset. Kudos-skjemaet har feltene som trengs —
-`type`, `orgs_long` og `concerned_years`, alle som fasetter — men hvor de skal
-hentes fra er ikke avgjort.
+**Fasettene kommer ikke fra backenden ennå.** Vår egen server teller dem fra
+Typesense, på feltene i `VITE_KA_FILTER_FIELDS` (`server/facets.ts`), til
+backenden kan. I mock regnes de ut av fixturkorpuset. Hvor de skal bo på sikt,
+er ikke avgjort; se arkitekturnotatet.
 
 **Auto-filteret virker, men har en svakhet.** Det henter årstall fra agentens
 _omskrevne_ søk, ikke bare fra spørsmålet. Målt: det la på «2023» og «2024» på

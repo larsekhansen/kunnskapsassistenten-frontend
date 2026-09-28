@@ -19,13 +19,8 @@ import type {
   BffFacet,
   BffTurnEvent,
 } from './contract';
-import {
-  BffTurnState,
-  facetsFrom,
-  filterBody,
-  threadDetailFromBff,
-  threadFromSummary,
-} from './mapping';
+import { facetsFrom } from '../facets';
+import { BffTurnState, filterBody, threadDetailFromBff, threadFromSummary } from './mapping';
 
 export type BffChatClientOptions = {
   /** Where the BFF's API is. Relative: the BFF serves this client itself. */
