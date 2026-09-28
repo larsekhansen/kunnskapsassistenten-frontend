@@ -1,23 +1,11 @@
-/**
- * The three filter dimensions the design draws, as three multi-select
- * dropdowns: «Dokumenttyper», «Virksomheter», «År».
- */
-export type FilterDimension = 'documentType' | 'organisation' | 'year';
+import type { FilterDimension } from '../../shared/filterFields.ts';
 
-/**
- * The three, in the order the design draws them.
- *
- * A `Record<FilterDimension, …>` has whatever key order the object was built
- * with, and anything that walks a selection to put it on the wire would then
- * send the dimensions in one order here and another there. One list, so the
- * order is a stated thing rather than a side effect of how a test wrote its
- * literal.
+/*
+ * The three dimensions live in shared/, because the server counts the facets
+ * by them too (server/facets.ts). Re-exported here, so every view still reads
+ * them from the model.
  */
-export const filterDimensions: readonly FilterDimension[] = [
-  'documentType',
-  'organisation',
-  'year',
-];
+export { filterDimensions, type FilterDimension } from '../../shared/filterFields.ts';
 
 /** One selectable value inside a dimension. */
 export interface FacetValue {
