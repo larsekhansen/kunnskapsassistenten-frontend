@@ -27,7 +27,10 @@ BFF-en fra `src/` i sitt eget arbeidstre, på `:8788` med `AUTH_MODE=off`:
 npm run start --workspace apps/server
 ```
 
-Klienten i utvikling, med `/api` og `/auth` proxyet til `:8788`:
+Klienten i utvikling, med `/api` og `/auth` proxyet til BFF-en. Adressen er
+`KA_BFF_URL`, med `http://localhost:8788` som standard. `KA_API_URL` og
+`KA_API_KEY` i `.env.local` leses ikke i bff-modus, så de kan bli stående for
+live.
 
 ```sh
 VITE_API_MODE=bff VITE_KA_DATASET_CONFIG_KEY=kudos-full VITE_KA_FILTER_FIELDS='kudos-full=documentType:type|organisation:orgs_long|year:concerned_years:integer' npm run dev
