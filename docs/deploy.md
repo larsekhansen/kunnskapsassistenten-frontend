@@ -146,7 +146,7 @@ deploy_live() {
   read -rs DIGDIR_API_KEY
   export KA_IMAGE_TAG DIGDIR_API_KEY KA_ALLOWED_IPS KA_ACCESS_SECRET
   az deployment group create --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-app --parameters deploy/test.bicepparam --query properties.outputs.fqdn.value -o tsv
-  unset DIGDIR_API_KEY KA_ACCESS_SECRET
+  unset DIGDIR_API_KEY KA_ACCESS_SECRET TYPESENSE_API_KEY
 }
 deploy_live
 ```
@@ -184,9 +184,10 @@ steg 4 uten nøkkel, står appen i live uten nøkkel, og backenden svarer 401.
 
 Uten Typesense-variablene sier panelet at filtrering ikke er tilgjengelig; se
 [Fasettene i filterpanelet](#fasettene-i-filterpanelet). Med dem: sett de tre
-under og kjør steg 4 igjen. Nøkkelen leses med `read -rs`. En søkenøkkel for
-samlingen holder, og er det testmiljøet bør få; adminnøkkelen virker, men gir
-mer enn ruta trenger.
+under og kjør steg 4 igjen. Nøkkelen leses med `read -rs`, og `deploy_live`
+fjerner den fra skallet etterpå. Det skal være en nøkkel som bare kan søke i
+dokumentsamlingen, **ikke adminnøkkelen**; se
+[Fasettene i filterpanelet](#fasettene-i-filterpanelet).
 
 ```sh
 read -rs TYPESENSE_API_KEY
@@ -194,8 +195,6 @@ TYPESENSE_URL="lim-inn-typesense-adressen-her"
 KA_FACET_COLLECTIONS="kudos-full=lim-inn-samlingsnavnet-her"
 export TYPESENSE_URL TYPESENSE_API_KEY KA_FACET_COLLECTIONS
 ```
-
-Etter steg 4: `unset TYPESENSE_API_KEY`.
 
 ### Ny versjon
 
@@ -758,9 +757,16 @@ kilden bak ruta og klienten endres ikke. Koden er `server/facets.ts`.
   tilgjengelig. Svarer Typesense med feil, blir det 502, og panelet tilbyr å
   prøve igjen.
 
-Ruta gjør bare søk, så en søkenøkkel med tilgang til samlingene holder, og det
-er den et testmiljø bør få, ikke adminnøkkelen. Dev-serveren svarer på den
-samme ruta med de samme variablene fra `.env.local`, unntatt i bff-modus.
+**Adminnøkkelen til Typesense skal ikke til Azure.** Den kan slette
+samlinger, og frontenden står mot internett; i dag ligger den bare i
+backenden, som har intern adresse. Ruta gjør bare søk, så frontenden trenger en
+nøkkel som bare kan søke i dokumentsamlingen (`documents:search` på den ene
+samlingen). Hvordan den skaffes, avgjør Lars. Lokalt kan adminnøkkelen fra
+`.env.benjamin` brukes, som i `docs/kjoremiljo-og-korpus.md`.
+
+I mock svarer ruta 404 og spør ikke Typesense, som resten av `/api/`.
+Dev-serveren svarer på den samme ruta med de samme variablene fra
+`.env.local`, unntatt i bff-modus.
 
 ## Bytte mellom mock og live
 

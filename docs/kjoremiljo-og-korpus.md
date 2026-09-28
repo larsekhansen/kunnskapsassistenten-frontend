@@ -50,7 +50,9 @@ navn. De to nakne linjene `url` og `key` nederst er ColBERT-reranker-en
    (`docs/deploy.md`, «Fasettene i filterpanelet»). Uten blokka under sier
    panelet at filtrering ikke er tilgjengelig. Verdiene står i `.env.benjamin`:
    `services.typesense.api-host` med `https://` foran når `api-tls` er `true`,
-   `api-key-admin` og `pipeline.storage.docs-collection`.
+   `api-key-admin` og `pipeline.storage.docs-collection`. Adminnøkkelen er for
+   kjøring på maskinen og skal ikke til Azure; der trengs en nøkkel som bare
+   kan søke (`docs/deploy.md`, «Fasettene i filterpanelet»).
 
 ```sh
 read -rs TYPESENSE_API_KEY
