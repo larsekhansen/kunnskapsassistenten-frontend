@@ -92,6 +92,28 @@ done
 az group show -n $RG --query location -o tsv    # finnes ikke? az group create -n $RG -l <region>
 ```
 
+Steg 4 og 7 starter `Deploy` og venter på den. Denne funksjonen gjør det, og den
+venter på **akkurat den kjøringen den startet**. `gh run list -L 1` rett etter
+`gh workflow run` kan ellers treffe forrige kjøring, som etter hver merge er en
+som hoppet over og står grønn. Den sammenligner kjøringens ID og ikke
+tidspunkt: GitHub gir kjøringer stigende ID-er, så klokka på maskinen spiller
+ingen rolle.
+
+```sh
+deploy_and_watch() {
+  before=$(gh run list -R $REPO -w deploy.yml --event workflow_dispatch -L 1 --json databaseId -q '.[0].databaseId // 0')
+  gh workflow run deploy.yml -R $REPO --ref main
+  RUN=$before
+  for _ in $(seq 1 40); do
+    sleep 3
+    RUN=$(gh run list -R $REPO -w deploy.yml --event workflow_dispatch -L 1 --json databaseId -q '.[0].databaseId // 0')
+    [ "$RUN" -gt "$before" ] && break
+  done
+  [ "$RUN" -gt "$before" ] || { echo "Fant ingen ny Deploy-kjøring etter 40 forsøk."; return 1; }
+  gh run watch -R $REPO "$RUN" --exit-status
+}
+```
+
 ### Steg 1: grunnmuren
 
 Uten `imageTag` lager malen registeret, miljøet, loggene og de to
@@ -100,7 +122,7 @@ bilde.
 
 ```sh
 az deployment group create -g $RG -n ka-frontend-grunnmur \
-  --template-file deploy/main.bicep --parameters githubRepository=$REPO
+  --template-file deploy/main.bicep --parameters name=$APP githubRepository=$REPO
 
 ACR=$(az deployment group show -g $RG -n ka-frontend-grunnmur --query properties.outputs.registryName.value -o tsv)
 ACR_ID=$(az acr show -n $ACR -g $RG --query id -o tsv)
@@ -150,23 +172,22 @@ gh variable set KA_APP_NAME       -R $REPO --body "$APP"
 ### Steg 4: første bilde, fra GitHub
 
 ```sh
-gh workflow run deploy.yml -R $REPO
-gh run watch -R $REPO "$(gh run list -R $REPO -w Deploy -L 1 --json databaseId -q '.[0].databaseId')"
+deploy_and_watch
 ```
 
 Denne kjøringen **blir rød, og det er ventet**: bildet pushes, men appen finnes
 ikke ennå. Feilmeldingen «Appen finnes ikke» sier hvilken tagg den pushet.
 
 ```sh
-# Commiten kjøringen bygde, ikke din lokale main, som kan være eldre.
-TAG=$(gh run list -R $REPO -w Deploy -L 1 --json headSha -q '.[0].headSha')
+# Commiten akkurat denne kjøringen bygde, ikke din lokale main, som kan være eldre.
+TAG=$(gh run view -R $REPO "$RUN" --json headSha -q .headSha)
 ```
 
 ### Steg 5: appen
 
 ```sh
 az deployment group create -g $RG -n ka-frontend-app \
-  --template-file deploy/main.bicep --parameters githubRepository=$REPO imageTag=$TAG \
+  --template-file deploy/main.bicep --parameters name=$APP githubRepository=$REPO imageTag=$TAG \
   --query properties.outputs.fqdn.value -o tsv
 ```
 
@@ -193,7 +214,7 @@ seg, og utrullingen trenger ikke røre dem.
 ### Steg 7: en ekte utrulling, og adressen på forsiden
 
 ```sh
-gh workflow run deploy.yml -R $REPO
+deploy_and_watch
 gh repo edit $REPO --homepage "https://$(az containerapp show -n $APP -g $RG --query properties.configuration.ingress.fqdn -o tsv)"
 ```
 
@@ -243,6 +264,19 @@ bilder.
 Registerets navn er `kafrontend` pluss en verdi avledet av ressursgruppa, fordi
 navnet må være unikt i hele Azure. Det står i utdataene fra steg 1 og i
 GitHub-variabelen `KA_REGISTRY`.
+
+## Verdiene i et nytt skall
+
+Kommandoene fra og med her bruker de samme variablene som oppskriften. I et
+skall der den ikke er kjørt, hentes de slik; registernavnet ligger i
+GitHub-variabelen fra steg 3.
+
+```sh
+RG=rg-ka-app
+APP=ka-frontend-test
+REPO=larsekhansen/kunnskapsassistenten-frontend
+ACR=$(gh variable get KA_REGISTRY -R $REPO)
+```
 
 ## Rulle tilbake
 
