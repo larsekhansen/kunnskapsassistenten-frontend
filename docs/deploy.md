@@ -17,17 +17,18 @@ misbrukes. Se [Bytte mellom mock og live](#bytte-mellom-mock-og-live).
 
 ## Hva som finnes
 
-| Fil                            | Hva                                                            |
-| ------------------------------ | -------------------------------------------------------------- |
-| `server/`                      | Serveren. Node uten rammeverk og uten avhengigheter.           |
-| `Dockerfile`                   | To steg: bygg med devDependencies, kjøretid uten node_modules. |
-| `deploy/main.bicep`            | Register, Container App, miljø, logganalyse og to identiteter  |
-| `.github/workflows/deploy.yml` | Bygger, pusher og ruller ut ved hver push til `main`.          |
-| `.github/workflows/ci.yml`     | Bygger og starter bildet på hver PR, uten å pushe.             |
+| Fil                            | Hva                                                                         |
+| ------------------------------ | --------------------------------------------------------------------------- |
+| `server/`                      | Serveren. Node uten rammeverk og uten avhengigheter.                        |
+| `Dockerfile`                   | To steg: bygg med devDependencies, kjøretid uten node_modules.              |
+| `deploy/main.bicep`            | Register, Container App, miljø, logganalyse, to identiteter og innloggingen |
+| `.github/workflows/deploy.yml` | Bygger, pusher og ruller ut ved hver push til `main`.                       |
+| `.github/workflows/ci.yml`     | Bygger og starter bildet på hver PR, uten å pushe.                          |
 
 Serveren gjør fire ting: proxyer `/api/*` til backenden med `X-API-Key` påsatt,
 serverer `dist/` med SPA-fallback, svarer på `/healthz`, og skriver
-`/config.js` med de variablene klienten skal lese.
+`/config.js` med de variablene klienten skal lese. Bak innloggingen setter den
+også `X-User-Id` fra plattformen; se [Innlogging](#innlogging).
 
 ## Slik rulles det ut
 
@@ -300,6 +301,127 @@ REPO=larsekhansen/kunnskapsassistenten-frontend
 ACR=$(gh variable get KA_REGISTRY -R $REPO)
 ```
 
+## Innlogging
+
+Container Apps' egen innlogging («Easy Auth»), med Entra som leverandør. Den
+står foran alt appen svarer på, unntatt `/healthz`, og sender den som ikke er
+logget inn til Microsofts innloggingsside. Malen slår den på når den får
+`entraClientId`. Uten er appen åpen, som før.
+
+**Ikke prøvd mot Azure.** Malen bygger uten advarsler, og serveren er testet
+med plattformens hode satt for hånd. Selve innloggingen kan ikke prøves før
+registreringen finnes og malen er kjørt.
+
+### Hvem brukeren er
+
+Bak innloggingen tar serveren brukeren fra plattformen og ikke fra nettleseren.
+`X-User-Id` til backenden blir verdien i `X-MS-CLIENT-PRINCIPAL-ID`, og det
+nettleseren sendte, kastes. Mangler hodet, svarer `/api/*` 401. Da kan ingen
+bak innloggingen lese andres tråder ved å sende deres id.
+
+Microsoft om hodene: «External requests aren't allowed to set these headers, so
+they're present only if set by Container Apps»
+([Container Apps](https://learn.microsoft.com/azure/container-apps/authentication#access-user-claims-in-application-code);
+samme setning for [App Service](https://learn.microsoft.com/azure/app-service/configure-authentication-user-identities)).
+Det gjelder bare med innloggingen foran. Uten kan hvem som helst sende hodet
+selv, og derfor setter malen `KA_USER_ID_FROM=platform` sammen med innloggingen
+og ellers aldri. Sett den ikke for hånd.
+
+Alle i tenanten kan logge inn, også gjester. Skal bare noen slippe inn, slås
+«Tilordning påkrevd» på for registreringen under **Bedriftsapper**, og brukerne
+tildeles der
+([Microsoft](https://learn.microsoft.com/entra/identity-platform/howto-restrict-your-app-to-a-set-of-users)).
+
+### App-registreringen
+
+Uansett vei trenger registreringen dette:
+
+- plattformen **Web** med redirect-URI-en
+  `https://<adressen>/.auth/login/aad/callback` (malen skriver den ut som
+  `loginRedirectUri`);
+- **ID-tokens** slått på, under **Autentisering**: «ID-tokens (brukes for
+  implisitte og hybride flyter)». Microsoft krever det for plattformens
+  innlogging;
+- en **client secret** til oss. Den utløper, og da feiler innloggingen til en ny
+  er lagt inn med malen.
+
+Adressen, når appen finnes (steg 5):
+
+```sh
+FQDN=$(az containerapp show --subscription "$SUB" -n $APP -g $RG --query properties.configuration.ingress.fqdn -o tsv)
+echo "https://$FQDN/.auth/login/aad/callback"
+```
+
+**Anbefalt: Nikolais registrering.** `altinn-ai-assistant-ka-sso` har
+admin-samtykke. Legges vår redirect-URI og en egen secret til der, trengs ikke
+nytt samtykke. Det må eieren av registreringen eller en admin gjøre. Microsoft
+anbefaler egen registrering per app og miljø; delt er valgt fordi en ny trenger
+admin-samtykke vi ikke har.
+
+**Alternativ: en ny registrering.** Vanlige brukere kan lage registreringer i
+tenanten, så Lars kan lage den selv i Entra-portalen: **App-registreringer → Ny
+registrering**, «Bare kontoer i denne organisasjonskatalogen», plattform
+**Web** med redirect-URI-en over. Slå så på ID-tokens og lag en client secret.
+Men brukere kan ikke samtykke selv i tenanten, så ingen kan logge inn før en
+admin har gitt samtykke under **API-tillatelser**.
+
+Den som skal inn, må finnes i tenanten, som medlem eller gjest. Gjester
+inviteres i Entra-portalen under **Brukere → Ny bruker → Inviter ekstern
+bruker**; alle i tenanten kan invitere.
+
+### Slå den på
+
+Malen kjøres med registreringens klient-ID og secret, og med taggen som kjører
+nå (se [Bytte mellom mock og live](#bytte-mellom-mock-og-live) om hvorfor).
+`read -rs` leser secreten uten å vise den. Tenanten er abonnementets; ligger
+registreringen et annet sted, gi også `entraTenantId`.
+
+```sh
+CLIENT_ID="lim-inn-klient-id-her"
+read -rs CLIENT_SECRET
+TAG=$(az containerapp show --subscription "$SUB" -n $APP -g $RG --query 'properties.template.containers[0].image' -o tsv | cut -d: -f2)
+az deployment group create --subscription "$SUB" -g $RG -n ka-frontend-innlogging \
+  --template-file deploy/main.bicep \
+  --parameters name=$APP githubRepository=$REPO imageTag=$TAG entraClientId="$CLIENT_ID" entraClientSecret="$CLIENT_SECRET" \
+  --query properties.outputs.loginRedirectUri.value -o tsv
+```
+
+Klient-ID uten secret stopper utrullingen med en melding i stedet for å falle
+tilbake til implisitt flyt, som Microsoft fraråder.
+
+Malen setter appen slik parameterne sier, også modus og nøkkel. Var live slått
+på for hånd, slås den på igjen etterpå. Og når innloggingen er på, kjøres malen
+alltid med de to innloggingsparameterne: uten dem forsvinner secreten, og
+innloggingen feiler.
+
+Sjekk etterpå. `/healthz` svarer uten innlogging, forsiden sender videre til
+Microsoft, og et API-kall med plattformens hode satt av klienten slipper ikke
+forbi innloggingen:
+
+```sh
+curl -fsS "https://$FQDN/healthz"
+curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' "https://$FQDN/"
+curl -sS -o /dev/null -w '%{http_code}\n' -H 'X-MS-CLIENT-PRINCIPAL-ID: noen-andre' "https://$FQDN/api/conversations"
+```
+
+Den første skal svare `{"ok":true,"mode":"mock"}`, den andre med en
+omdirigering til `login.microsoftonline.com`, og den tredje med en
+omdirigering og ikke `200`. Serverens oppstartslinje i loggen sier «bruker-id
+fra plattformens innlogging».
+
+### Slå den av
+
+Plattformens innlogging av, og serveren tilbake til nettleserens id. Uten den
+andre linja svarer hvert API-kall 401, som er den trygge siden å feile på.
+
+```sh
+az containerapp auth update --subscription "$SUB" -n $APP -g $RG --enabled false
+az containerapp update --subscription "$SUB" -n $APP -g $RG \
+  --remove-env-vars KA_USER_ID_FROM --revision-suffix open$(date +%H%M%S)
+```
+
+Da er adressen åpen igjen: sett modusen til mock først.
+
 ## Rulle tilbake
 
 - **Enklest, og uten Azure:** åpne den mergede PR-en på GitHub og trykk
@@ -338,16 +460,17 @@ til modusen det ble bygget i. Serveren skriver derfor `window.__KA_CONFIG__` i
 `/config.js`, som klienten leser før bundelen kjører (`src/api/runtimeConfig.ts`).
 Ett bilde, og modusen og korpuset er miljøvariabler.
 
-| Variabel                     | Hva                                                       | Standard                |
-| ---------------------------- | --------------------------------------------------------- | ----------------------- |
-| `PORT`                       | Porten serveren lytter på.                                | `8787`                  |
-| `KA_MODE`                    | `mock` eller `live`. Alt annet enn `live` er mock.        | `mock`                  |
-| `DIGDIR_API_BASE`            | Backenden `/api/*` går til.                               | `http://localhost:8080` |
-| `DIGDIR_API_KEY`             | Nøkkelen. Container Apps-secret, aldri i repoet.          | tom                     |
-| `VITE_KA_TENANT`             | Tenant. Begge eller ingen, se under.                      | tom                     |
-| `VITE_KA_DATASET_CONFIG_KEY` | Datasettnøkkel. `kudos` hostet, `default` lokalt.         | tom                     |
-| `VITE_KA_DATASETS`           | Korpusene velgeren tilbyr: `nøkkel=Navn\|beskrivelse;…`.  | tom                     |
-| `VITE_KA_FILTER_FIELDS`      | Feltnavn per datasett: `datasett=dimensjon:felt:type\|…`. | tom                     |
+| Variabel                     | Hva                                                                               | Standard                |
+| ---------------------------- | --------------------------------------------------------------------------------- | ----------------------- |
+| `PORT`                       | Porten serveren lytter på.                                                        | `8787`                  |
+| `KA_MODE`                    | `mock` eller `live`. Alt annet enn `live` er mock.                                | `mock`                  |
+| `DIGDIR_API_BASE`            | Backenden `/api/*` går til.                                                       | `http://localhost:8080` |
+| `DIGDIR_API_KEY`             | Nøkkelen. Container Apps-secret, aldri i repoet.                                  | tom                     |
+| `KA_USER_ID_FROM`            | `browser` eller `platform`, se [Innlogging](#innlogging). Annet stopper serveren. | `browser`               |
+| `VITE_KA_TENANT`             | Tenant. Begge eller ingen, se under.                                              | tom                     |
+| `VITE_KA_DATASET_CONFIG_KEY` | Datasettnøkkel. `kudos` hostet, `default` lokalt.                                 | tom                     |
+| `VITE_KA_DATASETS`           | Korpusene velgeren tilbyr: `nøkkel=Navn\|beskrivelse;…`.                          | tom                     |
+| `VITE_KA_FILTER_FIELDS`      | Feltnavn per datasett: `datasett=dimensjon:felt:type\|…`.                         | tom                     |
 
 `VITE_KA_FILTER_FIELDS` sier hva hvert korpus kaller filterdimensjonene
 `documentType`, `organisation` og `year`, så feltnavna ikke står i koden. En
@@ -361,11 +484,12 @@ oppsett ser ut som om det peker på pilotkorpuset og svarer fra demodataene.
 
 ## Bytte mellom mock og live
 
-**Ikke slå på live på denne adressen før det finnes innlogging.** I live setter
-serveren nøkkelen på hvert kall, for hvem som helst som har adressen. I mock
-finnes det ingen nøkkel å misbruke. Live bak innlogging er en egen runde.
+**Ikke slå på live uten innloggingen foran** ([Innlogging](#innlogging)). I
+live setter serveren nøkkelen på hvert kall, for hvem som helst som kommer til
+adressen. Bak innloggingen er det bare de som kan logge inn i tenanten. I mock
+finnes det ingen nøkkel å misbruke.
 
-Når den tid kommer, legges nøkkelen inn som secret. Første gang lager dette
+Nøkkelen legges inn som secret. Første gang lager dette
 secreten. `read -rs` leser den uten å vise den og uten å legge den i
 historikken. Deretter settes modus og nøkkel inn i en ny revisjon:
 
@@ -472,10 +596,12 @@ opplasting i ærlig utilgjengelig-tilstand.
 kall med «API key is not allowed to access the requested dataset», som leser
 som et rettighetsproblem.
 
-**Ingen innlogging i denne runden.** Adressen er intern på
-`azurecontainerapps.io` og ingenting bak den er hemmelig, men det er heller
-ingen dør. Innlogging er steg 5 i planen, og avgjøres med Nikolai:
-Supabase-kode på e-post virker hos ham i dag, Entra venter på tenant-samtykke.
+**Innloggingen er ikke prøvd mot Azure**, og uten den er adressen åpen. Se
+[Innlogging](#innlogging) for hva som trengs.
+
+**Ikke målt: en økt som går ut midt i bruk.** Plattformen sender da API-kallet
+videre til Microsofts innloggingsside, på et annet domene, og et `fetch`-kall
+ventes å feile på det. En omlasting av siden logger inn på nytt.
 
 **Hvem som helst med skrivetilgang til `main` ruller ut.** Det er poenget, men
 det betyr også at en PR som er merget uten grønn CI, går rett ut. Den gamle
