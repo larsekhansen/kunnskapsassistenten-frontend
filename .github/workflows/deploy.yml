@@ -138,7 +138,11 @@ jobs:
                 --query properties.latestReadyRevisionName -o tsv)
               [ "$ready" = "$REVISION" ] || { sleep 10; continue; }
             fi
-            if body=$(curl -fsS --max-time 5 "https://${fqdn:-$app_fqdn}/healthz"); then
+            # The body, not only the status. A 302 to the sign-in page is a
+            # success to `curl -f`, with an empty body, and behind the login
+            # that is what an /healthz that is not excluded answers (KA CC
+            # on #169). Only the server itself says "ok":true.
+            if body=$(curl -fsS --max-time 5 "https://${fqdn:-$app_fqdn}/healthz") && [[ $body == *'"ok":true'* ]]; then
               echo "$REVISION svarer: $body"
               echo "url=https://$app_fqdn" >> "$GITHUB_OUTPUT"
               exit 0
