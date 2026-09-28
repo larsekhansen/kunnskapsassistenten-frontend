@@ -16,8 +16,9 @@ RUN npm run build
 
 # Kjøretid uten devDependencies, og faktisk uten node_modules i det hele tatt:
 # serveren har ingen avhengigheter. Det som følger med er den bygde klienten,
-# serverkoden og package.json — den siste fordi `"type": "module"` er det som
-# gjør at Node leser serverfilene som ESM.
+# serverkoden, shared/ som serveren og klienten deler, og package.json — den
+# siste fordi `"type": "module"` er det som gjør at Node leser serverfilene
+# som ESM.
 FROM node:24-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
@@ -26,6 +27,7 @@ ENV PORT=8787
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
+COPY --from=build /app/shared ./shared
 
 # Ikke root. Bildet eier ingenting appen skriver til; alt den trenger er lest.
 USER node

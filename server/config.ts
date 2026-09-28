@@ -7,10 +7,13 @@
  * server does (`vite.config.ts`). So the key is read here, used on the server
  * when it forwards a call, and never written into anything the client can
  * fetch. `clientConfig` below is the list of what the client DOES get, by
- * name, so adding a secret to it has to be a deliberate act.
+ * name, so adding a secret to it has to be a deliberate act. The Typesense
+ * key for the facets is the second credential, and is kept the same way
+ * (`facets`, read in facets.ts).
  */
 
 import { accessSecretFrom } from './access.ts';
+import { facetConfigFrom, type FacetConfig } from './facets.ts';
 import { userIdSourceFrom, type UserIdSource } from './identity.ts';
 
 /** Which backend the client talks to: fixtures, or the real thing. */
@@ -58,6 +61,8 @@ export type ServerConfig = {
    */
   maxBodyBytes: number;
   clientConfig: ClientConfig;
+  /** Typesense and the collections, for `/api/facets`. See facets.ts. */
+  facets: FacetConfig;
 };
 
 /** Blank is missing. An empty variable is a variable somebody forgot to fill. */
@@ -104,6 +109,7 @@ export function readConfig(
       VITE_KA_FILTER_FIELDS: value(env.VITE_KA_FILTER_FIELDS),
       VITE_MOCK_SPEED: value(env.VITE_MOCK_SPEED),
     },
+    facets: facetConfigFrom(env),
   };
 }
 
