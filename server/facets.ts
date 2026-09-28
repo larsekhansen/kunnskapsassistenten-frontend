@@ -120,10 +120,15 @@ const LABELS: Record<FilterDimension, string> = {
 export const YEAR_SPAN = { from: 1990, to: 2035 } as const;
 
 /**
- * Values per field Typesense returns, the most frequent first. Kudos has 457
- * organisations, and all of them fit.
+ * Values per field Typesense returns, the most frequent first.
+ *
+ * High enough for the whole field, so that the policy and not the cut-off
+ * decides what is kept. Measured against Kudos 28.09: `concerned_years` has
+ * 1006 distinct values, most of them noise, and with 500 the least frequent
+ * value returned had 19 documents — a real year with fewer would have been
+ * dropped before `shapeOptions` ever saw it. Kudos has 457 organisations.
  */
-export const MAX_FACET_VALUES = 500;
+export const MAX_FACET_VALUES = 2000;
 
 /** Long enough for a slow Typesense, short enough that the panel does not hang. */
 const TIMEOUT_MS = 10_000;

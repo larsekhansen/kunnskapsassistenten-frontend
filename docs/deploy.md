@@ -728,8 +728,8 @@ kilden bak ruta og klienten endres ikke. Koden er `server/facets.ts`.
 
 - **Feltene** er de i `VITE_KA_FILTER_FIELDS` for datasettet, og ingen andre.
 - **Policyen:** år bare mellom 1990 og 2035 og nyeste først, resten etter
-  antall. Tomme verdier og felt uten verdier er ute. Høyst 500 verdier per
-  felt.
+  antall. Tomme verdier og felt uten verdier er ute. Typesense bes om opptil
+  2000 verdier per felt, så det er policyen og ikke grensen som velger.
 - **Tallene** gjelder hele korpuset. Klienten viser dem ikke når en annen
   dimensjon er avgrenset, som for BFF-en. Derfor går ingen verdi fra
   nettleseren inn i spørringen; datasettnøkkelen slås bare opp i

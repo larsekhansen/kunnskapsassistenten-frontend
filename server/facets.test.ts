@@ -4,7 +4,7 @@ import { createServer, type Server } from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHandler } from './app.ts';
 import { readConfig, type ServerConfig } from './config.ts';
-import { facetConfigFrom, parseCollections, shapeOptions } from './facets.ts';
+import { MAX_FACET_VALUES, facetConfigFrom, parseCollections, shapeOptions } from './facets.ts';
 
 /**
  * `/api/facets` målt gjennom serverens egen socket, mot en Typesense som
@@ -144,7 +144,7 @@ describe('/api/facets', () => {
       q: '*',
       per_page: '0',
       facet_by: 'type,orgs_long,concerned_years',
-      max_facet_values: '500',
+      max_facet_values: String(MAX_FACET_VALUES),
     });
   });
 
@@ -161,7 +161,7 @@ describe('/api/facets', () => {
       q: '*',
       per_page: '0',
       facet_by: 'type,orgs_long,concerned_years',
-      max_facet_values: '500',
+      max_facet_values: String(MAX_FACET_VALUES),
     });
   });
 
