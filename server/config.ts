@@ -8,8 +8,8 @@
  * when it forwards a call, and never written into anything the client can
  * fetch. `clientConfig` below is the list of what the client DOES get, by
  * name, so adding a secret to it has to be a deliberate act. The Typesense
- * key for the facets is the second credential, and is kept the same way
- * (`facets`, read in facets.ts).
+ * key for the facets (`facets`, read in facets.ts) and the shared secret in
+ * front of everything (`accessSecret`, access.ts) are kept the same way.
  */
 
 import { accessSecretFrom } from './access.ts';

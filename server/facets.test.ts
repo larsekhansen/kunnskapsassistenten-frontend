@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { accessToken } from './access.ts';
 import { createHandler } from './app.ts';
 import { readConfig, type ServerConfig } from './config.ts';
 import { MAX_FACET_VALUES, facetConfigFrom, parseCollections, shapeOptions } from './facets.ts';
@@ -37,7 +38,7 @@ function stop(instance: Server | undefined): Promise<void> {
 }
 
 /** Serveren med Typesense og backend begge på egne porter. */
-async function start(env: NodeJS.ProcessEnv = {}, ttlMs?: number) {
+async function start(env: NodeJS.ProcessEnv = {}, ttlMs?: number, accessSecret?: string) {
   typesense = createServer((request, response) => {
     asked.push({
       url: new URL(request.url ?? '', 'http://typesense'),
@@ -60,6 +61,7 @@ async function start(env: NodeJS.ProcessEnv = {}, ttlMs?: number) {
     // under måler at alt annet enn /api/facets går dit.
     mode: 'live',
     apiBase,
+    accessSecret,
     facets: {
       ...facetConfigFrom({
         TYPESENSE_URL: `${typesenseUrl}/`,
@@ -270,6 +272,22 @@ describe('/api/facets', () => {
     await fetch(`${base}/api/facets?dataset=kudos-full`);
 
     expect(asked).toHaveLength(2);
+  });
+
+  it('ligger bak den delte hemmeligheten når den er på', async () => {
+    // Porten står før ruta i app.ts. Uten kapsel skal Typesense ikke bli spurt.
+    const secret = 'Zk3_q9vX-2LmPa7tQwE8rYu1sDfGh4jK6lZx0cVbNm';
+    await start({}, undefined, secret);
+
+    const denied = await fetch(`${base}/api/facets?dataset=kudos-full`);
+    expect(denied.status).toBe(401);
+    expect(asked).toEqual([]);
+
+    const allowed = await fetch(`${base}/api/facets?dataset=kudos-full`, {
+      headers: { Cookie: `ka_access=${accessToken(secret)}` },
+    });
+    expect(allowed.status).toBe(200);
+    expect(asked).toHaveLength(1);
   });
 
   it('godtar bare GET', async () => {
