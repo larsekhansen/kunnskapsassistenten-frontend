@@ -556,8 +556,8 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
     expect(events.at(-1)).toMatchObject({
       type: 'error',
       error: {
-        code: 'unknown',
-        message: 'Filteret har for mange verdier valgt i ett felt. Velg høyst 100, eller alle.',
+        code: 'filter-refused',
+        message: 'Filteret har mer enn 100 verdier valgt i ett felt.',
       },
     });
   });
@@ -578,10 +578,78 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
     expect(events.at(-1)).toMatchObject({
       type: 'error',
       error: {
-        code: 'unknown',
-        message: 'Et av valgene i filteret kan ikke brukes i søket. Fjern det, og spør igjen.',
+        code: 'filter-refused',
+        message: 'Et av valgene i filteret har tegn eller en lengde søket ikke tar imot.',
       },
     });
+  });
+
+  it('husker ikke en tom fasettliste, som også er det en BFF uten Typesense svarer', async () => {
+    let asked = 0;
+    fromBff({
+      'GET /api/facets': () => ((asked += 1) === 1 ? json({ facets: [] }) : json(facetsD16)),
+    });
+    const bff = noBuildConfig();
+    expect(await bff.listFacets()).toEqual([]);
+    expect(await bff.listFacets()).toHaveLength(3);
+    await bff.listFacets();
+    expect(asked).toBe(2);
+  });
+
+  it('venter så lenge proben er uavgjort, også lenger enn de første 70 sekundene', async () => {
+    vi.useFakeTimers();
+    try {
+      let asked = 0;
+      fromBff({
+        'GET /api/capabilities': () =>
+          (asked += 1) < 14
+            ? json({
+                ...capabilitiesD16,
+                capabilities: { ...capabilitiesD16.capabilities, filters: false },
+                settled: false,
+              })
+            : json(capabilitiesD16),
+      });
+      const pending = client({
+        filterFields: () => undefined,
+        settleDelaysMs: undefined,
+      }).listFacets();
+      await vi.advanceTimersByTimeAsync(200_000);
+      expect(await pending).toHaveLength(3);
+      expect(asked).toBe(14);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gir en feil panelet kan prøve igjen på, når BFF-en ikke svarer i det hele tatt', async () => {
+    fromBff({ 'GET /api/capabilities': () => json({ error: 'nede' }, 502) });
+    await expect(noBuildConfig().listFacets()).rejects.toThrow();
+  });
+
+  it('slutter å vente når panelet avbryter', async () => {
+    vi.useFakeTimers();
+    try {
+      fromBff({
+        'GET /api/capabilities': () =>
+          json({
+            ...capabilitiesD16,
+            capabilities: { ...capabilitiesD16.capabilities, filters: false },
+            settled: false,
+          }),
+      });
+      const abort = new AbortController();
+      const pending = client({
+        filterFields: () => undefined,
+        settleDelaysMs: undefined,
+      }).listFacets(abort.signal);
+      const settled = expect(pending).rejects.toBeDefined();
+      await vi.advanceTimersByTimeAsync(30_000);
+      abort.abort();
+      await settled;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('venter på proben lenger enn de 12 sekundene den brukte å gi opp etter', async () => {

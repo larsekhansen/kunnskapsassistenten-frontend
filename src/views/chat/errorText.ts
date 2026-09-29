@@ -77,6 +77,12 @@ const BY_CODE: Record<Exclude<ChatErrorCode, 'aborted' | 'no-hits'>, ChatErrorTe
     advice: 'Kort det ned, for eksempel ved å dele det i to spørsmål, og send det på nytt.',
     retryable: false,
   },
+  'filter-refused': {
+    title: 'Filteret kan ikke brukes',
+    what: 'Tjenesten tar ikke imot filteret slik det er valgt.',
+    advice: 'Endre filteret til høyst 100 verdier i hvert felt, eller alle, og spør på nytt.',
+    retryable: false,
+  },
   'thread-not-found': {
     title: 'Tråden er borte',
     what: 'Tråden finnes ikke lenger, kanskje fordi den er slettet et annet sted.',

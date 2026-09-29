@@ -130,10 +130,11 @@ export function resetBffClient(): void {
 /**
  * How long the filter panel waits for the BFF's startup probe, between asks.
  *
- * About 70 seconds in all, because the probe gives up at 60
- * (`capabilities.ts` in the BFF), and one search in it took 12–15 seconds at
- * load 29 (#4, 29.09). The first version gave up after 12 seconds, and a page
- * loaded in the first minute of a slow BFF then had a dead panel for good.
+ * Quicker at first, then every 15 seconds for as long as the BFF says the
+ * probe is still out (see `#capabilities`). One search in the probe took
+ * 12–15 seconds at load 29, and the probe retries for about nine minutes
+ * before it decides (#4, 29.09). The first version gave up after 12 seconds,
+ * and a page loaded while the BFF was slow then had a dead panel for good.
  * While it waits, the panel says «Henter filtre».
  */
 const SETTLE_DELAYS_MS = [2000, 3000, 5000, 5000, 5000, 10_000, 10_000, 15_000, 15_000];
@@ -143,8 +144,20 @@ const NOT_SETTLED: BffCapabilities = {
   settled: false,
 };
 
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** A pause the caller can cut short, which then throws its abort reason. */
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', stop);
+      resolve();
+    }, ms);
+    const stop = () => {
+      clearTimeout(timer);
+      reject(signal?.reason);
+    };
+    signal?.addEventListener('abort', stop, { once: true });
+  });
 }
 
 /**
@@ -203,12 +216,16 @@ export class BffChatClient implements ChatClient {
    * No abort signal, on purpose. The answer is shared, and one caller giving
    * up must not decide it for the others.
    */
-  async #capabilities(patient = false): Promise<BffCapabilities> {
+  async #capabilities(patient = false, signal?: AbortSignal): Promise<BffCapabilities> {
     if (settledCapabilities) return settledCapabilities;
 
     const delays = patient ? this.#settleDelaysMs : [];
     for (let attempt = 0; ; attempt += 1) {
-      const found = await this.#json<BffCapabilities>('/capabilities').catch(() => NOT_SETTLED);
+      let reached = true;
+      const found = await this.#json<BffCapabilities>('/capabilities').catch(() => {
+        reached = false;
+        return NOT_SETTLED;
+      });
       // The corpus is the deployment's and not the probe's, so an unsettled
       // answer names it as well as a settled one.
       if (found.dataset) adoptServerCorpus(found.dataset);
@@ -216,9 +233,17 @@ export class BffChatClient implements ChatClient {
         settledCapabilities = found;
         return found;
       }
-      const delay = delays[attempt];
-      if (delay === undefined) return found;
-      await wait(delay);
+      // Past the first delays, the panel keeps asking at the last one for as
+      // long as the BFF says its probe is still out: the probe retries for
+      // about nine minutes before it decides (#4's bff/infra-rettelser). A
+      // BFF that cannot be reached is not waited for like that; the panel
+      // gets an error it can offer «Prøv igjen» on.
+      const delay = delays[attempt] ?? (reached ? delays.at(-1) : undefined);
+      if (delay === undefined) {
+        if (patient && delays.length > 0 && !reached) throw new Error('/capabilities unreachable');
+        return found;
+      }
+      await wait(delay, signal);
     }
   }
 
@@ -459,7 +484,7 @@ export class BffChatClient implements ChatClient {
    * Throws when the BFF cannot be reached, so the panel can offer to try again.
    */
   async listFacets(signal?: AbortSignal, selection?: FilterSelection): Promise<FilterFacet[]> {
-    const { capabilities: can } = await this.#capabilities(true);
+    const { capabilities: can } = await this.#capabilities(true, signal);
     // The probe is not the caller's to cancel (see above), so the caller's
     // own abort is honoured here — the panel drops a stale answer by it.
     signal?.throwIfAborted();
@@ -485,16 +510,18 @@ async function errorFromResponse(response: Response): Promise<ChatError> {
   };
   // The panel says so before it gets this far (#2); this is the BFF refusing
   // what a panel let through, in words this client wrote.
+  // Its own code, so the reader is told what to change and is not offered a
+  // «Prøv igjen» that sends the same filter to the same refusal.
   if (body.code === 'filter-too-many-values') {
     return {
-      code: 'unknown',
-      message: 'Filteret har for mange verdier valgt i ett felt. Velg høyst 100, eller alle.',
+      code: 'filter-refused',
+      message: 'Filteret har mer enn 100 verdier valgt i ett felt.',
     };
   }
   if (body.code === 'filter-invalid-value') {
     return {
-      code: 'unknown',
-      message: 'Et av valgene i filteret kan ikke brukes i søket. Fjern det, og spør igjen.',
+      code: 'filter-refused',
+      message: 'Et av valgene i filteret har tegn eller en lengde søket ikke tar imot.',
     };
   }
   if (typeof body.error !== 'string' || !body.error.trim()) return fromStatus;
