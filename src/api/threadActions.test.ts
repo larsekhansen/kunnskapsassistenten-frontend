@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Thread } from '../model';
 import { mockThreadDetail, mockThreadList, resetMockThreads } from './mock/sessionThreads';
-import { bffThreadActions, createThreadActions, resetThreadActions } from './threadActions';
+import {
+  bffThreadActions,
+  createThreadActions,
+  renamedThreadTitles,
+  resetThreadActions,
+  resetThreadRenames,
+  subscribeToThreadRenames,
+} from './threadActions';
 
 const now = new Date().toISOString();
 const thread: Thread = {
@@ -115,5 +122,80 @@ describe('which actions a deployment has', () => {
 
     vi.stubEnv('VITE_API_MODE', 'mock');
     expect(createThreadActions()).toBeDefined();
+  });
+});
+
+/**
+ * Renaming the open thread left the heading in the main column on the old name
+ * until the next load, because it is drawn off the thread `ChatSlotView` read
+ * and the list only updates its own rows. Measured 2026-09-29 in mock.
+ */
+describe('a new name is published to whoever is listening', () => {
+  const fetchMock = vi.fn<typeof fetch>();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    resetThreadActions();
+    resetThreadRenames();
+    resetMockThreads();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it('gir det nye navnet til lytterne, med tråd-id-en', async () => {
+    const heard = vi.fn();
+    const off = subscribeToThreadRenames(heard);
+
+    await createThreadActions()!.rename(thread, 'Nkom 2024');
+
+    expect(heard).toHaveBeenCalled();
+    expect(renamedThreadTitles().get('conv-1')).toBe('Nkom 2024');
+    off();
+  });
+
+  it('publiserer før backenden er spurt, slik lista også gjør', async () => {
+    vi.stubEnv('VITE_API_MODE', 'bff');
+    let underveis: string | undefined;
+    fetchMock.mockImplementation(async () => {
+      // Midt i kallet: lista har alt satt det nye navnet på raden sin.
+      underveis = renamedThreadTitles().get('conv-1');
+      return new Response('{"ok":true}', { status: 200 });
+    });
+
+    await createThreadActions()!.rename(thread, 'Nkom 2024');
+
+    expect(underveis).toBe('Nkom 2024');
+  });
+
+  it('legger det gamle navnet tilbake når backenden sier nei', async () => {
+    vi.stubEnv('VITE_API_MODE', 'bff');
+    fetchMock.mockResolvedValue(new Response('nei', { status: 500 }));
+    const heard = vi.fn();
+    const off = subscribeToThreadRenames(heard);
+
+    await expect(createThreadActions()!.rename(thread, 'Nkom 2024')).rejects.toThrow();
+
+    expect(renamedThreadTitles().get('conv-1')).toBe('Måloppnåelse i Nkom');
+    // Én gang for det nye navnet, én gang for det gamle tilbake.
+    expect(heard).toHaveBeenCalledTimes(2);
+    off();
+  });
+
+  it('gir en ny Map hver gang, så useSyncExternalStore ser endringen', async () => {
+    const før = renamedThreadTitles();
+    await createThreadActions()!.rename(thread, 'Nkom 2024');
+    expect(renamedThreadTitles()).not.toBe(før);
+  });
+
+  it('slutter å høre etter avmelding', async () => {
+    const heard = vi.fn();
+    subscribeToThreadRenames(heard)();
+    await createThreadActions()!.rename(thread, 'Nkom 2024');
+    expect(heard).not.toHaveBeenCalled();
   });
 });
