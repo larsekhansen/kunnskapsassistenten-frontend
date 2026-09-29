@@ -217,10 +217,42 @@ export class BffTurnState {
         this.#conversationId = event.id;
         return [];
 
+      /*
+       * Av `stage` blir bare `done` et steg, som i live.
+       *
+       * De andre sier hvilken fase agenten er i, ikke hva den gjorde, og ble
+       * til faste setninger uansett hva som skjedde. Søk og lesing kommer nå
+       * fra `tool-call`, ett per kall. `done` er BFF-ens `agent/finalized`,
+       * og live tegner sitt avsluttende steg av nettopp den rammen
+       * (`live/mcp.ts`).
+       */
       case 'stage': {
-        const step = this.#step(event.stage, event.queries);
-        return step ? [{ type: 'thinking-step', step }] : [];
+        // Søkeordene samles fortsatt herfra. En BFF som ikke sender
+        // `tool-call`, har dem bare her, og da ville «Fremgangsmåte» stått
+        // tom. Kommer de begge veier, hindrer settet dobbeltføring.
+        this.#rememberQueries(event.queries);
+        if (event.stage !== 'done') return [];
+        this.#steps += 1;
+        return [
+          {
+            type: 'thinking-step',
+            step: { id: `finalizing-${this.#steps}`, kind: 'finalizing', label: FINALIZING_LABEL },
+          },
+        ];
       }
+
+      case 'thinking':
+        if (!event.reasoning) return [];
+        this.#steps += 1;
+        return [
+          {
+            type: 'thinking-step',
+            step: { id: `thinking-${this.#steps}`, kind: 'reasoning', label: event.reasoning },
+          },
+        ];
+
+      case 'tool-call':
+        return [{ type: 'thinking-step', step: this.#toolStep(event) }];
 
       case 'delta':
         if (!event.text) return [];
@@ -279,27 +311,44 @@ export class BffTurnState {
     }
   }
 
-  #step(stage: string, queries: string[] | undefined): ThinkingStep | undefined {
-    const kind =
-      stage === 'searching'
-        ? 'search'
-        : stage === 'reading'
-          ? 'read'
-          : stage === 'done'
-            ? 'finalizing'
-            : undefined;
-    if (!kind) return undefined;
-
-    const id = `${stage}-${(this.#steps += 1)}`;
-    if (kind === 'read') return { id, kind, label: READ_LABEL };
-    if (kind === 'finalizing') return { id, kind, label: FINALIZING_LABEL };
-
-    // Every search the agent ran, in order and without repeats, for
-    // «Fremgangsmåte» — as the live client collects them.
+  /**
+   * Hvert søk agenten kjørte, i rekkefølge og uten gjentakelser, til
+   * «Fremgangsmåte» — som live samler dem.
+   */
+  #rememberQueries(queries: string[] | undefined): void {
     for (const query of queries ?? []) {
       if (!this.#keywords.includes(query)) this.#keywords.push(query);
     }
-    return { id, kind, label: SEARCH_LABEL, ...(queries ? { queries } : {}) };
+  }
+
+  /**
+   * Ett verktøykall som ett steg, etter samme regel som live.
+   *
+   * `toolCallStep` i `live/mcp.ts` skiller lesing fra søk på navnet eller på
+   * at kallet ba om biter, og setter den engelske `result-summary` som
+   * detaljen under den norske setningen. Regelen står to steder fordi de to
+   * klientene leser hver sin form av det samme kallet; holdes de i takt, ser
+   * leseren det samme uansett modus.
+   */
+  #toolStep(event: {
+    tool: string;
+    detail?: string;
+    queries?: string[];
+    durationMs?: number;
+    chunkCount?: number;
+  }): ThinkingStep {
+    const isRead = event.tool.includes('read') || Boolean(event.chunkCount);
+
+    this.#rememberQueries(event.queries);
+    this.#steps += 1;
+    return {
+      id: `tool-${this.#steps}-${event.tool}`,
+      kind: isRead ? 'read' : 'search',
+      label: isRead ? READ_LABEL : SEARCH_LABEL,
+      ...(event.detail ? { detail: event.detail } : {}),
+      ...(event.queries?.length ? { queries: event.queries } : {}),
+      ...(event.durationMs !== undefined ? { durationMs: event.durationMs } : {}),
+    };
   }
 }
 
