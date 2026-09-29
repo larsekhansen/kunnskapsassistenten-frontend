@@ -1,5 +1,5 @@
 import { Button, Field, Label, Select, Skeleton } from '@digdir/designsystemet-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createChatClient } from '../../api';
 import { BackIcon } from '../../components/icons';
 import { EmptyState, ErrorState, PanelHeader } from '../../components';
@@ -15,7 +15,7 @@ import { valuesWithoutField } from './withoutField';
 import { KudosDocuments } from './DocumentsList';
 import { OwnDocuments } from './OwnDocuments';
 import { CorpusLine } from './CorpusLine';
-import { FacetField } from './FacetField';
+import { FacetField, type FacetFieldHandle } from './FacetField';
 import './filters.css';
 
 export type FiltersViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> &
@@ -159,6 +159,13 @@ export function FiltersView({
   const [attempt, setAttempt] = useState(0);
   const backRef = useRef<HTMLButtonElement>(null);
   const unavailableRef = useRef<HTMLDivElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
+  const firstFieldRef = useRef<FacetFieldHandle>(null);
+  /** Set by ActiveFilter when it went away holding focus; read below. */
+  const activeFilterLostFocus = useRef(false);
+  const onActiveFilterLostFocus = useCallback(() => {
+    activeFilterLostFocus.current = true;
+  }, []);
   const loading = !failed && !facets;
   /*
    * What is chosen and has no field to be shown in. Nothing while loading:
@@ -248,6 +255,30 @@ export function FiltersView({
 
     return () => abort.abort();
   }, [client, given, attempt, needsOwnCorpusFetch]);
+
+  /*
+   * Where focus goes when the active filter went away with it.
+   *
+   * To what replaced the block, which is drawn in the same commit — so this
+   * is a layout effect: it runs after the new fields' refs are attached and
+   * before anything is painted. In order:
+   *
+   *   - «Prøv igjen», while the fetch has failed. It is the next thing to do,
+   *     and it shows.
+   *   - The first field, when the facets are here: it is where the tab order
+   *     from the chips was going, and a value may have just moved into it.
+   *   - The region, when there are no facets. It holds «Filtrering er ikke
+   *     tilgjengelig ennå», which says what the panel is now.
+   *
+   * The region used to be the target in all three, and after a 502 or with
+   * fields on screen it was empty by then: 0 × 0, with the focus ring cut
+   * away (WCAG 2.4.7; KA CC, kan 1 on #177).
+   */
+  useLayoutEffect(() => {
+    if (!activeFilterLostFocus.current) return;
+    activeFilterLostFocus.current = false;
+    (retryRef.current ?? firstFieldRef.current ?? unavailableRef.current)?.focus();
+  });
 
   // Clearing the error here rather than in the effect: the retry click is
   // what changed, and setting state inside an effect starts another render.
@@ -382,7 +413,11 @@ export function FiltersView({
       */}
       <KudosDocuments documents={documents} />
 
-      <ErrorState message={failed ? 'Klarte ikke å hente filtrene.' : undefined} onRetry={retry} />
+      <ErrorState
+        message={failed ? 'Klarte ikke å hente filtrene.' : undefined}
+        onRetry={retry}
+        retryRef={retryRef}
+      />
 
       {/*
         Skeleton is aria-hidden, so this carries the message. Rendered
@@ -409,14 +444,11 @@ export function FiltersView({
         facets came back without.
 
         One region around both, rendered permanently and focusable without
-        being in the tab order — the pattern ErrorState uses. It is where
-        focus lands when the last chip goes, and it has to exist before and
-        after, so it cannot be one of the things that come and go inside it.
-        Landing here with no facets, the reader is on «Filtrering er ikke
-        tilgjengelig ennå», which says what the panel is now. After a failed
-        fetch, or with fields on screen, it is empty by then and says nothing
-        — the fallback ErrorState settles for too — but the tab order goes on
-        from where the chips were: to the fields, or back to «Prøv igjen».
+        being in the tab order — the pattern ErrorState uses. With no facets it
+        is where focus lands when the last chip goes (see the layout effect
+        above), and it holds «Filtrering er ikke tilgjengelig ennå» by then,
+        which says what the panel is now. It has to exist before and after, so
+        it cannot be one of the things that come and go inside it.
       */}
       <div ref={unavailableRef} tabIndex={-1} className="filters-view__unavailable ds-focus">
         {/*
@@ -444,15 +476,16 @@ export function FiltersView({
             chosen={withoutField}
             hasFields={(facets?.length ?? 0) > 0}
             onChange={setSelection}
-            focusWhenGone={unavailableRef}
+            onFocusLost={onActiveFilterLostFocus}
             onAnnounce={setAnnouncement}
           />
         )}
       </div>
 
-      {facets?.map((facet) => (
+      {facets?.map((facet, index) => (
         <FacetField
           key={facet.dimension}
+          ref={index === 0 ? firstFieldRef : undefined}
           facet={facet}
           selected={selection[facet.dimension]}
           onChange={(values) => setSelection({ ...selection, [facet.dimension]: values })}

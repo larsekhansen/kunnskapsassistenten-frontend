@@ -161,10 +161,12 @@
 }
 
 /*
- * Empty with facets on screen, and it must stay focusable all the same: it
- * is where focus goes when the last chip is removed. The same rule, for the
- * same reason, as `.error-state:empty` in global.css — out of flow and
- * sizeless, so the view's gap is not reserved on each side of nothing.
+ * Empty with fields on screen, and after a failed fetch once the chips are
+ * gone. Out of flow and sizeless, as `.error-state:empty` in global.css, so
+ * the view's gap is not reserved on each side of nothing. It is not a focus
+ * target while empty — «Prøv igjen» or the first field is (FiltersView) — but
+ * `display: none` is still not used, so a focus that lands here anyway is
+ * kept rather than dropped to `<body>`.
  */
 .filters-view__unavailable:empty {
   position: absolute;

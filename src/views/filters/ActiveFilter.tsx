@@ -1,5 +1,5 @@
 import { Button, Chip, Heading, Paragraph } from '@digdir/designsystemet-react';
-import { useEffect, useId, useLayoutEffect, useRef, type RefObject } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef } from 'react';
 import type { FilterSelection } from '../../model';
 import type { ChosenValue } from './withoutField';
 
@@ -15,11 +15,13 @@ export type ActiveFilterProps = {
   hasFields: boolean;
   onChange: (selection: FilterSelection) => void;
   /**
-   * Where focus goes when the block takes the focused chip with it: the last
-   * value removed, «Tøm» pressed, or the facets arriving so the fields take
-   * over. It has to be an element that outlives this block.
+   * Called when the block goes away with focus inside it: the last value
+   * removed, «Tøm» pressed, or the facets arriving so the fields take over.
+   * The view puts focus back, because the right place is whatever replaced
+   * the block, and only the view draws that. Must keep its identity between
+   * renders; a new one would be taken for an unmount.
    */
-  focusWhenGone: RefObject<HTMLElement | null>;
+  onFocusLost: () => void;
   /** Tells the reader, through the view's own live region, what was removed. */
   onAnnounce: (text: string) => void;
 };
@@ -64,7 +66,7 @@ export function ActiveFilter({
   chosen,
   hasFields,
   onChange,
-  focusWhenGone,
+  onFocusLost,
   onAnnounce,
 }: ActiveFilterProps) {
   const headingId = useId();
@@ -100,16 +102,15 @@ export function ActiveFilter({
    *
    * A layout effect, because on unmount its cleanup runs while the chips are
    * still in the document: that is the only moment `contains` can say where
-   * focus was. Focus moves to an element that stays, before the chip is
-   * taken away.
+   * focus was. What it says is handed to the view, which moves focus in the
+   * same commit, once what replaces the block is drawn.
    */
   useLayoutEffect(() => {
     const section = sectionRef.current;
-    const fallback = focusWhenGone;
     return () => {
-      if (section?.contains(document.activeElement)) fallback.current?.focus();
+      if (section?.contains(document.activeElement)) onFocusLost();
     };
-  }, [focusWhenGone]);
+  }, [onFocusLost]);
 
   function remove(removed: ChosenValue) {
     const index = chosen.findIndex((candidate) => keyOf(candidate) === keyOf(removed));

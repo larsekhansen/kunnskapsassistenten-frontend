@@ -100,6 +100,19 @@ function chip(value: string) {
   return screen.getByRole('button', { name: `Fjern filter: ${value}` });
 }
 
+/**
+ * A field's text input, by its label. Not `getByLabelText` alone: once the
+ * input has had focus, u-combobox labels its (closed) list with the same
+ * label, and there are two.
+ */
+function fieldInput(label: string) {
+  const input = screen
+    .getAllByLabelText(label)
+    .find((element) => element instanceof HTMLInputElement);
+  if (!input) throw new Error(`Fant ikke feltet ${label}`);
+  return input;
+}
+
 beforeEach(() => {
   client.answer = noFacets;
   client.asked.length = 0;
@@ -229,6 +242,16 @@ describe('an active filter without facets', () => {
       expect(screen.queryByText(/før filtrene kan hentes/)).toBeNull();
     });
 
+    it('hands focus to the first field when the last chip goes, not to an empty region', async () => {
+      renderView(withOrganisation);
+
+      const last = await screen.findByRole('button', { name: 'Fjern filter: Advokattilsynet' });
+      last.focus();
+      fireEvent.click(last);
+
+      expect(document.activeElement).toBe(fieldInput('Dokumenttyper'));
+    });
+
     it('empties only what it shows with «Tøm», and leaves the fields alone', async () => {
       const { seen } = renderView(withOrganisation);
 
@@ -269,6 +292,19 @@ describe('an active filter without facets', () => {
       await waitFor(() => expect(client.asked.at(-1)).toEqual({ ...stored, documentType: [] }));
     });
 
+    it('hands focus to «Prøv igjen» when the last chip goes', async () => {
+      renderView({ ...emptyFilterSelection, year: ['2024'] });
+
+      await screen.findByText('Klarte ikke å hente filtrene.');
+      const last = chip('2024');
+      last.focus();
+      await act(async () => {
+        fireEvent.click(last);
+      });
+
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Prøv igjen' }));
+    });
+
     it('draws nothing but the error when nothing is chosen', async () => {
       renderView(emptyFilterSelection);
 
@@ -289,11 +325,11 @@ describe('an active filter without facets', () => {
       });
 
       // The fields are back, so the chips went with the block. Focus was on
-      // «2024» and has to be somewhere other than the body.
-      await screen.findByLabelText('Dokumenttyper');
+      // «2024», and the first field is where it goes.
+      await waitFor(() => expect(fieldInput('Dokumenttyper')).toBeTruthy());
       expect(screen.queryByText('Klarte ikke å hente filtrene.')).toBeNull();
       expect(screen.queryByRole('heading', { name: 'Avgrenset til' })).toBeNull();
-      expect(document.activeElement).not.toBe(document.body);
+      expect(document.activeElement).toBe(fieldInput('Dokumenttyper'));
     });
   });
 });
