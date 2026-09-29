@@ -442,20 +442,13 @@ describe('LiveChatClient og feilkoder', () => {
   });
 
   it('leser backendens egen kode i _meta.code når verktøyet feilet', async () => {
+    // Uten tekst: backendens tekst for denne koden gir samme svar alene, og da
+    // ville testen stått grønn om _meta.code ikke ble lest.
     const events = await askAgainst(() =>
       frameWith({
         jsonrpc: '2.0',
         id: 1,
-        result: {
-          isError: true,
-          content: [
-            {
-              type: 'text',
-              text: 'API key is not allowed to access the requested dataset: kudos/kudos-full',
-            },
-          ],
-          _meta: { code: 'dataset_not_authorized' },
-        },
+        result: { isError: true, content: [], _meta: { code: 'dataset_not_authorized' } },
       }),
     );
 
