@@ -12,7 +12,7 @@ import { askedSelection } from './filterContext';
  * the question, and the answer ten minutes later was a 400. The pure function
  * first, then the whole app from «Velg alle» to what the client is asked.
  */
-const asked = vi.hoisted(() => ({ params: [] as AskParams[] }));
+const asked = vi.hoisted(() => ({ params: [] as AskParams[], facetReads: 0 }));
 
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
@@ -27,7 +27,10 @@ vi.mock('../api', async (importOriginal) => {
         },
         listThreads: (signal) => inner.listThreads(signal),
         getThread: (id, signal) => inner.getThread(id, signal),
-        listFacets: (signal, selection) => inner.listFacets(signal, selection),
+        listFacets: (signal, selection) => {
+          asked.facetReads += 1;
+          return inner.listFacets(signal, selection);
+        },
         openThread: (thread, certainty) => inner.openThread?.(thread, certainty),
         createThread: (thread, signal) =>
           inner.createThread?.(thread, signal) ?? Promise.resolve(undefined),
@@ -88,6 +91,7 @@ describe('«Velg alle» and the question', () => {
     vi.stubEnv('VITE_MOCK_SPEED', 'fast');
     setActiveCorpusKey('mock');
     asked.params.length = 0;
+    asked.facetReads = 0;
     sessionStorage.clear();
     localStorage.clear();
   });
@@ -96,6 +100,42 @@ describe('«Velg alle» and the question', () => {
     vi.unstubAllEnvs();
     localStorage.clear();
   });
+
+  it('does not fetch the facets again and again once a field is complete', async () => {
+    /*
+     * KA CC measured a loop here on #183: a new object from the shell for the
+     * same selection, a fetch for it, new facets, new known values, and a new
+     * object again — seven fetches every two seconds with nobody touching
+     * anything, which in live is three or four requests a second to
+     * /api/facets from every tab.
+     */
+    window.history.replaceState(null, '', '/');
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const heading = await screen.findByRole('heading', { name: 'Filtrering' });
+    const panel = heading.closest('.sidebar-content');
+    if (!(panel instanceof HTMLElement)) throw new Error('Fant ikke filterpanelet');
+
+    fireEvent.click(
+      await within(panel).findByRole(
+        'button',
+        { name: 'Velg alle dokumenttyper' },
+        { timeout: 5000 },
+      ),
+    );
+    await within(panel).findByText(/^Alle \d+ valgt, altså ingen avgrensning$/);
+
+    // Let whatever the click started settle, then watch a quiet panel.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    const settled = asked.facetReads;
+    await act(() => new Promise((resolve) => setTimeout(resolve, 1500)));
+
+    expect(asked.facetReads).toBe(settled);
+  }, 30_000);
 
   it('asks without the field, and says nothing about it over the answer', async () => {
     window.history.replaceState(null, '', '/');
