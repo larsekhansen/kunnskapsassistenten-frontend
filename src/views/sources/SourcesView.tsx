@@ -101,6 +101,42 @@ function markerFor(citationNumber: number): HTMLElement | null {
 }
 
 /**
+ * Where a marker stood, so it can be found again once the answer is drawn anew.
+ *
+ * The element alone is not enough. The answer's paragraphs are react-markdown's,
+ * and a render that gives it a new citation list or a new search query mounts
+ * them again: the marker the reader clicked is swapped for an equal one, and
+ * the element kept here is no longer in the page. Measured against the pod
+ * 29.09: a click on [2] replaced four markers, and «Tilbake til svaret» left
+ * focus on itself. The container around the answer is not mounted again, so
+ * the marker is also kept as that container, its href, and which of the equal
+ * markers in it it was.
+ */
+type MarkerPlace = {
+  element: HTMLElement;
+  scope: Element | null;
+  href: string;
+  index: number;
+};
+
+function placeOf(marker: HTMLElement): MarkerPlace {
+  const href = marker.getAttribute('href') ?? '';
+  const scope = marker.closest('.markdown') ?? marker.closest('main');
+  const index =
+    scope === null ? -1 : [...scope.querySelectorAll(`a[href="${href}"]`)].indexOf(marker);
+  return { element: marker, scope, href, index };
+}
+
+/** The marker itself when it is still there, or the one that took its place. */
+function markerAt(place: MarkerPlace): HTMLElement | null {
+  if (place.element.isConnected) return place.element;
+  if (place.scope === null || !place.scope.isConnected) return null;
+
+  const equal = place.scope.querySelectorAll<HTMLElement>(`a[href="${place.href}"]`);
+  return equal[place.index] ?? equal[0] ?? null;
+}
+
+/**
  * One answer's worth of sources, whichever prop carried it.
  *
  * `answers` is the shape the panel wants and the shell does not hold yet
@@ -295,9 +331,30 @@ export function SourcesView({
     nonce: activeCitationNonce,
   });
 
-  // Where «Tilbake til svaret» and Escape go. Captured when the citation
-  // arrives, because that is the one moment the marker still has focus.
-  const returnTarget = useRef<HTMLElement | null>(null);
+  // Where «Tilbake til svaret» and Escape go.
+  const returnTarget = useRef<MarkerPlace | null>(null);
+
+  /*
+   * The marker as the reader activated it, recorded in the capture phase of
+   * the click: before the main column's own handler starts the render that can
+   * replace it, and so before the citation reaches the effect below. By then
+   * focus may be on `<body>`, and «any marker with this href» is the first
+   * answer's [n] even when the reader clicked the second's. A click inside
+   * this view is not a marker in the answer.
+   */
+  const activatedMarker = useRef<MarkerPlace | null>(null);
+
+  useEffect(() => {
+    function record(event: MouseEvent) {
+      const target = event.target instanceof Element ? event.target : null;
+      const marker = target?.closest('a[href^="#excerpt-"]');
+      if (!(marker instanceof HTMLElement) || marker.closest('.sources-view') !== null) return;
+      activatedMarker.current = placeOf(marker);
+    }
+
+    document.addEventListener('click', record, true);
+    return () => document.removeEventListener('click', record, true);
+  }, []);
 
   useEffect(() => {
     const previous = revealedCitation.current;
@@ -306,7 +363,15 @@ export function SourcesView({
     if (activeCitationNumber === undefined) return;
     if (previous.number === activeCitationNumber && previous.nonce === activeCitationNonce) return;
 
-    returnTarget.current = markerFor(activeCitationNumber);
+    const activated = activatedMarker.current;
+    activatedMarker.current = null;
+    const focused = markerFor(activeCitationNumber);
+    returnTarget.current =
+      activated?.href === `#${excerptDomId(activeCitationNumber)}`
+        ? activated
+        : focused === null
+          ? null
+          : placeOf(focused);
 
     // Two frames: one for the excerpt to open, one in case the panel had to be
     // un-collapsed, since the shell only removes `hidden` on its own render.
@@ -323,8 +388,9 @@ export function SourcesView({
    * drops focus to `<body>`, which is the bug this whole control exists to fix.
    */
   function returnToAnswer() {
-    const marker = returnTarget.current;
-    if (marker === null || !marker.isConnected) return;
+    const place = returnTarget.current;
+    const marker = place === null ? null : markerAt(place);
+    if (marker === null) return;
 
     scrollElementIntoView(marker);
     marker.focus({ preventScroll: true });
