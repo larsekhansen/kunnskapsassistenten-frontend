@@ -1,6 +1,6 @@
 import { Button, Card, Paragraph, Skeleton, Spinner } from '@digdir/designsystemet-react';
 import { ArrowsCirclepathIcon } from '@navikt/aksel-icons';
-import { useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Markdown } from '../../components';
 import { ViewHead } from '../../layout/ViewHead';
 import { citationTargets, type Message } from '../../model';
@@ -147,6 +147,37 @@ export function AnswerMessage({
 
   const searching = searchOpen;
   const query = searchQuery;
+  /*
+   * Both are held still between renders, and that is not polish.
+   *
+   * `Markdown` memoises `components` on exactly these two. Arriving new on
+   * every render, every component in `components` changed identity, React
+   * read them as different component types, and react-markdown mounted the
+   * whole answer again. Measured by #4 against the pod: one click on a
+   * marker removed four marker nodes and added four new ones, and focus lost
+   * its target, because the node it stood in was gone.
+   */
+  const citations = useMemo(() => citationTargets(message.sources ?? []), [message.sources]);
+
+  /*
+   * Through a ref, not as a dependency.
+   *
+   * The shell's own `showCitation` already stands still, but then the whole
+   * answer rests on every parent between it and here remembering the same.
+   * One `onSelectSource={(n) => ...}` somewhere in the chain, and the markers
+   * are swapped out again — with nothing in this file looking any different.
+   * The ref takes that possibility away: the function is the same for as
+   * long as the answer is.
+   */
+  const selectSource = useRef(onSelectSource);
+  useEffect(() => {
+    selectSource.current = onSelectSource;
+  }, [onSelectSource]);
+  const activateCitation = useCallback(
+    (number: number) => selectSource.current(number, message.id),
+    [message.id],
+  );
+
   const answerRef = useRef<HTMLDivElement>(null);
   const searchFieldRef = useRef<HTMLInputElement>(null);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
@@ -250,9 +281,9 @@ export function AnswerMessage({
             <div ref={answerRef}>
               {empty ? null : (
                 <Markdown
-                  citations={citationTargets(message.sources ?? [])}
+                  citations={citations}
                   markClassName={ANSWER_MARK_CLASS}
-                  onCitationActivate={(number) => onSelectSource(number, message.id)}
+                  onCitationActivate={activateCitation}
                   searchQuery={searching ? query : ''}
                   // A stopped answer wrote its markers; the excerpts were
                   // still on their way. Then `[3]` is drawn as text that says
