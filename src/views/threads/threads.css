@@ -81,6 +81,49 @@
 }
 
 /*
+ * The link and the menu for it, on one line. The link takes what is left, and
+ * `min-inline-size: 0` lets it: without it a flex item is never narrower than
+ * its content, and the title's ellipsis would push the menu out of the panel.
+ */
+.threads-view__row {
+  display: flex;
+  align-items: start;
+  gap: var(--ds-size-1);
+}
+
+.threads-view__row > .threads-view__thread {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+/*
+ * Above the whole-title box. That box is `position: fixed` at z-index 3 and
+ * reaches past the row's end (RowOverlay), which is where this button is: a
+ * pointer on its way to the menu would otherwise land on the box, which is
+ * inside the link, and open the thread instead.
+ */
+.threads-view__menu-trigger {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 4;
+}
+
+/* The rename field in place of the row, with «Lagre» and «Avbryt» under it. */
+.threads-view__rename {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+  inline-size: 100%;
+}
+
+.threads-view__rename-actions,
+.threads-view__dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-2);
+}
+
+/*
  * The line under the title: when the thread was last touched, and which
  * corpus it was asked of when there is more than one.
  *
@@ -338,6 +381,10 @@
 .threads-view__group[hidden],
 .threads-view__list[hidden],
 .threads-view__item[hidden],
+.threads-view__row[hidden],
+.threads-view__rename[hidden],
+.threads-view__rename-actions[hidden],
+.threads-view__dialog-actions[hidden],
 .threads-view__time[hidden],
 .threads-view__thread[hidden] {
   display: none;

@@ -24,6 +24,11 @@ export type ThreadList = {
   failed: boolean;
   /** Read again after a failure. */
   retry: () => void;
+  /**
+   * Change the list on screen before the backend has answered: a new name,
+   * a deleted row. Returns the list as it was, so a failure can put it back.
+   */
+  change: (update: (threads: Thread[]) => Thread[]) => Thread[] | undefined;
 };
 
 /**
@@ -149,5 +154,23 @@ export function useThreadList(given?: Thread[]): ThreadList {
     setAttempt((count) => count + 1);
   }, []);
 
-  return { threads, failed, retry };
+  /*
+   * A change the reader made wins over a read that was already out. That read
+   * was asked before the change reached the backend, so it answers with the
+   * old title or the deleted row, and landing after the change it would put
+   * them back for as long as the next read takes. The ticket moves on, and the
+   * answer is thrown away when it comes.
+   */
+  const change = useCallback((update: (threads: Thread[]) => Thread[]) => {
+    const before = shown.current;
+    if (!before) return undefined;
+    ticket.current += 1;
+    inFlight.current?.abort();
+    const after = update(before);
+    shown.current = after;
+    setThreads(after);
+    return before;
+  }, []);
+
+  return { threads, failed, retry, change };
 }

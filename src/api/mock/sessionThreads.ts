@@ -33,10 +33,17 @@ export const SESSION_STORAGE_KEY = 'ka.mock.threads.v1';
 
 /** One conversation, as it is written down. */
 type StoredThread = {
-  /** Identity and title. For a fixture thread, only `updatedAt` is used. */
+  /**
+   * Identity and title. For a fixture thread, only `updatedAt` is used — and
+   * the title, once the reader has given it a new one.
+   */
   thread: Thread;
   /** The turns this tab produced, oldest first. Fixture turns are not here. */
   messages: Message[];
+  /** The reader named it. A fixture thread then takes `thread.title` too. */
+  renamed?: boolean;
+  /** The reader deleted it. Gone from the list, and not found when opened. */
+  deleted?: boolean;
 };
 
 type Store = Record<string, StoredThread>;
@@ -101,9 +108,42 @@ export function openMockThread(thread: Thread, certainty: ThreadCertainty = 'kno
   const store = read();
   const existing = store[thread.id];
   store[thread.id] = {
+    // What the reader did to it — a new name, a deletion — outlives opening it.
+    ...existing,
     thread:
       certainty === 'id-only' ? (existing?.thread ?? thread) : { ...existing?.thread, ...thread },
     messages: existing?.messages ?? [],
+  };
+  write(store);
+}
+
+/**
+ * A new title, the way the BFF's `PUT /api/conversations/:id` gives one.
+ *
+ * Written into the entry whether or not this tab made the thread: a fixture
+ * thread has no entry until something happens to it, and this is something.
+ */
+export function renameMockThread(thread: Thread, title: string): void {
+  const store = read();
+  const existing = store[thread.id];
+  store[thread.id] = {
+    ...existing,
+    thread: { ...(existing?.thread ?? thread), title, titleFromQuestion: false },
+    messages: existing?.messages ?? [],
+    renamed: true,
+  };
+  write(store);
+}
+
+/** A deletion, the way the BFF's `DELETE /api/conversations/:id` makes one. */
+export function deleteMockThread(thread: Thread): void {
+  const store = read();
+  const existing = store[thread.id];
+  store[thread.id] = {
+    ...existing,
+    thread: existing?.thread ?? thread,
+    messages: existing?.messages ?? [],
+    deleted: true,
   };
   write(store);
 }
@@ -185,14 +225,21 @@ export function recordMockTurn(turn: MockTurn): void {
 export function mockThreadList(fixtures: Thread[]): Thread[] {
   const store = read();
 
-  const merged = fixtures.map((thread) => {
-    const stored = store[thread.id];
-    return stored ? { ...thread, updatedAt: stored.thread.updatedAt } : thread;
-  });
+  const merged = fixtures
+    .filter((thread) => !store[thread.id]?.deleted)
+    .map((thread) => {
+      const stored = store[thread.id];
+      if (!stored) return thread;
+      return {
+        ...thread,
+        updatedAt: stored.thread.updatedAt,
+        ...(stored.renamed ? { title: stored.thread.title, titleFromQuestion: false } : {}),
+      };
+    });
 
   const known = new Set(fixtures.map((thread) => thread.id));
   for (const [id, stored] of Object.entries(store)) {
-    if (!known.has(id)) merged.push(stored.thread);
+    if (!known.has(id) && !stored.deleted) merged.push(stored.thread);
   }
 
   return merged;
@@ -208,11 +255,13 @@ export function mockThreadList(fixtures: Thread[]): Thread[] {
 export function mockThreadDetail(id: string, fixture: ThreadDetail | null): ThreadDetail | null {
   const stored = read()[id];
   if (!stored) return fixture;
+  if (stored.deleted) return null;
 
   const base = fixture ?? { ...stored.thread, messages: [] };
   return {
     ...base,
     updatedAt: stored.thread.updatedAt,
+    ...(stored.renamed ? { title: stored.thread.title, titleFromQuestion: false } : {}),
     messages: [...base.messages, ...stored.messages],
   };
 }
