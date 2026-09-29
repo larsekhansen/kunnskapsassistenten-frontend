@@ -90,9 +90,8 @@ describe('errorFromBackend', () => {
   });
 
   it('leser backendens egne koder', () => {
-    expect(
-      errorFromBackend('API key cannot access agent: ka-agent', 'agent_not_authorized'),
-    ).toEqual({ code: 'unauthorized' });
+    // Uten tekst, så det er koden alene som avgjør.
+    expect(errorFromBackend(undefined, 'agent_not_authorized')).toEqual({ code: 'unauthorized' });
     expect(errorFromBackend('No dataset scope available.', 'no_dataset_scope')).toEqual({
       code: 'unknown',
     });
