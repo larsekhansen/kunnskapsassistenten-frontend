@@ -346,7 +346,13 @@ function errorOf(events: StreamEvent[]) {
 }
 
 describe('LiveChatClient og feilkoder', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   it('leser det statuskoden faktisk slår fast', async () => {
     for (const [status, code] of [
@@ -398,8 +404,62 @@ describe('LiveChatClient og feilkoder', () => {
       frameWith({ error: { message: 'Noe nytt.', data: { code: 'kvote-brukt-opp' } } }),
     );
 
-    expect(errorOf(events)?.code).toBe('unknown');
-    expect(errorOf(events)?.message).toBe('Noe nytt.');
+    expect(errorOf(events)).toEqual({ code: 'unknown' });
+  });
+
+  // Backendens egen tekst, fra agent-løkka og strømvakten i digdir-headless-rag.
+  const streamStall =
+    'LLM request failed at iteration 2: LLM streaming: no event received for 30000ms. ' +
+    'The provider stream stalled, or ended without a [DONE] terminator. ' +
+    'Raise LLM_STREAM_IDLE_TIMEOUT_MS if a healthy stream legitimately pauses this long.';
+
+  it('viser ikke teksten i en JSON-RPC-feil, men leser den for kode', async () => {
+    const events = await askAgainst(() =>
+      frameWith({ jsonrpc: '2.0', id: 1, error: { code: -32603, message: streamStall } }),
+    );
+
+    expect(errorOf(events)).toEqual({ code: 'model-unavailable' });
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ text: streamStall }),
+    );
+  });
+
+  it('viser ikke agentens tekst når verktøyet feilet, men leser den for kode', async () => {
+    const events = await askAgainst(() =>
+      frameWith({
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          isError: true,
+          content: [{ type: 'text', text: streamStall }],
+          _meta: { conversation_id: 'c1', status: 'error' },
+        },
+      }),
+    );
+
+    expect(errorOf(events)).toEqual({ code: 'model-unavailable' });
+  });
+
+  it('leser backendens egen kode i _meta.code når verktøyet feilet', async () => {
+    const events = await askAgainst(() =>
+      frameWith({
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          isError: true,
+          content: [
+            {
+              type: 'text',
+              text: 'API key is not allowed to access the requested dataset: kudos/kudos-full',
+            },
+          ],
+          _meta: { code: 'dataset_not_authorized' },
+        },
+      }),
+    );
+
+    expect(errorOf(events)).toEqual({ code: 'unauthorized' });
   });
 
   it('melder tomt søk med tomt svar som no-hits', async () => {

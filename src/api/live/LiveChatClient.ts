@@ -1,13 +1,6 @@
-import { chatErrorCode } from '../../model';
 import type { Facet } from '../../../shared/facets.ts';
-import type {
-  ChatError,
-  FilterFacet,
-  FilterSelection,
-  StreamEvent,
-  Thread,
-  ThreadDetail,
-} from '../../model';
+import type { FilterFacet, FilterSelection, StreamEvent, Thread, ThreadDetail } from '../../model';
+import { errorFromBackend, errorFromStatus } from '../backendErrors';
 import type { AskParams, ChatClient } from '../chatClient';
 import { CORPUS_TAG_PREFIX } from '../corpus';
 import { facetsFrom } from '../facets';
@@ -78,33 +71,6 @@ export type LiveChatClientOptions = {
    */
   agentId?: string;
 };
-
-/**
- * What an HTTP status says about the turn, and what it does not.
- *
- * Only what the status actually establishes. A 5xx means the backend broke;
- * it does not say whether the language model was down or the search was, and
- * the two want opposite things from the reader — so it is `unknown` and says
- * so, rather than guessing at a code the reader would act on
- * (API-bestilling A16 asks the backend for the missing half).
- *
- * The status number stays in the text: it is the one thing anyone debugging
- * this from a screenshot has to go on.
- */
-export function errorFromStatus(status: number): ChatError {
-  switch (status) {
-    case 401:
-    case 403:
-      return { code: 'unauthorized' };
-    case 408:
-    case 504:
-      return { code: 'timeout' };
-    case 429:
-      return { code: 'rate-limited' };
-    default:
-      return { code: 'unknown', message: `Kunnskapsassistenten svarte med feil (${status}).` };
-  }
-}
 
 /**
  * The client against the KA backend.
@@ -527,13 +493,13 @@ function* readFrame(
       isError?: boolean;
       content?: { type?: string; text?: string }[];
       structuredContent?: { chunks?: unknown[]; conversation_id?: string };
-      _meta?: { conversation_id?: string; status?: string; error_code?: string };
+      _meta?: { conversation_id?: string; status?: string; error_code?: string; code?: string };
     };
     /**
      * `data.code` is API-bestilling A16: a small documented set of codes, so
-     * «modellen svarer ikke» and «korpuset er nede» can be told apart. Not
-     * sent yet, and read as `unknown` until it is — including any code this
-     * frontend has not heard of.
+     * «modellen svarer ikke» and «korpuset er nede» can be told apart. Today
+     * the backend sends its own snake_case codes here; `errorFromBackend`
+     * reads both, and any code this frontend has not heard of is `unknown`.
      */
     error?: { message?: string; data?: { code?: string } };
   };
@@ -548,10 +514,7 @@ function* readFrame(
   if (message.error) {
     yield {
       type: 'error',
-      error: {
-        code: chatErrorCode(message.error.data?.code),
-        message: message.error.message ?? 'Ukjent feil fra tjeneren.',
-      },
+      error: errorFromBackend(message.error.message, message.error.data?.code),
       ...askedOf,
     };
     return;
@@ -568,17 +531,14 @@ function* readFrame(
   // A tool that ran and failed is 200 with isError: true. An answer that says
   // the evidence was thin is isError: false and a perfectly good answer.
   //
-  // The agent says it failed, not which half of it did — so `unknown` unless
-  // `_meta.error_code` is there to say (A16), and its own text stands as the
-  // first sentence either way.
+  // The agent says it failed in its own words, in English — read for a code
+  // and kept off the screen (see `errorFromBackend`). `_meta.code` is what the
+  // backend sends today, `_meta.error_code` what A16 asks for.
   if (result.isError) {
     const text = result.content?.find((block) => block.type === 'text')?.text;
     yield {
       type: 'error',
-      error: {
-        code: chatErrorCode(result._meta?.error_code),
-        message: text ?? 'Spørringen feilet.',
-      },
+      error: errorFromBackend(text, result._meta?.error_code ?? result._meta?.code),
       ...askedOf,
     };
     return;

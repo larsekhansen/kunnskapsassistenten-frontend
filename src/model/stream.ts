@@ -19,9 +19,11 @@ import type { SourceDocument } from './source';
  * backend for the same distinction.
  *
  * `model-unavailable` and `retrieval-unavailable` are told apart only when
- * the backend says which it was. Nothing here guesses: an HTTP 5xx is
- * `unknown`, because «språkmodellen svarer ikke» and «korpuset er nede» need
- * different things from the reader and a wrong guess sends them the wrong way.
+ * the backend says which it was — by a code, or by a text of its own that
+ * names the half that failed («LLM request failed …»). Nothing here guesses:
+ * an HTTP 5xx is `unknown`, because «språkmodellen svarer ikke» and «korpuset
+ * er nede» need different things from the reader and a wrong guess sends them
+ * the wrong way.
  */
 const CHAT_ERROR_CODES = [
   'aborted',
@@ -52,12 +54,13 @@ export interface ChatError {
   code: ChatErrorCode;
   /**
    * What the layer that caught it saw, when it knows more than the code does
-   * — «Fikk ikke kontakt med tjenesten», the agent's own error text. It
-   * replaces the first of the two sentences the view writes; the second one,
-   * about what the reader can do, always comes from the code. Leave it out
-   * and both come from the code.
+   * — «Fikk ikke kontakt med tjenesten». It replaces the first of the two
+   * sentences the view writes; the second one, about what the reader can do,
+   * always comes from the code. Leave it out and both come from the code.
    *
-   * Norwegian if it is set at all: it goes on screen.
+   * Norwegian if it is set at all: it goes on screen. So it is never text
+   * that came over the wire — the backend's and the BFF's own words are read
+   * for a code and logged (src/api/backendErrors.ts), not shown.
    */
   message?: string;
 }
