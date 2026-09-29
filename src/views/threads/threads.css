@@ -108,6 +108,31 @@
   z-index: 4;
 }
 
+/*
+ * Who is signed in and «Logg ut», after the last thread. A rule above it says
+ * it is not one more row.
+ */
+.threads-view__signed-in {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-size-2);
+  inline-size: 100%;
+  padding-block-start: var(--ds-size-4);
+  border-block-start: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+}
+
+/* The name may be an e-mail address with no spaces in it; it wraps anyway. */
+.threads-view__user {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-1);
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 /* The rename field in place of the row, with «Lagre» and «Avbryt» under it. */
 .threads-view__rename {
   display: flex;
@@ -382,6 +407,8 @@
 .threads-view__list[hidden],
 .threads-view__item[hidden],
 .threads-view__row[hidden],
+.threads-view__signed-in[hidden],
+.threads-view__user[hidden],
 .threads-view__rename[hidden],
 .threads-view__rename-actions[hidden],
 .threads-view__dialog-actions[hidden],

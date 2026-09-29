@@ -1,6 +1,7 @@
 import { Button, Heading, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router';
+import type { Session } from '../../api/session';
 import { createThreadActions, type ThreadActions } from '../../api/threadActions';
 import { FilterIcon, NewThreadIcon } from '../../components/icons';
 import { EmptyState, ErrorState } from '../../components';
@@ -11,6 +12,7 @@ import type { Thread } from '../../model';
 import { DeleteThreadDialog } from './DeleteThreadDialog';
 import { groupThreads } from './grouping';
 import { RenameThread } from './RenameThread';
+import { SignedIn } from './SignedIn';
 import { ThreadLink } from './ThreadLink';
 import { ThreadMenu } from './ThreadMenu';
 import { useThreadList } from './useThreadList';
@@ -23,6 +25,8 @@ export type ThreadsViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'
     threads?: Thread[];
     /** Overrides the deployment's rename and delete; null for none. Only for tests. */
     actions?: ThreadActions | null;
+    /** Overrides who is signed in; null for nobody. Only for tests. */
+    session?: Session | null;
   };
 
 /** Where focus goes when the row it was on has gone: the way to a new thread. */
@@ -44,6 +48,7 @@ export function ThreadsView({
   switchedByUser = false,
   threads: given,
   actions: givenActions,
+  session,
 }: ThreadsViewProps) {
   // Which conversation is on screen, whoever put it there. See
   // src/layout/openThreadContext.ts.
@@ -380,6 +385,8 @@ export function ThreadsView({
           </ul>
         </section>
       ))}
+
+      <SignedIn session={session} />
 
       {actions && (
         <DeleteThreadDialog thread={deleting} onConfirm={remove} onCancel={cancelDelete} />
