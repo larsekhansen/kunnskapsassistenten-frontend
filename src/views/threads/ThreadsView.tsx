@@ -148,13 +148,22 @@ export function ThreadsView({
     );
     setAnnouncement(`Tråden heter nå «${title}».`);
     actions.rename(thread, title).catch(() => {
+      /*
+       * Back to the old title only if the row still shows the one this call
+       * sent, the rule the rename store keeps for the heading
+       * (threadActions.ts). Renamed again in the meantime, the row is the
+       * later rename's, and there is nothing to put back or to tell the
+       * reader.
+       */
+      let putBack = false;
       change((list) =>
-        list.map((row) =>
-          row.id === thread.id
-            ? { ...row, title: thread.title, titleFromQuestion: thread.titleFromQuestion }
-            : row,
-        ),
+        list.map((row) => {
+          if (row.id !== thread.id || row.title !== title) return row;
+          putBack = true;
+          return { ...row, title: thread.title, titleFromQuestion: thread.titleFromQuestion };
+        }),
       );
+      if (!putBack) return;
       setAnnouncement('');
       setActionError(`Klarte ikke å endre navnet. Tråden heter fortsatt «${thread.title}».`);
     });

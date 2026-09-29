@@ -82,7 +82,14 @@ function publishing(actions: ThreadActions): ThreadActions {
       try {
         await actions.rename(thread, title);
       } catch (error) {
-        publish(thread.id, before);
+        /*
+         * Back to the old name only if the one on screen is still this
+         * call's. Renamed again in the meantime — A to B, then B to C before
+         * the first answered — the name is the later rename's, and this
+         * failure says nothing about it (KA CC, kan 2 on #180). The thread
+         * list follows the same rule for its own rows (ThreadsView.tsx).
+         */
+        if (renamedTitles.get(thread.id) === title) publish(thread.id, before);
         throw error;
       }
     },
