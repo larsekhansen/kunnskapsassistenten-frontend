@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { covers } from './a11y';
-import { ask, openSources, showThreads } from './helpers';
+import { ask, openSources, showThreads, MOCK } from './helpers';
 
 /**
  * Fraskrivelsen over kildene navngir korpuset **svaret** kom fra.
@@ -42,7 +42,7 @@ async function chooseCorpus(page: Page, label: string): Promise<void> {
 }
 
 test.describe('korpuset følger svaret', () => {
-  test('et ferskt svar navngir korpuset det ble hentet fra', async ({ page }, testInfo) => {
+  test('et ferskt svar navngir korpuset det ble hentet fra', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'korpus per svar: fraskrivelsen navngir svarets korpus (#135)');
     await page.goto('/');
 
@@ -66,27 +66,29 @@ test.describe('korpuset følger svaret', () => {
    * korpuset fra butikken og ikke fra svaret. #138 skriver nøkkelen på svaret
    * og #139 leser den, og da ble den grønn uten at noe annet i fila ble rørt.
    */
-  test('en eldre tråd navngir sitt eget korpus, ikke det som står valgt', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'korpus per svar: fraskrivelsen navngir svarets korpus (#135)');
-    await page.goto('/');
+  test(
+    'en eldre tråd navngir sitt eget korpus, ikke det som står valgt',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'korpus per svar: fraskrivelsen navngir svarets korpus (#135)');
+      await page.goto('/');
 
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
-    const kudosThread = page.url();
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+      const kudosThread = page.url();
 
-    await chooseCorpus(page, WIKIPEDIA);
-    await ask(page, 'Hva handler dokumentene i dette korpuset om?');
+      await chooseCorpus(page, WIKIPEDIA);
+      await ask(page, 'Hva handler dokumentene i dette korpuset om?');
 
-    // Tilbake til Kudos-tråden, med Wikipedia fortsatt valgt.
-    await showThreads(page);
-    await page.goto(kudosThread);
-    await expect(page.getByRole('combobox', { name: 'Korpus' })).toHaveValue(/norquad-mock/);
+      // Tilbake til Kudos-tråden, med Wikipedia fortsatt valgt.
+      await showThreads(page);
+      await page.goto(kudosThread);
+      await expect(page.getByRole('combobox', { name: 'Korpus' })).toHaveValue(/norquad-mock/);
 
-    await openSources(page, 1);
-    await expect(
-      disclaimer(page),
-      'fraskrivelsen skal navngi korpuset svaret kom fra, ikke det som står valgt',
-    ).toContainText(`fra ${KUDOS}`);
-  });
+      await openSources(page, 1);
+      await expect(
+        disclaimer(page),
+        'fraskrivelsen skal navngi korpuset svaret kom fra, ikke det som står valgt',
+      ).toContainText(`fra ${KUDOS}`);
+    },
+  );
 });

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { saveScreenshot, setColorScheme } from './a11y';
-import { ask, facetField, openSources, showThreads } from './helpers';
+import { ask, facetField, openSources, showThreads, MOCK, REAL_ANSWER } from './helpers';
 
 /**
  * Screenshots for the visual review, not assertions.
@@ -19,7 +19,7 @@ test.describe('skjermbilder', () => {
   for (const mode of ['light', 'dark'] as const) {
     const suffix = mode === 'light' ? 'lys' : 'mork';
 
-    test(`filtrering, tråder og tom chat i ${mode}`, async ({ page }) => {
+    test(`filtrering, tråder og tom chat i ${mode}`, MOCK, async ({ page }) => {
       await page.goto('/');
       await setColorScheme(page, mode);
 
@@ -39,7 +39,7 @@ test.describe('skjermbilder', () => {
       await saveScreenshot(page, `threads-${suffix}`);
     });
 
-    test(`svar og kildepanel i ${mode}`, async ({ page }) => {
+    test(`svar og kildepanel i ${mode}`, REAL_ANSWER, async ({ page }) => {
       await page.goto('/');
       await setColorScheme(page, mode);
       await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');

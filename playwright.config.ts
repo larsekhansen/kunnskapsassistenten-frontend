@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { ARTIFACTS, PORT, RUN_ARTIFACTS } from './tests/e2e/paths';
+import { ARTIFACTS, BASE_URL, PORT, RUN_ARTIFACTS, TEST_TIMEOUT } from './tests/e2e/paths';
 
 /**
  * End-to-end tests for kunnskapsassistenten-frontend.
@@ -26,7 +26,7 @@ import { ARTIFACTS, PORT, RUN_ARTIFACTS } from './tests/e2e/paths';
  * compose field is one known place where Firefox behaves differently, and it
  * is documented where it is used rather than tested here.
  */
-export default defineConfig({
+const config = defineConfig({
   testDir: './tests/e2e',
   // Per run, not per suite: see RUN_ARTIFACTS in tests/e2e/paths.ts for
   // what a shared one costs.
@@ -51,10 +51,12 @@ export default defineConfig({
   workers: process.env.GITHUB_ACTIONS ? undefined : 4,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
+  // Playwright's own 30 s, unless KA_E2E_ANSWER_TIMEOUT raised the answer budget.
+  ...(TEST_TIMEOUT ? { timeout: TEST_TIMEOUT } : {}),
   reporter: [['list'], ['html', { outputFolder: `${ARTIFACTS}/report`, open: 'never' }]],
 
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: BASE_URL ?? `http://localhost:${PORT}`,
     locale: 'nb-NO',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
@@ -106,3 +108,9 @@ export default defineConfig({
     env: { VITE_API_MODE: 'mock', VITE_MOCK_SPEED: 'fast' },
   },
 });
+
+// No server of our own when KA_E2E_BASE_URL points at one that is already
+// running, such as the pod behind the BFF (tests/e2e/paths.ts).
+if (BASE_URL) delete config.webServer;
+
+export default config;

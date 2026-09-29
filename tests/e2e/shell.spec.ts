@@ -1,6 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
-import { ask, chooseFacetValue, composer, expectEveryStepReachable, walkWithTab } from './helpers';
+import {
+  ask,
+  chooseFacetValue,
+  composer,
+  expectEveryStepReachable,
+  walkWithTab,
+  MOCK,
+  REAL_ANSWER,
+} from './helpers';
 
 /**
  * The shell: the three slots, the routes, the skip link and dark mode.
@@ -32,33 +40,41 @@ const ROUTES = {
 
 test.describe('skallet', () => {
   for (const route of Object.values(ROUTES)) {
-    test(`${route.path} laster med landemerker og én h1`, async ({ page }, testInfo) => {
-      covers(testInfo, 'rutene lastes · landemerkene finnes');
-      await page.goto(route.path);
+    test(
+      `${route.path} laster med landemerker og én h1`,
+      route === ROUTES.thread ? MOCK : {},
+      async ({ page }, testInfo) => {
+        covers(testInfo, 'rutene lastes · landemerkene finnes');
+        await page.goto(route.path);
 
-      // The page title first: a route that renders an error boundary would
-      // still have landmarks.
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText(route.heading);
-      await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
-      if ('subheading' in route) {
-        await expect(page.getByRole('heading', { level: 2, name: route.subheading })).toBeVisible();
-      }
+        // The page title first: a route that renders an error boundary would
+        // still have landmarks.
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(route.heading);
+        await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+        if ('subheading' in route) {
+          await expect(
+            page.getByRole('heading', { level: 2, name: route.subheading }),
+          ).toBeVisible();
+        }
 
-      // The thread title is a section of the page, not the page itself.
-      if ('subheading' in route) {
-        await expect(page.getByRole('heading', { level: 2, name: route.subheading })).toBeVisible();
-      }
+        // The thread title is a section of the page, not the page itself.
+        if ('subheading' in route) {
+          await expect(
+            page.getByRole('heading', { level: 2, name: route.subheading }),
+          ).toBeVisible();
+        }
 
-      // The slots are named after the views in them, never after the side
-      // they sit on. That is the rule the names have to prove.
-      await expect(page.getByRole('navigation', { name: 'Tråder og filter' })).toBeVisible();
-      await expect(page.getByRole('main')).toBeVisible();
-      await expect(page.getByRole('complementary', { name: 'Kilder' })).toBeAttached();
+        // The slots are named after the views in them, never after the side
+        // they sit on. That is the rule the names have to prove.
+        await expect(page.getByRole('navigation', { name: 'Tråder og filter' })).toBeVisible();
+        await expect(page.getByRole('main')).toBeVisible();
+        await expect(page.getByRole('complementary', { name: 'Kilder' })).toBeAttached();
 
-      await expect(page.locator('html')).toHaveAttribute('lang', 'nb');
+        await expect(page.locator('html')).toHaveAttribute('lang', 'nb');
 
-      await expectNoAxeViolations(page, `${route.path} i lys modus`);
-    });
+        await expectNoAxeViolations(page, `${route.path} i lys modus`);
+      },
+    );
   }
 
   test('hopp-lenka er første Tab-stopp og hopper forbi navigasjonspanelet', async ({
@@ -128,7 +144,7 @@ test.describe('skallet', () => {
    * Rekkefølgen er låst i Tab-gjennomgangen under. Dette er den andre
    * halvdelen: at lenka faktisk gjør det den heter.
    */
-  test('hopp-lenke nummer to setter skrivemerket i feltet', async ({ page }, testInfo) => {
+  test('hopp-lenke nummer to setter skrivemerket i feltet', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'hopp-lenke til skrivefeltet');
     await page.goto(ROUTES.thread.path);
 
@@ -310,157 +326,163 @@ test.describe('skallet', () => {
     await setColorScheme(page, 'light');
   });
 
-  test('Tab gjennom hele skallet: hvert steg har et norsk navn og en synlig fokusring', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'tastatur: Tab gjennom viewet, synlig fokus og rekkefølge');
-    await page.goto(ROUTES.thread.path);
+  test(
+    'Tab gjennom hele skallet: hvert steg har et norsk navn og en synlig fokusring',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'tastatur: Tab gjennom viewet, synlig fokus og rekkefølge');
+      await page.goto(ROUTES.thread.path);
 
-    /*
-     * Vent på den andre hopp-lenka før vandringen. Den tegnes bare når det
-     * finnes et skrivefelt å hoppe til, så en vandring som starter før
-     * skrivefeltet er der finner «Skjul tråder og filter» som steg 2 og blir
-     * rød på rekkefølgen — målt i full suite 15.09, grønn alene rett etterpå.
-     * Fjerde tilfelle av samme race i denne fila og i chat.spec.ts.
-     */
-    await expect(page.getByRole('link', { name: /^Hopp til skrivefeltet/ })).toBeAttached();
+      /*
+       * Vent på den andre hopp-lenka før vandringen. Den tegnes bare når det
+       * finnes et skrivefelt å hoppe til, så en vandring som starter før
+       * skrivefeltet er der finner «Skjul tråder og filter» som steg 2 og blir
+       * rød på rekkefølgen — målt i full suite 15.09, grønn alene rett etterpå.
+       * Fjerde tilfelle av samme race i denne fila og i chat.spec.ts.
+       */
+      await expect(page.getByRole('link', { name: /^Hopp til skrivefeltet/ })).toBeAttached();
 
-    const steps = await walkWithTab(page);
+      const steps = await walkWithTab(page);
 
-    expect(steps.length, 'Tab skal nå noe i det hele tatt').toBeGreaterThan(3);
-    expectEveryStepReachable(steps, 'skallet');
+      expect(steps.length, 'Tab skal nå noe i det hele tatt').toBeGreaterThan(3);
+      expectEveryStepReachable(steps, 'skallet');
 
-    // Reading order: the skip links come first, then the slots in the order
-    // the shell renders them, so the first stop after them is the primary
-    // sidebar's own button.
-    //
-    // «Hopp til skrivefeltet» sits second on purpose. The compose field is at
-    // the bottom of the answer and was tab stop 22 — for the thing a reader
-    // does most often (reise 7 and 15, punkt 8 on the ranked list) — so it has
-    // to be reachable before the navigation panel, not after it.
-    expect(steps[0]?.name).toBe('Hopp til hovedinnhold');
-    // Navnet i klartekst her, og ikke som prefiks slik de tre oppslagene over
-    // er: denne testen handler nettopp om at hvert tabbsteg har et lesbart
-    // norsk navn, så det er navnet selv som er påstanden. Hurtigtasten står i
-    // lenketeksten fordi hintet ved feltet er på vei ut (H3 i
-    // design/hoydebudsjett-forslag-2026-09-21.md).
-    expect(steps[1]?.name).toBe('Hopp til skrivefeltet (Ctrl + /)');
-    expect(steps[2]?.name).toBe('Skjul tråder og filter');
-  });
+      // Reading order: the skip links come first, then the slots in the order
+      // the shell renders them, so the first stop after them is the primary
+      // sidebar's own button.
+      //
+      // «Hopp til skrivefeltet» sits second on purpose. The compose field is at
+      // the bottom of the answer and was tab stop 22 — for the thing a reader
+      // does most often (reise 7 and 15, punkt 8 on the ranked list) — so it has
+      // to be reachable before the navigation panel, not after it.
+      expect(steps[0]?.name).toBe('Hopp til hovedinnhold');
+      // Navnet i klartekst her, og ikke som prefiks slik de tre oppslagene over
+      // er: denne testen handler nettopp om at hvert tabbsteg har et lesbart
+      // norsk navn, så det er navnet selv som er påstanden. Hurtigtasten står i
+      // lenketeksten fordi hintet ved feltet er på vei ut (H3 i
+      // design/hoydebudsjett-forslag-2026-09-21.md).
+      expect(steps[1]?.name).toBe('Hopp til skrivefeltet (Ctrl + /)');
+      expect(steps[2]?.name).toBe('Skjul tråder og filter');
+    },
+  );
 
-  test('dokumentet ruller aldri, uansett hvor mange svar tråden har', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'skallet: bare regionene ruller, aldri sida');
+  test(
+    'dokumentet ruller aldri, uansett hvor mange svar tråden har',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'skallet: bare regionene ruller, aldri sida');
 
-    /*
-     * Det er `<main>` og de to panelene som ruller. Sida selv skal aldri gjøre
-     * det: skallet fyller vinduet, og en rullelist på dokumentet betyr at noe
-     * har lagt seg utenfor regionen sin.
-     *
-     * Målt 21.09, og det tok to svar å se det: `.ds-sr-only` er
-     * `position: absolute`, og i en `overflow: auto`-region som selv er
-     * `static` blir containing block hele dokumentet. Skjermlesertekst langt
-     * nede i det andre svaret havnet da på y 1916 og 1983 i et vindu på 900,
-     * og `scrollHeight` ble 1984. Hvitt felt under `html`, som Lars så.
-     *
-     * To svar og ikke ett, fordi ett svar ikke er høyt nok til å skyve teksten
-     * forbi vindusbunnen. Testen måler nettopp det tilfellet som var rødt.
-     */
-    await page.goto('/');
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
-    await ask(page, 'Hva mer sier rapporten?');
-    await expect(page.locator('.ka-message--assistant')).toHaveCount(2);
+      /*
+       * Det er `<main>` og de to panelene som ruller. Sida selv skal aldri gjøre
+       * det: skallet fyller vinduet, og en rullelist på dokumentet betyr at noe
+       * har lagt seg utenfor regionen sin.
+       *
+       * Målt 21.09, og det tok to svar å se det: `.ds-sr-only` er
+       * `position: absolute`, og i en `overflow: auto`-region som selv er
+       * `static` blir containing block hele dokumentet. Skjermlesertekst langt
+       * nede i det andre svaret havnet da på y 1916 og 1983 i et vindu på 900,
+       * og `scrollHeight` ble 1984. Hvitt felt under `html`, som Lars så.
+       *
+       * To svar og ikke ett, fordi ett svar ikke er høyt nok til å skyve teksten
+       * forbi vindusbunnen. Testen måler nettopp det tilfellet som var rødt.
+       */
+      await page.goto('/');
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+      await ask(page, 'Hva mer sier rapporten?');
+      await expect(page.locator('.ka-message--assistant')).toHaveCount(2);
 
-    const room = await page.evaluate(() => ({
-      scrollHeight: document.scrollingElement!.scrollHeight,
-      innerHeight: window.innerHeight,
-      scrollY: window.scrollY,
-    }));
+      const room = await page.evaluate(() => ({
+        scrollHeight: document.scrollingElement!.scrollHeight,
+        innerHeight: window.innerHeight,
+        scrollY: window.scrollY,
+      }));
 
-    expect(room.scrollHeight, 'dokumentet skal ikke være høyere enn vinduet').toBe(
-      room.innerHeight,
-    );
-    expect(room.scrollY, 'og det skal ikke stå rullet').toBe(0);
+      expect(room.scrollHeight, 'dokumentet skal ikke være høyere enn vinduet').toBe(
+        room.innerHeight,
+      );
+      expect(room.scrollY, 'og det skal ikke stå rullet').toBe(0);
 
-    // Og svaret er fortsatt der å rulle i — det er regionen som ruller, ikke
-    // sida. Uten dette ville et `overflow: hidden` bestått testen over.
-    const main = await page.evaluate(() => {
-      const element = document.querySelector('.main')!;
-      return { kanRulle: element.scrollHeight > element.clientHeight };
-    });
-    expect(main.kanRulle, 'hovedkolonnen skal ha noe å rulle i').toBe(true);
-  });
+      // Og svaret er fortsatt der å rulle i — det er regionen som ruller, ikke
+      // sida. Uten dette ville et `overflow: hidden` bestått testen over.
+      const main = await page.evaluate(() => {
+        const element = document.querySelector('.main')!;
+        return { kanRulle: element.scrollHeight > element.clientHeight };
+      });
+      expect(main.kanRulle, 'hovedkolonnen skal ha noe å rulle i').toBe(true);
+    },
+  );
 
-  test('rullehjulet virker i hele midtfeltet, ikke bare over kolonnen', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'skallet: hele midtfeltet ruller');
+  test(
+    'rullehjulet virker i hele midtfeltet, ikke bare over kolonnen',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'skallet: hele midtfeltet ruller');
 
-    /*
-     * Hjulet gjør ingenting uten at pekeren står over en ruller. Da kolonnen
-     * og rulleregionen var samme boks, var det grå på hver side av de 800 px
-     * dødt: Lars, 21.09 på 5182, «Jeg vil kunne bruke scroll-wheelet med pilen
-     * her også – for nå er dette området ingenmannsland.»
-     *
-     * Pekeren settes midt mellom kolonnens ytterkant og kildepanelet, altså i
-     * det som var ingenmannsland. Målt her framfor regnet ut: hvor bred margen
-     * er, avhenger av vindusbredden og av hvilke paneler som er åpne.
-     */
-    await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.goto('/');
-    // To svar, fordi ett ikke fyller 1080 px og et hjul over en region uten
-    // noe å rulle i står stille av helt andre grunner enn den som måles her.
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
-    await ask(page, 'Hva mer sier rapporten?');
-    await expect
-      .poll(() =>
-        page.evaluate(() => {
-          const main = document.querySelector('.main')!;
-          return main.scrollHeight > main.clientHeight;
-        }),
-      )
-      .toBe(true);
+      /*
+       * Hjulet gjør ingenting uten at pekeren står over en ruller. Da kolonnen
+       * og rulleregionen var samme boks, var det grå på hver side av de 800 px
+       * dødt: Lars, 21.09 på 5182, «Jeg vil kunne bruke scroll-wheelet med pilen
+       * her også – for nå er dette området ingenmannsland.»
+       *
+       * Pekeren settes midt mellom kolonnens ytterkant og kildepanelet, altså i
+       * det som var ingenmannsland. Målt her framfor regnet ut: hvor bred margen
+       * er, avhenger av vindusbredden og av hvilke paneler som er åpne.
+       */
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      await page.goto('/');
+      // To svar, fordi ett ikke fyller 1080 px og et hjul over en region uten
+      // noe å rulle i står stille av helt andre grunner enn den som måles her.
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+      await ask(page, 'Hva mer sier rapporten?');
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const main = document.querySelector('.main')!;
+            return main.scrollHeight > main.clientHeight;
+          }),
+        )
+        .toBe(true);
 
-    /*
-     * Punktet måles fra kolonnen til kildepanelet, ikke inne i `.main`, og det
-     * er med vilje: det er den samme skjermkoordinaten før og etter denne
-     * endringa. Før lå den UTENFOR rulleregionen, som var 800 px bred og
-     * sentrert; nå ligger den inni, fordi regionen fyller feltet. Måler man i
-     * stedet margen inne i `.main`, er den null før endringa, og da er det
-     * målingen som feiler og ikke hjulet.
-     */
-    const column = (await page.locator('.main-column').boundingBox())!;
-    const sidebar = (await page.locator('.secondary-sidebar').boundingBox())!;
+      /*
+       * Punktet måles fra kolonnen til kildepanelet, ikke inne i `.main`, og det
+       * er med vilje: det er den samme skjermkoordinaten før og etter denne
+       * endringa. Før lå den UTENFOR rulleregionen, som var 800 px bred og
+       * sentrert; nå ligger den inni, fordi regionen fyller feltet. Måler man i
+       * stedet margen inne i `.main`, er den null før endringa, og da er det
+       * målingen som feiler og ikke hjulet.
+       */
+      const column = (await page.locator('.main-column').boundingBox())!;
+      const sidebar = (await page.locator('.secondary-sidebar').boundingBox())!;
 
-    const margin = sidebar.x - (column.x + column.width);
-    expect(margin, 'det skal finnes grått mellom kolonnen og panelet').toBeGreaterThan(40);
+      const margin = sidebar.x - (column.x + column.width);
+      expect(margin, 'det skal finnes grått mellom kolonnen og panelet').toBeGreaterThan(40);
 
-    /*
-     * Tilbake til toppen først, og det er ikke pynt: samtalen holder seg selv
-     * ved bunnen mens svaret strømmer, så `scrollTop` er alt større enn null
-     * når spørsmålet er besvart. Uten denne nullstillingen består testen av
-     * chat-visningens egen rulling og måler ingenting om hjulet — den var
-     * grønn med kolonnen tilbake på rulleregionen, som er nettopp tilstanden
-     * den skal fange.
-     */
-    await page.evaluate(() => (document.querySelector('.main')!.scrollTop = 0));
-    await expect
-      .poll(() => page.evaluate(() => document.querySelector('.main')!.scrollTop))
-      .toBe(0);
+      /*
+       * Tilbake til toppen først, og det er ikke pynt: samtalen holder seg selv
+       * ved bunnen mens svaret strømmer, så `scrollTop` er alt større enn null
+       * når spørsmålet er besvart. Uten denne nullstillingen består testen av
+       * chat-visningens egen rulling og måler ingenting om hjulet — den var
+       * grønn med kolonnen tilbake på rulleregionen, som er nettopp tilstanden
+       * den skal fange.
+       */
+      await page.evaluate(() => (document.querySelector('.main')!.scrollTop = 0));
+      await expect
+        .poll(() => page.evaluate(() => document.querySelector('.main')!.scrollTop))
+        .toBe(0);
 
-    await page.mouse.move(
-      Math.round(column.x + column.width + margin / 2),
-      Math.round(column.y + column.height / 2),
-    );
-    await page.mouse.wheel(0, 400);
+      await page.mouse.move(
+        Math.round(column.x + column.width + margin / 2),
+        Math.round(column.y + column.height / 2),
+      );
+      await page.mouse.wheel(0, 400);
 
-    await expect
-      .poll(() => page.evaluate(() => document.querySelector('.main')!.scrollTop), {
-        message: 'hovedkolonnen skal ha rullet av hjulet i margen',
-      })
-      .toBeGreaterThan(0);
-  });
+      await expect
+        .poll(() => page.evaluate(() => document.querySelector('.main')!.scrollTop), {
+          message: 'hovedkolonnen skal ha rullet av hjulet i margen',
+        })
+        .toBeGreaterThan(0);
+    },
+  );
 
   test('skjermbilder av rutene i lys og mørk modus', async ({ page }, testInfo) => {
     covers(testInfo, 'visuell gjennomgang per merge');

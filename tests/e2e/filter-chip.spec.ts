@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { covers } from './a11y';
-import { chooseFacetValue } from './helpers';
+import { chooseFacetValue, MOCK } from './helpers';
 
 /**
  * A filter chip is never wider than the field it sits in (#112).
@@ -109,7 +109,7 @@ function expectChipInsideField(
 }
 
 test.describe('en filterchip holder seg i feltet', () => {
-  test('i panelet ved siden av svaret, på 1440', async ({ page }, testInfo) => {
+  test('i panelet ved siden av svaret, på 1440', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'en lang filterchip bryter inne i feltet (#112)');
     await page.setViewportSize(WIDE);
     await page.goto('/');
@@ -127,7 +127,7 @@ test.describe('en filterchip holder seg i feltet', () => {
     ).toBeGreaterThan(measured.field.width / 2);
   });
 
-  test('i skuffa under brytepunktet, på 1100', async ({ page }, testInfo) => {
+  test('i skuffa under brytepunktet, på 1100', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'en lang filterchip bryter inne i feltet (#112)');
     await page.setViewportSize(DRAWER);
     await page.goto('/');

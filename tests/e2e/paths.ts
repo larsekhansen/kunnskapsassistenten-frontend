@@ -23,6 +23,50 @@ import { fileURLToPath } from 'node:url';
  */
 export const PORT = Number(process.env.KA_E2E_PORT ?? 4173);
 
+/**
+ * A server that is already running, to test instead of the mock build — the
+ * pod behind the BFF, for instance (`http://localhost:8791`). Unset, the
+ * suite builds the app in mock mode and serves it itself on `PORT`.
+ *
+ * Against a real backend most of the suite does not apply: the tests tagged
+ * `@mock` open fixture threads, ask the mock's `simuler …` questions or count
+ * the mock's values. Run the rest with `--grep-invert @mock`, and the ones
+ * that need a real answer with `--grep @ekte-svar --workers 1`, since every
+ * test shares one identity when the BFF runs with `AUTH_MODE=off`.
+ */
+export const BASE_URL = process.env.KA_E2E_BASE_URL?.trim() || undefined;
+
+/**
+ * How long a test waits for a finished answer, in milliseconds.
+ *
+ * 30 seconds is plenty for the mock, whose whole answer takes about 7.5 s of
+ * wall clock. A real model often takes longer — 66 s for one answer on
+ * 29.09 — so `KA_E2E_ANSWER_TIMEOUT` sets it in seconds for a run against a
+ * real backend. The waits poll, so a generous budget costs nothing when the
+ * answer is quick.
+ */
+function answerTimeout(setting: string | undefined): number {
+  if (!setting?.trim()) return 30_000;
+  const seconds = Number(setting);
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    throw new Error(`KA_E2E_ANSWER_TIMEOUT må være et antall sekunder, ikke «${setting}».`);
+  }
+  return seconds * 1000;
+}
+
+export const ANSWER_TIMEOUT = answerTimeout(process.env.KA_E2E_ANSWER_TIMEOUT);
+
+/**
+ * How long one test may take in all. Playwright's own 30 seconds, unless the
+ * answer budget has been raised: then room for four answers, since the
+ * longest tests ask, reload and ask again. Without this, a raised answer
+ * budget would only move the failure from the wait to the test's own
+ * timeout.
+ */
+export const TEST_TIMEOUT = process.env.KA_E2E_ANSWER_TIMEOUT?.trim()
+  ? ANSWER_TIMEOUT * 4
+  : undefined;
+
 const here = dirname(fileURLToPath(import.meta.url));
 
 /** Repository root: two levels up from tests/e2e/. */

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { expectNoAxeViolations, setColorScheme } from './a11y';
-import { ask } from './helpers';
+import { ask, MOCK, REAL_ANSWER } from './helpers';
 
 /**
  * Search inside one answer (design/brukerreiser-2026-09-15.md, punkt 13).
@@ -39,7 +39,7 @@ test.describe('søk i svaret', () => {
   const status = (page: import('@playwright/test').Page) =>
     page.locator('.ka-answer-search__count');
 
-  test('telleren og markeringene er det samme settet', async ({ page }) => {
+  test('telleren og markeringene er det samme settet', REAL_ANSWER, async ({ page }) => {
     await field(page).fill('mål');
     await expect(status(page)).toHaveText(/^1 av \d+ treff$/);
 
@@ -51,7 +51,7 @@ test.describe('søk i svaret', () => {
     await expect(current(page)).toHaveCount(1);
   });
 
-  test('forrige og neste går gjennom treffene og stopper i endene', async ({ page }) => {
+  test('forrige og neste går gjennom treffene og stopper i endene', MOCK, async ({ page }) => {
     await field(page).fill('mål');
     await expect(status(page)).toHaveText('1 av 7 treff');
 
@@ -81,17 +81,21 @@ test.describe('søk i svaret', () => {
     await expect(neste).toBeFocused();
   });
 
-  test('sier fra når det er skrevet for lite, og når ingenting ble funnet', async ({ page }) => {
-    await field(page).fill('m');
-    await expect(status(page)).toHaveText('Skriv minst 2 tegn');
-    await expect(marks(page)).toHaveCount(0);
+  test(
+    'sier fra når det er skrevet for lite, og når ingenting ble funnet',
+    REAL_ANSWER,
+    async ({ page }) => {
+      await field(page).fill('m');
+      await expect(status(page)).toHaveText('Skriv minst 2 tegn');
+      await expect(marks(page)).toHaveCount(0);
 
-    await field(page).fill('romfart');
-    await expect(status(page)).toHaveText('Ingen treff');
-    await expect(marks(page)).toHaveCount(0);
-  });
+      await field(page).fill('romfart');
+      await expect(status(page)).toHaveText('Ingen treff');
+      await expect(marks(page)).toHaveCount(0);
+    },
+  );
 
-  test('Escape lukker søket og gir fokus tilbake til knappen', async ({ page }) => {
+  test('Escape lukker søket og gir fokus tilbake til knappen', MOCK, async ({ page }) => {
     await field(page).fill('mål');
     await expect(marks(page)).toHaveCount(7);
 
@@ -104,7 +108,7 @@ test.describe('søk i svaret', () => {
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
-  test('0 axe i lys og mørk, med treff på skjermen', async ({ page }) => {
+  test('0 axe i lys og mørk, med treff på skjermen', MOCK, async ({ page }) => {
     await field(page).fill('mål');
     await expect(status(page)).toHaveText('1 av 7 treff');
 

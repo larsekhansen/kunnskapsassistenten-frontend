@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations } from './a11y';
-import { ask, facetField, showThreads } from './helpers';
+import { ask, facetField, showThreads, MOCK, REAL_ANSWER } from './helpers';
 
 /**
  * The findings from the brukerblikk pass on 2026-09-15, held in place.
@@ -36,7 +36,7 @@ test.describe('brukerblikk-funnene holder', () => {
     await expect(panel.getByText(/Alle \d+ valgt/).first()).toBeVisible();
   });
 
-  test('funn 8: en trådrad ser ut som en lenke', async ({ page }, testInfo) => {
+  test('funn 8: en trådrad ser ut som en lenke', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'brukerblikk 8: trådradene ser klikkbare ut');
     await page.goto('/');
     await showThreads(page);
@@ -94,44 +94,48 @@ test.describe('brukerblikk-funnene holder', () => {
     expect(fokus.width, 'fokusringen har bredde').toBeGreaterThan(0);
   });
 
-  test('funn 12: overskriftene i panelet blir mindre nedover', async ({ page }, testInfo) => {
-    covers(testInfo, 'brukerblikk 12: overskriftsstørrelsene følger nivåene');
-    await page.goto('/');
-    // The documents list is what the h3 and the h4s sit in, and it only has
-    // headings once an answer has brought documents.
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+  test(
+    'funn 12: overskriftene i panelet blir mindre nedover',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'brukerblikk 12: overskriftsstørrelsene følger nivåene');
+      await page.goto('/');
+      // The documents list is what the h3 and the h4s sit in, and it only has
+      // headings once an answer has brought documents.
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
-    const headings = await page.evaluate(() =>
-      [...document.querySelectorAll('nav h2, nav h3, nav h4')].map((heading) => ({
-        level: Number(heading.tagName.slice(1)),
-        size: parseFloat(getComputedStyle(heading).fontSize),
-      })),
-    );
-    expect(headings.length).toBeGreaterThan(2);
+      const headings = await page.evaluate(() =>
+        [...document.querySelectorAll('nav h2, nav h3, nav h4')].map((heading) => ({
+          level: Number(heading.tagName.slice(1)),
+          size: parseFloat(getComputedStyle(heading).fontSize),
+        })),
+      );
+      expect(headings.length).toBeGreaterThan(2);
 
-    // Two h4s at different sizes, and an h4 as large as the h3 above it, is
-    // what the panel used to draw. The rule is not «these exact pixels» but
-    // «a deeper level is never larger than a shallower one».
-    const largestPerLevel = new Map<number, number>();
-    for (const { level, size } of headings) {
-      largestPerLevel.set(level, Math.max(largestPerLevel.get(level) ?? 0, size));
-    }
-    const levels = [...largestPerLevel.keys()].sort((a, b) => a - b);
-    for (let index = 1; index < levels.length; index += 1) {
-      const shallower = largestPerLevel.get(levels[index - 1])!;
-      const deeper = largestPerLevel.get(levels[index])!;
-      expect(
-        deeper,
-        `h${levels[index]} skal ikke være større enn h${levels[index - 1]}`,
-      ).toBeLessThan(shallower);
-    }
+      // Two h4s at different sizes, and an h4 as large as the h3 above it, is
+      // what the panel used to draw. The rule is not «these exact pixels» but
+      // «a deeper level is never larger than a shallower one».
+      const largestPerLevel = new Map<number, number>();
+      for (const { level, size } of headings) {
+        largestPerLevel.set(level, Math.max(largestPerLevel.get(level) ?? 0, size));
+      }
+      const levels = [...largestPerLevel.keys()].sort((a, b) => a - b);
+      for (let index = 1; index < levels.length; index += 1) {
+        const shallower = largestPerLevel.get(levels[index - 1])!;
+        const deeper = largestPerLevel.get(levels[index])!;
+        expect(
+          deeper,
+          `h${levels[index]} skal ikke være større enn h${levels[index - 1]}`,
+        ).toBeLessThan(shallower);
+      }
 
-    // And the two h4s agree with each other.
-    const h4sizes = new Set(headings.filter((h) => h.level === 4).map((h) => h.size));
-    expect([...h4sizes], 'alle h4 i panelet har samme størrelse').toHaveLength(1);
-  });
+      // And the two h4s agree with each other.
+      const h4sizes = new Set(headings.filter((h) => h.level === 4).map((h) => h.size));
+      expect([...h4sizes], 'alle h4 i panelet har samme størrelse').toHaveLength(1);
+    },
+  );
 
-  test('funn 13: «Ny» står bare der funksjonen virker', async ({ page }, testInfo) => {
+  test('funn 13: «Ny» står bare der funksjonen virker', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'brukerblikk 13: ingen Ny-merke på ubygd funksjon');
     await page.goto('/');
 
@@ -176,7 +180,7 @@ test.describe('brukerblikk-funnene holder', () => {
     expect(new Set(named).size, 'plassholderne er forskjellige').toBe(named.length);
   });
 
-  test('funn 9: feilmeldingen ber ikke om det knappen gjør', async ({ page }, testInfo) => {
+  test('funn 9: feilmeldingen ber ikke om det knappen gjør', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'brukerblikk 9: «Prøv igjen» står ett sted');
     await page.goto('/');
     await page.locator('.ka-composer__field textarea').click();

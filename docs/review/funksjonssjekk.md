@@ -124,6 +124,31 @@ mot Figma står i [`visuell-2026-09-11.md`](visuell-2026-09-11.md).
 Referansebildene tas fra `main` etter en merge, med
 `KA_E2E_SCREENSHOTS=design KA_E2E_PORT=4173 CI=true npx playwright test screenshots.spec.ts`.
 
+## Mot en ekte backend
+
+Fra 29.09 kan suiten kjøres mot en server som alt kjører, for eksempel poden
+bak BFF-en på 8791, i stedet for mock-bygget:
+
+- `KA_E2E_BASE_URL`: adressen. Suiten bygger og starter da ingen server selv.
+- `KA_E2E_ANSWER_TIMEOUT`: hvor mange sekunder en test venter på et ferdig
+  svar. Standard er 30, som holder for mocken. En ekte modell brukte 66 s på
+  ett svar 29.09. Tida for hele testen blir fire ganger så lang.
+- Taggen `@mock` står på de 54 testene som bare passer mocken: fikstur-tråder,
+  `simuler …`-spørsmål, mockens tall og mockens eget svar. `@ekte-svar` står på
+  de 30 som trenger et ferdig svar. De 67 andre har ingen tagg.
+
+Inndelingen er #5 sin fra 29.09 (`design/_briefs/bygg/e2e-inndeling-bff.txt`).
+«En markør peker på et utdrag som finnes» er flyttet fra ekte svar til mock,
+fordi spørsmålet fikk et motspørsmål fra en ekte modell.
+
+```sh
+KA_E2E_BASE_URL=http://localhost:8791 CI=true npx playwright test --grep-invert @mock
+KA_E2E_BASE_URL=http://localhost:8791 KA_E2E_ANSWER_TIMEOUT=240 CI=true npx playwright test --grep @ekte-svar --workers 1
+```
+
+Én worker for de med ekte svar, fordi alle testene har samme identitet når
+BFF-en kjører med `AUTH_MODE=off`, og fordi hvert svar koster.
+
 **Ett ord er plattformavhengig — men ikke i denne suiten.** Hintet ved
 skrivefeltet (`shortcutHint()` i `src/views/chat/text.ts`) og hurtigtasten i
 hopplenka (`shortcutModifier()` i `src/layout/shortcutModifier.ts`) leser

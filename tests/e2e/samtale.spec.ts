@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations } from './a11y';
 import {
+  ANSWER_TIMEOUT,
   ask,
   chooseFacetValue,
   citation,
@@ -8,6 +9,8 @@ import {
   facetField,
   openSources,
   showThreads,
+  MOCK,
+  REAL_ANSWER,
 } from './helpers';
 
 /**
@@ -30,46 +33,50 @@ test.describe('samtalen', () => {
    * answer with it — so the thing to assert is that the address changed
    * *without* the conversation being disturbed.
    */
-  test('et spørsmål fra forsida gir samtalen en adresse', async ({ page, context }, testInfo) => {
-    covers(testInfo, 'C16: tråd-URL og «Kopier lenke til tråden»');
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  test(
+    'et spørsmål fra forsida gir samtalen en adresse',
+    REAL_ANSWER,
+    async ({ page, context }, testInfo) => {
+      covers(testInfo, 'C16: tråd-URL og «Kopier lenke til tråden»');
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    await page.goto('/');
-    await expect(page).toHaveURL(/\/$/);
+      await page.goto('/');
+      await expect(page).toHaveURL(/\/$/);
 
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
-    // The address arrives, and the answer is still on screen — that is the
-    // whole reason it is `replaceState` and not `navigate()`.
-    await expect(page).toHaveURL(/\/threads\/[\w-]+$/);
-    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible();
+      // The address arrives, and the answer is still on screen — that is the
+      // whole reason it is `replaceState` and not `navigate()`.
+      await expect(page).toHaveURL(/\/threads\/[\w-]+$/);
+      await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible();
 
-    const url = page.url();
+      const url = page.url();
 
-    // And the link the reader copies is that address, not the front page.
-    const copyLink = page.getByRole('button', { name: 'Kopier lenke til tråden' });
-    await copyLink.click();
-    await expect
-      .poll(() => page.evaluate(() => navigator.clipboard.readText()), {
-        message: '«Kopier lenke til tråden» kopierer trådens egen adresse',
-      })
-      .toBe(url);
+      // And the link the reader copies is that address, not the front page.
+      const copyLink = page.getByRole('button', { name: 'Kopier lenke til tråden' });
+      await copyLink.click();
+      await expect
+        .poll(() => page.evaluate(() => navigator.clipboard.readText()), {
+          message: '«Kopier lenke til tråden» kopierer trådens egen adresse',
+        })
+        .toBe(url);
 
-    // Hva lista IKKE gjør, festet med vilje: den hentes én gang når panelet
-    // monteres, så en tråd som blir til etterpå dukker ikke opp av seg selv.
-    // Den ER lagret — testen under viser at den står der etter en reload — så
-    // det som mangler er en oppfriskning, ikke en lagring.
-    //
-    // Og tråden finnes bare i denne fanen: backend har ingen tråd-API
-    // (gap 4 i design/eksisterende/api-for-frontend.md), så den kopierte
-    // lenka fører ingen steder for andre enn leseren selv.
-    await showThreads(page);
-    const id = url.split('/').pop();
-    await expect(
-      page.locator(`nav a[href="/threads/${id}"]`),
-      'kjent begrensning: trådlista friskes ikke opp når en tråd blir til',
-    ).toHaveCount(0);
-  });
+      // Hva lista IKKE gjør, festet med vilje: den hentes én gang når panelet
+      // monteres, så en tråd som blir til etterpå dukker ikke opp av seg selv.
+      // Den ER lagret — testen under viser at den står der etter en reload — så
+      // det som mangler er en oppfriskning, ikke en lagring.
+      //
+      // Og tråden finnes bare i denne fanen: backend har ingen tråd-API
+      // (gap 4 i design/eksisterende/api-for-frontend.md), så den kopierte
+      // lenka fører ingen steder for andre enn leseren selv.
+      await showThreads(page);
+      const id = url.split('/').pop();
+      await expect(
+        page.locator(`nav a[href="/threads/${id}"]`),
+        'kjent begrensning: trådlista friskes ikke opp når en tråd blir til',
+      ).toHaveCount(0);
+    },
+  );
 
   /**
    * Reise 12 og 14, punkt 16 på lista — den verste turen i appen: still et
@@ -80,7 +87,7 @@ test.describe('samtalen', () => {
    * Det er en stedfortreder for en server, ikke et arkiv: det lever så lenge
    * fanen gjør, og testen sier begge deler.
    */
-  test('en samtale startet på forsida overlever en reload', async ({ page }, testInfo) => {
+  test('en samtale startet på forsida overlever en reload', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'mocken husker samtalen over reload');
 
     await page.goto('/');
@@ -131,29 +138,33 @@ test.describe('samtalen', () => {
     await expect(page.getByRole('heading', { name: 'Fant ikke tråden' })).toBeVisible();
   });
 
-  test('en markør i et gjenopprettet svar åpner utdraget sitt', async ({ page }, testInfo) => {
-    covers(testInfo, 'kildene overlever en reload');
+  test(
+    'en markør i et gjenopprettet svar åpner utdraget sitt',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'kildene overlever en reload');
 
-    await page.goto('/');
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
-    await page.reload();
-    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
-      timeout: 30_000,
-    });
+      await page.goto('/');
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+      await page.reload();
+      await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
+        timeout: ANSWER_TIMEOUT,
+      });
 
-    /*
-     * Brukerblikk runde 2, funn 1: etter en reload sa begge sidepanelene
-     * «Kildene vises her når du har stilt et spørsmål» til en leser som satt
-     * og så på et ferdig, sitert svar, og et klikk på markøren gjorde
-     * ingenting. Egen test fordi klikket åpner kildepanelet, og i en smal nok
-     * flate lukker det navigasjonspanelet — som resten av reload-testen
-     * bruker.
-     */
-    await citation(page, 1).click();
-    await expect(page.locator('#excerpt-1')).toBeVisible();
-  });
+      /*
+       * Brukerblikk runde 2, funn 1: etter en reload sa begge sidepanelene
+       * «Kildene vises her når du har stilt et spørsmål» til en leser som satt
+       * og så på et ferdig, sitert svar, og et klikk på markøren gjorde
+       * ingenting. Egen test fordi klikket åpner kildepanelet, og i en smal nok
+       * flate lukker det navigasjonspanelet — som resten av reload-testen
+       * bruker.
+       */
+      await citation(page, 1).click();
+      await expect(page.locator('#excerpt-1')).toBeVisible();
+    },
+  );
 
-  test('en avklaring er et spørsmål tilbake, ikke et svar', async ({ page }, testInfo) => {
+  test('en avklaring er et spørsmål tilbake, ikke et svar', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'avklaring: kort, plassholder og fokus');
     await page.goto('/');
 
@@ -181,23 +192,27 @@ test.describe('samtalen', () => {
     await expectNoAxeViolations(page, 'avklaringen');
   });
 
-  test('et vanlig svar etter en avklaring er et helt svar igjen', async ({ page }, testInfo) => {
-    covers(testInfo, 'avklaring: tilstanden henger ikke igjen');
-    await page.goto('/');
+  test(
+    'et vanlig svar etter en avklaring er et helt svar igjen',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'avklaring: tilstanden henger ikke igjen');
+      await page.goto('/');
 
-    await composer(page).click();
-    await page.keyboard.type('simuler avklaring');
-    await page.keyboard.press('Enter');
-    await expect(page.getByText('Trenger avklaring')).toBeVisible();
+      await composer(page).click();
+      await page.keyboard.type('simuler avklaring');
+      await page.keyboard.press('Enter');
+      await expect(page.getByText('Trenger avklaring')).toBeVisible();
 
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
-    // Chips, markers and the search are back. The clarification left nothing
-    // behind it — which is the half of the feature that is easy to get wrong.
-    await expect(page.locator('main .ds-chip').first()).toBeVisible();
-    expect(await page.locator('main a[href^="#excerpt-"]').count()).toBeGreaterThan(0);
-    await expect(composer(page)).toHaveAttribute('placeholder', 'Hva vil du vite mer om?');
-  });
+      // Chips, markers and the search are back. The clarification left nothing
+      // behind it — which is the half of the feature that is easy to get wrong.
+      await expect(page.locator('main .ds-chip').first()).toBeVisible();
+      expect(await page.locator('main a[href^="#excerpt-"]').count()).toBeGreaterThan(0);
+      await expect(composer(page)).toHaveAttribute('placeholder', 'Hva vil du vite mer om?');
+    },
+  );
 
   /**
    * The thinking panel, as far as this suite can see it.
@@ -209,52 +224,58 @@ test.describe('samtalen', () => {
    * and a person — `npm run dev` does that by default, which is why the
    * default is the slow one.
    */
-  test('tenkepanelet legger seg sammen og sier hvor lenge det tenkte', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'tenkepanelet: sammenlagt tilstand');
-    await page.goto('/');
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+  test(
+    'tenkepanelet legger seg sammen og sier hvor lenge det tenkte',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'tenkepanelet: sammenlagt tilstand');
+      await page.goto('/');
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
-    const panel = page.locator('main details').first();
-    const summary = panel.locator('summary').first();
-    await expect(summary).toHaveText(/Tenkte i \d+ sekunder?/);
-    await expect(panel).not.toHaveAttribute('open', '');
+      const panel = page.locator('main details').first();
+      const summary = panel.locator('summary').first();
+      await expect(summary).toHaveText(/Tenkte i \d+ sekunder?/);
+      await expect(panel).not.toHaveAttribute('open', '');
 
-    // It opens on demand, and the steps are in it. Counted as elements
-    // rather than read as text: `innerText` on a `details` reports only the
-    // summary until the browser has laid the content out, which made an
-    // earlier version of this test measure an empty string on a panel that
-    // was full.
-    await summary.click();
-    await expect(panel).toHaveAttribute('open', '');
-    const steps = panel.locator('.ka-thinking__step');
-    expect(await steps.count(), 'panelet har stegene i seg').toBeGreaterThan(0);
-    await expect(steps.first()).toBeVisible();
-  });
+      // It opens on demand, and the steps are in it. Counted as elements
+      // rather than read as text: `innerText` on a `details` reports only the
+      // summary until the browser has laid the content out, which made an
+      // earlier version of this test measure an empty string on a panel that
+      // was full.
+      await summary.click();
+      await expect(panel).toHaveAttribute('open', '');
+      const steps = panel.locator('.ka-thinking__step');
+      expect(await steps.count(), 'panelet har stegene i seg').toBeGreaterThan(0);
+      await expect(steps.first()).toBeVisible();
+    },
+  );
 
-  test('dokumentlista viser det svaret bygger på, med vei til Kudos', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'dokumentlista «Fra Kudos»');
-    await page.goto('/');
+  test(
+    'dokumentlista viser det svaret bygger på, med vei til Kudos',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'dokumentlista «Fra Kudos»');
+      await page.goto('/');
 
-    const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
-    // Before an answer there is nothing to list, and the panel says so rather
-    // than showing an empty box.
-    await expect(panel.getByText('Dokumentene som er relevante', { exact: false })).toBeVisible();
+      const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
+      // Before an answer there is nothing to list, and the panel says so rather
+      // than showing an empty box.
+      await expect(panel.getByText('Dokumentene som er relevante', { exact: false })).toBeVisible();
 
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
-    const links = panel.locator('a[href^="https://kudos"]');
-    expect(await links.count(), 'svaret har dokumenter, og de peker til Kudos').toBeGreaterThan(0);
+      const links = panel.locator('a[href^="https://kudos"]');
+      expect(await links.count(), 'svaret har dokumenter, og de peker til Kudos').toBeGreaterThan(
+        0,
+      );
 
-    // A link that leaves the app says so in words, and opens where the reader
-    // expects. `noreferrer` implies `noopener`.
-    const first = links.first();
-    await expect(first).toHaveAttribute('target', '_blank');
-    await expect(first).toContainText('(åpnes i ny fane)');
-  });
+      // A link that leaves the app says so in words, and opens where the reader
+      // expects. `noreferrer` implies `noopener`.
+      const first = links.first();
+      await expect(first).toHaveAttribute('target', '_blank');
+      await expect(first).toContainText('(åpnes i ny fane)');
+    },
+  );
 
   /**
    * Conditional facet counts, which is the thing the real corpus bought.
@@ -297,38 +318,43 @@ test.describe('samtalen', () => {
    * finnes ikke i noe virksomhets- eller typenavn, så de er trygge til
    * hjelperen scoper oppslaget til feltet sitt.
    */
-  test('filteret når spørringen: 2 treff i 1 dokument, og markørene følger med', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'filter → spørring');
-    await page.goto('/');
+  test(
+    'filteret når spørringen: 2 treff i 1 dokument, og markørene følger med',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'filter → spørring');
+      await page.goto('/');
 
-    await chooseFacetValue(page, 'År', '2025');
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+      await chooseFacetValue(page, 'År', '2025');
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
-    // Svaret sier selv hva det ble spurt mot.
-    await expect(page.getByText(/Avgrenset til: 2025/)).toBeVisible();
+      // Svaret sier selv hva det ble spurt mot.
+      await expect(page.getByText(/Avgrenset til: 2025/)).toBeVisible();
 
-    // «Fremgangsmåte» teller det som faktisk overlevde, ikke det korpuset har.
-    await expect(page.getByText('2 treff i 1 dokument')).toBeVisible();
+      // «Fremgangsmåte» teller det som faktisk overlevde, ikke det korpuset har.
+      await expect(page.getByText('2 treff i 1 dokument')).toBeVisible();
 
-    // Markørene: de to som peker inn i 2023-rapporten står, og de tre andre
-    // er borte fra teksten. En død [1] ville sagt «frontenden er i stykker»
-    // i stedet for «det dokumentet er utenfor utvalget ditt».
-    const answer = (await page.locator('.ka-answer-card').first().innerText()).replace(/\s+/g, ' ');
-    expect(answer, 'markøren inn i årsrapporten står').toContain('[1]');
-    expect(answer).toContain('[2]');
-    for (const gone of ['[3]', '[4]', '[5]']) {
-      expect(answer, `${gone} peker på et dokument utenfor utvalget`).not.toContain(gone);
-    }
+      // Markørene: de to som peker inn i 2023-rapporten står, og de tre andre
+      // er borte fra teksten. En død [1] ville sagt «frontenden er i stykker»
+      // i stedet for «det dokumentet er utenfor utvalget ditt».
+      const answer = (await page.locator('.ka-answer-card').first().innerText()).replace(
+        /\s+/g,
+        ' ',
+      );
+      expect(answer, 'markøren inn i årsrapporten står').toContain('[1]');
+      expect(answer).toContain('[2]');
+      for (const gone of ['[3]', '[4]', '[5]']) {
+        expect(answer, `${gone} peker på et dokument utenfor utvalget`).not.toContain(gone);
+      }
 
-    // Og kildepanelet viser ett kort, ikke tre.
-    await openSources(page, 1);
-    await expect(page.locator('.source-document')).toHaveCount(1);
-    await expect(page.locator('.source-document__subtitle')).toHaveText(/2025$/);
+      // Og kildepanelet viser ett kort, ikke tre.
+      await openSources(page, 1);
+      await expect(page.locator('.source-document')).toHaveCount(1);
+      await expect(page.locator('.source-document__subtitle')).toHaveText(/2025$/);
 
-    await expectNoAxeViolations(page, 'et svar med filteret på');
-  });
+      await expectNoAxeViolations(page, 'et svar med filteret på');
+    },
+  );
 
   /**
    * Punkt 10 i brukerblikket: et avbrutt svar var en blindvei. Kopier-knappen
@@ -338,37 +364,41 @@ test.describe('samtalen', () => {
    * Testen måler begge halvdelene: at veien videre finnes, og at den virker.
    * Det siste er det som betyr noe; en knapp som bare står der er ikke en vei.
    */
-  test('et svar stoppet i tenkefasen har også en vei videre', async ({ page }, testInfo) => {
-    covers(testInfo, 'avbrutt i tenkefasen: «Generer på nytt»');
-    await page.goto('/');
+  test(
+    'et svar stoppet i tenkefasen har også en vei videre',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'avbrutt i tenkefasen: «Generer på nytt»');
+      await page.goto('/');
 
-    await composer(page).click();
-    await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
-    await page.keyboard.press('Enter');
+      await composer(page).click();
+      await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
+      await page.keyboard.press('Enter');
 
-    // Stopp mens søket går, før det første ordet i svaret.
-    await expect(page.getByText('Tenker …')).toBeVisible();
-    await page.getByRole('button', { name: 'Avbryt genereringen' }).click();
+      // Stopp mens søket går, før det første ordet i svaret.
+      await expect(page.getByText('Tenker …')).toBeVisible();
+      await page.getByRole('button', { name: 'Avbryt genereringen' }).click();
 
-    /*
-     * Turen forsvant her (#4, funn A): ingen «Generer på nytt», og et
-     * kildepanel tilbake på «Kildene vises her når du har stilt et spørsmål»
-     * for en leser som nettopp hadde spurt om noe. Stoppet ett ord senere sto
-     * begge deler der.
-     */
-    await expect(page.getByText('Du stoppet søket før svaret begynte.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Generer på nytt' })).toBeVisible();
+      /*
+       * Turen forsvant her (#4, funn A): ingen «Generer på nytt», og et
+       * kildepanel tilbake på «Kildene vises her når du har stilt et spørsmål»
+       * for en leser som nettopp hadde spurt om noe. Stoppet ett ord senere sto
+       * begge deler der.
+       */
+      await expect(page.getByText('Du stoppet søket før svaret begynte.')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Generer på nytt' })).toBeVisible();
 
-    // Og panelet sier det samme som når svaret var kommet i gang.
-    const show = page.getByRole('button', { name: 'Vis kilder' });
-    if (await show.count()) await show.click();
-    await expect(page.getByText('Svaret ble avbrutt før kildene kom')).toBeVisible();
-    await expect(page.getByText('Ingen kilder ennå')).toHaveCount(0);
+      // Og panelet sier det samme som når svaret var kommet i gang.
+      const show = page.getByRole('button', { name: 'Vis kilder' });
+      if (await show.count()) await show.click();
+      await expect(page.getByText('Svaret ble avbrutt før kildene kom')).toBeVisible();
+      await expect(page.getByText('Ingen kilder ennå')).toHaveCount(0);
 
-    await expectNoAxeViolations(page, 'avbrutt i tenkefasen');
-  });
+      await expectNoAxeViolations(page, 'avbrutt i tenkefasen');
+    },
+  );
 
-  test('en stoppet tur overlever reload', async ({ page }, testInfo) => {
+  test('en stoppet tur overlever reload', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'stoppet tur overlever reload');
     await page.goto('/');
 
@@ -415,94 +445,98 @@ test.describe('samtalen', () => {
      */
     await again.click();
     await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
-      timeout: 30_000,
+      timeout: ANSWER_TIMEOUT,
     });
     await expect(page.getByRole('button', { name: 'Generer på nytt' })).toHaveCount(0);
   });
 
-  test('et avbrutt svar har en vei videre, og «Generer på nytt» går helt i mål', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'avbrutt svar: «Generer på nytt»');
-    await page.goto('/');
+  test(
+    'et avbrutt svar har en vei videre, og «Generer på nytt» går helt i mål',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'avbrutt svar: «Generer på nytt»');
+      await page.goto('/');
 
-    await composer(page).click();
-    await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
-    await page.keyboard.press('Enter');
+      await composer(page).click();
+      await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
+      await page.keyboard.press('Enter');
 
-    const stop = page.getByRole('button', { name: 'Avbryt genereringen' });
-    await expect(stop).toBeVisible();
-    // Vent til det står tekst der, så «avbrutt» betyr avbrutt midt i noe.
-    await expect(page.locator('.ka-answer-card')).toBeVisible();
-    await page.waitForTimeout(2500);
-    await stop.click();
+      const stop = page.getByRole('button', { name: 'Avbryt genereringen' });
+      await expect(stop).toBeVisible();
+      // Vent til det står tekst der, så «avbrutt» betyr avbrutt midt i noe.
+      await expect(page.locator('.ka-answer-card')).toBeVisible();
+      await page.waitForTimeout(2500);
+      await stop.click();
 
-    // Halve svaret står igjen, og det sier hvorfor kildene aldri kom.
-    await expect(
-      page.getByText('Svaret ble avbrutt, så kildene bak det kom aldri fram.'),
-    ).toBeVisible();
-    const again = page.getByRole('button', { name: 'Generer på nytt' });
-    await expect(again).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toHaveCount(0);
+      // Halve svaret står igjen, og det sier hvorfor kildene aldri kom.
+      await expect(
+        page.getByText('Svaret ble avbrutt, så kildene bak det kom aldri fram.'),
+      ).toBeVisible();
+      const again = page.getByRole('button', { name: 'Generer på nytt' });
+      await expect(again).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Kopier svaret' })).toHaveCount(0);
 
-    await expectNoAxeViolations(page, 'et avbrutt svar');
+      await expectNoAxeViolations(page, 'et avbrutt svar');
 
-    await again.click();
+      await again.click();
 
-    // Og det nye svaret er et helt svar: kopier-knappen er tilbake, og
-    // kildene med den.
-    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
-      timeout: 30_000,
-    });
-    await expect(page.getByRole('button', { name: 'Generer på nytt' })).toHaveCount(0);
-  });
+      // Og det nye svaret er et helt svar: kopier-knappen er tilbake, og
+      // kildene med den.
+      await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
+        timeout: ANSWER_TIMEOUT,
+      });
+      await expect(page.getByRole('button', { name: 'Generer på nytt' })).toHaveCount(0);
+    },
+  );
 
-  test('å velge en virksomhet endrer tellerne på år, men ikke på seg selv', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'korpus: betingede fasettellere');
-    // No `showFilters` here: `defaultLayout` opens on the filter (answer 1),
-    // so the button that switches to it does not exist yet.
-    await page.goto('/');
+  test(
+    'å velge en virksomhet endrer tellerne på år, men ikke på seg selv',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'korpus: betingede fasettellere');
+      // No `showFilters` here: `defaultLayout` opens on the filter (answer 1),
+      // so the button that switches to it does not exist yet.
+      await page.goto('/');
 
-    const counts = (dimension: string) =>
-      page.evaluate((label) => {
-        const field = document.evaluate(
-          `//label[normalize-space(text())="${label}"]/ancestor::ds-field//input`,
-          document,
-          null,
-          XPathResult.FIRST_ORDERED_NODE_TYPE,
-          null,
-        ).singleNodeValue as HTMLElement | null;
-        const list = field?.closest('ds-suggestion')?.querySelector('u-datalist');
-        return [...(list?.querySelectorAll('[role="option"]') ?? [])]
-          .map((option) => option.textContent?.trim() ?? '')
-          .slice(0, 12);
-      }, dimension);
+      const counts = (dimension: string) =>
+        page.evaluate((label) => {
+          const field = document.evaluate(
+            `//label[normalize-space(text())="${label}"]/ancestor::ds-field//input`,
+            document,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null,
+          ).singleNodeValue as HTMLElement | null;
+          const list = field?.closest('ds-suggestion')?.querySelector('u-datalist');
+          return [...(list?.querySelectorAll('[role="option"]') ?? [])]
+            .map((option) => option.textContent?.trim() ?? '')
+            .slice(0, 12);
+        }, dimension);
 
-    await expect(facetField(page, 'År')).toBeVisible();
-    const yearsBefore = await counts('År');
-    const orgsBefore = await counts('Virksomheter');
-    expect(yearsBefore.length, 'årslista har verdier å telle').toBeGreaterThan(0);
+      await expect(facetField(page, 'År')).toBeVisible();
+      const yearsBefore = await counts('År');
+      const orgsBefore = await counts('Virksomheter');
+      expect(yearsBefore.length, 'årslista har verdier å telle').toBeGreaterThan(0);
 
-    const org = facetField(page, 'Virksomheter');
-    await org.click();
-    await page.keyboard.type('Nasjonal kommunikasjonsmyndighet');
-    await expect(
-      page
-        .locator('[role="option"]')
-        .filter({ hasText: 'Nasjonal kommunikasjonsmyndighet' })
-        .first(),
-    ).toBeVisible();
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
-    await expect(page.getByText(/1 av \d+ valgt/).first()).toBeVisible();
+      const org = facetField(page, 'Virksomheter');
+      await org.click();
+      await page.keyboard.type('Nasjonal kommunikasjonsmyndighet');
+      await expect(
+        page
+          .locator('[role="option"]')
+          .filter({ hasText: 'Nasjonal kommunikasjonsmyndighet' })
+          .first(),
+      ).toBeVisible();
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+      await expect(page.getByText(/1 av \d+ valgt/).first()).toBeVisible();
 
-    await expect
-      .poll(() => counts('År'), { message: 'årstellerne følger valget av virksomhet' })
-      .not.toEqual(yearsBefore);
-    expect(await counts('Virksomheter'), 'en dimensjon smalner ikke sine egne tellere').toEqual(
-      orgsBefore,
-    );
-  });
+      await expect
+        .poll(() => counts('År'), { message: 'årstellerne følger valget av virksomhet' })
+        .not.toEqual(yearsBefore);
+      expect(await counts('Virksomheter'), 'en dimensjon smalner ikke sine egne tellere').toEqual(
+        orgsBefore,
+      );
+    },
+  );
 });
