@@ -148,13 +148,22 @@ export function ThreadsView({
     );
     setAnnouncement(`Tråden heter nå «${title}».`);
     actions.rename(thread, title).catch(() => {
+      /*
+       * Back to the old title only if the row still shows the one this call
+       * sent. Renamed again in the meantime — A to B, then B to C before the
+       * first answered — the row is the later rename's now, and a failure of
+       * the earlier one says nothing about it. It is not put back, and there
+       * is nothing to tell the reader (KA CC, kan 2 on #180).
+       */
+      let putBack = false;
       change((list) =>
-        list.map((row) =>
-          row.id === thread.id
-            ? { ...row, title: thread.title, titleFromQuestion: thread.titleFromQuestion }
-            : row,
-        ),
+        list.map((row) => {
+          if (row.id !== thread.id || row.title !== title) return row;
+          putBack = true;
+          return { ...row, title: thread.title, titleFromQuestion: thread.titleFromQuestion };
+        }),
       );
+      if (!putBack) return;
       setAnnouncement('');
       setActionError(`Klarte ikke å endre navnet. Tråden heter fortsatt «${thread.title}».`);
     });
