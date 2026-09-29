@@ -63,6 +63,14 @@ describe('fetchSession', () => {
     expect(await fetchSession()).toBeUndefined();
   });
 
+  it('offers no «Logg ut» with sign-in off, even if a user came along', async () => {
+    // There is no session to end then, and /auth/logout would send the
+    // reader to Entra for nothing.
+    me({ authEnabled: false, user: { name: 'Lokal bruker', email: '' } });
+
+    expect(await fetchSession()).toBeUndefined();
+  });
+
   it('has nothing to show when /api/me fails', async () => {
     me({ error: 'feil' }, 502);
     expect(await fetchSession()).toBeUndefined();
