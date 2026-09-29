@@ -135,7 +135,19 @@ function ChatSlot({ threadId }: { threadId?: string }) {
 
   useEffect(() => {
     startedRef.current = undefined;
-    // The thread goes, and a lock goes with it.
+  }, [corpusKey]);
+
+  /*
+   * The thread goes on a switch, and a lock goes with it. On a switch only:
+   * this page stays mounted through one (the navigation to `/` is a no-op,
+   * above), so nothing else would let the lock go. The corpus it was set in
+   * is kept, because an effect runs on mount as well, and a mount is not a
+   * switch.
+   */
+  const lockCorpus = useRef(corpusKey);
+  useEffect(() => {
+    if (lockCorpus.current === corpusKey) return;
+    lockCorpus.current = corpusKey;
     setLocked?.(undefined);
   }, [corpusKey, setLocked]);
 

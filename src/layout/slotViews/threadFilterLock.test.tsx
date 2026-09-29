@@ -42,6 +42,7 @@ vi.mock('../../api', async (importOriginal) => {
 
 const { App } = await import('../../App');
 const { FILTER_STORAGE_KEY } = await import('../persistence');
+const { setActiveCorpusKey } = await import('../../api');
 
 globalThis.ResizeObserver ??= class {
   observe() {}
@@ -77,6 +78,7 @@ async function filterPanel() {
 
 beforeEach(() => {
   vi.stubEnv('VITE_MOCK_SPEED', 'fast');
+  setActiveCorpusKey('mock');
   locks.byThread.clear();
   sessionStorage.clear();
   localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(own));
@@ -146,6 +148,22 @@ describe('a thread locked to a filter', () => {
       expect(within(panel).queryByRole('region', { name: 'Avgrenset til' })).toBeNull(),
     );
     expect(await within(panel).findByText('Evaluering', undefined, { timeout: 5000 })).toBeTruthy();
+  });
+});
+
+describe('a corpus switch', () => {
+  it('lets the lock go with the thread', async () => {
+    locks.byThread.set(LOCKED, lock);
+    renderApp(`/threads/${LOCKED}`);
+
+    const panel = await filterPanel();
+    await within(panel).findByRole('region', { name: 'Avgrenset til' });
+
+    act(() => setActiveCorpusKey('norquad-mock'));
+
+    await waitFor(() =>
+      expect(within(panel).queryByRole('region', { name: 'Avgrenset til' })).toBeNull(),
+    );
   });
 });
 
