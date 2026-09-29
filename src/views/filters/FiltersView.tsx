@@ -282,9 +282,16 @@ export function FiltersView({
 
   // Clearing the error here rather than in the effect: the retry click is
   // what changed, and setting state inside an effect starts another render.
+  //
+  // The announcement goes too. The live region says «Henter filtre» while the
+  // retry loads and falls back to the announcement when it is done, and a
+  // region whose text changes back is read again: «Fjernet fra filteret:
+  // 2024» a second time, with nothing removed — and the corpus message the
+  // same way (KA CC, kan 2 on #177). It was news once, and it was told.
   const retry = useCallback(() => {
     setFacets(undefined);
     setFailed(false);
+    setAnnouncement('');
     setAttempt((count) => count + 1);
   }, []);
 

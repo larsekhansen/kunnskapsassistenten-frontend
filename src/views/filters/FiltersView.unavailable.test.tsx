@@ -305,6 +305,31 @@ describe('an active filter without facets', () => {
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Prøv igjen' }));
     });
 
+    it('does not announce a removal again when «Prøv igjen» has loaded', async () => {
+      const { container } = renderView(stored);
+      const region = () => container.querySelector('output')?.textContent;
+
+      await screen.findByText('Klarte ikke å hente filtrene.');
+      fireEvent.click(chip('2024'));
+      expect(region()).toBe('Fjernet fra filteret: 2024');
+
+      // The retry is held open, so the region is seen while it loads. Two
+      // calls wait on it: the facets, and the corpus line's own fetch, which
+      // a load that restored a filter makes too.
+      const waiting: ((facets: FilterFacet[]) => void)[] = [];
+      client.answer = () =>
+        new Promise((resolve) => {
+          waiting.push(resolve);
+        });
+      fireEvent.click(screen.getByRole('button', { name: 'Prøv igjen' }));
+      expect(region()).toBe('Henter filtre');
+
+      await act(async () => {
+        for (const answer of waiting) answer(facetsBack);
+      });
+      expect(region()).toBe('');
+    });
+
     it('draws nothing but the error when nothing is chosen', async () => {
       renderView(emptyFilterSelection);
 
