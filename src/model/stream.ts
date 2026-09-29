@@ -27,6 +27,8 @@ import type { SourceDocument } from './source';
  *
  * `question-too-long` is the one refusal the reader can fix themselves: the
  * BFF turns a question over its limit away before it reaches the backend.
+ * `thread-not-found` is a follow-up in a thread the BFF no longer has, most
+ * likely deleted elsewhere; asking again there gets the same answer.
  */
 const CHAT_ERROR_CODES = [
   'aborted',
@@ -37,6 +39,7 @@ const CHAT_ERROR_CODES = [
   'unauthorized',
   'rate-limited',
   'question-too-long',
+  'thread-not-found',
   'unknown',
 ] as const;
 

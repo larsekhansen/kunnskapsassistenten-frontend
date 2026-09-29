@@ -234,15 +234,13 @@ describe('BffChatClient.ask, strømmen', () => {
     ]);
   });
 
-  it('sier at samtalen er borte når BFF-en svarer 404 på et oppfølgingsspørsmål', async () => {
+  it('sier at tråden er borte når BFF-en svarer 404 på et oppfølgingsspørsmål', async () => {
     fakeBff({ 'POST /api/ask': () => json({ error: 'Fant ikke samtalen.' }, 404) });
     const events = await drain(client().ask({ query: 'q', conversationId: 'c1' }));
-    expect(events.at(-1)).toMatchObject({
+    expect(events.at(-1)).toEqual({
       type: 'error',
-      error: {
-        code: 'unknown',
-        message: 'Samtalen finnes ikke lenger, kanskje fordi den er slettet et annet sted.',
-      },
+      error: { code: 'thread-not-found' },
+      corpusKey: 'kudos-full',
     });
   });
 

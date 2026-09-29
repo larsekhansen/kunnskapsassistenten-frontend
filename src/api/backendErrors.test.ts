@@ -140,10 +140,18 @@ describe('errorFromBackend', () => {
     expect(errorFromBackend('Forespørselen er for stor.')).toEqual({ code: 'question-too-long' });
   });
 
-  it('sier at samtalen er borte når BFF-en ikke fant den', () => {
-    expect(errorFromBackend('Fant ikke samtalen.')).toEqual({
-      code: 'unknown',
-      message: 'Samtalen finnes ikke lenger, kanskje fordi den er slettet et annet sted.',
+  it('sier at tråden er borte når BFF-en ikke fant samtalen', () => {
+    expect(errorFromBackend('Fant ikke samtalen.')).toEqual({ code: 'thread-not-found' });
+  });
+
+  it('ber leseren starte en ny tråd, uten å tilby samme spørsmål i samme tråd igjen', () => {
+    // «Prøv igjen» ville sendt spørsmålet til den samme samtalen og fått 404 igjen.
+    expect(chatErrorText(errorFromBackend('Fant ikke samtalen.'))).toEqual({
+      title: 'Tråden er borte',
+      message:
+        'Tråden finnes ikke lenger, kanskje fordi den er slettet et annet sted. ' +
+        'Start en ny tråd med «Ny tråd» og still spørsmålet der.',
+      retryable: false,
     });
   });
 

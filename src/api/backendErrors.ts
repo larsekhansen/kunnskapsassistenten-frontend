@@ -76,13 +76,7 @@ const KNOWN_TEXTS: { pattern: RegExp; error: (match: RegExpMatchArray) => ChatEr
   { pattern: /^Forespørselen er for stor/u, error: () => ({ code: 'question-too-long' }) },
   // The BFF's 404 for a follow-up in a conversation it no longer has, most
   // likely deleted in another tab.
-  {
-    pattern: /^Fant ikke samtalen/u,
-    error: () => ({
-      code: 'unknown',
-      message: 'Samtalen finnes ikke lenger, kanskje fordi den er slettet et annet sted.',
-    }),
-  },
+  { pattern: /^Fant ikke samtalen/u, error: () => ({ code: 'thread-not-found' }) },
   // The model's stream went quiet (digdir/llm/openai.cljc). That is the model
   // not answering, not the question being too big, so the reader is told the
   // question can go again as it stands. Named on its own rather than left

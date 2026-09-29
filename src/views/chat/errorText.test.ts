@@ -39,12 +39,13 @@ const SHOWN: ChatErrorCode[] = [
   'unauthorized',
   'rate-limited',
   'question-too-long',
+  'thread-not-found',
   'unknown',
 ];
 
 describe('chatErrorText', () => {
   it('says something different about each case', () => {
-    // The whole point of the codes: «Noe gikk galt» covered all seven, so the
+    // The whole point of the codes: «Noe gikk galt» covered all eight, so the
     // reader could not tell a model that is down from a rejected key
     // (brukerreiser punkt 12). Headings and texts have to differ, or nothing
     // downstream can.
