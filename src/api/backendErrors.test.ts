@@ -135,6 +135,18 @@ describe('errorFromBackend', () => {
     });
   });
 
+  it('tar BFF-ens 413 som et for langt spørsmål', () => {
+    // Grensen på 64 kB slår til før lengdesjekken, så det er ikke noe tall å vise.
+    expect(errorFromBackend('Forespørselen er for stor.')).toEqual({ code: 'question-too-long' });
+  });
+
+  it('sier at samtalen er borte når BFF-en ikke fant den', () => {
+    expect(errorFromBackend('Fant ikke samtalen.')).toEqual({
+      code: 'unknown',
+      message: 'Samtalen finnes ikke lenger, kanskje fordi den er slettet et annet sted.',
+    });
+  });
+
   it('sier det samme som klienten selv når BFF-en mistet forbindelsen', () => {
     expect(errorFromBackend('Forbindelsen til backend ble brutt.')).toEqual({
       code: 'unknown',

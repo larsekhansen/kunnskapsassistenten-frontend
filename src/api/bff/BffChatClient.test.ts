@@ -234,6 +234,24 @@ describe('BffChatClient.ask, strømmen', () => {
     ]);
   });
 
+  it('sier at samtalen er borte når BFF-en svarer 404 på et oppfølgingsspørsmål', async () => {
+    fakeBff({ 'POST /api/ask': () => json({ error: 'Fant ikke samtalen.' }, 404) });
+    const events = await drain(client().ask({ query: 'q', conversationId: 'c1' }));
+    expect(events.at(-1)).toMatchObject({
+      type: 'error',
+      error: {
+        code: 'unknown',
+        message: 'Samtalen finnes ikke lenger, kanskje fordi den er slettet et annet sted.',
+      },
+    });
+  });
+
+  it('tar BFF-ens 413 som et for langt spørsmål', async () => {
+    fakeBff({ 'POST /api/ask': () => json({ error: 'Forespørselen er for stor.' }, 413) });
+    const events = await drain(client().ask({ query: 'q' }));
+    expect(events.at(-1)).toMatchObject({ type: 'error', error: { code: 'question-too-long' } });
+  });
+
   it('viser statusen, ikke teksten, når feilen i svaret er ukjent', async () => {
     fakeBff({
       'POST /api/ask': () => json({ error: 'Internal Server Error' }, 500),

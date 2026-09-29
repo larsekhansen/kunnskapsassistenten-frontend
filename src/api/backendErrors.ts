@@ -61,13 +61,26 @@ const KNOWN_TEXTS: { pattern: RegExp; error: (match: RegExpMatchArray) => ChatEr
     pattern: /^Forbindelsen til backend ble brutt/u,
     error: () => ({ code: 'unknown', message: 'Forbindelsen brøt sammen mens svaret kom.' }),
   },
-  // The BFF's own check on the question, the one refusal the reader can do
+  // The BFF's own check on the question, a refusal the reader can do
   // something about.
   {
     pattern: /for langt \(maks (\d+) tegn\)/u,
     error: (match) => ({
       code: 'question-too-long',
       message: `Spørsmålet er lengre enn de ${match[1]} tegnene tjenesten tar imot.`,
+    }),
+  },
+  // The BFF's 413, from its 64 KB limit on the body. On /api/ask that is the
+  // question — far past the length check above, which never got to run — so
+  // the same case, only without a number to give.
+  { pattern: /^Forespørselen er for stor/u, error: () => ({ code: 'question-too-long' }) },
+  // The BFF's 404 for a follow-up in a conversation it no longer has, most
+  // likely deleted in another tab.
+  {
+    pattern: /^Fant ikke samtalen/u,
+    error: () => ({
+      code: 'unknown',
+      message: 'Samtalen finnes ikke lenger, kanskje fordi den er slettet et annet sted.',
     }),
   },
   // The model's stream went quiet (digdir/llm/openai.cljc). That is the model
