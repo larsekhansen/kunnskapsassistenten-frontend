@@ -24,6 +24,11 @@ describe('errorFromBackend', () => {
   it.each([
     ['en strøm som stoppet opp', STREAM_STALL, 'model-unavailable'],
     [
+      'en strøm som stoppet opp, uten agent-løkkas forstavelse',
+      STREAM_STALL.replace('LLM request failed at iteration 2: ', ''),
+      'model-unavailable',
+    ],
+    [
       'en 400 fra modellen',
       'LLM request failed at iteration 0 (status 400): clj-http: status 400',
       'model-unavailable',

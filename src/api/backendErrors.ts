@@ -72,8 +72,9 @@ const KNOWN_TEXTS: { pattern: RegExp; error: (match: RegExpMatchArray) => ChatEr
   },
   // The model's stream went quiet (digdir/llm/openai.cljc). That is the model
   // not answering, not the question being too big, so the reader is told the
-  // question can go again as it stands. Before the timeout test below,
-  // because this text names LLM_STREAM_IDLE_TIMEOUT_MS.
+  // question can go again as it stands. Named on its own rather than left
+  // to the «LLM request failed» entry at the end, so it keeps its code if the
+  // watchdog's text ever reaches this client without the agent loop's prefix.
   {
     pattern: /no event received for \d+ ?ms|stream stalled/iu,
     error: () => ({ code: 'model-unavailable' }),
