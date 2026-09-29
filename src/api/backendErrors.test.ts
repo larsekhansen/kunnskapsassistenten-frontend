@@ -35,6 +35,18 @@ describe('errorFromBackend', () => {
       'model-unavailable',
     ],
     ['en brutt TLS-økt', 'LLM request failed at iteration 0: Tag mismatch', 'model-unavailable'],
+    // Modellens 401 og 403 gjelder backendens nøkkel mot modellen, ikke leserens
+    // tilgang (docs/onboarding.md i headless-rag).
+    [
+      'en 401 fra modellen',
+      'LLM request failed at iteration 0 (status 401): Interceptor Exception: status: 401',
+      'model-unavailable',
+    ],
+    [
+      'en 403 fra modellen',
+      'LLM request failed at iteration 0 (status 403): Interceptor Exception: status: 403',
+      'model-unavailable',
+    ],
     [
       'en manglende hemmelighet',
       'LLM request failed at iteration 0: Missing secret :openai-api-key: set OPENAI_API_KEY. Tried [:env].',
