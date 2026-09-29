@@ -33,8 +33,13 @@ const SELECTED_ONE = /^1 av \d+ valgt$/;
  * an untouched page. Same reason as above: it was written as «Alle 6 valgt»
  * against six hand-written values, and against the real corpus a literal 6
  * would pass without testing anything.
+ *
+ * Anchored at the start only. The sentence goes on — «Alle 457 valgt, altså
+ * ingen avgrensning» since #183 — and anchored at both ends the pattern
+ * matched nothing, which made the «must not be there» below true no matter
+ * what the page said.
  */
-const ALL_SELECTED = /^Alle \d+ valgt$/;
+const ALL_SELECTED = /^Alle \d+ valgt/;
 
 test.describe('navigasjonspanelet', () => {
   test.beforeEach(async ({ page }) => {
