@@ -148,28 +148,26 @@ export function AnswerMessage({
   const searching = searchOpen;
   const query = searchQuery;
   /*
-   * Begge to holdes i ro mellom tegninger, og det er ikke finpuss.
+   * Both are held still between renders, and that is not polish.
    *
-   * `Markdown` memoiserer `components` på nettopp disse to. Kom de nye ved
-   * hver tegning, byttet hver komponent i `components` identitet, React så
-   * dem som andre komponenttyper, og react-markdown monterte hele svaret på
-   * nytt. Målt av #4 mot poden: ett klikk på en markør fjernet fire
-   * markørnoder og la fire nye inn, og fokus mistet målet sitt, fordi noden
-   * det sto i var borte.
-   *
-   * `onSelectSource` kommer fra `showCitation`, som skallet alt har i en
-   * `useCallback`, så avhengighetene her står i ro av seg selv.
+   * `Markdown` memoises `components` on exactly these two. Arriving new on
+   * every render, every component in `components` changed identity, React
+   * read them as different component types, and react-markdown mounted the
+   * whole answer again. Measured by #4 against the pod: one click on a
+   * marker removed four marker nodes and added four new ones, and focus lost
+   * its target, because the node it stood in was gone.
    */
   const citations = useMemo(() => citationTargets(message.sources ?? []), [message.sources]);
 
   /*
-   * Gjennom en ref, ikke som avhengighet.
+   * Through a ref, not as a dependency.
    *
-   * Skallets egen `showCitation` står allerede i ro, men da hviler hele
-   * svaret på at hver forelder mellom den og hit husker det samme. Én
-   * `onSelectSource={(n) => ...}` et sted i kjeden, og markørene byttes ut
-   * igjen — uten at noe i denne fila ser annerledes ut. Refen tar den
-   * muligheten bort: funksjonen er den samme så lenge svaret er det samme.
+   * The shell's own `showCitation` already stands still, but then the whole
+   * answer rests on every parent between it and here remembering the same.
+   * One `onSelectSource={(n) => ...}` somewhere in the chain, and the markers
+   * are swapped out again — with nothing in this file looking any different.
+   * The ref takes that possibility away: the function is the same for as
+   * long as the answer is.
    */
   const selectSource = useRef(onSelectSource);
   useEffect(() => {
