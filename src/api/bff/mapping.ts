@@ -7,6 +7,7 @@ import type {
   Thread,
   ThreadDetail,
 } from '../../model';
+import { errorFromBackend } from '../backendErrors';
 import type { DatasetFilterFields } from '../filterFields';
 import { messagesFromApi, threadFromConversation } from '../live/conversations';
 import { relevanceFromRank, toCitations } from '../live/mcp';
@@ -174,11 +175,14 @@ export class BffTurnState {
         this.#sources = event.sources;
         return [];
 
+      // The BFF passes the backend's own text through as it came, English
+      // and all, so it is read for a code like the live client's and never
+      // put on screen.
       case 'error':
         return [
           {
             type: 'error',
-            error: { code: 'unknown', message: event.message || 'Ukjent feil fra tjeneren.' },
+            error: errorFromBackend(event.message),
             ...askedOf,
           },
         ];

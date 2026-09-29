@@ -71,6 +71,18 @@ const BY_CODE: Record<Exclude<ChatErrorCode, 'aborted' | 'no-hits'>, ChatErrorTe
     advice: 'Vent et lite øyeblikk, så går det som regel gjennom.',
     retryable: true,
   },
+  'question-too-long': {
+    title: 'Spørsmålet er for langt',
+    what: 'Spørsmålet er lengre enn tjenesten tar imot.',
+    advice: 'Kort det ned, for eksempel ved å dele det i to spørsmål, og send det på nytt.',
+    retryable: false,
+  },
+  'thread-not-found': {
+    title: 'Tråden er borte',
+    what: 'Tråden finnes ikke lenger, kanskje fordi den er slettet et annet sted.',
+    advice: 'Start en ny tråd med «Ny tråd» i trådlista, og still spørsmålet der.',
+    retryable: false,
+  },
   unknown: {
     title: 'Svaret kom ikke fram',
     what: 'Noe gikk galt da svaret skulle hentes.',

@@ -95,8 +95,14 @@ const documentType = (values: string[]): FilterSelection => ({
   documentType: values,
 });
 
-beforeEach(() => resetBffClient());
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => {
+  resetBffClient();
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('BffChatClient.ask, strømmen', () => {
   it('gjør den opptatte strømmen om til tenkesteg, svar, kilder og ferdig', async () => {
@@ -163,7 +169,7 @@ describe('BffChatClient.ask, strømmen', () => {
     ]);
   });
 
-  it('viser BFF-ens egen feilsetning når strømmen ender med error', async () => {
+  it('viser ikke BFF-ens feilsetning når strømmen ender med error', async () => {
     fakeBff({
       'POST /api/ask': () =>
         streamed(
@@ -176,9 +182,30 @@ describe('BffChatClient.ask, strømmen', () => {
     const events = await drain(client().ask({ query: 'q', conversationId: 'c1' }));
     expect(events.at(-1)).toEqual({
       type: 'error',
-      error: { code: 'unknown', message: 'Uventet feil mot backend.' },
+      error: { code: 'unknown' },
       corpusKey: 'kudos-full',
     });
+  });
+
+  it('leser backendens tekst i error-hendelsen for kode, og viser den ikke', async () => {
+    // BFF-en sender isError-teksten fra backend videre som den er.
+    const stall =
+      'LLM request failed at iteration 2: LLM streaming: no event received for 30000ms. ' +
+      'The provider stream stalled, or ended without a [DONE] terminator. ' +
+      'Raise LLM_STREAM_IDLE_TIMEOUT_MS if a healthy stream legitimately pauses this long.';
+    fakeBff({
+      'POST /api/ask': () => streamed(sse({ type: 'error', message: stall, conversationId: 'c1' })),
+    });
+    const events = await drain(client().ask({ query: 'q', conversationId: 'c1' }));
+    expect(events.at(-1)).toEqual({
+      type: 'error',
+      error: { code: 'model-unavailable' },
+      corpusKey: 'kudos-full',
+    });
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ text: stall }),
+    );
   });
 
   it('sier at forbindelsen brøt når strømmen stopper uten done eller error', async () => {
@@ -190,7 +217,7 @@ describe('BffChatClient.ask, strømmen', () => {
     });
   });
 
-  it('bruker BFF-ens egen setning for en avvist forespørsel', async () => {
+  it('oversetter BFF-ens setning for et for langt spørsmål til sin egen', async () => {
     fakeBff({
       'POST /api/ask': () => json({ error: 'Spørsmålet er for langt (maks 2000 tegn).' }, 400),
     });
@@ -198,7 +225,40 @@ describe('BffChatClient.ask, strømmen', () => {
     expect(events).toEqual([
       {
         type: 'error',
-        error: { code: 'unknown', message: 'Spørsmålet er for langt (maks 2000 tegn).' },
+        error: {
+          code: 'question-too-long',
+          message: 'Spørsmålet er lengre enn de 2000 tegnene tjenesten tar imot.',
+        },
+        corpusKey: 'kudos-full',
+      },
+    ]);
+  });
+
+  it('sier at tråden er borte når BFF-en svarer 404 på et oppfølgingsspørsmål', async () => {
+    fakeBff({ 'POST /api/ask': () => json({ error: 'Fant ikke samtalen.' }, 404) });
+    const events = await drain(client().ask({ query: 'q', conversationId: 'c1' }));
+    expect(events.at(-1)).toEqual({
+      type: 'error',
+      error: { code: 'thread-not-found' },
+      corpusKey: 'kudos-full',
+    });
+  });
+
+  it('tar BFF-ens 413 som et for langt spørsmål', async () => {
+    fakeBff({ 'POST /api/ask': () => json({ error: 'Forespørselen er for stor.' }, 413) });
+    const events = await drain(client().ask({ query: 'q' }));
+    expect(events.at(-1)).toMatchObject({ type: 'error', error: { code: 'question-too-long' } });
+  });
+
+  it('viser statusen, ikke teksten, når feilen i svaret er ukjent', async () => {
+    fakeBff({
+      'POST /api/ask': () => json({ error: 'Internal Server Error' }, 500),
+    });
+    const events = await drain(client().ask({ query: 'q' }));
+    expect(events).toEqual([
+      {
+        type: 'error',
+        error: { code: 'unknown', message: 'Kunnskapsassistenten svarte med feil (500).' },
         corpusKey: 'kudos-full',
       },
     ]);

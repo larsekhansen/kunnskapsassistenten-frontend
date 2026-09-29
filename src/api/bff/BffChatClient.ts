@@ -9,7 +9,7 @@ import type {
 import type { AskParams, ChatClient, ThreadCertainty } from '../chatClient';
 import { filterFieldsFor } from '../filterFields';
 import type { DatasetFilterFields } from '../filterFields';
-import { errorFromStatus } from '../live/LiveChatClient';
+import { errorFromBackend, errorFromStatus } from '../backendErrors';
 import { createSseDecoder } from '../live/sse';
 import type {
   BffAskRequest,
@@ -385,16 +385,18 @@ export class BffChatClient implements ChatClient {
 }
 
 /**
- * An HTTP error from `/api/ask`, as a code and — when the BFF wrote one — its
- * own sentence. The BFF's sentences are Norwegian and say what was wrong with
- * the question («Spørsmålet er for langt (maks 2000 tegn).»), which is more
- * than a status can.
+ * An HTTP error from `/api/ask`, as a code — and, when the BFF's sentence is
+ * one this client knows, a sentence of its own. The BFF's text is read like
+ * the backend's and never shown as it stands: most of it is written for
+ * whoever runs the service, and what is not («Spørsmålet er for langt (maks
+ * 2000 tegn).») is translated in `errorFromBackend`, so the screen only ever
+ * says what this client wrote.
  */
 async function errorFromResponse(response: Response): Promise<ChatError> {
   const fromStatus = errorFromStatus(response.status);
   if (fromStatus.code !== 'unknown') return fromStatus;
   const body = (await response.json().catch(() => ({}))) as { error?: unknown };
-  return typeof body.error === 'string' && body.error.trim()
-    ? { code: 'unknown', message: body.error }
-    : fromStatus;
+  if (typeof body.error !== 'string' || !body.error.trim()) return fromStatus;
+  const fromText = errorFromBackend(body.error);
+  return fromText.code === 'unknown' && !fromText.message ? fromStatus : fromText;
 }
