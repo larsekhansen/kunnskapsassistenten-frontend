@@ -155,7 +155,7 @@ describe('an active filter without facets', () => {
     it('clears the whole filter with «Tøm», and the empty state is back as it was', async () => {
       const { seen } = renderView(stored);
 
-      fireEvent.click(await screen.findByRole('button', { name: 'Tøm hele filteret' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Tøm avgrensningen' }));
 
       expect(seen.at(-1)).toEqual(emptyFilterSelection);
       expect(screen.queryByRole('heading', { name: 'Avgrenset til' })).toBeNull();
@@ -179,6 +179,47 @@ describe('an active filter without facets', () => {
       expect(
         await screen.findByText('Du kan stille spørsmål uten å avgrense dokumentene.'),
       ).toBeTruthy();
+      expect(screen.queryByRole('heading', { name: 'Avgrenset til' })).toBeNull();
+    });
+  });
+
+  describe('when the facets come back without a dimension', () => {
+    /* Types and years, and no organisations: the server drops an empty field. */
+    beforeEach(() => {
+      client.answer = () => Promise.resolve(facetsBack);
+    });
+
+    const withOrganisation: FilterSelection = {
+      ...stored,
+      organisation: ['Advokattilsynet'],
+    };
+
+    it('shows the value of the missing dimension, and only that one', async () => {
+      renderView(withOrganisation);
+
+      expect(
+        await screen.findByRole('button', { name: 'Fjern filter: Advokattilsynet' }),
+      ).toBeTruthy();
+      // The two with fields are chips inside their fields, not here as well.
+      expect(screen.queryByRole('button', { name: 'Fjern filter: Årsrapport' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Fjern filter: 2024' })).toBeNull();
+      expect(
+        screen.queryByRole('heading', { name: 'Filtrering er ikke tilgjengelig ennå' }),
+      ).toBeNull();
+    });
+
+    it('empties only what it shows with «Tøm», and leaves the fields alone', async () => {
+      const { seen } = renderView(withOrganisation);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Tøm avgrensningen' }));
+
+      expect(seen.at(-1)).toEqual(stored);
+    });
+
+    it('draws nothing extra when every chosen dimension has its field', async () => {
+      renderView(stored);
+
+      await screen.findByLabelText('Dokumenttyper');
       expect(screen.queryByRole('heading', { name: 'Avgrenset til' })).toBeNull();
     });
   });

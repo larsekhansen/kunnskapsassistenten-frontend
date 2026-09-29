@@ -1,14 +1,12 @@
 import { Button, Chip, Heading, Paragraph } from '@digdir/designsystemet-react';
 import { useEffect, useId, useLayoutEffect, useRef, type RefObject } from 'react';
-import {
-  emptyFilterSelection,
-  filterDimensions,
-  type FilterDimension,
-  type FilterSelection,
-} from '../../model';
+import type { FilterSelection } from '../../model';
+import type { ChosenValue } from './withoutField';
 
 export type ActiveFilterProps = {
   selection: FilterSelection;
+  /** The values to show: those no field can. See `valuesWithoutField`. Never empty. */
+  chosen: ChosenValue[];
   onChange: (selection: FilterSelection) => void;
   /**
    * Where focus goes when the block takes the focused chip with it: the last
@@ -20,30 +18,29 @@ export type ActiveFilterProps = {
   onAnnounce: (text: string) => void;
 };
 
-type Chosen = { dimension: FilterDimension; value: string };
-
 /** One key per chip. The same value could in principle sit in two dimensions. */
-function keyOf({ dimension, value }: Chosen): string {
+function keyOf({ dimension, value }: ChosenValue): string {
   return `${dimension}\u0000${value}`;
 }
 
 /**
- * The filter that is in force when there are no facets to draw it with.
+ * The filter that is in force where there is no field to draw it in.
  *
  * A filter stored on the thread still narrows every question, whether or not
  * the facets can be fetched: the key is missing and the server answers with
  * an empty list, or Typesense is down and it answers 502. Until now the panel
  * then said «Filtrering er ikke tilgjengelig ennå» or «Klarte ikke å hente
  * filtrene» and nothing else, so the reader could neither see the narrowing
- * nor get rid of it (#4 in the trial of the backend, #170).
+ * nor get rid of it (#4 in the trial of the backend, #170). The same goes for
+ * one dimension when the facets come back without it.
  *
- * Without facets the values cannot be changed — there is nothing to choose
+ * Without a field the values cannot be changed — there is nothing to choose
  * among — but they can be removed, and that is all this offers.
  *
  * `Chip.Removable`, one per value, is Designsystemet's own «active filter that
- * can be removed» (chip.md). The fields normally show the same thing as chips
- * inside the Suggestion; this only appears when there are no fields, so no
- * value is ever drawn twice (behov-til-komponent.md, «Velg én av to»).
+ * can be removed» (chip.md). A field shows its own values as chips inside the
+ * Suggestion, and this shows only the ones no field does, so no value is ever
+ * drawn twice (behov-til-komponent.md, «Velg én av to»).
  *
  * The chips carry the value alone, with no dimension name, and that is not a
  * shortcut: without facets there is neither the dimension's label nor the
@@ -52,9 +49,13 @@ function keyOf({ dimension, value }: Chosen): string {
  * view) — so it is shown as it is, in the panel's dimension order. That is
  * word for word the «Avgrenset til: Årsrapport · 2024» line over the answer,
  * which is why the heading says the same.
+ *
+ * The view mounts this only while there is something to show, so the block
+ * and its section come and go together, and the last removal unmounts it.
  */
 export function ActiveFilter({
   selection,
+  chosen,
   onChange,
   focusWhenGone,
   onAnnounce,
@@ -63,70 +64,50 @@ export function ActiveFilter({
   const sectionRef = useRef<HTMLElement>(null);
   const chipRefs = useRef(new Map<string, HTMLButtonElement | null>());
   /*
-   * The chip the keyboard goes to after a removal, '' for «none left», and
-   * undefined when nothing was removed. Read in an effect, because the chip
-   * to focus is not settled until React has drawn the selection without the
-   * one that went.
+   * The chip the keyboard goes to after a removal, undefined when nothing was
+   * removed. Read in an effect, because the chip to focus is not settled
+   * until React has drawn the selection without the one that went.
    */
   const focusAfterRemove = useRef<string | undefined>(undefined);
-
-  const chosen: Chosen[] = filterDimensions.flatMap((dimension) =>
-    selection[dimension].map((value) => ({ dimension, value })),
-  );
 
   /*
    * A chip that is pressed removes itself, and focus would fall to `<body>`,
    * above the skip link (WCAG 2.4.3). The next chip is where the reader was
-   * heading, the one before is the fallback when they took the last, and the
-   * element the view hands in is what is left when there are none — the same
-   * order as «Dine dokumenter» (OwnDocuments.tsx).
+   * heading, and the one before is the fallback when they took the last — the
+   * same order as «Dine dokumenter» (OwnDocuments.tsx). When none is left,
+   * this is unmounted, and the cleanup below takes over.
    */
   useEffect(() => {
     const target = focusAfterRemove.current;
     if (target === undefined) return;
     focusAfterRemove.current = undefined;
-
-    const chip = target === '' ? undefined : chipRefs.current.get(target);
-    if (chip) chip.focus();
-    else focusWhenGone.current?.focus();
-  }, [selection, focusWhenGone]);
+    chipRefs.current.get(target)?.focus();
+  }, [selection]);
 
   /*
-   * The other way the block can go: the facets arrive — Typesense is back, and
-   * the refetch a removal started succeeded — so the view draws the fields
-   * and unmounts this. A reader standing on a chip would then be dropped on
-   * `<body>` with no action of their own to explain it.
+   * Every way the block goes away: the last chip or «Tøm» — the view then has
+   * nothing to show here — or the facets arriving, when Typesense is back and
+   * the refetch a removal started succeeded. A reader standing on a chip
+   * would be dropped on `<body>`, in the last case with no action of their
+   * own to explain it.
    *
    * A layout effect, because on unmount its cleanup runs while the chips are
    * still in the document: that is the only moment `contains` can say where
    * focus was. Focus moves to an element that stays, before the chip is
    * taken away.
-   *
-   * Keyed on whether there is a section at all, because the view mounts this
-   * before there is anything to show when a thread without a filter is open,
-   * and the section appears later, when a thread with one is opened. Read
-   * once at mount, it would be null for good.
-   *
-   * When the section goes because the last value was removed, this cleanup
-   * finds focus already on `<body>` and does nothing: React takes the chips
-   * out before it cleans up after an update. That case is the effect above.
    */
-  const shown = chosen.length > 0;
   useLayoutEffect(() => {
     const section = sectionRef.current;
     const fallback = focusWhenGone;
-    if (!section) return;
     return () => {
-      if (section.contains(document.activeElement)) fallback.current?.focus();
+      if (section?.contains(document.activeElement)) fallback.current?.focus();
     };
-  }, [shown, focusWhenGone]);
+  }, [focusWhenGone]);
 
-  if (!shown) return null;
-
-  function remove(removed: Chosen) {
+  function remove(removed: ChosenValue) {
     const index = chosen.findIndex((candidate) => keyOf(candidate) === keyOf(removed));
     const next = chosen[index + 1] ?? chosen[index - 1];
-    focusAfterRemove.current = next ? keyOf(next) : '';
+    focusAfterRemove.current = next ? keyOf(next) : undefined;
     chipRefs.current.delete(keyOf(removed));
 
     onAnnounce(`Fjernet fra filteret: ${removed.value}`);
@@ -136,10 +117,16 @@ export function ActiveFilter({
     });
   }
 
+  /*
+   * What is shown here and nothing else. With no facets that is the whole
+   * filter; with some, a field the reader can see keeps its values, and a
+   * button above other chips may not empty it.
+   */
   function clear() {
-    focusAfterRemove.current = '';
-    onAnnounce('Filteret er fjernet.');
-    onChange(emptyFilterSelection);
+    const next = { ...selection };
+    for (const { dimension } of chosen) next[dimension] = [];
+    onAnnounce('Avgrensningen er fjernet.');
+    onChange(next);
   }
 
   return (
@@ -158,7 +145,7 @@ export function ActiveFilter({
           variant="tertiary"
           data-color="neutral"
           data-size="sm"
-          aria-label="Tøm hele filteret"
+          aria-label="Tøm avgrensningen"
           onClick={clear}
         >
           Tøm

@@ -11,6 +11,7 @@ import { ViewHead } from '../../layout/ViewHead';
 import type { SlotViewProps } from '../../layout/viewModel';
 import { emptyFilterSelection, isEmptySelection, type FilterFacet } from '../../model';
 import { ActiveFilter } from './ActiveFilter';
+import { valuesWithoutField } from './withoutField';
 import { KudosDocuments } from './DocumentsList';
 import { OwnDocuments } from './OwnDocuments';
 import { CorpusLine } from './CorpusLine';
@@ -50,7 +51,7 @@ export function FiltersView({
   const { options, active, option, choosable, set } = useCorpus();
   /**
    * What the live region says after a corpus switch, or after a value is
-   * removed from a filter that has no fields to show it in (ActiveFilter).
+   * removed from a filter that has no field to show it in (ActiveFilter).
    *
    * The region already exists and already announces «Henter filtre»; this
    * reuses it rather than adding a second one, which is what the brief asks
@@ -160,11 +161,12 @@ export function FiltersView({
   const unavailableRef = useRef<HTMLDivElement>(null);
   const loading = !failed && !facets;
   /*
-   * No fields to draw the selection in: the list came back empty, or the
-   * fetch failed before any arrived. A failure on a later change keeps the
-   * fields it had (see the fetch below), and they still show the selection.
+   * What is chosen and has no field to be shown in. Nothing while loading:
+   * the fields are on their way, and chips drawn for one request would
+   * flicker. A failure on a later change keeps the fields it had (see the
+   * fetch below), and they still show their values.
    */
-  const unavailable = !loading && (!facets || facets.length === 0);
+  const withoutField = loading ? [] : valuesWithoutField(selection, facets);
 
   /*
    * Focus after a switch from the thread list. The button the user pressed
@@ -195,7 +197,7 @@ export function FiltersView({
    *
    * An answer also clears the error. Only «Prøv igjen» used to, and it was the
    * only way the selection could change while the error stood — until the
-   * active filter could be removed without fields (ActiveFilter). A removal
+   * active filter could be removed without a field (ActiveFilter). A removal
    * refetches too, and when that one succeeds the fields are back; an alert
    * saying they could not be fetched may not stand above them.
    */
@@ -403,7 +405,8 @@ export function FiltersView({
         The panel without facets: the key is missing and the server answers
         with an empty list, or the fetch failed (the alert above). In both, a
         filter stored on the thread still narrows every question, so it is
-        shown here and can be removed.
+        shown here and can be removed — and so is a value of a dimension the
+        facets came back without.
 
         One region around both, rendered permanently and focusable without
         being in the tab order — the pattern ErrorState uses. It is where
@@ -411,9 +414,9 @@ export function FiltersView({
         after, so it cannot be one of the things that come and go inside it.
         Landing here with no facets, the reader is on «Filtrering er ikke
         tilgjengelig ennå», which says what the panel is now. After a failed
-        fetch it is empty by then and says nothing — the fallback ErrorState
-        settles for too — but the tab order goes on from where the chips were,
-        and «Prøv igjen» is one Shift+Tab away.
+        fetch, or with fields on screen, it is empty by then and says nothing
+        — the fallback ErrorState settles for too — but the tab order goes on
+        from where the chips were: to the fields, or back to «Prøv igjen».
       */}
       <div ref={unavailableRef} tabIndex={-1} className="filters-view__unavailable ds-focus">
         {/*
@@ -428,16 +431,17 @@ export function FiltersView({
           <EmptyState
             title="Filtrering er ikke tilgjengelig ennå"
             description={
-              isEmptySelection(selection)
+              withoutField.length === 0
                 ? 'Du kan stille spørsmål uten å avgrense dokumentene.'
                 : undefined
             }
           />
         )}
 
-        {unavailable && (
+        {withoutField.length > 0 && (
           <ActiveFilter
             selection={selection}
+            chosen={withoutField}
             onChange={setSelection}
             focusWhenGone={unavailableRef}
             onAnnounce={setAnnouncement}

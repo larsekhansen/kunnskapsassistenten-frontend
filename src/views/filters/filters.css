@@ -183,6 +183,15 @@
 }
 
 /*
+ * The whole width, so «Tøm» lands at the end of the row as it does over each
+ * field. A field is as wide as the panel and its label row with it; here the
+ * column's `align-items: start` would shrink the row to its two words.
+ */
+.active-filter__head {
+  align-self: stretch;
+}
+
+/*
  * The chips on a row that wraps, which is what chip.md asks for — never a
  * vertical list.
  */
