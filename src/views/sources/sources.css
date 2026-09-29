@@ -196,6 +196,17 @@
   color: var(--ds-color-neutral-text-subtle);
 }
 
+/*
+  Not a quote. Every other line in this card is text from the document, and
+  this one is the panel saying the passage could not be fetched. Italic and
+  subtle keeps the two apart without a second colour: a reader who skims the
+  panel for quotes should be able to see at a glance that this is not one.
+*/
+.source-excerpt__quote--unavailable {
+  font-style: italic;
+  color: var(--ds-color-neutral-text-subtle);
+}
+
 .source-excerpt__preview {
   display: flex;
   flex-direction: column;

@@ -186,6 +186,22 @@ describe('messagesFromApi', () => {
     expect(answer?.sources).toBeUndefined();
   });
 
+  it('lar et svar staa som SITERER feilsetningen midt i teksten', () => {
+    // Moenstret er ankret med vilje. Uten ^ ville et svar som gjengir hva
+    // tjenesten sa, blitt skjult som mislykket, og leseren mistet et ekte
+    // svar (KA CC paa #182, kan 1).
+    const [answer] = messagesFromApi([
+      {
+        id: 'a',
+        role: 'assistant',
+        text: 'Loggen viser at LLM request failed at iteration 2 er den vanligste feilen [1].',
+      },
+    ]);
+
+    expect(answer?.status).toBe('complete');
+    expect(answer?.content).toContain('LLM request failed');
+  });
+
   it('lar et svar staa selv om det inneholder ordene timeout og rate limit', () => {
     // De andre moenstrene appen leser feil med er uankret med vilje, og et
     // svar om offentlige dokumenter kan godt inneholde de ordene. Et

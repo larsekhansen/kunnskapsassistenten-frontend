@@ -267,10 +267,20 @@ export function SourceExcerpt({
         </Details.Content>
       </Details>
 
+      {/* The closed card is what the reader sees first, so it has to say the
+          same thing: `previewOf('')` is an empty line, and «Utdrag 1», «Mest
+          relevant» and «Åpne» over nothing is the very riddle the sentence
+          exists to answer (KA CC on #182). */}
       {!open && (
         <div className="source-excerpt__preview">
           {quoteHeading}
-          <Paragraph data-size="sm">{previewOf(text)}</Paragraph>
+          {textUnavailable ? (
+            <Paragraph data-size="sm" className="source-excerpt__quote--unavailable">
+              {EXCERPT_UNAVAILABLE}
+            </Paragraph>
+          ) : (
+            <Paragraph data-size="sm">{previewOf(text)}</Paragraph>
+          )}
         </div>
       )}
     </Card.Block>
