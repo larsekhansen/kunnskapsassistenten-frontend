@@ -8,10 +8,9 @@ import type { Thread } from '../../model';
 import { ThreadsView } from './ThreadsView';
 
 /**
- * A race in «Endre navn», with the answers held open so the test decides the
- * order they land in (KA CC, kan 1 on #180). The other one, two renames of the
- * same thread in quick succession, is built on #3's rename store once that is
- * in, so the list and the heading follow one rule.
+ * Two races in «Endre navn», with the answers held open so the test decides
+ * the order they land in (KA CC, kan 1 and kan 2 on #180). The second follows
+ * the same rule as the rename store the heading reads (threadActions.ts).
  *
  * The list is read for real here — no `threads` override — from a client
  * whose every read waits until the test answers it.
@@ -30,6 +29,15 @@ vi.mock('../../api', async (importOriginal) => ({
 
 const now = new Date().toISOString();
 const nkom: Thread = { id: 'a', title: 'Måloppnåelse i Nkom', createdAt: now, updatedAt: now };
+
+/** A promise the test settles by hand. */
+function held() {
+  let settle!: { resolve: () => void; reject: (error: Error) => void };
+  const promise = new Promise<void>((resolve, reject) => {
+    settle = { resolve, reject };
+  });
+  return { promise, ...settle };
+}
 
 /**
  * The shell as far as the list sees it: the open thread can be changed —
@@ -97,5 +105,32 @@ describe('a rename and a read that was already out', () => {
 
     expect(menu('Nkom 2024')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Flere valg for Måloppnåelse i Nkom' })).toBeNull();
+  });
+});
+
+describe('two renames of the same thread in quick succession', () => {
+  it('does not go back to the oldest name when the first one fails', async () => {
+    const first = held();
+    const second = held();
+    const calls = [first, second];
+    const actions = {
+      rename: vi.fn(() => calls.shift()?.promise ?? Promise.resolve()),
+      remove: vi.fn(() => Promise.resolve()),
+    };
+    render(
+      <MemoryRouter>
+        <Harness actions={actions} />
+      </MemoryRouter>,
+    );
+    await answerRead([nkom]);
+
+    rename('Måloppnåelse i Nkom', 'Nkom B');
+    rename('Nkom B', 'Nkom C');
+
+    await act(async () => second.resolve());
+    await act(async () => first.reject(new Error('502')));
+
+    expect(menu('Nkom C')).toBeTruthy();
+    expect(screen.queryByText(/Klarte ikke å endre navnet/)).toBeNull();
   });
 });
