@@ -14,6 +14,8 @@
  * 2026-09-28 — see the fixtures beside this file.
  */
 
+import type { FilterDimension } from '../../model';
+
 export interface BffSource {
   docNum: string;
   title: string;
@@ -74,12 +76,28 @@ export interface BffConversationDetail {
   filter?: Record<string, string[]>;
 }
 
-/** One entry of `GET /api/facets`. */
+/**
+ * One entry of `GET /api/facets`.
+ *
+ * `id` and `valueType` come from the BFF's `KA_FILTER_FIELDS` (D16, the pod's
+ * `bff/filterkjede`). A BFF without them is the one on `8639267`, and then the
+ * field names come from this build instead (docs/arkitektur/0003).
+ */
 export interface BffFacet {
+  /** Which of the three dimensions. */
+  id?: FilterDimension;
   field: string;
+  valueType?: 'integer' | 'string';
   /** Norwegian noun in lower case: «dokumenttyper», «år». */
   label: string;
   options: { value: string; count: number }[];
+}
+
+/** The dataset the BFF answers from, as its `KA_DATASETS` names it. */
+export interface BffDataset {
+  key: string;
+  label: string;
+  description?: string;
 }
 
 /** `GET /api/capabilities`. */
@@ -87,4 +105,13 @@ export interface BffCapabilities {
   capabilities: { filters: boolean; othersThreads: boolean; threadTitles: boolean };
   /** False until the BFF's startup probe of the backend has finished. */
   settled: boolean;
+  dataset?: BffDataset;
+}
+
+/** `400` from `POST /api/ask`: more values in one field than the backend takes. */
+export interface BffFilterTooManyValues {
+  error: string;
+  code: 'filter-too-many-values';
+  field: string;
+  max: number;
 }
