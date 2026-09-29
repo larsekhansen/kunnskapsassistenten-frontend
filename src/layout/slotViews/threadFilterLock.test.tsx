@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChatClient } from '../../api/chatClient';
 import { emptyFilterSelection, type FilterSelection, type Thread } from '../../model';
@@ -66,11 +66,22 @@ const lock: FilterSelection = {
 };
 const own: FilterSelection = { ...emptyFilterSelection, documentType: ['Evaluering'] };
 
+/** A dead link, followed from inside the app: the router moves, nothing reloads. */
+function DeadLink() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => void navigate('/finnes-ikke')}>
+      Følg en død lenke
+    </button>
+  );
+}
+
 function renderApp(path: string) {
   window.history.replaceState(null, '', path);
   return render(
     <MemoryRouter initialEntries={[path]}>
       <App />
+      <DeadLink />
     </MemoryRouter>,
   );
 }
@@ -182,6 +193,33 @@ describe('the facets failing under a lock', () => {
     expect(
       await within(panel).findByText('Klarte ikke å hente filtrene.', undefined, { timeout: 5000 }),
     ).toBeTruthy();
+  });
+});
+
+describe('a dead link from a locked thread', () => {
+  it('lets the lock go, since no thread is open on «Siden finnes ikke»', async () => {
+    /*
+     * The shell is around every route, and the one for an unknown address
+     * has no ChatSlotView to say what its thread is locked to (KA CC, kan 2
+     * on #183, read in the code and measured here).
+     */
+    locks.byThread.set(LOCKED, lock);
+    renderApp(`/threads/${LOCKED}`);
+
+    const panel = await filterPanel();
+    await within(panel).findByRole('region', { name: 'Avgrenset til' });
+
+    act(() => screen.getByRole('button', { name: 'Følg en død lenke' }).click());
+    await screen.findByRole('heading', { name: 'Siden finnes ikke' });
+
+    // The panel as it is now, not the one found before the navigation: the
+    // shell for this route is another element, and a detached one would
+    // still hold the old lock.
+    const after = await filterPanel();
+    expect(after.isConnected).toBe(true);
+    await waitFor(() =>
+      expect(within(after).queryByRole('region', { name: 'Avgrenset til' })).toBeNull(),
+    );
   });
 });
 
