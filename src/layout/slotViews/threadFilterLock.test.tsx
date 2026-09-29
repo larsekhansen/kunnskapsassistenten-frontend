@@ -49,6 +49,7 @@ vi.mock('../../api', async (importOriginal) => {
 const { App } = await import('../../App');
 const { FILTER_STORAGE_KEY } = await import('../persistence');
 const { setActiveCorpusKey } = await import('../../api');
+const { createThreadActions, resetThreadRenames } = await import('../../api/threadActions');
 
 globalThis.ResizeObserver ??= class {
   observe() {}
@@ -87,6 +88,7 @@ beforeEach(() => {
   setActiveCorpusKey('mock');
   locks.byThread.clear();
   locks.facetsDown = false;
+  resetThreadRenames();
   sessionStorage.clear();
   localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(own));
 });
@@ -213,6 +215,41 @@ describe('a thread with no lock', () => {
 });
 
 describe('a new thread', () => {
+  it('keeps its lock when it is renamed', async () => {
+    /*
+     * A rename is published to the page (#185), which updates the thread it
+     * holds from it, and the lock follows that thread. A thread this page
+     * started has none read, and its lock came from reading it back: a
+     * rename must leave it standing. Green when written — the page's thread
+     * starts as null and a rename of nothing leaves it null — and here so it
+     * stays that way when either side changes.
+     */
+    locks.byThread.set('ny-laast-traad', lock);
+    renderApp('/');
+
+    const field = screen.getByRole('textbox', { name: 'Spørsmål til Kunnskapsassistenten' });
+    fireEvent.change(field, { target: { value: 'Hva rapporterer Nkom?' } });
+    act(() => screen.getByRole('button', { name: 'Send spørsmålet' }).click());
+
+    const panel = await filterPanel();
+    await within(panel).findByRole('region', { name: 'Avgrenset til' }, { timeout: 5000 });
+
+    await act(async () => {
+      await createThreadActions()?.rename(
+        {
+          id: 'ny-laast-traad',
+          conversationId: 'ny-laast-traad',
+          title: 'Hva rapporterer Nkom?',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        'Nkom og kundetilfredshet',
+      );
+    });
+
+    expect(within(panel).getByRole('region', { name: 'Avgrenset til' })).toBeTruthy();
+  });
+
   it('is locked from its first question when the backend says so', async () => {
     locks.byThread.set('ny-laast-traad', lock);
     renderApp('/');
