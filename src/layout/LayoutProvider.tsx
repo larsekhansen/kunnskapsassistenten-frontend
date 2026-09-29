@@ -7,7 +7,7 @@ import {
 } from '../model';
 import { AnswerSourcesContext } from './answerSourcesContext';
 import { CitationContext, type ActiveCitation } from './citationContext';
-import { askedSelection, FilterContext, type KnownValues } from './filterContext';
+import { askedSelection, FilterContext, sameKnownValues, type KnownValues } from './filterContext';
 import { LayoutContext } from './layoutContext';
 import {
   readStoredFilter,
@@ -89,6 +89,18 @@ export function LayoutProvider({
   const [locked, setLocked] = useState<FilterSelection | undefined>(undefined);
   /** Every value each field has, from the filter panel. See `askedSelection`. */
   const [knownValues, setKnownValues] = useState<KnownValues>({});
+  /*
+   * Kept only when the values have changed, and that is what stops a loop.
+   * The panel reports them every time its facets arrive, and its facets are
+   * fetched for the selection a question is asked with — which is worked out
+   * from these. A new object for the same values gave a new selection, a new
+   * fetch, new facets and a new object again: seven fetches every two
+   * seconds with nobody touching anything (KA CC, blokkerende 1 on #183).
+   * Handing React the previous state makes it bail out, and the round stops.
+   */
+  const reportKnownValues = useCallback((next: KnownValues) => {
+    setKnownValues((previous) => (sameKnownValues(previous, next) ? previous : next));
+  }, []);
   const [answerDocuments, setAnswerDocuments] = useState<SourceDocument[] | undefined>(undefined);
   /**
    * The sources of every answer in the thread, oldest first.
@@ -346,9 +358,9 @@ export function LayoutProvider({
       setSelection,
       locked,
       setLocked,
-      setKnownValues,
+      setKnownValues: reportKnownValues,
     }),
-    [locked, selection, knownValues],
+    [locked, selection, knownValues, reportKnownValues],
   );
 
   const answerSources = useMemo(

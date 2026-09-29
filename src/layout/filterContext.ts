@@ -56,6 +56,20 @@ export type FilterContextValue = {
 export const FilterContext = createContext<FilterContextValue | undefined>(undefined);
 
 /**
+ * Whether two sets of known values say the same thing, dimension by dimension
+ * and value by value, in order.
+ */
+export function sameKnownValues(a: KnownValues, b: KnownValues): boolean {
+  return filterDimensions.every((dimension) => {
+    const left = a[dimension];
+    const right = b[dimension];
+    if (left === right) return true;
+    if (!left || !right || left.length !== right.length) return false;
+    return left.every((value, index) => value === right[index]);
+  });
+}
+
+/**
  * The reader's choice as a question is asked with it: a field where every
  * value is ticked is left out.
  *
