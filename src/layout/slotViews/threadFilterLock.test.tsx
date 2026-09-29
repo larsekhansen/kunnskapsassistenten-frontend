@@ -15,7 +15,10 @@ import { emptyFilterSelection, type FilterSelection, type Thread } from '../../m
  * `detail.filter` does once #179 has translated it. The mock itself keeps no
  * filter on a thread, which is also what the second test relies on.
  */
-const locks = vi.hoisted(() => ({ byThread: new Map<string, FilterSelection>() }));
+const locks = vi.hoisted(() => ({
+  byThread: new Map<string, FilterSelection>(),
+  facetsDown: false,
+}));
 
 vi.mock('../../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api')>();
@@ -26,7 +29,10 @@ vi.mock('../../api', async (importOriginal) => {
       return {
         ask: (params) => inner.ask(params),
         listThreads: (signal) => inner.listThreads(signal),
-        listFacets: (signal, selection) => inner.listFacets(signal, selection),
+        listFacets: (signal, selection) =>
+          locks.facetsDown
+            ? Promise.reject(new Error('Filtrene svarte 502.'))
+            : inner.listFacets(signal, selection),
         openThread: (thread, certainty) => inner.openThread?.(thread, certainty),
         createThread: (thread: Thread) =>
           Promise.resolve({ ...thread, id: 'ny-laast-traad', conversationId: 'ny-laast-traad' }),
@@ -80,6 +86,7 @@ beforeEach(() => {
   vi.stubEnv('VITE_MOCK_SPEED', 'fast');
   setActiveCorpusKey('mock');
   locks.byThread.clear();
+  locks.facetsDown = false;
   sessionStorage.clear();
   localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(own));
 });
@@ -148,6 +155,31 @@ describe('a thread locked to a filter', () => {
       expect(within(panel).queryByRole('region', { name: 'Avgrenset til' })).toBeNull(),
     );
     expect(await within(panel).findByText('Evaluering', undefined, { timeout: 5000 })).toBeTruthy();
+  });
+});
+
+describe('the facets failing under a lock', () => {
+  it('says nothing about them while the thread is locked, since no field is drawn', async () => {
+    locks.byThread.set(LOCKED, lock);
+    locks.facetsDown = true;
+    renderApp(`/threads/${LOCKED}`);
+
+    const panel = await filterPanel();
+    await within(panel).findByRole('region', { name: 'Avgrenset til' });
+    // Long enough for the failed fetch to have landed.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 500)));
+
+    expect(within(panel).queryByText('Klarte ikke å hente filtrene.')).toBeNull();
+  });
+
+  it('does say so in a thread with no lock', async () => {
+    locks.facetsDown = true;
+    renderApp(`/threads/${LOCKED}`);
+
+    const panel = await filterPanel();
+    expect(
+      await within(panel).findByText('Klarte ikke å hente filtrene.', undefined, { timeout: 5000 }),
+    ).toBeTruthy();
   });
 });
 
