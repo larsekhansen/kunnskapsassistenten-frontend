@@ -62,11 +62,11 @@ const KNOWN_TEXTS: { pattern: RegExp; error: (match: RegExpMatchArray) => ChatEr
     error: () => ({ code: 'unknown', message: 'Forbindelsen brøt sammen mens svaret kom.' }),
   },
   // The BFF's own check on the question, the one refusal the reader can do
-  // something about — and none of the codes says «too long».
+  // something about.
   {
     pattern: /for langt \(maks (\d+) tegn\)/u,
     error: (match) => ({
-      code: 'unknown',
+      code: 'question-too-long',
       message: `Spørsmålet er lengre enn de ${match[1]} tegnene tjenesten tar imot.`,
     }),
   },

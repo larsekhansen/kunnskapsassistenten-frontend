@@ -226,7 +226,7 @@ describe('BffChatClient.ask, strømmen', () => {
       {
         type: 'error',
         error: {
-          code: 'unknown',
+          code: 'question-too-long',
           message: 'Spørsmålet er lengre enn de 2000 tegnene tjenesten tar imot.',
         },
         corpusKey: 'kudos-full',

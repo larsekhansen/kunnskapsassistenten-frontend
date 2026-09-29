@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { chatErrorText } from '../views/chat/errorText';
 import { errorFromBackend } from './backendErrors';
 
 /*
@@ -103,8 +104,22 @@ describe('errorFromBackend', () => {
 
   it('oversetter BFF-ens setning om for lange spørsmål til sin egen', () => {
     expect(errorFromBackend('Spørsmålet er for langt (maks 2000 tegn).')).toEqual({
-      code: 'unknown',
+      code: 'question-too-long',
       message: 'Spørsmålet er lengre enn de 2000 tegnene tjenesten tar imot.',
+    });
+  });
+
+  it('ber leseren korte ned et for langt spørsmål, uten å tilby samme spørsmål igjen', () => {
+    // Det leseren ser: grensen fra BFF-en, så rådet fra koden. «Prøv igjen»
+    // ville sendt det samme spørsmålet og fått samme nei.
+    const shown = chatErrorText(errorFromBackend('Spørsmålet er for langt (maks 2000 tegn).'));
+
+    expect(shown).toEqual({
+      title: 'Spørsmålet er for langt',
+      message:
+        'Spørsmålet er lengre enn de 2000 tegnene tjenesten tar imot. ' +
+        'Kort det ned, for eksempel ved å dele det i to spørsmål, og send det på nytt.',
+      retryable: false,
     });
   });
 

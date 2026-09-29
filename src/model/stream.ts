@@ -24,6 +24,9 @@ import type { SourceDocument } from './source';
  * an HTTP 5xx is `unknown`, because «språkmodellen svarer ikke» and «korpuset
  * er nede» need different things from the reader and a wrong guess sends them
  * the wrong way.
+ *
+ * `question-too-long` is the one refusal the reader can fix themselves: the
+ * BFF turns a question over its limit away before it reaches the backend.
  */
 const CHAT_ERROR_CODES = [
   'aborted',
@@ -33,6 +36,7 @@ const CHAT_ERROR_CODES = [
   'no-hits',
   'unauthorized',
   'rate-limited',
+  'question-too-long',
   'unknown',
 ] as const;
 
