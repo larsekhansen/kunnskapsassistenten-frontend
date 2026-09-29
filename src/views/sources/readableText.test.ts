@@ -140,9 +140,15 @@ describe('readableExcerptText, footnote marks and exponents stay raised', () => 
   });
 
   test('keeps a parenthesis that closes one opened before it', () => {
-    expect(readableExcerptText('Areal (1 000 m2) og utslipp (CO2), se note (3).')).toBe(
+    for (const text of [
       'Areal (1 000 m2) og utslipp (CO2), se note (3).',
-    );
+      '1) Utslipp (tonn CO2) økte i 2024.',
+      'Tiltakene er a) redusere og b) øke fangst (målt i CO2).',
+      'Vi har 1) kontor og 2) lager (1 000 m2) i Oslo.',
+    ]) {
+      expect(readableExcerptText(text)).toBe(text);
+    }
+    expect(readableExcerptText('| 1) Utslipp (CO2) | 5 |')).toBe('1) Utslipp (CO2) · 5');
   });
 
   test('keeps a list number and a section number as they are', () => {

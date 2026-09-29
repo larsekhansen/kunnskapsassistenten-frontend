@@ -122,16 +122,25 @@ function raised(text: string): string | undefined {
  * a letter, with no letter or digit after it.
  *
  * A `)` that closes a `(` earlier in the same line or cell is a parenthesis,
- * not a mark: «(1 000 m2)» and «(CO2)» keep theirs.
+ * not a mark: «(1 000 m2)» and «(CO2)» keep theirs. A `)` with nothing open
+ * closes nothing, so a numbered point before it, as in «1) Utslipp (tonn
+ * CO2)», does not cancel the `(` that is still open.
  */
 const GLUED_FOOTNOTE = /(?<=\p{L})\d{1,2}\)(?![\p{L}\p{N}])/gu;
 
+function isInsideParentheses(text: string, offset: number): boolean {
+  let depth = 0;
+  for (const char of text.slice(0, offset)) {
+    if (char === '(') depth += 1;
+    else if (char === ')') depth = Math.max(0, depth - 1);
+  }
+  return depth > 0;
+}
+
 function raiseGluedFootnotes(text: string): string {
-  return text.replace(GLUED_FOOTNOTE, (mark: string, offset: number) => {
-    const before = text.slice(0, offset);
-    const open = (before.match(/\(/g)?.length ?? 0) - (before.match(/\)/g)?.length ?? 0);
-    return open > 0 ? mark : (raised(mark) ?? mark);
-  });
+  return text.replace(GLUED_FOOTNOTE, (mark: string, offset: number) =>
+    isInsideParentheses(text, offset) ? mark : (raised(mark) ?? mark),
+  );
 }
 
 const NAMED_ENTITIES: Record<string, string> = {
