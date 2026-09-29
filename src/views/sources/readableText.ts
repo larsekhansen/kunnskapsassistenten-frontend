@@ -23,7 +23,8 @@ import type { Excerpt, SourceDocument } from '../../model';
  * What survives is what carries meaning: paragraphs and line breaks (drawn
  * with `white-space: pre-line`), list items as «•», and table rows as lines
  * with their cells joined by « · ». An empty cell inside a row becomes «–», so
- * the numbers in a sparse row keep their column.
+ * the numbers in a sparse row keep their column. Footnote marks and exponents
+ * stay raised, as superscript characters.
  *
  * **Not a sanitiser, and it does not need to be one.** The result is only
  * ever drawn as a React text node, never as HTML, so a tag that slipped
@@ -36,22 +37,33 @@ const HEADING_SEPARATOR = ' › ';
  * Markdown's backslash escapes, and the `\"` the heading path keeps from the
  * Clojure string it was cut out of.
  *
- * Swapped for a private-use character first and put back last, so an escaped
- * `*` or `|` is never read as emphasis or as a table cell on the way.
+ * Swapped for a placeholder first and put back last, so an escaped `*` or `|`
+ * is never read as emphasis or as a table cell on the way.
+ *
+ * The placeholders are Unicode noncharacters, U+FDD0 onwards: code points the
+ * standard keeps for a program's own use and never gives to text. Any the
+ * input carries are dropped first, so every placeholder put back is one made
+ * here. Private-use characters from U+E000 were used until 2026-09-29, and a
+ * real one in the text came back as ASCII: Kudos has U+E037, U+E039 and
+ * U+E03C in its chunks, which became «7», «9» and «<».
  */
+const ESCAPABLE = '\\`*_{}[]()#+-.!|"\'~<>';
 const ESCAPED = /\\([\\`*_{}[\]()#+\-.!|"'~<>])/g;
-const PRIVATE_USE_BASE = 0xe000;
-const PRIVATE_USE = /[-]/g;
+const PLACEHOLDER_BASE = 0xfdd0;
+const NONCHARACTER = /[\ufdd0-\ufdef]/g;
 
 function protectEscapes(text: string): string {
-  return text.replace(ESCAPED, (_, char: string) =>
-    String.fromCharCode(PRIVATE_USE_BASE + char.charCodeAt(0)),
-  );
+  return text
+    .replace(NONCHARACTER, '')
+    .replace(ESCAPED, (_, char: string) =>
+      String.fromCharCode(PLACEHOLDER_BASE + ESCAPABLE.indexOf(char)),
+    );
 }
 
 function restoreEscapes(text: string): string {
-  return text.replace(PRIVATE_USE, (char) =>
-    String.fromCharCode(char.charCodeAt(0) - PRIVATE_USE_BASE),
+  return text.replace(
+    NONCHARACTER,
+    (char) => ESCAPABLE[char.charCodeAt(0) - PLACEHOLDER_BASE] ?? '',
   );
 }
 
@@ -62,8 +74,78 @@ const LINE_BREAK_TAG = /<br\s*\/?>/gi;
 /**
  * An HTML tag: a letter after `<` or `</`. A `<` in prose, as in «< 5 %» or
  * «a<b», has no letter straight after it, or no `>` to close it, and stays.
+ *
+ * The name ends at a space or at a `/`, as an HTML parser reads it, so
+ * `<br/>` and `<svg/onload=…>` are tags too.
  */
-const TAG = /<\/?[a-z][a-z0-9-]*(?:\s[^<>]*)?\/?>/gi;
+const TAG = /<\/?[a-z][a-z0-9-]*(?:[\s/][^<>]*)?>/gi;
+
+/**
+ * Superscript as the characters for it, so a footnote mark or an exponent
+ * stays raised: `Husleie<sup>1)</sup>` reads «Husleie¹⁾», `m<sup>2</sup>`
+ * reads «m²». Content with a character that has no superscript form keeps
+ * its plain characters, as before.
+ *
+ * The search in the panel reads the same string, so it finds «Husleie», not
+ * «1)».
+ */
+const SUPERSCRIPT_TAG = /<sup\b[^<>]*>([\s\S]*?)<\/sup\s*>/gi;
+const RAISED: Record<string, string> = {
+  '0': '⁰',
+  '1': '¹',
+  '2': '²',
+  '3': '³',
+  '4': '⁴',
+  '5': '⁵',
+  '6': '⁶',
+  '7': '⁷',
+  '8': '⁸',
+  '9': '⁹',
+  '+': '⁺',
+  '-': '⁻',
+  '−': '⁻',
+  '=': '⁼',
+  '(': '⁽',
+  ')': '⁾',
+};
+
+function raised(text: string): string | undefined {
+  const chars = [...text];
+  return chars.every((char) => char in RAISED)
+    ? chars.map((char) => RAISED[char]).join('')
+    : undefined;
+}
+
+/**
+ * A footnote mark Marker left as plain digits: «Husleie1)» in a table cell,
+ * where the PDF had a raised «1)». One or two digits and a `)` straight after
+ * a letter, with no letter or digit after it.
+ *
+ * Only in table cells, which is where it was found (375022/117). In prose the
+ * same shape can be something else: «Q4)», or a chunk that starts inside a
+ * parenthesis its previous chunk opened («tonn CO2) per år»).
+ *
+ * A `)` that closes a `(` earlier in the same cell is a parenthesis,
+ * not a mark: «(1 000 m2)» and «(CO2)» keep theirs. A `)` with nothing open
+ * closes nothing, so a numbered point before it, as in «1) Utslipp (tonn
+ * CO2)», does not cancel the `(` that is still open.
+ */
+const GLUED_FOOTNOTE = /(?<=\p{L})\d{1,2}\)(?![\p{L}\p{N}])/gu;
+
+function isInsideParentheses(text: string, offset: number): boolean {
+  let depth = 0;
+  for (const char of text.slice(0, offset)) {
+    if (char === '(') depth += 1;
+    else if (char === ')') depth = Math.max(0, depth - 1);
+  }
+  return depth > 0;
+}
+
+function raiseGluedFootnotes(text: string): string {
+  return text.replace(GLUED_FOOTNOTE, (mark: string, offset: number) =>
+    isInsideParentheses(text, offset) ? mark : (raised(mark) ?? mark),
+  );
+}
 
 const NAMED_ENTITIES: Record<string, string> = {
   amp: '&',
@@ -100,6 +182,10 @@ function stripInline(text: string): string {
     text
       .replace(SCRIPT_OR_STYLE, '')
       .replace(HTML_COMMENT, '')
+      .replace(
+        SUPERSCRIPT_TAG,
+        (_, inner: string) => raised(inner.replace(TAG, '').trim()) ?? inner,
+      )
       .replace(TAG, '')
       // ![alt](src) before [text](href), or the image would leave its «!».
       .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
@@ -133,7 +219,11 @@ function tableRow(line: string): string | undefined {
   const cells = line
     .slice(1, -1)
     .split('|')
-    .map((cell) => stripInline(cell.replace(LINE_BREAK_TAG, ' ')).replace(/\s+/g, ' ').trim());
+    .map((cell) =>
+      raiseGluedFootnotes(stripInline(cell.replace(LINE_BREAK_TAG, ' ')))
+        .replace(/\s+/g, ' ')
+        .trim(),
+    );
   while (cells.length > 0 && cells.at(-1) === '') cells.pop();
   if (cells.length === 0) return undefined;
   return cells.map((cell) => cell || '–').join(' · ');
