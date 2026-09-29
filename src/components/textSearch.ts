@@ -56,15 +56,27 @@ export const MIN_QUERY_LENGTH = 2;
  * the length of every Norwegian character, æ ø å included, so the offsets stay
  * valid against the original string — which is what lets us search a
  * lowercased copy and highlight the original.
+ *
+ * Superscript digits and signs compare as the plain ones, so «m2» finds the
+ * «m²» the sources panel shows for `m<sup>2</sup>`
+ * (src/views/sources/readableText.ts): a keyboard has no «²». Each is one
+ * UTF-16 unit, as the character it stands for is, so the offsets hold here
+ * too.
  */
 export function findHits(items: SearchableItem[], query: string): SearchHit[] {
-  const needle = query.trim().toLowerCase();
+  const raised = '⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾';
+  const plain = '0123456789+-=()';
+  const raisedChar = new RegExp(`[${raised}]`, 'g');
+  const fold = (text: string) =>
+    text.toLowerCase().replace(raisedChar, (char) => plain[raised.indexOf(char)] ?? char);
+
+  const needle = fold(query.trim());
   if (needle.length < MIN_QUERY_LENGTH) return [];
 
   const hits: SearchHit[] = [];
 
   for (const item of items) {
-    const haystack = item.text.toLowerCase();
+    const haystack = fold(item.text);
     let from = 0;
 
     for (;;) {
