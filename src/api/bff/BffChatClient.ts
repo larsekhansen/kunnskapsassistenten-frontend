@@ -515,13 +515,14 @@ async function errorFromResponse(response: Response): Promise<ChatError> {
   if (body.code === 'filter-too-many-values') {
     return {
       code: 'filter-refused',
-      message: 'Filteret har mer enn 100 verdier valgt i ett felt.',
+      message: 'Filteret har mer enn 100 verdier valgt i ett felt. Velg høyst 100, eller alle.',
     };
   }
   if (body.code === 'filter-invalid-value') {
     return {
       code: 'filter-refused',
-      message: 'Et av valgene i filteret har tegn eller en lengde søket ikke tar imot.',
+      message:
+        'Et av valgene i filteret har tegn eller en lengde søket ikke tar imot. Fjern det valget.',
     };
   }
   if (typeof body.error !== 'string' || !body.error.trim()) return fromStatus;

@@ -40,6 +40,7 @@ const SHOWN: ChatErrorCode[] = [
   'rate-limited',
   'question-too-long',
   'thread-not-found',
+  'filter-refused',
   'unknown',
 ];
 
@@ -80,6 +81,18 @@ describe('chatErrorText', () => {
     }
     // The same question with the same key fails the same way.
     expect(chatErrorText({ code: 'unauthorized' }).retryable).toBe(false);
+  });
+
+  it('offers no retry on a refused filter, which would send the same filter again', () => {
+    const text = chatErrorText({
+      code: 'filter-refused',
+      message: 'Filteret har mer enn 100 verdier valgt i ett felt.',
+    });
+    expect(text.retryable).toBe(false);
+    expect(text.title).toBe('Filteret kan ikke brukes');
+    expect(text.message).toBe(
+      'Filteret har mer enn 100 verdier valgt i ett felt. Endre filteret i filterpanelet, og spør på nytt.',
+    );
   });
 
   it('lets the layer that caught it write the first sentence, not the advice', () => {

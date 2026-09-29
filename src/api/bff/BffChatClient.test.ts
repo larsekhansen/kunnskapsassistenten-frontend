@@ -557,7 +557,7 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
       type: 'error',
       error: {
         code: 'filter-refused',
-        message: 'Filteret har mer enn 100 verdier valgt i ett felt.',
+        message: 'Filteret har mer enn 100 verdier valgt i ett felt. Velg høyst 100, eller alle.',
       },
     });
   });
@@ -579,7 +579,8 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
       type: 'error',
       error: {
         code: 'filter-refused',
-        message: 'Et av valgene i filteret har tegn eller en lengde søket ikke tar imot.',
+        message:
+          'Et av valgene i filteret har tegn eller en lengde søket ikke tar imot. Fjern det valget.',
       },
     });
   });

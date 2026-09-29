@@ -80,7 +80,7 @@ const BY_CODE: Record<Exclude<ChatErrorCode, 'aborted' | 'no-hits'>, ChatErrorTe
   'filter-refused': {
     title: 'Filteret kan ikke brukes',
     what: 'Tjenesten tar ikke imot filteret slik det er valgt.',
-    advice: 'Endre filteret til høyst 100 verdier i hvert felt, eller alle, og spør på nytt.',
+    advice: 'Endre filteret i filterpanelet, og spør på nytt.',
     retryable: false,
   },
   'thread-not-found': {
