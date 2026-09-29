@@ -1,3 +1,4 @@
+import type { FilterSelection } from './filter';
 import type { Message } from './message';
 
 /**
@@ -63,6 +64,15 @@ export interface Thread {
 /** A thread with its messages, the shape a thread route needs. */
 export interface ThreadDetail extends Thread {
   messages: Message[];
+  /**
+   * The filter the thread was started with, which every question in it is
+   * asked with. By dimension, as the filter panel holds it.
+   *
+   * Absent when the thread has none, and when the client cannot know: the
+   * mock and live keep no filter on a thread, and the BFF keeps it in memory
+   * (docs/arkitektur/0003-felt-og-korpus-fra-bff.md).
+   */
+  filter?: FilterSelection;
 }
 
 /**

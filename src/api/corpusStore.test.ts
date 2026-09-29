@@ -183,3 +183,53 @@ describe('når lagring er avslått', () => {
     setItem.mockRestore();
   });
 });
+
+describe('korpuset BFF-en navngir (D16)', () => {
+  const KUDOS = {
+    key: 'kudos-full',
+    label: 'Kudos',
+    description: '10 064 dokumenter fra kudos.dfo.no',
+  };
+
+  it('erstatter byggets korpus med BFF-ens, og sier fra til dem som lytter', async () => {
+    const corpus = await load({ mode: 'bff', datasets: '', configured: 'kudos-full' });
+    expect(corpus.corpusOption('kudos-full')?.label).toBe('kudos-full');
+    const heard = vi.fn();
+    corpus.subscribeToCorpus(heard);
+    corpus.adoptServerCorpus(KUDOS);
+    expect(corpus.corpusOptions).toEqual([KUDOS]);
+    expect(corpus.activeCorpusKey()).toBe('kudos-full');
+    expect(corpus.corpusDisplayNameFor('kudos-full')).toBe('Kudos');
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
+
+  it('gir et nytt øyeblikksbilde når navnet kommer, selv med samme nøkkel', async () => {
+    const corpus = await load({ mode: 'bff', datasets: '', configured: 'kudos-full' });
+    const before = corpus.activeCorpus();
+    expect(corpus.activeCorpus()).toBe(before);
+    corpus.adoptServerCorpus(KUDOS);
+    const after = corpus.activeCorpus();
+    expect(after).not.toBe(before);
+    expect(after).toMatchObject({ key: 'kudos-full', option: KUDOS });
+    expect(corpus.activeCorpus()).toBe(after);
+  });
+
+  it('sier ikke fra når det samme kommer en gang til', async () => {
+    const corpus = await load({ mode: 'bff', datasets: '', configured: 'kudos-full' });
+    corpus.adoptServerCorpus(KUDOS);
+    const heard = vi.fn();
+    corpus.subscribeToCorpus(heard);
+    corpus.adoptServerCorpus({ ...KUDOS });
+    expect(heard).not.toHaveBeenCalled();
+  });
+
+  it('rører ikke mock eller live, som har sine egne lister', async () => {
+    const corpus = await load();
+    corpus.adoptServerCorpus(KUDOS);
+    expect(corpus.corpusOptions.map((option) => option.key)).toEqual([
+      'norquad-docs',
+      'kudos-pilot',
+    ]);
+    expect(corpus.activeCorpusKey()).toBe('norquad-docs');
+  });
+});

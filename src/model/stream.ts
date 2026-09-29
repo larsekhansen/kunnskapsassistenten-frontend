@@ -29,6 +29,9 @@ import type { SourceDocument } from './source';
  * BFF turns a question over its limit away before it reaches the backend.
  * `thread-not-found` is a follow-up in a thread the BFF no longer has, most
  * likely deleted elsewhere; asking again there gets the same answer.
+ * `filter-refused` is the BFF turning the reader's filter away — more than
+ * 100 values in one field, or a value the backend does not take — and it
+ * too comes back the same until the filter is changed.
  */
 const CHAT_ERROR_CODES = [
   'aborted',
@@ -40,6 +43,7 @@ const CHAT_ERROR_CODES = [
   'rate-limited',
   'question-too-long',
   'thread-not-found',
+  'filter-refused',
   'unknown',
 ] as const;
 

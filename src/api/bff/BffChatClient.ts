@@ -10,6 +10,7 @@ import type { AskParams, ChatClient, ThreadCertainty } from '../chatClient';
 import { filterFieldsFor } from '../filterFields';
 import type { DatasetFilterFields } from '../filterFields';
 import { errorFromBackend, errorFromStatus } from '../backendErrors';
+import { adoptServerCorpus } from '../corpus';
 import { createSseDecoder } from '../live/sse';
 import type {
   BffAskRequest,
@@ -17,10 +18,18 @@ import type {
   BffConversationDetail,
   BffConversationSummary,
   BffFacet,
+  BffFilterRefused,
   BffTurnEvent,
 } from './contract';
 import { facetsFrom } from '../facets';
-import { BffTurnState, filterBody, threadDetailFromBff, threadFromSummary } from './mapping';
+import {
+  BffTurnState,
+  fieldsFromFacets,
+  filterBody,
+  selectionFromBff,
+  threadDetailFromBff,
+  threadFromSummary,
+} from './mapping';
 
 export type BffChatClientOptions = {
   /** Where the BFF's API is. Relative: the BFF serves this client itself. */
@@ -44,7 +53,7 @@ export type BffChatClientOptions = {
   onUnauthorized?: () => void;
   /**
    * How long to wait between asking whether the BFF's startup probe has
-   * finished. See `#capabilities`.
+   * finished. See `#capabilities` and `SETTLE_DELAYS_MS`.
    */
   settleDelaysMs?: number[];
 };
@@ -97,21 +106,58 @@ function awaitCreation(): NonNullable<typeof creation> {
 /** What the BFF can do, once it has said so for certain. Kept for the page's life. */
 let settledCapabilities: BffCapabilities | undefined;
 
-/** For tests: forget the open conversation, the waiting thread and the probe. */
+/**
+ * The BFF's facets, once it has given some. Kept for the page's life, like
+ * the probe: they are a corpus's, and the BFF itself holds them ten minutes.
+ * An empty answer is not kept, because that is also what a BFF without
+ * Typesense says.
+ */
+let knownFacets: BffFacet[] | undefined;
+
+/** Whether the deployment has been asked for its corpus on this page. */
+let primed = false;
+
+/** For tests: forget the open conversation, the waiting thread, the probe and the facets. */
 export function resetBffClient(): void {
   openConversation = undefined;
   creation = undefined;
   settledCapabilities = undefined;
+  knownFacets = undefined;
+  primed = false;
   redirecting = false;
 }
+
+/**
+ * How long the filter panel waits for the BFF's startup probe, between asks.
+ *
+ * Quicker at first, then every 15 seconds for as long as the BFF says the
+ * probe is still out (see `#capabilities`). One search in the probe took
+ * 12–15 seconds at load 29, and the probe retries for about nine minutes
+ * before it decides (#4, 29.09). The first version gave up after 12 seconds,
+ * and a page loaded while the BFF was slow then had a dead panel for good.
+ * While it waits, the panel says «Henter filtre».
+ */
+const SETTLE_DELAYS_MS = [2000, 3000, 5000, 5000, 5000, 10_000, 10_000, 15_000, 15_000];
 
 const NOT_SETTLED: BffCapabilities = {
   capabilities: { filters: false, othersThreads: false, threadTitles: false },
   settled: false,
 };
 
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** A pause the caller can cut short, which then throws its abort reason. */
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', stop);
+      resolve();
+    }, ms);
+    const stop = () => {
+      clearTimeout(timer);
+      reject(signal?.reason);
+    };
+    signal?.addEventListener('abort', stop, { once: true });
+  });
 }
 
 /**
@@ -135,7 +181,7 @@ export class BffChatClient implements ChatClient {
     this.#corpusKey = options.datasetConfigKey ?? (() => undefined);
     this.#filterFields = options.filterFields ?? filterFieldsFor;
     this.#onUnauthorized = options.onUnauthorized ?? toLogin;
-    this.#settleDelaysMs = options.settleDelaysMs ?? [2000, 4000, 6000];
+    this.#settleDelaysMs = options.settleDelaysMs ?? SETTLE_DELAYS_MS;
   }
 
   /** Every call goes through here, so a 401 anywhere leads to sign-in. */
@@ -170,20 +216,68 @@ export class BffChatClient implements ChatClient {
    * No abort signal, on purpose. The answer is shared, and one caller giving
    * up must not decide it for the others.
    */
-  async #capabilities(patient = false): Promise<BffCapabilities> {
+  async #capabilities(patient = false, signal?: AbortSignal): Promise<BffCapabilities> {
     if (settledCapabilities) return settledCapabilities;
 
     const delays = patient ? this.#settleDelaysMs : [];
     for (let attempt = 0; ; attempt += 1) {
-      const found = await this.#json<BffCapabilities>('/capabilities').catch(() => NOT_SETTLED);
+      let reached = true;
+      const found = await this.#json<BffCapabilities>('/capabilities').catch(() => {
+        reached = false;
+        return NOT_SETTLED;
+      });
+      // The corpus is the deployment's and not the probe's, so an unsettled
+      // answer names it as well as a settled one.
+      if (found.dataset) adoptServerCorpus(found.dataset);
       if (found.settled) {
         settledCapabilities = found;
         return found;
       }
-      const delay = delays[attempt];
-      if (delay === undefined) return found;
-      await wait(delay);
+      // Past the first delays, the panel keeps asking at the last one for as
+      // long as the BFF says its probe is still out: the probe retries for
+      // about nine minutes before it decides (#4's bff/infra-rettelser). A
+      // BFF that cannot be reached is not waited for like that; the panel
+      // gets an error it can offer «Prøv igjen» on.
+      const delay = delays[attempt] ?? (reached ? delays.at(-1) : undefined);
+      if (delay === undefined) {
+        if (patient && delays.length > 0 && !reached) throw new Error('/capabilities unreachable');
+        return found;
+      }
+      await wait(delay, signal);
     }
+  }
+
+  /**
+   * Ask the deployment for its corpus, once per page, without waiting for the
+   * answer. The shell calls it when it builds the client, so the corpus's
+   * name is there before anyone opens the filter panel.
+   */
+  prime(): void {
+    if (primed) return;
+    primed = true;
+    void this.#capabilities();
+  }
+
+  /** The BFF's facets, or none. Throws when the BFF cannot be reached. */
+  async #facets(signal?: AbortSignal): Promise<BffFacet[]> {
+    if (knownFacets) return knownFacets;
+    const { facets } = await this.#json<{ facets?: BffFacet[] }>('/facets', signal);
+    if (facets?.length) knownFacets = facets;
+    return facets ?? [];
+  }
+
+  /**
+   * The corpus's field names per dimension: the BFF's own when it tags its
+   * facets (D16), and this build's configuration for a BFF that does not.
+   */
+  #fieldsFor(facets: BffFacet[], corpusKey: string | undefined): DatasetFilterFields | undefined {
+    return fieldsFromFacets(facets) ?? this.#filterFields(corpusKey);
+  }
+
+  /** The field names without failing: a question is asked even if the facets are not there. */
+  async #fields(corpusKey: string | undefined): Promise<DatasetFilterFields | undefined> {
+    const facets = await this.#facets().catch(() => []);
+    return this.#fieldsFor(facets, corpusKey);
   }
 
   /** Nothing to send when the BFF says its backend cannot filter. */
@@ -191,7 +285,10 @@ export class BffChatClient implements ChatClient {
     selection: FilterSelection | undefined,
     corpusKey: string | undefined,
   ): Promise<Record<string, string[]> | undefined> {
-    const body = filterBody(selection, this.#filterFields(corpusKey));
+    if (!selection || Object.values(selection).every((values) => values.length === 0)) {
+      return undefined;
+    }
+    const body = filterBody(selection, await this.#fields(corpusKey));
     if (!body) return undefined;
     const { capabilities: can } = await this.#capabilities();
     return can.filters ? body : undefined;
@@ -353,17 +450,30 @@ export class BffChatClient implements ChatClient {
     }
   }
 
-  /** Null for «not there» and «could not ask», as in live. */
+  /**
+   * Null for «not there» and «could not ask», as in live.
+   *
+   * With the filter the BFF has locked the thread to, by dimension, so the
+   * panel and «Avgrenset til» can say what the answers were asked with.
+   */
   async getThread(threadId: string, signal?: AbortSignal): Promise<ThreadDetail | null> {
+    let detail: BffConversationDetail;
     try {
-      const detail = await this.#json<BffConversationDetail>(
+      detail = await this.#json<BffConversationDetail>(
         `/conversations/${encodeURIComponent(threadId)}`,
         signal,
       );
-      return detail.conversation ? threadDetailFromBff(detail, this.#corpusKey()) : null;
     } catch {
       return null;
     }
+    if (!detail.conversation) return null;
+
+    const corpusKey = this.#corpusKey();
+    const thread = threadDetailFromBff(detail, corpusKey);
+    const filter = detail.filter
+      ? selectionFromBff(detail.filter, await this.#fields(corpusKey))
+      : undefined;
+    return filter ? { ...thread, filter } : thread;
   }
 
   /**
@@ -374,13 +484,13 @@ export class BffChatClient implements ChatClient {
    * Throws when the BFF cannot be reached, so the panel can offer to try again.
    */
   async listFacets(signal?: AbortSignal, selection?: FilterSelection): Promise<FilterFacet[]> {
-    const { capabilities: can } = await this.#capabilities(true);
+    const { capabilities: can } = await this.#capabilities(true, signal);
     // The probe is not the caller's to cancel (see above), so the caller's
     // own abort is honoured here — the panel drops a stale answer by it.
     signal?.throwIfAborted();
     if (!can.filters) return [];
-    const { facets } = await this.#json<{ facets?: BffFacet[] }>('/facets', signal);
-    return facetsFrom(facets ?? [], this.#filterFields(this.#corpusKey()), selection);
+    const facets = await this.#facets(signal);
+    return facetsFrom(facets, this.#fieldsFor(facets, this.#corpusKey()), selection);
   }
 }
 
@@ -395,7 +505,26 @@ export class BffChatClient implements ChatClient {
 async function errorFromResponse(response: Response): Promise<ChatError> {
   const fromStatus = errorFromStatus(response.status);
   if (fromStatus.code !== 'unknown') return fromStatus;
-  const body = (await response.json().catch(() => ({}))) as { error?: unknown };
+  const body = (await response.json().catch(() => ({}))) as Partial<BffFilterRefused> & {
+    error?: unknown;
+  };
+  // The panel says so before it gets this far (#2); this is the BFF refusing
+  // what a panel let through, in words this client wrote.
+  // Its own code, so the reader is told what to change and is not offered a
+  // «Prøv igjen» that sends the same filter to the same refusal.
+  if (body.code === 'filter-too-many-values') {
+    return {
+      code: 'filter-refused',
+      message: 'Filteret har mer enn 100 verdier valgt i ett felt. Velg høyst 100, eller alle.',
+    };
+  }
+  if (body.code === 'filter-invalid-value') {
+    return {
+      code: 'filter-refused',
+      message:
+        'Et av valgene i filteret har tegn eller en lengde søket ikke tar imot. Fjern det valget.',
+    };
+  }
   if (typeof body.error !== 'string' || !body.error.trim()) return fromStatus;
   const fromText = errorFromBackend(body.error);
   return fromText.code === 'unknown' && !fromText.message ? fromStatus : fromText;

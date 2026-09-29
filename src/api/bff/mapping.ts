@@ -14,6 +14,7 @@ import { relevanceFromRank, toCitations } from '../live/mcp';
 import type {
   BffConversationDetail,
   BffConversationSummary,
+  BffFacet,
   BffSource,
   BffTurnEvent,
 } from './contract';
@@ -243,4 +244,52 @@ export class BffTurnState {
     }
     return { id, kind, label: SEARCH_LABEL, ...(queries ? { queries } : {}) };
   }
+}
+
+/**
+ * The field names per dimension, as the BFF says them, or undefined when it
+ * says none.
+ *
+ * A BFF with `KA_FILTER_FIELDS` tags each facet with its dimension and value
+ * type (D16), so the corpus's field names are the deployment's and nothing is
+ * baked into this build. Undefined, and not `{}`, for a BFF that tags none —
+ * the one on `8639267` — so the caller can tell «no fields» from «ask the
+ * build» (docs/arkitektur/0003-felt-og-korpus-fra-bff.md).
+ */
+export function fieldsFromFacets(facets: BffFacet[]): DatasetFilterFields | undefined {
+  const fields: DatasetFilterFields = {};
+  for (const facet of facets) {
+    if (!facet.id || !filterDimensions.includes(facet.id) || fields[facet.id]) continue;
+    fields[facet.id] = {
+      field: facet.field,
+      ...(facet.valueType ? { valueType: facet.valueType } : {}),
+    };
+  }
+  return Object.keys(fields).length > 0 ? fields : undefined;
+}
+
+/**
+ * A thread's filter from the BFF, by dimension, or undefined when it has none.
+ *
+ * The BFF keys it by the corpus's field names, the way the question sent it;
+ * the panel and «Avgrenset til» hold it by dimension. A field no dimension is
+ * mapped to is left out: there is nowhere to show it, and guessing which
+ * dimension it was would show the reader a filter that is not the one used.
+ */
+export function selectionFromBff(
+  filter: Record<string, string[]> | undefined,
+  fields: DatasetFilterFields | undefined,
+): FilterSelection | undefined {
+  if (!filter || !fields) return undefined;
+  const selection: FilterSelection = { documentType: [], organisation: [], year: [] };
+  for (const dimension of filterDimensions) {
+    const field = fields[dimension]?.field;
+    const values = field && Object.hasOwn(filter, field) ? filter[field] : undefined;
+    if (Array.isArray(values)) {
+      selection[dimension] = values.filter((value): value is string => typeof value === 'string');
+    }
+  }
+  return filterDimensions.some((dimension) => selection[dimension].length > 0)
+    ? selection
+    : undefined;
 }

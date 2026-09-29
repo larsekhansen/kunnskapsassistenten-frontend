@@ -322,6 +322,7 @@ export function corpusDisplayNameFor(key: string | undefined): string {
 export function setActiveCorpusKey(key: string): void {
   if (key === active || !corpusOptions.some((option) => option.key === key)) return;
   active = key;
+  revision += 1;
 
   try {
     localStorage.setItem(CORPUS_STORAGE_KEY, key);
@@ -335,4 +336,62 @@ export function setActiveCorpusKey(key: string): void {
 export function subscribeToCorpus(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/**
+ * Bumped whenever what the store says changes: the key, or what is known
+ * about the corpus it names. The corpus the BFF names can arrive under the
+ * same key the build had, with a better name, and a key that did not change
+ * would not redraw.
+ */
+let revision = 0;
+
+export type ActiveCorpusSnapshot = {
+  key: string | undefined;
+  option: CorpusOption | undefined;
+};
+
+let snapshot: (ActiveCorpusSnapshot & { revision: number }) | undefined;
+
+/**
+ * The active corpus, as one object that is the same object until the store
+ * changes — which is what `useSyncExternalStore` needs from a snapshot.
+ */
+export function activeCorpus(): ActiveCorpusSnapshot {
+  if (snapshot?.revision !== revision) {
+    snapshot = { revision, key: active, option: corpusOption(active) };
+  }
+  return snapshot;
+}
+
+/**
+ * The corpus as the BFF names it, from `GET /api/capabilities` (D16).
+ *
+ * The BFF answers from one dataset, set in its own environment, so what it
+ * says replaces whatever this build was told: the one option becomes the
+ * BFF's, and it is the active one. Not stored, because it is the server's
+ * fact and not the reader's choice, and the next page load asks again.
+ *
+ * Only in bff mode; the mock and live keep their own lists
+ * (docs/arkitektur/0003-felt-og-korpus-fra-bff.md).
+ */
+export function adoptServerCorpus(corpus: CorpusOption): void {
+  if (kaEnv().VITE_API_MODE !== 'bff' || !corpus.key || !corpus.label) return;
+  const current = corpusOptions.length === 1 ? corpusOptions[0] : undefined;
+  if (
+    active === corpus.key &&
+    current?.key === corpus.key &&
+    current.label === corpus.label &&
+    current.description === corpus.description
+  ) {
+    return;
+  }
+  corpusOptions.splice(0, corpusOptions.length, {
+    key: corpus.key,
+    label: corpus.label,
+    ...(corpus.description ? { description: corpus.description } : {}),
+  });
+  active = corpus.key;
+  revision += 1;
+  for (const listener of [...listeners]) listener();
 }
