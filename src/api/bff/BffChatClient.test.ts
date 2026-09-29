@@ -113,13 +113,14 @@ describe('BffChatClient.ask, strømmen', () => {
     fakeBff();
     const events = await drain(client().ask({ query: 'Hva skriver DFØ?' }));
 
+    /*
+     * Denne fiksturen er tatt opp fra BFF-en før den sendte `thinking` og
+     * `tool-call`, så den bærer bare `stage`. Av dem blir bare `done` et
+     * steg, som i live. Stegene fra en BFF som sender alt, står i
+     * `mappingThinking.test.ts` med sin egen fikstur.
+     */
     const steps = events.flatMap((event) => (event.type === 'thinking-step' ? [event.step] : []));
-    expect(steps.map((step) => step.kind)).toEqual(['search', 'read', 'finalizing']);
-    expect(steps[0]?.queries).toEqual([
-      'DFØ årsrapport 2024 måloppnåelse',
-      'site:dfo.no årsrapport 2024 måloppnåelse DFØ',
-      'Direktoratet for forvaltning og økonomistyring årsrapport 2024 vurdering måloppnåelse',
-    ]);
+    expect(steps.map((step) => step.kind)).toEqual(['finalizing']);
 
     const text = events.flatMap((event) => (event.type === 'token' ? [event.text] : [])).join('');
     expect(text).toMatch(/^DFØ skriver at virksomheten «i all hovedsak \[har\] oppnådd/);
@@ -137,10 +138,17 @@ describe('BffChatClient.ask, strømmen', () => {
     expect(sources.documents[0]?.excerpts[0]).toMatchObject({ citationNumber: 1 });
     expect(sources.documents[0]?.excerpts[0]?.text).toHaveLength(8363);
     expect(sources.citations).toEqual([{ number: 1, excerptId: '372017-1', documentId: '372017' }]);
+    // Søkeordene skrives ut, ikke leses av første steg: det steget er nå
+    // «Jeg skriver svaret …», som ikke har noen. Ordene samles fortsatt fra
+    // `stage`, som er alt denne fiksturen bærer.
     expect(sources.retrieval).toEqual({
       hitCount: 1,
       documentCount: 1,
-      keywords: steps[0]?.queries,
+      keywords: [
+        'DFØ årsrapport 2024 måloppnåelse',
+        'site:dfo.no årsrapport 2024 måloppnåelse DFØ',
+        'Direktoratet for forvaltning og økonomistyring årsrapport 2024 vurdering måloppnåelse',
+      ],
     });
 
     expect(events.at(-1)).toMatchObject({
