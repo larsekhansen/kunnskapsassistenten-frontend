@@ -1,7 +1,16 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations, setColorScheme } from './a11y';
 import { MOCK_FAILURE_QUERY } from '../../src/api/mock';
-import { ask, citation, composer, expectEveryStepReachable, walkWithTab } from './helpers';
+import {
+  ANSWER_TIMEOUT,
+  ask,
+  citation,
+  composer,
+  expectEveryStepReachable,
+  walkWithTab,
+  MOCK,
+  REAL_ANSWER,
+} from './helpers';
 
 /**
  * The chat: the greeting, the question, the streamed answer and what a reader
@@ -16,7 +25,7 @@ test.describe('hovedkolonnen', () => {
     await page.goto('/');
   });
 
-  test('den tomme tilstanden er en hilsen og tre forslag', async ({ page }, testInfo) => {
+  test('den tomme tilstanden er en hilsen og tre forslag', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'kickstarter fyller feltet');
 
     await expect(page.getByRole('heading', { name: /^Hei/ })).toBeVisible();
@@ -27,7 +36,7 @@ test.describe('hovedkolonnen', () => {
     await expectNoAxeViolations(page, 'den tomme tilstanden');
   });
 
-  test('en kickstarter fyller feltet og sender ikke', async ({ page }, testInfo) => {
+  test('en kickstarter fyller feltet og sender ikke', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'kickstarter fyller feltet');
 
     const suggestion = page.getByRole('button', { name: /^Hva rapporteres om regnskap/ });
@@ -41,118 +50,140 @@ test.describe('hovedkolonnen', () => {
     await expect(page.getByRole('button', { name: 'Avbryt genereringen' })).toHaveCount(0);
   });
 
-  test('et spørsmål gir et strømmet svar med kildemarkører', async ({ page }, testInfo) => {
-    covers(testInfo, 'spørsmål gir strømmet svar med [n]-markører');
+  test(
+    'et spørsmål gir et strømmet svar med kildemarkører',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'spørsmål gir strømmet svar med [n]-markører');
 
-    await composer(page).click();
-    await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
-    await page.keyboard.press('Enter');
+      await composer(page).click();
+      await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
+      await page.keyboard.press('Enter');
 
-    // While it works: the stop button is there and the field is empty again.
-    await expect(page.getByRole('button', { name: 'Avbryt genereringen' })).toBeVisible();
-    await expect(composer(page)).toHaveValue('');
+      // While it works: the stop button is there and the field is empty again.
+      await expect(page.getByRole('button', { name: 'Avbryt genereringen' })).toBeVisible();
+      await expect(composer(page)).toHaveValue('');
 
-    // The question is in the list as the reader's own words. Scoped to the
-    // user's own message rather than looked for anywhere on the page: since
-    // 2026-09-15 the thread heading is the same question with the sentence
-    // mark stripped, so an unscoped search matches this one only because of
-    // a "?" — which is a reason for a test to pass, not the reason it should.
-    await expect(
-      page.locator('.ka-message--user').getByText('Hvordan jobber Nkom med måloppnåelse?'),
-    ).toBeVisible();
+      // The question is in the list as the reader's own words. Scoped to the
+      // user's own message rather than looked for anywhere on the page: since
+      // 2026-09-15 the thread heading is the same question with the sentence
+      // mark stripped, so an unscoped search matches this one only because of
+      // a "?" — which is a reason for a test to pass, not the reason it should.
+      await expect(
+        page.locator('.ka-message--user').getByText('Hvordan jobber Nkom med måloppnåelse?'),
+      ).toBeVisible();
 
-    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
-      timeout: 30_000,
-    });
+      await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
+        timeout: ANSWER_TIMEOUT,
+      });
 
-    // The markers are links to the excerpts, and their names say where they go
-    // rather than just «[1]».
-    const markers = page.locator('main a[href^="#excerpt-"]');
-    expect(await markers.count()).toBeGreaterThan(0);
-    await expect(markers.first()).toHaveAttribute('aria-label', /^Kilde 1: /);
+      // The markers are links to the excerpts, and their names say where they go
+      // rather than just «[1]». Any number: a real model need not cite [1]
+      // first, and the mock always did, so «Kilde 1» tested the mock.
+      const markers = page.locator('main a[href^="#excerpt-"]');
+      expect(await markers.count()).toBeGreaterThan(0);
+      await expect(markers.first()).toHaveAttribute('aria-label', /^Kilde \d+: /);
 
-    // «Fremgangsmåte» arrives with the answer, open, with the hit count.
-    await expect(page.getByText(/\d+ treff i \d+ dokumenter/)).toBeVisible();
+      // «Fremgangsmåte» arrives with the answer, open, with the hit count. One
+      // document is «1 dokument», which a real corpus often gives.
+      await expect(page.getByText(/\d+ treff i \d+ dokument(er)?/)).toBeVisible();
 
-    await expectNoAxeViolations(page, 'et ferdig svar');
-  });
+      await expectNoAxeViolations(page, 'et ferdig svar');
+    },
+  );
 
-  test('avbryt stopper genereringen og beholder teksten som kom', async ({ page }, testInfo) => {
-    covers(testInfo, 'avbryt stopper');
+  test(
+    'avbryt stopper genereringen og beholder teksten som kom',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'avbryt stopper');
 
-    await composer(page).click();
-    await page.keyboard.type('Hva står i årsrapporten?');
-    await page.keyboard.press('Enter');
+      await composer(page).click();
+      await page.keyboard.type('Hva står i årsrapporten?');
+      await page.keyboard.press('Enter');
 
-    const stop = page.getByRole('button', { name: 'Avbryt genereringen' });
-    await expect(stop).toBeVisible();
+      const stop = page.getByRole('button', { name: 'Avbryt genereringen' });
+      await expect(stop).toBeVisible();
 
-    // Wait for text to have started before stopping, so «keeps what arrived»
-    // means something.
-    await expect(page.locator('.ka-answer-card')).toBeVisible();
-    await page.waitForTimeout(2500);
-    const partial = (await page.locator('.ka-answer-card').first().textContent()) ?? '';
+      // Wait for text to have started before stopping, so «keeps what arrived»
+      // means something.
+      await expect(page.locator('.ka-answer-card')).toBeVisible();
+      await page.waitForTimeout(2500);
+      const partial = (await page.locator('.ka-answer-card').first().textContent()) ?? '';
 
-    await stop.focus();
-    await stop.press('Enter');
+      await stop.focus();
+      await stop.press('Enter');
 
-    // The button the reader pressed is gone; focus must not be on the body.
-    await expect(composer(page)).toBeFocused();
-    await expect(stop).toHaveCount(0);
+      // The button the reader pressed is gone; focus must not be on the body.
+      await expect(composer(page)).toBeFocused();
+      await expect(stop).toHaveCount(0);
 
-    // Cancelling is not an error, and the partial answer stays. The alert is
-    // checked by what it would show rather than by its role: an empty
-    // `.error-state` is `display: none` in global.css and therefore not in the
-    // accessibility tree at all. That is a defect on `main`, written up in the
-    // review — not something this test should encode as correct.
-    await expect(page.getByRole('button', { name: 'Prøv igjen' })).toHaveCount(0);
-    expect(partial.length).toBeGreaterThan(0);
-    await expect(page.locator('.ka-answer-card')).toBeVisible();
-  });
+      // Cancelling is not an error, and the partial answer stays. The alert is
+      // checked by what it would show rather than by its role: an empty
+      // `.error-state` is `display: none` in global.css and therefore not in the
+      // accessibility tree at all. That is a defect on `main`, written up in the
+      // review — not something this test should encode as correct.
+      await expect(page.getByRole('button', { name: 'Prøv igjen' })).toHaveCount(0);
+      expect(partial.length).toBeGreaterThan(0);
+      await expect(page.locator('.ka-answer-card')).toBeVisible();
+    },
+  );
 
-  test('handlingsraden kopierer svaret og kvitterer', async ({ page, context }, testInfo) => {
-    covers(testInfo, 'kopier svaret og lenke til tråden');
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  test(
+    'handlingsraden kopierer svaret og kvitterer',
+    REAL_ANSWER,
+    async ({ page, context }, testInfo) => {
+      covers(testInfo, 'kopier svaret og lenke til tråden');
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    await ask(page, 'Hva sier rapporten?');
+      // A question with an answer in the corpus. «Hva sier rapporten?» can get a
+      // question back from a real model, and behind the BFF, which has no
+      // clarification state, that arrives as an answer without sources: the
+      // receipt then says «Svaret er kopiert.», and this test asks for sources.
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
-    // The receipt is a live region that exists before it has anything to say.
-    const receipt = page.locator('.ka-answer-actions__receipt');
-    await expect(receipt).toBeAttached();
-    await expect(receipt).toHaveText('');
+      // The receipt is a live region that exists before it has anything to say.
+      const receipt = page.locator('.ka-answer-actions__receipt');
+      await expect(receipt).toBeAttached();
+      await expect(receipt).toHaveText('');
 
-    const copy = page.getByRole('button', { name: 'Kopier svaret' });
-    await copy.click();
-    // The receipt counts what went along, so «Svaret er kopiert» would not
-    // tell the reader that the sources did too.
-    await expect(receipt).toHaveText(/^Svaret og \d+ kilder? er kopiert\.$/);
-    // Focus stays where the reader put it.
-    await expect(copy).toBeFocused();
+      const copy = page.getByRole('button', { name: 'Kopier svaret' });
+      await copy.click();
+      // The receipt counts what went along, so «Svaret er kopiert» would not
+      // tell the reader that the sources did too.
+      //
+      // Inside the four seconds the receipt stands (useCopy.ts, RECEIPT_MS).
+      // With Playwright's five, a wrong text had cleared before the wait ran
+      // out, and the failure said the receipt was empty rather than what it said.
+      await expect(receipt).toHaveText(/^Svaret og \d+ kilder? er kopiert\.$/, { timeout: 3_000 });
+      // Focus stays where the reader put it.
+      await expect(copy).toBeFocused();
 
-    const clipboard = await page.evaluate(() => navigator.clipboard.readText());
-    expect(clipboard.length).toBeGreaterThan(0);
+      const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+      expect(clipboard.length).toBeGreaterThan(0);
 
-    // The markers stay, because the list they point at goes with them. An
-    // answer pasted into a submission without its provenance is the one thing
-    // KA is not for — reise 13, 14 and 20 in brukerreiser-2026-09-15.md.
-    expect(clipboard).toMatch(/\[1\]/);
+      // The markers stay, because the list they point at goes with them. An
+      // answer pasted into a submission without its provenance is the one thing
+      // KA is not for — reise 13, 14 and 20 in brukerreiser-2026-09-15.md.
+      expect(clipboard).toMatch(/\[\d+\]/);
 
-    // A reference list under the answer, one line per marker, in Norwegian
-    // APA-like form: «[1] Virksomhet (år). Tittel, s. X. URL». The corpus
-    // decides which parts exist, so only the shape is asserted here.
-    const [, references = ''] = clipboard.split(/\nKilder\n/);
-    const lines = references.split('\n').filter(Boolean);
-    expect(lines.length).toBeGreaterThan(0);
-    for (const [index, line] of lines.entries()) {
-      expect(line.startsWith(`[${index + 1}] `)).toBe(true);
-    }
-    // Every marker in the text is answered by a line in the list.
-    for (const marker of new Set(clipboard.split(/\nKilder\n/)[0]?.match(/\[\d+\]/g) ?? [])) {
-      expect(references).toContain(`${marker} `);
-    }
-  });
+      // A reference list under the answer, one line per marker, in Norwegian
+      // APA-like form: «[1] Virksomhet (år). Tittel, s. X. URL». The corpus
+      // decides which parts exist, so only the shape is asserted here.
+      const [, references = ''] = clipboard.split(/\nKilder\n/);
+      const lines = references.split('\n').filter(Boolean);
+      expect(lines.length).toBeGreaterThan(0);
+      for (const [index, line] of lines.entries()) {
+        expect(line.startsWith(`[${index + 1}] `)).toBe(true);
+      }
+      // Every marker in the text is answered by a line in the list.
+      for (const marker of new Set(clipboard.split(/\nKilder\n/)[0]?.match(/\[\d+\]/g) ?? [])) {
+        expect(references).toContain(`${marker} `);
+      }
+    },
+  );
 
-  test('oppfølgingschipene sender med én gang', async ({ page }, testInfo) => {
+  test('oppfølgingschipene sender med én gang', REAL_ANSWER, async ({ page }, testInfo) => {
     covers(testInfo, 'oppfølgingsspørsmål');
     await ask(page, 'Hva sier rapporten?');
 
@@ -163,34 +194,36 @@ test.describe('hovedkolonnen', () => {
     await expect(page.locator('.ka-message--assistant')).toHaveCount(answersBefore + 1);
   });
 
-  test('en feil vises som Alert med «Prøv igjen», og et nytt forsøk tar fokus', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'feil vises som Alert');
+  test(
+    'en feil vises som Alert med «Prøv igjen», og et nytt forsøk tar fokus',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'feil vises som Alert');
 
-    // `simuler feil` is the one question the mock client always fails on,
-    // exported as MOCK_FAILURE_QUERY so the test and the client cannot drift.
-    await composer(page).click();
-    await page.keyboard.type(MOCK_FAILURE_QUERY);
-    await page.keyboard.press('Enter');
+      // `simuler feil` is the one question the mock client always fails on,
+      // exported as MOCK_FAILURE_QUERY so the test and the client cannot drift.
+      await composer(page).click();
+      await page.keyboard.type(MOCK_FAILURE_QUERY);
+      await page.keyboard.press('Enter');
 
-    // Scoped to the main column: every view that can fail renders its own
-    // alert region, and that they all resolve by role is the point — a region
-    // hidden with `display: none` would not be in the accessibility tree at
-    // all, and then the message would never announce.
-    const alert = page.getByRole('main').getByRole('alert');
-    await expect(alert).toContainText('Svaret kom ikke fram');
-    await expect(alert.getByRole('button', { name: 'Prøv igjen' })).toBeVisible();
+      // Scoped to the main column: every view that can fail renders its own
+      // alert region, and that they all resolve by role is the point — a region
+      // hidden with `display: none` would not be in the accessibility tree at
+      // all, and then the message would never announce.
+      const alert = page.getByRole('main').getByRole('alert');
+      await expect(alert).toContainText('Svaret kom ikke fram');
+      await expect(alert.getByRole('button', { name: 'Prøv igjen' })).toBeVisible();
 
-    const retry = alert.getByRole('button', { name: 'Prøv igjen' });
-    await retry.focus();
-    await retry.press('Enter');
+      const retry = alert.getByRole('button', { name: 'Prøv igjen' });
+      await retry.focus();
+      await retry.press('Enter');
 
-    // The button removed itself by doing its job. Focus must land somewhere a
-    // keyboard user can carry on from, never on `body`.
-    const landed = await page.evaluate(() => document.activeElement?.tagName.toLowerCase());
-    expect(landed, 'fokus skal ikke falle til body etter «Prøv igjen»').not.toBe('body');
-  });
+      // The button removed itself by doing its job. Focus must land somewhere a
+      // keyboard user can carry on from, never on `body`.
+      const landed = await page.evaluate(() => document.activeElement?.tagName.toLowerCase());
+      expect(landed, 'fokus skal ikke falle til body etter «Prøv igjen»').not.toBe('body');
+    },
+  );
 
   /**
    * Skrivefeltet er tabstopp 22 av 38 på en trådside, for det leseren gjør
@@ -231,140 +264,146 @@ test.describe('hovedkolonnen', () => {
    * avrunding. Blir denne rød med en differanse rett over ett sekund, er det
    * maskinen som skal mistenkes først, ikke koden.
    */
-  test('tenketiden er den målte ventetiden, ikke summen av stegene', async ({ page }, testInfo) => {
-    covers(testInfo, 'tenketiden er målt, ikke summert');
-    await page.goto('/');
+  test(
+    'tenketiden er den målte ventetiden, ikke summen av stegene',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'tenketiden er målt, ikke summert');
+      await page.goto('/');
 
-    await composer(page).click();
-    await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
-    await page.keyboard.press('Enter');
+      await composer(page).click();
+      await page.keyboard.type('Hvordan jobber Nkom med måloppnåelse?');
+      await page.keyboard.press('Enter');
 
-    await expect(page.getByText('Tenker …')).toBeVisible({ timeout: 30_000 });
-    const startedThinking = Date.now();
+      await expect(page.getByText('Tenker …')).toBeVisible({ timeout: ANSWER_TIMEOUT });
+      const startedThinking = Date.now();
 
-    await expect
-      .poll(() => page.locator('.ka-answer-card .markdown').innerText(), { timeout: 60_000 })
-      .not.toBe('');
-    const measuredSeconds = (Date.now() - startedThinking) / 1000;
+      await expect
+        .poll(() => page.locator('.ka-answer-card .markdown').innerText(), { timeout: 60_000 })
+        .not.toBe('');
+      const measuredSeconds = (Date.now() - startedThinking) / 1000;
 
-    await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
-      timeout: 60_000,
-    });
+      await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
+        timeout: 60_000,
+      });
 
-    const summary = await page.locator('.ka-thinking__summary').innerText();
-    const shown = Number(/(\d+)/.exec(summary)?.[1]);
+      const summary = await page.locator('.ka-thinking__summary').innerText();
+      const shown = Number(/(\d+)/.exec(summary)?.[1]);
 
-    expect(Number.isFinite(shown), `fant ikke noe tall i «${summary}»`).toBe(true);
-    expect(
-      Math.abs(shown - measuredSeconds),
-      `panelet sa «${summary}», testen målte ${measuredSeconds.toFixed(1)} s`,
-    ).toBeLessThanOrEqual(1);
-  });
+      expect(Number.isFinite(shown), `fant ikke noe tall i «${summary}»`).toBe(true);
+      expect(
+        Math.abs(shown - measuredSeconds),
+        `panelet sa «${summary}», testen målte ${measuredSeconds.toFixed(1)} s`,
+      ).toBeLessThanOrEqual(1);
+    },
+  );
 
-  test('Ctrl+/ flytter skrivemerket til feltet, og bare / gjør ingenting', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'snarvei til skrivefeltet');
-    await page.goto('/threads/nkom-maaloppnaaelse');
+  test(
+    'Ctrl+/ flytter skrivemerket til feltet, og bare / gjør ingenting',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'snarvei til skrivefeltet');
+      await page.goto('/threads/nkom-maaloppnaaelse');
 
-    const field = composer(page);
-    await expect(field).toBeVisible();
+      const field = composer(page);
+      await expect(field).toBeVisible();
 
-    async function focusSomethingElse() {
-      await page.getByRole('button', { name: 'Skjul tråder og filter' }).focus();
-    }
+      async function focusSomethingElse() {
+        await page.getByRole('button', { name: 'Skjul tråder og filter' }).focus();
+      }
 
-    // Uten modifikator: ingenting.
-    await focusSomethingElse();
-    await page.keyboard.press('/');
-    await expect(field, 'en ren tegntast er ingen snarvei').not.toBeFocused();
-    /*
-     * Og feltet er tomt FØR snarveien prøves. Uten denne sto påstanden om tom
-     * verdi først etter at fokus var flyttet, og en «/» som ble behandlet sent
-     * kunne rekke å havne i feltet — rødt på `toHaveValue`, med snarveien som
-     * den mistenkte. Her sier testen hvilket av de to tastetrykkene som lekket.
-     */
-    await expect(field, 'tegnet skal ikke ha havnet noe sted').toHaveValue('');
+      // Uten modifikator: ingenting.
+      await focusSomethingElse();
+      await page.keyboard.press('/');
+      await expect(field, 'en ren tegntast er ingen snarvei').not.toBeFocused();
+      /*
+       * Og feltet er tomt FØR snarveien prøves. Uten denne sto påstanden om tom
+       * verdi først etter at fokus var flyttet, og en «/» som ble behandlet sent
+       * kunne rekke å havne i feltet — rødt på `toHaveValue`, med snarveien som
+       * den mistenkte. Her sier testen hvilket av de to tastetrykkene som lekket.
+       */
+      await expect(field, 'tegnet skal ikke ha havnet noe sted').toHaveValue('');
 
-    // Med modifikator: treffer. Begge godtas overalt, så Control er nok her.
-    await page.keyboard.press('Control+/');
-    await expect(field).toBeFocused();
+      // Med modifikator: treffer. Begge godtas overalt, så Control er nok her.
+      await page.keyboard.press('Control+/');
+      await expect(field).toBeFocused();
 
-    // Og tegnet havner ikke i feltet den nettopp flyttet til.
-    await expect(field).toHaveValue('');
+      // Og tegnet havner ikke i feltet den nettopp flyttet til.
+      await expect(field).toHaveValue('');
 
-    /*
-     * Shift og Alt måles IKKE her, men i `ChatView.test.tsx`.
-     *
-     * Hvilke modifikatorer som utløser snarveien er et spørsmål om
-     * `event.key`, `ctrlKey`, `shiftKey` og `altKey` — og Playwright oversetter
-     * `Control+Shift+/` gjennom tastaturoppsettet maskinen kjører med. På
-     * norsk layout er «/» Shift+7, så Shift holdes og `key` er fortsatt «/»;
-     * på US-layout, som CI kjører, er Shift+«/» derimot `?`, og da gjør appen
-     * riktig ingenting. Testen påsto altså noe layout-spesifikt som om det var
-     * universelt, og CI ble rød på det tre ganger 15.09 — på tre forskjellige
-     * grener, i to forskjellige påstander, fordi et `Control+Alt+/` også
-     * etterlot tastaturtilstand som slukte den neste skrivingen.
-     *
-     * Unit-testene setter hendelsen direkte og er derfor uavhengige av
-     * oppsettet: «answers to Ctrl+Shift+/», «... Cmd+/ as well», «does nothing
-     * on a bare «/»» og «leaves Ctrl+Alt+/ alone». Det er riktig sted for det.
-     * Her måles det som er layout-uavhengig: at snarveien virker i den ekte
-     * appen, og at «/» ellers er et vanlig tegn.
-     */
+      /*
+       * Shift og Alt måles IKKE her, men i `ChatView.test.tsx`.
+       *
+       * Hvilke modifikatorer som utløser snarveien er et spørsmål om
+       * `event.key`, `ctrlKey`, `shiftKey` og `altKey` — og Playwright oversetter
+       * `Control+Shift+/` gjennom tastaturoppsettet maskinen kjører med. På
+       * norsk layout er «/» Shift+7, så Shift holdes og `key` er fortsatt «/»;
+       * på US-layout, som CI kjører, er Shift+«/» derimot `?`, og da gjør appen
+       * riktig ingenting. Testen påsto altså noe layout-spesifikt som om det var
+       * universelt, og CI ble rød på det tre ganger 15.09 — på tre forskjellige
+       * grener, i to forskjellige påstander, fordi et `Control+Alt+/` også
+       * etterlot tastaturtilstand som slukte den neste skrivingen.
+       *
+       * Unit-testene setter hendelsen direkte og er derfor uavhengige av
+       * oppsettet: «answers to Ctrl+Shift+/», «... Cmd+/ as well», «does nothing
+       * on a bare «/»» og «leaves Ctrl+Alt+/ alone». Det er riktig sted for det.
+       * Her måles det som er layout-uavhengig: at snarveien virker i den ekte
+       * appen, og at «/» ellers er et vanlig tegn.
+       */
 
-    /*
-     * Og «/» skrives som et tegn i feltet, som alle andre tegn.
-     *
-     * `pressSequentially` på feltet, ikke `page.keyboard.type`: den første
-     * skriver til elementet, den andre til hva som nå enn har fokus. Denne
-     * påstanden ble rød i CI 15.09 med tom verdi — fire ganger, på fire
-     * grener — mens den var grønn lokalt hver gang. Jeg fant ikke årsaken:
-     * Playwright-artefaktene skrives til `~/.cache`, utenfor arbeidsområdet,
-     * så CI har ingen trace å laste opp. Det jeg kunne gjøre noe med er
-     * avhengigheten av omgivende fokus- og tastaturtilstand, og den er borte
-     * nå. Kommer den tilbake, er neste steg å flytte artefaktene inn i
-     * arbeidsområdet så kjøringen kan lastes opp.
-     */
-    await field.fill('');
-    await field.pressSequentially('a/b');
-    await expect(field).toHaveValue('a/b');
+      /*
+       * Og «/» skrives som et tegn i feltet, som alle andre tegn.
+       *
+       * `pressSequentially` på feltet, ikke `page.keyboard.type`: den første
+       * skriver til elementet, den andre til hva som nå enn har fokus. Denne
+       * påstanden ble rød i CI 15.09 med tom verdi — fire ganger, på fire
+       * grener — mens den var grønn lokalt hver gang. Jeg fant ikke årsaken:
+       * Playwright-artefaktene skrives til `~/.cache`, utenfor arbeidsområdet,
+       * så CI har ingen trace å laste opp. Det jeg kunne gjøre noe med er
+       * avhengigheten av omgivende fokus- og tastaturtilstand, og den er borte
+       * nå. Kommer den tilbake, er neste steg å flytte artefaktene inn i
+       * arbeidsområdet så kjøringen kan lastes opp.
+       */
+      await field.fill('');
+      await field.pressSequentially('a/b');
+      await expect(field).toHaveValue('a/b');
 
-    /*
-     * Snarveien står to steder: en tooltip på feltet og en beskrivelse på
-     * feltet. Den synlige hinten under feltet er borte — den delte linje med
-     * forbeholdet og brøt den i to på begge målte bredder, 24 px av den
-     * klebrige bunnen på hver skjerm (høydebudsjett 2026-09-21, H3). Den
-     * flyttet til det den handler om, og påstanden flyttet med den.
-     */
-    await expect(field).toHaveAttribute('title', /^Trykk (Ctrl|Cmd) \+ \/ for å hoppe hit$/);
-    /*
-     * `aria-describedby` er en LISTE av id-er, ikke én id, så oppslaget må
-     * splitte på mellomrom — `getElementById` på hele strengen finner
-     * ingenting den dagen feltet får en beskrivelse til (#5).
-     *
-     * Og `expect.poll` og ikke et engangs-`evaluate`: uten retry leser den én
-     * gang, og leser den i et øyeblikk der feltet byttes ut, får den tom
-     * streng fra et element som ikke er i dokumentet lenger. Det var den ene
-     * av de to måtene denne testen falt på i CI 15.09 — sidebildet viste
-     * beskrivelsen stå der med riktig tekst mens testen leste «».
-     */
-    await expect
-      .poll(
-        () =>
-          field.evaluate((element) =>
-            (element.getAttribute('aria-describedby') ?? '')
-              .split(/\s+/)
-              .filter(Boolean)
-              .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
-              .join(' '),
-          ),
-        { message: 'beskrivelsen skriver tasten med bokstaver' },
-      )
-      .toContain('skråstrek');
-  });
+      /*
+       * Snarveien står to steder: en tooltip på feltet og en beskrivelse på
+       * feltet. Den synlige hinten under feltet er borte — den delte linje med
+       * forbeholdet og brøt den i to på begge målte bredder, 24 px av den
+       * klebrige bunnen på hver skjerm (høydebudsjett 2026-09-21, H3). Den
+       * flyttet til det den handler om, og påstanden flyttet med den.
+       */
+      await expect(field).toHaveAttribute('title', /^Trykk (Ctrl|Cmd) \+ \/ for å hoppe hit$/);
+      /*
+       * `aria-describedby` er en LISTE av id-er, ikke én id, så oppslaget må
+       * splitte på mellomrom — `getElementById` på hele strengen finner
+       * ingenting den dagen feltet får en beskrivelse til (#5).
+       *
+       * Og `expect.poll` og ikke et engangs-`evaluate`: uten retry leser den én
+       * gang, og leser den i et øyeblikk der feltet byttes ut, får den tom
+       * streng fra et element som ikke er i dokumentet lenger. Det var den ene
+       * av de to måtene denne testen falt på i CI 15.09 — sidebildet viste
+       * beskrivelsen stå der med riktig tekst mens testen leste «».
+       */
+      await expect
+        .poll(
+          () =>
+            field.evaluate((element) =>
+              (element.getAttribute('aria-describedby') ?? '')
+                .split(/\s+/)
+                .filter(Boolean)
+                .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+                .join(' '),
+            ),
+          { message: 'beskrivelsen skriver tasten med bokstaver' },
+        )
+        .toContain('skråstrek');
+    },
+  );
 
-  test('Tab gjennom hovedkolonnen i lys og mørk', async ({ page }, testInfo) => {
+  test('Tab gjennom hovedkolonnen i lys og mørk', REAL_ANSWER, async ({ page }, testInfo) => {
     covers(testInfo, 'tastatur: Tab gjennom viewet');
     await ask(page, 'Hva sier rapporten?');
 
@@ -375,7 +414,7 @@ test.describe('hovedkolonnen', () => {
     }
   });
 
-  test('en markør peker på et utdrag som finnes', async ({ page }, testInfo) => {
+  test('en markør peker på et utdrag som finnes', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'klikk på [n] ruller og fokuserer riktig utdrag');
     await ask(page, 'Hva sier rapporten?');
 

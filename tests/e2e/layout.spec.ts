@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
-import { ask, citation } from './helpers';
+import { ask, citation, REAL_ANSWER } from './helpers';
 
 /**
  * The layout at the widths the product is actually used at.
@@ -291,25 +291,29 @@ function expectLayoutFits(measured: Measurement, state: LayoutState, where: stri
 }
 
 test.describe('layouten', () => {
-  test('tre åpne plasser får plass i 1440, uten vannrett rulling', async ({ page }, testInfo) => {
-    covers(testInfo, 'layout: tre åpne plasser ved 1440');
-    await page.setViewportSize({ width: BOTH_SIDEBARS_MIN_VIEWPORT, height: HEIGHT });
-    await page.goto('/');
+  test(
+    'tre åpne plasser får plass i 1440, uten vannrett rulling',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'layout: tre åpne plasser ved 1440');
+      await page.setViewportSize({ width: BOTH_SIDEBARS_MIN_VIEWPORT, height: HEIGHT });
+      await page.goto('/');
 
-    // Opened the way a user opens it: by activating a citation marker, which
-    // is the moment the third slot appears whether the window has room or not.
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
-    await citation(page, 1).click();
-    await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
+      // Opened the way a user opens it: by activating a citation marker, which
+      // is the moment the third slot appears whether the window has room or not.
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+      await citation(page, 1).click();
+      await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
 
-    const measured = await measure(page);
+      const measured = await measure(page);
 
-    expect(measured.navLeftEdge, 'navigasjonspanelet skal starte ved venstre kant').toBe(0);
-    expect(
-      measured.documentWidth,
-      'sida skal ikke være bredere enn vinduet, altså ingen vannrett rulling',
-    ).toBeLessThanOrEqual(measured.windowWidth);
-  });
+      expect(measured.navLeftEdge, 'navigasjonspanelet skal starte ved venstre kant').toBe(0);
+      expect(
+        measured.documentWidth,
+        'sida skal ikke være bredere enn vinduet, altså ingen vannrett rulling',
+      ).toBeLessThanOrEqual(measured.windowWidth);
+    },
+  );
 
   /*
    * «etiketten på kollapsknappen står på én linje» stood here until
@@ -641,35 +645,39 @@ test.describe('layouten', () => {
       expectLayoutFits(measured, stateNamed('nav-aapent'), '1439 etter krymping');
     });
 
-    test('en kildemarkør åpner panelet gjennom samme regel', async ({ page }, testInfo) => {
-      covers(testInfo, 'layout: regel B gjennom showCitation');
-      await page.setViewportSize({ width: V1_MIN_VIEWPORT, height: HEIGHT });
-      await page.goto('/');
+    test(
+      'en kildemarkør åpner panelet gjennom samme regel',
+      REAL_ANSWER,
+      async ({ page }, testInfo) => {
+        covers(testInfo, 'layout: regel B gjennom showCitation');
+        await page.setViewportSize({ width: V1_MIN_VIEWPORT, height: HEIGHT });
+        await page.goto('/');
 
-      // The real path, with a real answer behind it: this is how the panel
-      // opens for a user who never touches the collapse buttons, and it is
-      // the state the conductor measured by hand on 2026-09-14.
-      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
-      await citation(page, 1).click();
+        // The real path, with a real answer behind it: this is how the panel
+        // opens for a user who never touches the collapse buttons, and it is
+        // the state the conductor measured by hand on 2026-09-14.
+        await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+        await citation(page, 1).click();
 
-      await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
-      await expect(
-        page.getByRole('button', { name: /^(Vis|Skjul) tråder og filter$/ }),
-        'markøren åpnet kildepanelet, så navigasjonspanelet kollapset',
-      ).toHaveAttribute('aria-expanded', 'false');
+        await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: /^(Vis|Skjul) tråder og filter$/ }),
+          'markøren åpnet kildepanelet, så navigasjonspanelet kollapset',
+        ).toHaveAttribute('aria-expanded', 'false');
 
-      const measured = await measure(page);
-      expectLayoutFits(
-        measured,
-        stateNamed('kilder-aapent'),
-        '1280 med et ekte svar og åpne kilder',
-      );
-      await saveScreenshot(page, `layout-${V1_MIN_VIEWPORT}-svar-kilder-lys`);
+        const measured = await measure(page);
+        expectLayoutFits(
+          measured,
+          stateNamed('kilder-aapent'),
+          '1280 med et ekte svar og åpne kilder',
+        );
+        await saveScreenshot(page, `layout-${V1_MIN_VIEWPORT}-svar-kilder-lys`);
 
-      // Real content, not an empty panel: an excerpt with a long unbroken
-      // string in it is the other way a slot gets wider than its box.
-      await expectNoAxeViolations(page, `layouten ved ${V1_MIN_VIEWPORT}`);
-    });
+        // Real content, not an empty panel: an excerpt with a long unbroken
+        // string in it is the other way a slot gets wider than its box.
+        await expectNoAxeViolations(page, `layouten ved ${V1_MIN_VIEWPORT}`);
+      },
+    );
 
     /**
      * Rule B takes a panel away. Whoever was standing in it has to be put
@@ -687,45 +695,51 @@ test.describe('layouten', () => {
      * lands at 1280 — and a user who zooms is disproportionately likely to
      * be the keyboard user this strands.
      */
-    test('regel B mister ikke tastaturet når den tar panelet', async ({ page }, testInfo) => {
-      covers(testInfo, 'layout: regel B beholder fokus ved krymping');
-      await page.setViewportSize({ width: PREFERRED_VIEWPORT, height: HEIGHT });
-      await page.goto('/');
+    test(
+      'regel B mister ikke tastaturet når den tar panelet',
+      REAL_ANSWER,
+      async ({ page }, testInfo) => {
+        covers(testInfo, 'layout: regel B beholder fokus ved krymping');
+        await page.setViewportSize({ width: PREFERRED_VIEWPORT, height: HEIGHT });
+        await page.goto('/');
 
-      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
-      await citation(page, 1).click();
-      await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
+        await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+        await citation(page, 1).click();
+        await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
 
-      // Stand inside the panel, not on the button that opens it.
-      const stood = await page.evaluate(() => {
-        const inside = document.querySelector<HTMLElement>(
-          'aside .sidebar-content a, aside .sidebar-content button, aside .sidebar-content input, aside .sidebar-content summary',
+        // Stand inside the panel, not on the button that opens it.
+        const stood = await page.evaluate(() => {
+          const inside = document.querySelector<HTMLElement>(
+            'aside .sidebar-content a, aside .sidebar-content button, aside .sidebar-content input, aside .sidebar-content summary',
+          );
+          inside?.focus();
+          return inside !== null;
+        });
+        expect(stood, 'kildepanelet har noe fokuserbart å stå i').toBe(true);
+
+        await page.setViewportSize({ width: BOTH_SIDEBARS_MIN_VIEWPORT - 1, height: HEIGHT });
+        await expect(page.getByRole('button', { name: SOURCES_TOGGLE })).toHaveAttribute(
+          'aria-expanded',
+          'false',
         );
-        inside?.focus();
-        return inside !== null;
-      });
-      expect(stood, 'kildepanelet har noe fokuserbart å stå i').toBe(true);
 
-      await page.setViewportSize({ width: BOTH_SIDEBARS_MIN_VIEWPORT - 1, height: HEIGHT });
-      await expect(page.getByRole('button', { name: SOURCES_TOGGLE })).toHaveAttribute(
-        'aria-expanded',
-        'false',
-      );
+        const landed = await page.evaluate(() => {
+          const element = document.activeElement;
+          if (!element || element === document.body) return 'body';
+          return (
+            element.getAttribute('aria-label') ||
+            (element.textContent ?? '').trim().slice(0, 45) ||
+            element.tagName.toLowerCase()
+          );
+        });
 
-      const landed = await page.evaluate(() => {
-        const element = document.activeElement;
-        if (!element || element === document.body) return 'body';
-        return (
-          element.getAttribute('aria-label') ||
-          (element.textContent ?? '').trim().slice(0, 45) ||
-          element.tagName.toLowerCase()
+        // The toggle button of the panel that was taken away is where focus
+        // belongs: it is the control that now says «Vis kilder», it is where
+        // the panel went, and it is one keystroke from bringing it back.
+        expect(landed, 'fokus skal ikke falle til dokumentet når panelet kollapses').not.toBe(
+          'body',
         );
-      });
-
-      // The toggle button of the panel that was taken away is where focus
-      // belongs: it is the control that now says «Vis kilder», it is where
-      // the panel went, and it is one keystroke from bringing it back.
-      expect(landed, 'fokus skal ikke falle til dokumentet når panelet kollapses').not.toBe('body');
-    });
+      },
+    );
   });
 });

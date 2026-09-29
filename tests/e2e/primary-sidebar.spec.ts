@@ -9,6 +9,8 @@ import {
   showFilters,
   showThreads,
   walkWithTab,
+  MOCK,
+  REAL_ANSWER,
 } from './helpers';
 
 /**
@@ -67,70 +69,76 @@ test.describe('navigasjonspanelet', () => {
     await expectNoAxeViolations(page, 'filtreringen');
   });
 
-  test('et valg blir en chip i feltet, og tellingen følger med', async ({ page }, testInfo) => {
-    covers(testInfo, 'filtre kan velges og gir chips');
+  test(
+    'et valg blir en chip i feltet, og tellingen følger med',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'filtre kan velges og gir chips');
 
-    // The whole name, not a prefix. `ArrowDown` + `Enter` takes the first
-    // match, and «Nasjonal» matched six organisations in the real corpus —
-    // the first of them «Nasjonalarkivet», which is not the one this test
-    // then looks for. Typed in full there is one match and it is that one.
-    const field = facetField(page, 'Virksomheter');
-    await field.click();
-    await page.keyboard.type('Nasjonal kommunikasjonsmyndighet');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
+      // The whole name, not a prefix. `ArrowDown` + `Enter` takes the first
+      // match, and «Nasjonal» matched six organisations in the real corpus —
+      // the first of them «Nasjonalarkivet», which is not the one this test
+      // then looks for. Typed in full there is one match and it is that one.
+      const field = facetField(page, 'Virksomheter');
+      await field.click();
+      await page.keyboard.type('Nasjonal kommunikasjonsmyndighet');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
 
-    // The chip lives in the Suggestion's shadow root, so it is read through
-    // the accessible name rather than a CSS selector.
-    await expect(
-      page.getByRole('navigation', { name: 'Tråder og filter' }).getByText(SELECTED_ONE),
-    ).toBeVisible();
+      // The chip lives in the Suggestion's shadow root, so it is read through
+      // the accessible name rather than a CSS selector.
+      await expect(
+        page.getByRole('navigation', { name: 'Tråder og filter' }).getByText(SELECTED_ONE),
+      ).toBeVisible();
 
-    const chips = await page.evaluate(() => {
-      const suggestions = [...document.querySelectorAll('ds-suggestion')];
-      return suggestions.flatMap((suggestion) =>
-        [...suggestion.querySelectorAll('data')].map((chip) => chip.textContent?.trim() ?? ''),
-      );
-    });
-    expect(chips).toContain('Nasjonal kommunikasjonsmyndighet');
+      const chips = await page.evaluate(() => {
+        const suggestions = [...document.querySelectorAll('ds-suggestion')];
+        return suggestions.flatMap((suggestion) =>
+          [...suggestion.querySelectorAll('data')].map((chip) => chip.textContent?.trim() ?? ''),
+        );
+      });
+      expect(chips).toContain('Nasjonal kommunikasjonsmyndighet');
 
-    // The search text is spent once the value is a chip.
-    await expect(field).toHaveValue('');
+      // The search text is spent once the value is a chip.
+      await expect(field).toHaveValue('');
 
-    await expectNoAxeViolations(page, 'filtreringen med et valg');
-  });
+      await expectNoAxeViolations(page, 'filtreringen med et valg');
+    },
+  );
 
-  test('dokumentlista fra Kudos er synlig uten å rulle i et 900 px vindu', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'brukerblikk runde 2, funn 4: dokumentlista over skjermkanten');
-    await page.goto('/');
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+  test(
+    'dokumentlista fra Kudos er synlig uten å rulle i et 900 px vindu',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'brukerblikk runde 2, funn 4: dokumentlista over skjermkanten');
+      await page.goto('/');
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
-    const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
-    const scroller = panel.locator('.sidebar-content');
-    const firstRow = panel.locator('.documents-list__list li').first();
-    await expect(firstRow).toBeVisible();
+      const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
+      const scroller = panel.locator('.sidebar-content');
+      const firstRow = panel.locator('.documents-list__list li').first();
+      await expect(firstRow).toBeVisible();
 
-    // Nothing has scrolled to get here. Without this the test would pass on a
-    // panel that Playwright scrolled into view for us, which is the bug.
-    expect(await scroller.evaluate((element) => element.scrollTop), 'panelet er urullet').toBe(0);
+      // Nothing has scrolled to get here. Without this the test would pass on a
+      // panel that Playwright scrolled into view for us, which is the bug.
+      expect(await scroller.evaluate((element) => element.scrollTop), 'panelet er urullet').toBe(0);
 
-    const box = (await firstRow.boundingBox())!;
-    const windowHeight = page.viewportSize()!.height;
-    // The measurement in the review: the first row started at y = 818 in a
-    // 900 px window, under the corpus line and three untouched facet fields.
-    expect(
-      box.y + box.height,
-      `første dokumentrad slutter på ${Math.round(box.y + box.height)} i et ${windowHeight} px vindu`,
-    ).toBeLessThan(windowHeight);
+      const box = (await firstRow.boundingBox())!;
+      const windowHeight = page.viewportSize()!.height;
+      // The measurement in the review: the first row started at y = 818 in a
+      // 900 px window, under the corpus line and three untouched facet fields.
+      expect(
+        box.y + box.height,
+        `første dokumentrad slutter på ${Math.round(box.y + box.height)} i et ${windowHeight} px vindu`,
+      ).toBeLessThan(windowHeight);
 
-    // And the facets are still right there, full size: answer 2 put all
-    // filtering in this one panel, so moving the list up may not fold them.
-    for (const dimension of ['Dokumenttyper', 'Virksomheter', 'År']) {
-      await expect(facetField(page, dimension)).toBeVisible();
-    }
-  });
+      // And the facets are still right there, full size: answer 2 put all
+      // filtering in this one panel, so moving the list up may not fold them.
+      for (const dimension of ['Dokumenttyper', 'Virksomheter', 'År']) {
+        await expect(facetField(page, dimension)).toBeVisible();
+      }
+    },
+  );
 
   test('«Velg alle» og «Tøm» lar tastaturet bli i feltet', async ({ page }, testInfo) => {
     covers(testInfo, 'tastatur: kontroller som forsvinner må si hvor fokus skal');
@@ -200,61 +208,67 @@ test.describe('navigasjonspanelet', () => {
     await expect.poll(() => chipTexts(page)).toContain(value);
   }
 
-  test('filtervalget overlever veksling til trådene og tilbake', async ({ page }, testInfo) => {
-    covers(testInfo, 'filtervalget overlever veksling (N6)');
+  test(
+    'filtervalget overlever veksling til trådene og tilbake',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'filtervalget overlever veksling (N6)');
 
-    // Two dimensions, not one: a selection kept per field and a selection
-    // kept for the panel as a whole fail differently, and one field cannot
-    // tell them apart.
-    await pickAndSeeChip(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
-    await pickAndSeeChip(page, 'Dokumenttyper', 'Årsrapport');
+      // Two dimensions, not one: a selection kept per field and a selection
+      // kept for the panel as a whole fail differently, and one field cannot
+      // tell them apart.
+      await pickAndSeeChip(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
+      await pickAndSeeChip(page, 'Dokumenttyper', 'Årsrapport');
 
-    const before = (await chipTexts(page)).sort();
+      const before = (await chipTexts(page)).sort();
 
-    await showThreads(page);
-    // Gone from the DOM, not merely hidden. If the panel only hid the view,
-    // this test would pass while proving nothing.
-    await expect(facetField(page, 'Virksomheter')).toHaveCount(0);
+      await showThreads(page);
+      // Gone from the DOM, not merely hidden. If the panel only hid the view,
+      // this test would pass while proving nothing.
+      await expect(facetField(page, 'Virksomheter')).toHaveCount(0);
 
-    await showFilters(page);
+      await showFilters(page);
 
-    await expect
-      .poll(async () => (await chipTexts(page)).sort(), {
-        message: 'chipsene er de samme etter veksling',
-      })
-      .toEqual(before);
+      await expect
+        .poll(async () => (await chipTexts(page)).sort(), {
+          message: 'chipsene er de samme etter veksling',
+        })
+        .toEqual(before);
 
-    const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
-    await expect(panel.getByText(SELECTED_ONE).first()).toBeVisible();
-    // And the field is back to a resting state rather than holding the search
-    // text that produced the chip.
-    await expect(facetField(page, 'Virksomheter')).toHaveValue('');
-  });
+      const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
+      await expect(panel.getByText(SELECTED_ONE).first()).toBeVisible();
+      // And the field is back to a resting state rather than holding the search
+      // text that produced the chip.
+      await expect(facetField(page, 'Virksomheter')).toHaveValue('');
+    },
+  );
 
-  test('filtervalget overlever at brukeren åpner en tråd og går tilbake', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'filtervalget overlever ruteskifte');
+  test(
+    'filtervalget overlever at brukeren åpner en tråd og går tilbake',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'filtervalget overlever ruteskifte');
 
-    await pickAndSeeChip(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
+      await pickAndSeeChip(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
 
-    // A route change is the harder case and the one a user actually does:
-    // open a thread from the list, then go back to the filter. The provider
-    // sits above `Routes` in App.tsx, so the selection is expected to hold —
-    // this is the test that says so out loud.
-    await showThreads(page);
-    await page.getByRole('link', { name: 'NKOM måloppnåelse' }).click();
-    await expect(page).toHaveURL(/\/threads\/nkom-maaloppnaaelse$/);
+      // A route change is the harder case and the one a user actually does:
+      // open a thread from the list, then go back to the filter. The provider
+      // sits above `Routes` in App.tsx, so the selection is expected to hold —
+      // this is the test that says so out loud.
+      await showThreads(page);
+      await page.getByRole('link', { name: 'NKOM måloppnåelse' }).click();
+      await expect(page).toHaveURL(/\/threads\/nkom-maaloppnaaelse$/);
 
-    await showFilters(page);
-    await expect
-      .poll(() => chipTexts(page), { message: 'valget overlevde ruta' })
-      .toContain('Nasjonal kommunikasjonsmyndighet');
+      await showFilters(page);
+      await expect
+        .poll(() => chipTexts(page), { message: 'valget overlevde ruta' })
+        .toContain('Nasjonal kommunikasjonsmyndighet');
 
-    await expectNoAxeViolations(page, 'filtreringen på en trådrute');
-  });
+      await expectNoAxeViolations(page, 'filtreringen på en trådrute');
+    },
+  );
 
-  test('trådene er gruppert på tidsrom, nyeste først', async ({ page }, testInfo) => {
+  test('trådene er gruppert på tidsrom, nyeste først', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'tråder er gruppert');
     await showThreads(page);
 
@@ -281,53 +295,55 @@ test.describe('navigasjonspanelet', () => {
    * navn, og hver rad ville hett «NKOM måloppnåelse 14:32» — et navn som
    * endrer seg mens du ser på det, og som ingen kan be om med stemmen.
    */
-  test('hver trådrad sier når den sist ble rørt, uten å bli hetende det', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'tidsstempel på trådradene');
-    await showThreads(page);
+  test(
+    'hver trådrad sier når den sist ble rørt, uten å bli hetende det',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'tidsstempel på trådradene');
+      await showThreads(page);
 
-    const rows = page.locator('.threads-view__item');
-    await expect(rows.first()).toBeVisible();
-    const count = await rows.count();
-    expect(count, 'lista har rader å se på').toBeGreaterThan(0);
+      const rows = page.locator('.threads-view__item');
+      await expect(rows.first()).toBeVisible();
+      const count = await rows.count();
+      expect(count, 'lista har rader å se på').toBeGreaterThan(0);
 
-    for (let index = 0; index < count; index += 1) {
-      const row = rows.nth(index);
-      const time = row.locator('time');
-      await expect(time, `rad ${index} har et tidsstempel`).toHaveCount(1);
+      for (let index = 0; index < count; index += 1) {
+        const row = rows.nth(index);
+        const time = row.locator('time');
+        await expect(time, `rad ${index} har et tidsstempel`).toHaveCount(1);
 
-      const { dateTime, title, text, insideLink } = await time.evaluate((element) => ({
-        dateTime: element.getAttribute('datetime') ?? '',
-        title: element.getAttribute('title') ?? '',
-        text: element.textContent?.trim() ?? '',
-        insideLink: element.closest('a') !== null,
-      }));
+        const { dateTime, title, text, insideLink } = await time.evaluate((element) => ({
+          dateTime: element.getAttribute('datetime') ?? '',
+          title: element.getAttribute('title') ?? '',
+          text: element.textContent?.trim() ?? '',
+          insideLink: element.closest('a') !== null,
+        }));
 
-      // Unntak fra dirigenten for denne påstanden (Lars, 23.09): hele raden
-      // er lenka nå, tidsstempelet med, så den som trykker under tittelen
-      // åpner tråden i stedet for ingenting. Navnet er fortsatt tittelen
-      // alene — se påstanden nederst i testen.
-      expect(insideLink, `rad ${index}: tida står inne i lenka`).toBe(true);
-      expect(Number.isNaN(Date.parse(dateTime)), `rad ${index}: datetime er lesbar`).toBe(false);
-      expect(title.length, `rad ${index}: title har hele datoen`).toBeGreaterThan(text.length);
-      // Kort, fordi den leses ved siden av en gruppeoverskrift som alt sier
-      // omtrent når. «onsdag» er det lengste formatet.
-      expect(text.length, `rad ${index}: teksten er kort`).toBeLessThanOrEqual(12);
-    }
+        // Unntak fra dirigenten for denne påstanden (Lars, 23.09): hele raden
+        // er lenka nå, tidsstempelet med, så den som trykker under tittelen
+        // åpner tråden i stedet for ingenting. Navnet er fortsatt tittelen
+        // alene — se påstanden nederst i testen.
+        expect(insideLink, `rad ${index}: tida står inne i lenka`).toBe(true);
+        expect(Number.isNaN(Date.parse(dateTime)), `rad ${index}: datetime er lesbar`).toBe(false);
+        expect(title.length, `rad ${index}: title har hele datoen`).toBeGreaterThan(text.length);
+        // Kort, fordi den leses ved siden av en gruppeoverskrift som alt sier
+        // omtrent når. «onsdag» er det lengste formatet.
+        expect(text.length, `rad ${index}: teksten er kort`).toBeLessThanOrEqual(12);
+      }
 
-    // Og navnet på lenka er tittelen, ikke tittelen pluss et klokkeslett.
-    // Teksten i raden bærer begge deler; navnet kommer fra `aria-labelledby`,
-    // som peker på tittel-spannet alene.
-    const firstLink = page.locator('.threads-view__item a').first();
-    const name = await firstLink.evaluate((element) => {
-      const id = element.getAttribute('aria-labelledby');
-      const labelled = id ? document.getElementById(id) : null;
-      return (labelled?.textContent ?? element.textContent ?? '').trim();
-    });
-    const firstTime = (await rows.first().locator('time').textContent())?.trim() ?? '';
-    expect(name, 'lenkens navn bærer ikke tidsstempelet').not.toContain(firstTime);
-  });
+      // Og navnet på lenka er tittelen, ikke tittelen pluss et klokkeslett.
+      // Teksten i raden bærer begge deler; navnet kommer fra `aria-labelledby`,
+      // som peker på tittel-spannet alene.
+      const firstLink = page.locator('.threads-view__item a').first();
+      const name = await firstLink.evaluate((element) => {
+        const id = element.getAttribute('aria-labelledby');
+        const labelled = id ? document.getElementById(id) : null;
+        return (labelled?.textContent ?? element.textContent ?? '').trim();
+      });
+      const firstTime = (await rows.first().locator('time').textContent())?.trim() ?? '';
+      expect(name, 'lenkens navn bærer ikke tidsstempelet').not.toContain(firstTime);
+    },
+  );
 
   /**
    * Punkt 11: ordet «Kudos» sto ingen steder en førstegangsbruker kunne se
@@ -338,116 +354,130 @@ test.describe('navigasjonspanelet', () => {
    * stå helt stille — ellers påstår den at arkivet krympet fordi noen trykket
    * på en boks.
    */
-  test('filterpanelet sier hvor svarene kommer fra, og linja står stille', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'korpuslinja under «Filtrering»');
+  test(
+    'filterpanelet sier hvor svarene kommer fra, og linja står stille',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'korpuslinja under «Filtrering»');
 
-    const corpus = page.locator('.filters-view__corpus');
-    const detail = corpus.locator('.filters-view__corpus-detail');
-    await expect(corpus).toBeVisible();
+      const corpus = page.locator('.filters-view__corpus');
+      const detail = corpus.locator('.filters-view__corpus-detail');
+      await expect(corpus).toBeVisible();
 
-    /*
-     * Navnet står på linja, resten ligger bak «Vis mer» (#114, N2 i
-     * høydebudsjettet): hele setningen brøt til to linjer i et 327 px panel.
-     * Det korpuset heter er det som endrer seg ved bytte, så det er halvdelen
-     * som blir stående.
-     */
-    await expect(corpus.locator('.filters-view__corpus-source')).toHaveText('Dokumenter fra Kudos');
-    await expect(detail).toBeHidden();
+      /*
+       * Navnet står på linja, resten ligger bak «Vis mer» (#114, N2 i
+       * høydebudsjettet): hele setningen brøt til to linjer i et 327 px panel.
+       * Det korpuset heter er det som endrer seg ved bytte, så det er halvdelen
+       * som blir stående.
+       */
+      await expect(corpus.locator('.filters-view__corpus-source')).toHaveText(
+        'Dokumenter fra Kudos',
+      );
+      await expect(detail).toBeHidden();
 
-    await corpus.getByRole('button', { name: 'Vis mer' }).click();
-    await expect(detail).toBeVisible();
-    // Tall og årsspenn, hentet fra fasettene og ikke skrevet inn: at det står
-    // et antall og et spenn er påstanden, ikke hvilke.
-    await expect(detail).toHaveText(/\d[\d\s\u00a0]* dokumenter/);
-    await expect(detail).toHaveText(/\d{4}(–\d{4})?$/);
+      await corpus.getByRole('button', { name: 'Vis mer' }).click();
+      await expect(detail).toBeVisible();
+      // Tall og årsspenn, hentet fra fasettene og ikke skrevet inn: at det står
+      // et antall og et spenn er påstanden, ikke hvilke.
+      await expect(detail).toHaveText(/\d[\d\s\u00a0]* dokumenter/);
+      await expect(detail).toHaveText(/\d{4}(–\d{4})?$/);
 
-    const before = await detail.textContent();
-    await pickAndSeeChip(page, 'Dokumenttyper', 'Årsrapport');
-    await expect(detail, 'korpuslinja følger korpuset, ikke utvalget').toHaveText(before ?? '');
-  });
+      const before = await detail.textContent();
+      await pickAndSeeChip(page, 'Dokumenttyper', 'Årsrapport');
+      await expect(detail, 'korpuslinja følger korpuset, ikke utvalget').toHaveText(before ?? '');
+    },
+  );
 
-  test('søk i tråder filtrerer lista og sier hvor mange treff', async ({ page }, testInfo) => {
-    covers(testInfo, 'søk i tråder gir treffteller');
-    await showThreads(page);
+  test(
+    'søk i tråder filtrerer lista og sier hvor mange treff',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'søk i tråder gir treffteller');
+      await showThreads(page);
 
-    const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
-    const search = panel.getByRole('searchbox', { name: 'Søk i tråder' });
+      const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
+      const search = panel.getByRole('searchbox', { name: 'Søk i tråder' });
 
-    // The counter is a live region and must exist before it has anything to
-    // say: a region that appears together with its text announces nothing.
-    const counter = panel.locator('output.threads-view__search-status');
-    await expect(counter).toBeAttached();
-    await expect(counter).toHaveText('');
+      // The counter is a live region and must exist before it has anything to
+      // say: a region that appears together with its text announces nothing.
+      const counter = panel.locator('output.threads-view__search-status');
+      await expect(counter).toBeAttached();
+      await expect(counter).toHaveText('');
 
-    // «stimulab» fram til 15.09, da trådlista ble de scriptede samtalene og
-    // de to Stimulab-titlene forsvant med resten av titlene uten samtale
-    // under. «årsrapport» treffer to av de nye og ingen andre.
-    await search.fill('årsrapport');
-    await expect(counter).toHaveText('2 tråder');
-    await expect(panel.locator('.threads-view__thread')).toHaveCount(2);
+      // «stimulab» fram til 15.09, da trådlista ble de scriptede samtalene og
+      // de to Stimulab-titlene forsvant med resten av titlene uten samtale
+      // under. «årsrapport» treffer to av de nye og ingen andre.
+      await search.fill('årsrapport');
+      await expect(counter).toHaveText('2 tråder');
+      await expect(panel.locator('.threads-view__thread')).toHaveCount(2);
 
-    await search.fill('finnesikke');
-    await expect(counter).toHaveText('0 tråder');
-    await expect(panel.getByText('Ingen treff')).toBeVisible();
+      await search.fill('finnesikke');
+      await expect(counter).toHaveText('0 tråder');
+      await expect(panel.getByText('Ingen treff')).toBeVisible();
 
-    await search.fill('');
-    await expect(counter).toHaveText('');
-  });
+      await search.fill('');
+      await expect(counter).toHaveText('');
+    },
+  );
 
-  test('en trådrad er en lenke, og den valgte er merket for skjermleser', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'tråder er gruppert');
-    await showThreads(page);
+  test(
+    'en trådrad er en lenke, og den valgte er merket for skjermleser',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'tråder er gruppert');
+      await showThreads(page);
 
-    const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
-    const first = panel.getByRole('link', { name: 'NKOM måloppnåelse' });
-    await first.click();
+      const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
+      const first = panel.getByRole('link', { name: 'NKOM måloppnåelse' });
+      await first.click();
 
-    await expect(page).toHaveURL(/\/threads\/nkom-maaloppnaaelse$/);
-    // aria-current, not colour, is what carries «you are here».
-    await expect(panel.locator('[aria-current="page"]')).toHaveCount(1);
-    // Navnet, ikke teksten: hele raden er lenka siden 23.09, så tid og korpus
-    // står inni den — men `aria-labelledby` holder navnet på tittelen alene.
-    // Unntak fra dirigenten for denne påstanden, som de to andre i runden.
-    await expect(panel.locator('[aria-current="page"]')).toHaveAccessibleName('NKOM måloppnåelse');
-  });
+      await expect(page).toHaveURL(/\/threads\/nkom-maaloppnaaelse$/);
+      // aria-current, not colour, is what carries «you are here».
+      await expect(panel.locator('[aria-current="page"]')).toHaveCount(1);
+      // Navnet, ikke teksten: hele raden er lenka siden 23.09, så tid og korpus
+      // står inni den — men `aria-labelledby` holder navnet på tittelen alene.
+      // Unntak fra dirigenten for denne påstanden, som de to andre i runden.
+      await expect(panel.locator('[aria-current="page"]')).toHaveAccessibleName(
+        'NKOM måloppnåelse',
+      );
+    },
+  );
 
-  test('en tråd fra lista åpner en hel samtale, med kildene bak svaret', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'tråder er gruppert');
-    // Punkt 16 på brukerreise-lista, målt av #4: radene var titler uten noe
-    // under seg, så elleve av tolv tråder åpnet en tom samtale. Nå er lista
-    // de scriptede samtalene, og dette er påstanden — en rad du klikker på er
-    // et spørsmål, et svar og kildene bak det.
-    await showThreads(page);
+  test(
+    'en tråd fra lista åpner en hel samtale, med kildene bak svaret',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'tråder er gruppert');
+      // Punkt 16 på brukerreise-lista, målt av #4: radene var titler uten noe
+      // under seg, så elleve av tolv tråder åpnet en tom samtale. Nå er lista
+      // de scriptede samtalene, og dette er påstanden — en rad du klikker på er
+      // et spørsmål, et svar og kildene bak det.
+      await showThreads(page);
 
-    const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
-    await panel
-      .getByRole('link', { name: 'Regnskap og bevilgning i DSS sine årsrapporter' })
-      .click();
-    await expect(page).toHaveURL(/\/threads\/dss-regnskap$/);
+      const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
+      await panel
+        .getByRole('link', { name: 'Regnskap og bevilgning i DSS sine årsrapporter' })
+        .click();
+      await expect(page).toHaveURL(/\/threads\/dss-regnskap$/);
 
-    const main = page.getByRole('main');
-    await expect(main.getByText('Hva rapporteres om regnskap', { exact: false })).toBeVisible();
-    await expect(
-      main.getByRole('heading', { name: 'Regnskap og bevilgning hos DSS' }),
-    ).toBeVisible();
+      const main = page.getByRole('main');
+      await expect(main.getByText('Hva rapporteres om regnskap', { exact: false })).toBeVisible();
+      await expect(
+        main.getByRole('heading', { name: 'Regnskap og bevilgning hos DSS' }),
+      ).toBeVisible();
 
-    // Kildene er det som skilte en scriptet samtale fra en tom tråd. Markøren
-    // åpner panelet og peker på et utdrag som faktisk er der.
-    await citation(page, 1).click();
-    await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
-    await expect(
-      page
-        .getByRole('complementary', { name: 'Kilder' })
-        .getByRole('heading', { level: 3 })
-        .first(),
-    ).toBeVisible();
-  });
+      // Kildene er det som skilte en scriptet samtale fra en tom tråd. Markøren
+      // åpner panelet og peker på et utdrag som faktisk er der.
+      await citation(page, 1).click();
+      await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
+      await expect(
+        page
+          .getByRole('complementary', { name: 'Kilder' })
+          .getByRole('heading', { level: 3 })
+          .first(),
+      ).toBeVisible();
+    },
+  );
 
   /**
    * Den samme påstanden om en tråd leseren nettopp lagde.
@@ -473,30 +503,32 @@ test.describe('navigasjonspanelet', () => {
    * ikke i lista i det hele tatt (11 rader, målt på både `main` og #63). Den
    * testen hører hjemme sammen med oppfriskningen.
    */
-  test('tråden du nettopp lagde er merket som den åpne, uten reload', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'egen tråd merket som åpen uten reload');
-    await page.goto('/');
-    await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
-    await expect(page).toHaveURL(/\/threads\/[\w-]+$/);
-    const id = page.url().split('/').pop();
+  test(
+    'tråden du nettopp lagde er merket som den åpne, uten reload',
+    REAL_ANSWER,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'egen tråd merket som åpen uten reload');
+      await page.goto('/');
+      await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
+      await expect(page).toHaveURL(/\/threads\/[\w-]+$/);
+      const id = page.url().split('/').pop();
 
-    await showThreads(page);
-    const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
+      await showThreads(page);
+      const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
 
-    // Raden finnes og ligger først — det er ikke det som mangler.
-    const row = panel.locator(`a[href="/threads/${id}"]`);
-    await expect(row).toHaveCount(1);
-    await expect(panel.locator('a[href^="/threads/"]').first()).toHaveAttribute(
-      'href',
-      `/threads/${id}`,
-    );
+      // Raden finnes og ligger først — det er ikke det som mangler.
+      const row = panel.locator(`a[href="/threads/${id}"]`);
+      await expect(row).toHaveCount(1);
+      await expect(panel.locator('a[href^="/threads/"]').first()).toHaveAttribute(
+        'href',
+        `/threads/${id}`,
+      );
 
-    // Dette er påstanden: den er merket som den åpne, nå, ikke etter en reload.
-    await expect(row).toHaveAttribute('aria-current', 'page');
-    await expect(panel.locator('[aria-current="page"]')).toHaveCount(1);
-  });
+      // Dette er påstanden: den er merket som den åpne, nå, ikke etter en reload.
+      await expect(row).toHaveAttribute('aria-current', 'page');
+      await expect(panel.locator('[aria-current="page"]')).toHaveCount(1);
+    },
+  );
 
   /**
    * Den ene tilstanden ingen hadde målt — og som axe heller ikke måler.

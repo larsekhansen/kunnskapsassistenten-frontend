@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { expectNoAxeViolations, setColorScheme } from './a11y';
-import { composer } from './helpers';
+import { composer, MOCK } from './helpers';
 
 /**
  * The failure the reader meets, one case at a time.
@@ -33,7 +33,7 @@ async function askFor(page: import('@playwright/test').Page, query: string): Pro
 
 test.describe('feilmeldinger skiller tilfellene', () => {
   for (const { query, heading, retry } of ERROR_CASES) {
-    test(`«${query}» sier hva som skjedde`, async ({ page }) => {
+    test(`«${query}» sier hva som skjedde`, MOCK, async ({ page }) => {
       await askFor(page, query);
 
       // Scoped to the main column: every view that can fail renders its own
@@ -60,7 +60,7 @@ test.describe('feilmeldinger skiller tilfellene', () => {
     });
   }
 
-  test('to feil leser forskjellig, ikke bare «noe gikk galt»', async ({ page }) => {
+  test('to feil leser forskjellig, ikke bare «noe gikk galt»', MOCK, async ({ page }) => {
     const headings: string[] = [];
     for (const { query } of ERROR_CASES) {
       await askFor(page, query);
@@ -72,7 +72,7 @@ test.describe('feilmeldinger skiller tilfellene', () => {
     expect(new Set(headings).size, 'hver feil har sin egen overskrift').toBe(ERROR_CASES.length);
   });
 
-  test('«Prøv igjen» tar fokus med seg videre', async ({ page }) => {
+  test('«Prøv igjen» tar fokus med seg videre', MOCK, async ({ page }) => {
     await askFor(page, 'simuler feil modell');
 
     const retry = page.getByRole('main').getByRole('alert').getByRole('button', {
@@ -88,7 +88,7 @@ test.describe('feilmeldinger skiller tilfellene', () => {
     expect(landed, 'fokus skal ikke falle til body etter «Prøv igjen»').not.toBe('body');
   });
 
-  test('feilen tar over fokus fra knappen som forsvant', async ({ page }) => {
+  test('feilen tar over fokus fra knappen som forsvant', MOCK, async ({ page }) => {
     await page.goto('/');
 
     /*
@@ -106,7 +106,7 @@ test.describe('feilmeldinger skiller tilfellene', () => {
     await expect(retry).toBeFocused();
   });
 
-  test('uten «Prøv igjen» går fokus til skrivefeltet', async ({ page }) => {
+  test('uten «Prøv igjen» går fokus til skrivefeltet', MOCK, async ({ page }) => {
     await page.goto('/');
 
     await composer(page).fill('simuler avvist nøkkel');
@@ -118,7 +118,7 @@ test.describe('feilmeldinger skiller tilfellene', () => {
     await expect(composer(page)).toBeFocused();
   });
 
-  test('med Enter blir skrivemerket stående i feltet', async ({ page }) => {
+  test('med Enter blir skrivemerket stående i feltet', MOCK, async ({ page }) => {
     await askFor(page, 'simuler feil');
 
     await expect(page.getByRole('main').getByRole('alert')).toContainText('Svaret kom ikke fram');
@@ -127,7 +127,7 @@ test.describe('feilmeldinger skiller tilfellene', () => {
     await expect(composer(page)).toBeFocused();
   });
 
-  test('ingen treff er et svar, ikke en feil', async ({ page }) => {
+  test('ingen treff er et svar, ikke en feil', MOCK, async ({ page }) => {
     await askFor(page, 'simuler ingen treff');
 
     // In the thread, where answers are — not in the alert region.
@@ -148,7 +148,7 @@ test.describe('feilmeldinger skiller tilfellene', () => {
     await expect(panel.getByText('Ingen kilder til dette svaret')).toBeVisible();
   });
 
-  test('0 axe i lys og mørk, både på feil og på ingen treff', async ({ page }) => {
+  test('0 axe i lys og mørk, både på feil og på ingen treff', MOCK, async ({ page }) => {
     for (const query of ['simuler feil korpus', 'simuler ingen treff'] as const) {
       await askFor(page, query);
       // Wait for the turn to settle before measuring: a skeleton mid-fade is

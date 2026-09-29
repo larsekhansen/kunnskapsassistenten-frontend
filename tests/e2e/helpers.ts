@@ -1,13 +1,33 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { ANSWER_TIMEOUT } from './paths';
 
 /**
- * A full mock answer takes about 7.5 seconds of wall clock: four thinking
- * steps at 500 ms, then the answer token by token at 18 ms. The waits here
- * poll, so a test costs what the answer costs and not a second more — but the
- * budget has to be generous enough that a loaded machine does not fail a
- * test that would have passed.
+ * How long to wait for a finished answer. It lives in paths.ts, beside the
+ * other settings a run can change, and is re-exported here for the specs
+ * that wait for an answer themselves. A full mock answer takes about 7.5 s
+ * of wall clock; a real model takes what it takes, and
+ * `KA_E2E_ANSWER_TIMEOUT` raises the budget.
  */
-const ANSWER_TIMEOUT = 30_000;
+export { ANSWER_TIMEOUT };
+
+/**
+ * A test that passes only against the mock: it opens a fixture thread, asks
+ * one of the mock's `simuler …` questions, counts the mock's values, or
+ * expects the mock's own answer. `--grep-invert @mock` leaves them out of a
+ * run against a real backend (tests/e2e/paths.ts, `BASE_URL`).
+ *
+ * The split is #5's from 29.09 (design/_briefs/bygg/e2e-inndeling-bff.txt),
+ * with «en markør peker på et utdrag som finnes» moved here: against a real
+ * model its question got a question back, not an answer with `[1]`.
+ */
+export const MOCK = { tag: '@mock' };
+
+/**
+ * A test that needs a finished answer. Against a real backend it needs a
+ * real model, `KA_E2E_ANSWER_TIMEOUT` and one worker:
+ * `--grep @ekte-svar --workers 1`.
+ */
+export const REAL_ANSWER = { tag: '@ekte-svar' };
 
 /** Asks a question from the compose field and waits for the finished answer. */
 export async function ask(page: Page, question: string): Promise<void> {
