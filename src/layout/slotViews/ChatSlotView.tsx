@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useParams } from 'react-router';
 import { activeCorpusKey, createChatClient, subscribeToCorpus } from '../../api';
 // Rett fra modulen og ikke via src/api/index.ts, som er #5 sin barrel.
-import { renamedThreadTitles, subscribeToThreadRenames } from '../../api/threadActions';
+import { renamedThreads, subscribeToThreadRenames } from '../../api/threadActions';
 import { NotFoundState } from '../../components';
 import { threadFromQuestion, type Thread, type ThreadDetail } from '../../model';
 import { ChatView } from '../../views/chat';
@@ -151,15 +151,38 @@ function ChatSlot({ threadId }: { threadId?: string }) {
   useEffect(
     () =>
       subscribeToThreadRenames(() => {
-        const renamed = renamedThreadTitles();
+        const names = renamedThreads();
         const withName = <T extends Thread>(
           current: T | null | undefined,
         ): T | null | undefined => {
-          const title = current ? renamed.get(current.id) : undefined;
-          if (!current || !title || title === current.title) return current;
-          return { ...current, title, titleFromQuestion: false };
+          const name = current ? names.get(current.id) : undefined;
+          if (!current || !name) return current;
+          if (
+            name.title === current.title &&
+            name.titleFromQuestion === current.titleFromQuestion
+          ) {
+            return current;
+          }
+          /*
+           * Flagget kommer fra butikken det også. Ved et tilbakefall er det
+           * det tråden hadde, og en tittel satt tilbake som om leseren hadde
+           * valgt den, ville stått synlig over spørsmålet den er laget av.
+           */
+          return { ...current, title: name.title, titleFromQuestion: name.titleFromQuestion };
         };
         setThread((current) => withName(current) ?? null);
+        /*
+         * `started` holdes i takt, men ingen test kan være rød for denne
+         * linja i dag, og det er verdt å si rett ut framfor å skrive en test
+         * som er grønn uansett (KA CC målte 0 røde på mutasjonen, #185).
+         *
+         * Grunnen er at ingen leser navnet: `ChatView` får `thread` og ikke
+         * `thread ?? started`, og det eneste `ThreadContext` brukes til er
+         * `startThread`. `useReportOpenThread` bruker bare id-en, og
+         * adopsjonen bytter hele tråden ut. Linja står fordi butikken lover
+         * at de to kopiene er i takt, og fordi `ThreadContext.thread` er
+         * åpen for den som senere leser den.
+         */
         setStarted((current) => withName(current) ?? undefined);
       }),
     [],
