@@ -1,14 +1,18 @@
 import { Button, Heading, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link as RouterLink } from 'react-router';
+import { Link as RouterLink, useNavigate } from 'react-router';
+import { createThreadActions, type ThreadActions } from '../../api/threadActions';
 import { FilterIcon, NewThreadIcon } from '../../components/icons';
 import { EmptyState, ErrorState } from '../../components';
 import { useCorpus } from '../../layout/useCorpus';
 import { useOpenThread } from '../../layout/useOpenThread';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { Thread } from '../../model';
+import { DeleteThreadDialog } from './DeleteThreadDialog';
 import { groupThreads } from './grouping';
+import { RenameThread } from './RenameThread';
 import { ThreadLink } from './ThreadLink';
+import { ThreadMenu } from './ThreadMenu';
 import { useThreadList } from './useThreadList';
 import './threads.css';
 
@@ -17,7 +21,12 @@ export type ThreadsViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'
   Partial<Pick<SlotViewProps, 'switchedByUser'>> & {
     /** Overrides the fetch. Only for tests. */
     threads?: Thread[];
+    /** Overrides the deployment's rename and delete; null for none. Only for tests. */
+    actions?: ThreadActions | null;
   };
+
+/** Where focus goes when the row it was on has gone: the way to a new thread. */
+const NEW_THREAD = '\u0000new-thread';
 
 /**
  * The thread list: a new thread, a search field, and earlier threads grouped
@@ -34,6 +43,7 @@ export function ThreadsView({
   onShowView,
   switchedByUser = false,
   threads: given,
+  actions: givenActions,
 }: ThreadsViewProps) {
   // Which conversation is on screen, whoever put it there. See
   // src/layout/openThreadContext.ts.
@@ -54,10 +64,45 @@ export function ThreadsView({
   const { options, choosable } = useCorpus();
   const corpusLabel = (key?: string) =>
     choosable ? options.find((candidate) => candidate.key === key)?.label : undefined;
-  const { threads, failed, retry } = useThreadList(given);
+  const { threads, failed, retry, change } = useThreadList(given);
   const [query, setQuery] = useState('');
   const searchStatusId = useId();
   const filterRef = useRef<HTMLButtonElement>(null);
+  const navigate = useNavigate();
+
+  /*
+   * Rename and delete, when this deployment has them (bff and mock, not
+   * live). Without them the rows have no menu at all, rather than two
+   * buttons that fail on every press.
+   */
+  const actions = useMemo(
+    () => (givenActions === undefined ? createThreadActions() : (givenActions ?? undefined)),
+    [givenActions],
+  );
+  /** The row being renamed, by thread id. */
+  const [renaming, setRenaming] = useState<string | undefined>(undefined);
+  /** The thread the delete dialog is asking about. */
+  const [deleting, setDeleting] = useState<Thread | undefined>(undefined);
+  /** What went wrong with the last rename or delete, for the alert region. */
+  const [actionError, setActionError] = useState<string | undefined>(undefined);
+  /** What a screen reader is told a rename or a delete did. */
+  const [announcement, setAnnouncement] = useState('');
+  const menuRefs = useRef(new Map<string, HTMLButtonElement | null>());
+  const newThreadRef = useRef<HTMLAnchorElement>(null);
+  /*
+   * Where focus goes once the list has been drawn again, by thread id, or
+   * NEW_THREAD. In an effect, because the button to focus is not there — or
+   * not yet gone — until React has drawn the change.
+   */
+  const focusAfter = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const target = focusAfter.current;
+    if (target === undefined) return;
+    focusAfter.current = undefined;
+    const button = target === NEW_THREAD ? undefined : menuRefs.current.get(target);
+    (button ?? newThreadRef.current)?.focus();
+  }, [threads, renaming, deleting]);
 
   /*
    * Focus after a switch from the filter view, which unmounted the button the
@@ -80,6 +125,79 @@ export function ThreadsView({
     [threads, trimmed],
   );
   const groups = useMemo(() => groupThreads(matches), [matches]);
+
+  /*
+   * A new name, on screen at once and taken back if the backend says no.
+   *
+   * Only the one thread's title goes back on a failure, not the list as it
+   * was: a delete or a refresh may have landed in between, and the reader
+   * did not ask for those to be undone.
+   */
+  function rename(thread: Thread, title: string) {
+    if (!actions) return;
+    setRenaming(undefined);
+    setActionError(undefined);
+    focusAfter.current = thread.id;
+    change((list) =>
+      list.map((row) => (row.id === thread.id ? { ...row, title, titleFromQuestion: false } : row)),
+    );
+    setAnnouncement(`Tråden heter nå «${title}».`);
+    actions.rename(thread, title).catch(() => {
+      change((list) =>
+        list.map((row) =>
+          row.id === thread.id
+            ? { ...row, title: thread.title, titleFromQuestion: thread.titleFromQuestion }
+            : row,
+        ),
+      );
+      setAnnouncement('');
+      setActionError(`Klarte ikke å endre navnet. Tråden heter fortsatt «${thread.title}».`);
+    });
+  }
+
+  function cancelRename(thread: Thread) {
+    setRenaming(undefined);
+    focusAfter.current = thread.id;
+  }
+
+  /*
+   * A deletion, the same way: the row goes at once, and comes back if the
+   * backend says no.
+   *
+   * Focus goes to the next row's menu — where a reader clearing out old
+   * threads is heading — then the one before, and to «Ny tråd» when the list
+   * is empty. The row is put back by id, and the list sorts itself by
+   * `updatedAt`, so it lands where it was.
+   *
+   * The thread on screen is left for a new one, since there is nothing to
+   * show for it any more. If the delete then fails, the row is back in the
+   * list and one click away.
+   */
+  function remove(thread: Thread) {
+    if (!actions) return;
+    setDeleting(undefined);
+    setActionError(undefined);
+
+    const order = groups.flatMap((group) => group.threads);
+    const index = order.findIndex((row) => row.id === thread.id);
+    const next = order[index + 1] ?? order[index - 1];
+    focusAfter.current = next?.id ?? NEW_THREAD;
+
+    change((list) => list.filter((row) => row.id !== thread.id));
+    setAnnouncement(`«${thread.title}» er slettet.`);
+    if (thread.id === openThreadId) void navigate('/');
+
+    actions.remove(thread).catch(() => {
+      change((list) => (list.some((row) => row.id === thread.id) ? list : [...list, thread]));
+      setAnnouncement('');
+      setActionError(`Klarte ikke å slette «${thread.title}». Tråden er fortsatt her.`);
+    });
+  }
+
+  function cancelDelete() {
+    if (deleting) focusAfter.current = deleting.id;
+    setDeleting(undefined);
+  }
 
   return (
     <div className="threads-view" aria-busy={loading || undefined}>
@@ -110,7 +228,7 @@ export function ThreadsView({
         marked (answer 7).
       */}
       <Button asChild>
-        <RouterLink to="/">
+        <RouterLink to="/" ref={newThreadRef}>
           Ny tråd
           <NewThreadIcon aria-hidden="true" />
         </RouterLink>
@@ -162,10 +280,23 @@ export function ThreadsView({
         </output>
       </Paragraph>
 
-      <ErrorState message={failed ? 'Klarte ikke å hente trådene.' : undefined} onRetry={retry} />
+      {/*
+        One alert region for both kinds of failure. Two would be two voices
+        with no order between them, and «Prøv igjen» belongs to the list only:
+        a failed rename or delete has already been put back, and doing it
+        again is the reader's call, from the row.
+      */}
+      <ErrorState
+        message={failed ? 'Klarte ikke å hente trådene.' : actionError}
+        onRetry={failed ? retry : undefined}
+      />
 
-      {/* Skeleton is aria-hidden, so this carries the message. */}
-      <output className="ds-sr-only">{loading ? 'Henter tråder' : ''}</output>
+      {/*
+        Skeleton is aria-hidden, so this carries the message. It also says
+        what a rename or a delete did: both change the list without moving
+        the reader, so nothing else would tell a screen reader it happened.
+      */}
+      <output className="ds-sr-only">{loading ? 'Henter tråder' : announcement}</output>
 
       {loading && (
         <div className="threads-view__loading">
@@ -205,23 +336,54 @@ export function ThreadsView({
             {group.threads.map((thread) => {
               return (
                 <li key={thread.id} className="threads-view__item">
-                  {/*
-                    Its own component because it measures itself: a title cut
-                    off at one line shows the whole row again on hover and on
-                    focus, and a title that fits does not. The row is the
-                    whole link — title, time and corpus. See ThreadLink.tsx.
-                  */}
-                  <ThreadLink
-                    thread={thread}
-                    current={thread.id === openThreadId}
-                    corpusLabel={corpusLabel(thread.corpusKey)}
-                  />
+                  {renaming === thread.id ? (
+                    <RenameThread
+                      thread={thread}
+                      onSave={(title) => rename(thread, title)}
+                      onCancel={() => cancelRename(thread)}
+                    />
+                  ) : (
+                    <div className="threads-view__row">
+                      {/*
+                        Its own component because it measures itself: a title
+                        cut off at one line shows the whole row again on hover
+                        and on focus, and a title that fits does not. The row
+                        is the whole link — title, time and corpus. See
+                        ThreadLink.tsx.
+                      */}
+                      <ThreadLink
+                        thread={thread}
+                        current={thread.id === openThreadId}
+                        corpusLabel={corpusLabel(thread.corpusKey)}
+                      />
+                      {actions && (
+                        <ThreadMenu
+                          thread={thread}
+                          ref={(button) => {
+                            menuRefs.current.set(thread.id, button);
+                          }}
+                          onRename={() => {
+                            setActionError(undefined);
+                            setRenaming(thread.id);
+                          }}
+                          onDelete={() => {
+                            setActionError(undefined);
+                            setDeleting(thread);
+                          }}
+                        />
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}
           </ul>
         </section>
       ))}
+
+      {actions && (
+        <DeleteThreadDialog thread={deleting} onConfirm={remove} onCancel={cancelDelete} />
+      )}
     </div>
   );
 }
