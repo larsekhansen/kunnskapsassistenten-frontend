@@ -20,12 +20,13 @@ export function lockOf(detail: ThreadDetail | null | undefined): FilterSelection
  * bookkeeping: `ChatSlotView` is where several owners write.
  *
  *   - A thread read from its address carries its lock, and a page with none
- *     read has none.
+ *     read has none — which is also how leaving lets it go: the page the
+ *     reader goes to says its own, on mount, and `/` has none. There is no
+ *     cleanup on unmount for that reason; it would say the same thing twice.
  *   - A corpus switch lets it go. The page stays mounted through one (the
  *     navigation to `/` does nothing there), so nothing else would. The
  *     corpus is kept, because an effect runs on mount as well, and a mount is
  *     not a switch.
- *   - Leaving the page lets it go.
  *
  * The context and not `useFilterSelection()`, which throws outside a
  * LayoutProvider: the page is mounted on its own in tests, and with no shell
@@ -56,8 +57,6 @@ export function useThreadFilterLock(
     lockCorpus.current = corpusKey;
     setLocked?.(undefined);
   }, [corpusKey, setLocked]);
-
-  useEffect(() => () => setLocked?.(undefined), [setLocked]);
 
   return useCallback(
     (threadId: string, stillOpen: () => boolean) => {
