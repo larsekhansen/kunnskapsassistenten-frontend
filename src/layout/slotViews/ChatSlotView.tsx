@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useParams } from 'react-router';
 import { activeCorpusKey, createChatClient, subscribeToCorpus } from '../../api';
+// Rett fra modulen og ikke via src/api/index.ts, som er #5 sin barrel.
+import { renamedThreadTitles, subscribeToThreadRenames } from '../../api/threadActions';
 import { NotFoundState } from '../../components';
 import { threadFromQuestion, type Thread, type ThreadDetail } from '../../model';
 import { ChatView } from '../../views/chat';
@@ -127,6 +129,37 @@ function ChatSlot({ threadId }: { threadId?: string }) {
 
     return () => abort.abort();
   }, [client, threadId]);
+
+  /*
+   * A new name given in the thread list, on this copy of the thread too.
+   *
+   * The list owns its own rows and renames them itself. This copy is the one
+   * the main column draws its heading from, and nothing told it — so renaming
+   * the open thread left the old name over the answer until the next load
+   * (measured 2026-09-29 in mock). Both states are updated: `thread` is what
+   * the backend had, `started` is what this tab began, and either can be the
+   * one on screen.
+   *
+   * The store publishes the new name before the backend is asked and the old
+   * one back if it says no, exactly as the list does, so the heading and the
+   * row cannot disagree.
+   */
+  useEffect(
+    () =>
+      subscribeToThreadRenames(() => {
+        const renamed = renamedThreadTitles();
+        const withName = <T extends Thread>(
+          current: T | null | undefined,
+        ): T | null | undefined => {
+          const title = current ? renamed.get(current.id) : undefined;
+          if (!current || !title || title === current.title) return current;
+          return { ...current, title, titleFromQuestion: false };
+        };
+        setThread((current) => withName(current) ?? null);
+        setStarted((current) => withName(current) ?? undefined);
+      }),
+    [],
+  );
 
   // The sources on screen belong to the answer on screen. Leaving a thread
   // has to clear them, or the sources panel keeps citing the previous answer.
