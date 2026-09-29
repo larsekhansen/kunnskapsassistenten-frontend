@@ -98,18 +98,10 @@ describe('readableExcerptText, the chunk as the reader sees it', () => {
     expect(text).not.toContain('---');
     expect(text.split('\n').slice(0, 4)).toEqual([
       '– · 31.12.2024',
-      'Husleie1) · 3 024 010',
+      'Husleie¹⁾ · 3 024 010',
       'Vedlikehold egne bygg og anlegg · 0',
       'Sum andre driftskostnader · 10 795 764',
     ]);
-  });
-
-  test('keeps a footnote mark as text and drops its <sup>', () => {
-    const text = readableExcerptText(TABLE_AND_FOOTNOTES);
-    expect(text).not.toContain('<sup>');
-    expect(text).toContain(
-      '\n\n1) I tillegg til husleien føres også annen lokalleie på denne posten.',
-    );
   });
 
   test('turns a <br> inside a cell into a space', () => {
@@ -125,12 +117,59 @@ describe('readableExcerptText, the chunk as the reader sees it', () => {
   });
 });
 
+describe('readableExcerptText, footnote marks and exponents stay raised', () => {
+  test('raises a mark Marker left glued to the word', () => {
+    const text = readableExcerptText(TABLE_AND_FOOTNOTES);
+    expect(text).toContain('Husleie¹⁾ · 3 024 010');
+    expect(text).not.toContain('Husleie1)');
+  });
+
+  test('raises the mark in <sup> before the note, and drops the tag', () => {
+    const text = readableExcerptText(TABLE_AND_FOOTNOTES);
+    expect(text).not.toContain('<sup>');
+    expect(text).toContain(
+      '\n\n¹⁾ I tillegg til husleien føres også annen lokalleie på denne posten.',
+    );
+  });
+
+  test('raises an exponent in <sup>, in the text and in the heading', () => {
+    expect(readableExcerptText('Areal på 1 200 m<sup>2</sup> og 10<sup>-3</sup> per år.')).toBe(
+      'Areal på 1 200 m² og 10⁻³ per år.',
+    );
+    expect(readableHeading('Noter › Husleie<sup>1)</sup>')).toBe('Noter › Husleie¹⁾');
+  });
+
+  test('keeps a parenthesis that closes one opened before it', () => {
+    expect(readableExcerptText('Areal (1 000 m2) og utslipp (CO2), se note (3).')).toBe(
+      'Areal (1 000 m2) og utslipp (CO2), se note (3).',
+    );
+  });
+
+  test('keeps a list number and a section number as they are', () => {
+    expect(readableExcerptText('1) Første punkt\nSe punkt 2) og tabell 4.1).')).toBe(
+      '1) Første punkt\nSe punkt 2) og tabell 4.1).',
+    );
+  });
+
+  test('keeps <sup> content it has no superscript for as plain text', () => {
+    expect(readableExcerptText('Husleie<sup>a)</sup> og drift.')).toBe('Husleiea) og drift.');
+  });
+});
+
 describe('readableExcerptText, HTML is text or nothing', () => {
   test('never lets a tag through, and never keeps a script', () => {
     const text = readableExcerptText(
       'Før<img src="x" onerror="alert(1)"> etter.<script>alert(2)</script> <span id="page-4-0"></span>Slutt.',
     );
     expect(text).toBe('Før etter. Slutt.');
+  });
+
+  test('drops a tag with a / straight after its name', () => {
+    expect(readableExcerptText('<svg/onload=alert(1)>svg')).toBe('svg');
+    expect(readableExcerptText('Før<img/src=x onerror=alert(1)> etter.')).toBe('Før etter.');
+    expect(readableHeading('<span/id="page-4-0"></span>1 Leders beretning')).toBe(
+      '1 Leders beretning',
+    );
   });
 
   test('shows an escaped tag as the characters the document meant', () => {
@@ -151,6 +190,26 @@ describe('readableExcerptText, what is not markup stays', () => {
     expect(readableExcerptText('Regn 5 * 3 * 2, se \\*fotnote og feltet doc_num_id.')).toBe(
       'Regn 5 * 3 * 2, se *fotnote og feltet doc_num_id.',
     );
+  });
+
+  test('every escaped character comes back as itself', () => {
+    expect(
+      readableExcerptText(
+        'Tegn: \\\\ \\` \\* \\_ \\{ \\} \\[ \\] \\( \\) \\# \\+ \\- \\. \\! \\| \\" \\\' \\~ \\< \\>',
+      ),
+    ).toBe('Tegn: \\ ` * _ { } [ ] ( ) # + - . ! | " \' ~ < >');
+  });
+
+  test('a private-use character the text has stays itself', () => {
+    // U+E037, U+E039 and U+E03C are in Kudos chunks, counted 2026-09-29.
+    const privateUse = 'abc,  og .';
+    expect(readableExcerptText(privateUse)).toBe(privateUse);
+    expect(readableExcerptText('Se \\*fotnote .')).toBe('Se *fotnote .');
+    expect(readableHeading(`Note › ${privateUse}`)).toBe(`Note › ${privateUse}`);
+  });
+
+  test('drops a noncharacter, so every placeholder put back is one made here', () => {
+    expect(readableExcerptText('a﷒b og ﷐c')).toBe('ab og c');
   });
 
   test('a hash that is not a heading', () => {

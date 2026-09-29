@@ -23,7 +23,8 @@ import type { Excerpt, SourceDocument } from '../../model';
  * What survives is what carries meaning: paragraphs and line breaks (drawn
  * with `white-space: pre-line`), list items as «•», and table rows as lines
  * with their cells joined by « · ». An empty cell inside a row becomes «–», so
- * the numbers in a sparse row keep their column.
+ * the numbers in a sparse row keep their column. Footnote marks and exponents
+ * stay raised, as superscript characters.
  *
  * **Not a sanitiser, and it does not need to be one.** The result is only
  * ever drawn as a React text node, never as HTML, so a tag that slipped
@@ -36,22 +37,33 @@ const HEADING_SEPARATOR = ' › ';
  * Markdown's backslash escapes, and the `\"` the heading path keeps from the
  * Clojure string it was cut out of.
  *
- * Swapped for a private-use character first and put back last, so an escaped
- * `*` or `|` is never read as emphasis or as a table cell on the way.
+ * Swapped for a placeholder first and put back last, so an escaped `*` or `|`
+ * is never read as emphasis or as a table cell on the way.
+ *
+ * The placeholders are Unicode noncharacters, U+FDD0 onwards: code points the
+ * standard keeps for a program's own use and never gives to text. Any the
+ * input carries are dropped first, so every placeholder put back is one made
+ * here. Private-use characters from U+E000 were used until 2026-09-29, and a
+ * real one in the text came back as ASCII: Kudos has U+E037, U+E039 and
+ * U+E03C in its chunks, which became «7», «9» and «<».
  */
+const ESCAPABLE = '\\`*_{}[]()#+-.!|"\'~<>';
 const ESCAPED = /\\([\\`*_{}[\]()#+\-.!|"'~<>])/g;
-const PRIVATE_USE_BASE = 0xe000;
-const PRIVATE_USE = /[-]/g;
+const PLACEHOLDER_BASE = 0xfdd0;
+const NONCHARACTER = /[\ufdd0-\ufdef]/g;
 
 function protectEscapes(text: string): string {
-  return text.replace(ESCAPED, (_, char: string) =>
-    String.fromCharCode(PRIVATE_USE_BASE + char.charCodeAt(0)),
-  );
+  return text
+    .replace(NONCHARACTER, '')
+    .replace(ESCAPED, (_, char: string) =>
+      String.fromCharCode(PLACEHOLDER_BASE + ESCAPABLE.indexOf(char)),
+    );
 }
 
 function restoreEscapes(text: string): string {
-  return text.replace(PRIVATE_USE, (char) =>
-    String.fromCharCode(char.charCodeAt(0) - PRIVATE_USE_BASE),
+  return text.replace(
+    NONCHARACTER,
+    (char) => ESCAPABLE[char.charCodeAt(0) - PLACEHOLDER_BASE] ?? '',
   );
 }
 
@@ -62,8 +74,65 @@ const LINE_BREAK_TAG = /<br\s*\/?>/gi;
 /**
  * An HTML tag: a letter after `<` or `</`. A `<` in prose, as in «< 5 %» or
  * «a<b», has no letter straight after it, or no `>` to close it, and stays.
+ *
+ * The name ends at a space or at a `/`, as an HTML parser reads it, so
+ * `<br/>` and `<svg/onload=…>` are tags too.
  */
-const TAG = /<\/?[a-z][a-z0-9-]*(?:\s[^<>]*)?\/?>/gi;
+const TAG = /<\/?[a-z][a-z0-9-]*(?:[\s/][^<>]*)?>/gi;
+
+/**
+ * Superscript as the characters for it, so a footnote mark or an exponent
+ * stays raised: `Husleie<sup>1)</sup>` reads «Husleie¹⁾», `m<sup>2</sup>`
+ * reads «m²». Content with a character that has no superscript form keeps
+ * its plain characters, as before.
+ *
+ * The search in the panel reads the same string, so it finds «Husleie», not
+ * «1)».
+ */
+const SUPERSCRIPT_TAG = /<sup\b[^<>]*>([\s\S]*?)<\/sup\s*>/gi;
+const RAISED: Record<string, string> = {
+  '0': '⁰',
+  '1': '¹',
+  '2': '²',
+  '3': '³',
+  '4': '⁴',
+  '5': '⁵',
+  '6': '⁶',
+  '7': '⁷',
+  '8': '⁸',
+  '9': '⁹',
+  '+': '⁺',
+  '-': '⁻',
+  '−': '⁻',
+  '=': '⁼',
+  '(': '⁽',
+  ')': '⁾',
+};
+
+function raised(text: string): string | undefined {
+  const chars = [...text];
+  return chars.every((char) => char in RAISED)
+    ? chars.map((char) => RAISED[char]).join('')
+    : undefined;
+}
+
+/**
+ * A footnote mark Marker left as plain digits: «Husleie1)» in a table cell,
+ * where the PDF had a raised «1)». One or two digits and a `)` straight after
+ * a letter, with no letter or digit after it.
+ *
+ * A `)` that closes a `(` earlier in the same line or cell is a parenthesis,
+ * not a mark: «(1 000 m2)» and «(CO2)» keep theirs.
+ */
+const GLUED_FOOTNOTE = /(?<=\p{L})\d{1,2}\)(?![\p{L}\p{N}])/gu;
+
+function raiseGluedFootnotes(text: string): string {
+  return text.replace(GLUED_FOOTNOTE, (mark: string, offset: number) => {
+    const before = text.slice(0, offset);
+    const open = (before.match(/\(/g)?.length ?? 0) - (before.match(/\)/g)?.length ?? 0);
+    return open > 0 ? mark : (raised(mark) ?? mark);
+  });
+}
 
 const NAMED_ENTITIES: Record<string, string> = {
   amp: '&',
@@ -96,10 +165,14 @@ function decodeEntities(text: string): string {
  * theirs; `*` counts only with no space just inside it, so «5 * 3» keeps its.
  */
 function stripInline(text: string): string {
-  return (
+  return raiseGluedFootnotes(
     text
       .replace(SCRIPT_OR_STYLE, '')
       .replace(HTML_COMMENT, '')
+      .replace(
+        SUPERSCRIPT_TAG,
+        (_, inner: string) => raised(inner.replace(TAG, '').trim()) ?? inner,
+      )
       .replace(TAG, '')
       // ![alt](src) before [text](href), or the image would leave its «!».
       .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
@@ -109,7 +182,7 @@ function stripInline(text: string): string {
       .replace(/(?<![\p{L}\p{N}_])__(?=\S)([\s\S]*?\S)__(?![\p{L}\p{N}_])/gu, '$1')
       .replace(/~~(?=\S)([\s\S]*?\S)~~/g, '$1')
       .replace(/(?<![\p{L}\p{N}*])\*(?=\S)([^*\n]*?\S)\*(?![\p{L}\p{N}*])/gu, '$1')
-      .replace(/(?<![\p{L}\p{N}_])_(?=\S)([^_\n]*?\S)_(?![\p{L}\p{N}_])/gu, '$1')
+      .replace(/(?<![\p{L}\p{N}_])_(?=\S)([^_\n]*?\S)_(?![\p{L}\p{N}_])/gu, '$1'),
   );
 }
 
