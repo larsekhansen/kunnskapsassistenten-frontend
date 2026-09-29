@@ -21,6 +21,74 @@ export type ThreadActions = {
   remove(thread: Thread): Promise<void>;
 };
 
+/*
+ * Who else has to hear about a new name.
+ *
+ * The thread list owns its own rows and updates them itself. The main column
+ * does not: it draws `threadHeading` off the thread `ChatSlotView` read when
+ * the address was opened, and nothing tells that copy the name changed.
+ * Measured 2026-09-29 in mock: renaming the open thread put the new name in
+ * the list at once, while the heading kept «NKOM måloppnåelse» until the next
+ * load.
+ *
+ * A store rather than a prop, because the two views sit in different slots
+ * with no parent between them that knows about renames — the same reason
+ * `corpus.ts` and `userDocuments.ts` are stores.
+ *
+ * It follows the list's optimism exactly: the new name is published before
+ * the backend is asked, and the old one is published back if the backend says
+ * no, so the heading and the row never disagree.
+ */
+const renamedTitles = new Map<string, string>();
+const listeners = new Set<() => void>();
+
+/** A new `Map` each time, so `useSyncExternalStore` sees the change. */
+let snapshot: ReadonlyMap<string, string> = renamedTitles;
+
+function publish(threadId: string, title: string): void {
+  renamedTitles.set(threadId, title);
+  snapshot = new Map(renamedTitles);
+  for (const listener of [...listeners]) listener();
+}
+
+export function subscribeToThreadRenames(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+/** Every name given in this session, by thread id. */
+export function renamedThreadTitles(): ReadonlyMap<string, string> {
+  return snapshot;
+}
+
+/** For tests: forget the names given so far. */
+export function resetThreadRenames(): void {
+  renamedTitles.clear();
+  snapshot = new Map();
+}
+
+/**
+ * The same actions, with a rename published to whoever is listening.
+ *
+ * Wrapped here and not in the thread list, so every caller gets it and the
+ * list keeps the only copy of its own optimism.
+ */
+function publishing(actions: ThreadActions): ThreadActions {
+  return {
+    ...actions,
+    rename: async (thread, title) => {
+      const before = thread.title;
+      publish(thread.id, title);
+      try {
+        await actions.rename(thread, title);
+      } catch (error) {
+        publish(thread.id, before);
+        throw error;
+      }
+    },
+  };
+}
+
 /**
  * The actions this deployment has, or undefined when it has none.
  *
@@ -30,9 +98,9 @@ export type ThreadActions = {
  */
 export function createThreadActions(): ThreadActions | undefined {
   const mode = kaEnv().VITE_API_MODE ?? 'mock';
-  if (mode === 'bff') return bffThreadActions();
+  if (mode === 'bff') return publishing(bffThreadActions());
   if (mode === 'live') return undefined;
-  return mockThreadActions;
+  return publishing(mockThreadActions);
 }
 
 /**
