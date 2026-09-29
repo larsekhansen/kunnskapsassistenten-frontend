@@ -121,7 +121,11 @@ function raised(text: string): string | undefined {
  * where the PDF had a raised «1)». One or two digits and a `)` straight after
  * a letter, with no letter or digit after it.
  *
- * A `)` that closes a `(` earlier in the same line or cell is a parenthesis,
+ * Only in table cells, which is where it was found (375022/117). In prose the
+ * same shape can be something else: «Q4)», or a chunk that starts inside a
+ * parenthesis its previous chunk opened («tonn CO2) per år»).
+ *
+ * A `)` that closes a `(` earlier in the same cell is a parenthesis,
  * not a mark: «(1 000 m2)» and «(CO2)» keep theirs. A `)` with nothing open
  * closes nothing, so a numbered point before it, as in «1) Utslipp (tonn
  * CO2)», does not cancel the `(` that is still open.
@@ -174,7 +178,7 @@ function decodeEntities(text: string): string {
  * theirs; `*` counts only with no space just inside it, so «5 * 3» keeps its.
  */
 function stripInline(text: string): string {
-  return raiseGluedFootnotes(
+  return (
     text
       .replace(SCRIPT_OR_STYLE, '')
       .replace(HTML_COMMENT, '')
@@ -191,7 +195,7 @@ function stripInline(text: string): string {
       .replace(/(?<![\p{L}\p{N}_])__(?=\S)([\s\S]*?\S)__(?![\p{L}\p{N}_])/gu, '$1')
       .replace(/~~(?=\S)([\s\S]*?\S)~~/g, '$1')
       .replace(/(?<![\p{L}\p{N}*])\*(?=\S)([^*\n]*?\S)\*(?![\p{L}\p{N}*])/gu, '$1')
-      .replace(/(?<![\p{L}\p{N}_])_(?=\S)([^_\n]*?\S)_(?![\p{L}\p{N}_])/gu, '$1'),
+      .replace(/(?<![\p{L}\p{N}_])_(?=\S)([^_\n]*?\S)_(?![\p{L}\p{N}_])/gu, '$1')
   );
 }
 
@@ -215,7 +219,11 @@ function tableRow(line: string): string | undefined {
   const cells = line
     .slice(1, -1)
     .split('|')
-    .map((cell) => stripInline(cell.replace(LINE_BREAK_TAG, ' ')).replace(/\s+/g, ' ').trim());
+    .map((cell) =>
+      raiseGluedFootnotes(stripInline(cell.replace(LINE_BREAK_TAG, ' ')))
+        .replace(/\s+/g, ' ')
+        .trim(),
+    );
   while (cells.length > 0 && cells.at(-1) === '') cells.pop();
   if (cells.length === 0) return undefined;
   return cells.map((cell) => cell || '–').join(' · ');

@@ -139,16 +139,34 @@ describe('readableExcerptText, footnote marks and exponents stay raised', () => 
     expect(readableHeading('Noter › Husleie<sup>1)</sup>')).toBe('Noter › Husleie¹⁾');
   });
 
-  test('keeps a parenthesis that closes one opened before it', () => {
+  test('keeps a parenthesis in a cell that closes one opened before it', () => {
+    expect(
+      readableExcerptText(
+        [
+          '| Areal (1 000 m2) | Utslipp (CO2) |',
+          '| 1) Utslipp (tonn CO2) | a) redusere og b) øke fangst (målt i CO2) |',
+          '| 1) kontor og 2) lager (1 000 m2) | 1) Husleie2) |',
+        ].join('\n'),
+      ),
+    ).toBe(
+      [
+        'Areal (1 000 m2) · Utslipp (CO2)',
+        '1) Utslipp (tonn CO2) · a) redusere og b) øke fangst (målt i CO2)',
+        '1) kontor og 2) lager (1 000 m2) · 1) Husleie²⁾',
+      ].join('\n'),
+    );
+  });
+
+  test('raises a glued mark only in a table cell, not in prose or a heading', () => {
     for (const text of [
-      'Areal (1 000 m2) og utslipp (CO2), se note (3).',
+      'Tall for Q4) og Q1).',
+      'tonn CO2) per år.',
       '1) Utslipp (tonn CO2) økte i 2024.',
-      'Tiltakene er a) redusere og b) øke fangst (målt i CO2).',
-      'Vi har 1) kontor og 2) lager (1 000 m2) i Oslo.',
+      'Husleie1) i løpende tekst.',
     ]) {
       expect(readableExcerptText(text)).toBe(text);
     }
-    expect(readableExcerptText('| 1) Utslipp (CO2) | 5 |')).toBe('1) Utslipp (CO2) · 5');
+    expect(readableHeading('Noter › Husleie1)')).toBe('Noter › Husleie1)');
   });
 
   test('keeps a list number and a section number as they are', () => {
