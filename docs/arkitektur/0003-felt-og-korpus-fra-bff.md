@@ -54,13 +54,17 @@ det øyeblikket noen byttet datasett i BFF-en og ikke bygde klienten på nytt.
   vist.
 - Mot en BFF uten `id` på fasettene, som den på `8639267`, bruker klienten
   fortsatt byggets `VITE_KA_FILTER_FIELDS`.
-- Taket på 100 verdier håndheves der det gjelder. Klienten sier fra i panelet
-  (#2). BFF-en svarer 400 med koden `filter-too-many-values` i stedet for å
-  kutte. Alle verdier valgt betyr uten filter på det feltet, og det sendes
-  ikke.
-- Proben i BFF-en kan ta opptil 60 s. Klienten spør derfor på nytt i om lag
-  70 s før den godtar at filtrene er av. Mens den venter, står det
-  «Henter filtre».
+- Taket på 100 verdier håndheves to steder, som holder hver for seg. Klienten
+  sender ikke et felt der alle verdiene er valgt, og sier fra i panelet over
+  100 (#2). BFF-en stryker også et felt der alle kjente verdier er valgt, og
+  den svarer 400 med `filter-too-many-values` eller `filter-invalid-value` i
+  stedet for å kutte. Klienten viser det med koden `filter-refused`: en egen
+  tekst om hva som må endres i filteret, og uten «Prøv igjen», som bare ville
+  sendt det samme filteret en gang til.
+- Proben i BFF-en prøver på nytt i om lag ni minutter før den avgjør. Panelet
+  spør først med korte pauser, og så hvert 15. sekund så lenge BFF-en svarer
+  at proben ikke er ferdig. Mens det venter, står det «Henter filtre». En BFF
+  som ikke svarer, gir en feil med «Prøv igjen» i stedet.
 
 ## Hva som ville endret beslutningen
 
