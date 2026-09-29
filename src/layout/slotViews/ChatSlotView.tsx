@@ -1,40 +1,17 @@
-import {
-  use,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useParams } from 'react-router';
 import { activeCorpusKey, createChatClient, subscribeToCorpus } from '../../api';
 // Rett fra modulen og ikke via src/api/index.ts, som er #5 sin barrel.
 import { renamedThreadTitles, subscribeToThreadRenames } from '../../api/threadActions';
 import { NotFoundState } from '../../components';
-import {
-  isEmptySelection,
-  threadFromQuestion,
-  type FilterSelection,
-  type Thread,
-  type ThreadDetail,
-} from '../../model';
+import { threadFromQuestion, type Thread, type ThreadDetail } from '../../model';
 import { ChatView } from '../../views/chat';
-import { FilterContext } from '../filterContext';
 import { ThreadContext } from '../threadContext';
 import { useAnswerSources } from '../useAnswerSources';
 import { useComposerPresence } from '../useComposerPresence';
 import { useNoAnswers } from '../useNoAnswers';
 import { useReportOpenThread } from '../useOpenThread';
-
-/**
- * The lock a read thread carries, or none. An empty filter locks nothing: the
- * BFF only remembers one that had values in it.
- */
-function lockOf(detail: ThreadDetail | null | undefined): FilterSelection | undefined {
-  const filter = detail?.filter;
-  return filter && !isEmptySelection(filter) ? filter : undefined;
-}
+import { useThreadFilterLock } from '../useThreadFilterLock';
 
 /**
  * Mounts the chat view in whichever slot holds it.
@@ -85,13 +62,6 @@ function ChatSlot({ threadId }: { threadId?: string }) {
    */
   const [missing, setMissing] = useState(false);
   const { setDocuments } = useAnswerSources();
-  /*
-   * Tell the shell what the thread on screen is locked to (filterContext.ts,
-   * `locked`). The context and not `useFilterSelection()`, which throws
-   * outside a LayoutProvider: this page is mounted on its own in tests, and
-   * a page with no shell has no filter panel to tell.
-   */
-  const setLocked = use(FilterContext)?.setLocked;
 
   /**
    * The conversation the user started here, on a page that had no address.
@@ -137,23 +107,8 @@ function ChatSlot({ threadId }: { threadId?: string }) {
     startedRef.current = undefined;
   }, [corpusKey]);
 
-  /*
-   * The thread goes on a switch, and a lock goes with it. On a switch only:
-   * this page stays mounted through one (the navigation to `/` is a no-op,
-   * above), so nothing else would let the lock go. The corpus it was set in
-   * is kept, because an effect runs on mount as well, and a mount is not a
-   * switch.
-   */
-  const lockCorpus = useRef(corpusKey);
-  useEffect(() => {
-    if (lockCorpus.current === corpusKey) return;
-    lockCorpus.current = corpusKey;
-    setLocked?.(undefined);
-  }, [corpusKey, setLocked]);
-
-  // Leaving the page leaves the thread, and its lock. The next page says its
-  // own when its thread is read.
-  useEffect(() => () => setLocked?.(undefined), [setLocked]);
+  // The filter lock of the thread on this page. See useThreadFilterLock.ts.
+  const lockNewThread = useThreadFilterLock(client, thread, corpusKey);
 
   useEffect(() => {
     if (!threadId) return;
@@ -165,7 +120,6 @@ function ChatSlot({ threadId }: { threadId?: string }) {
         if (abort.signal.aborted) return;
         setThread(found);
         setMissing(found === null);
-        setLocked?.(lockOf(found));
         // Tell the client which conversation the questions that follow belong
         // to. Only a client that remembers anything implements it; see
         // ChatClient.openThread.
@@ -178,7 +132,7 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       });
 
     return () => abort.abort();
-  }, [client, threadId, setLocked]);
+  }, [client, threadId]);
 
   /*
    * A new name given in the thread list, on this copy of the thread too.
@@ -298,22 +252,9 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       startedRef.current = real;
       setStarted(real);
       window.history.replaceState(window.history.state, '', `/threads/${real.id}`);
-
-      /*
-       * A new thread is locked from its first question: the BFF remembers the
-       * filter when it makes the conversation, which is before it says the
-       * id. So the thread is read back once, here, and what the backend says
-       * is the lock — nothing guessed from which client this is. Mock and
-       * live keep no filter on a thread and say none.
-       */
-      void client
-        .getThread(real.id)
-        .then((detail) => {
-          if (startedRef.current?.id === real.id) setLocked?.(lockOf(detail));
-        })
-        .catch(() => {});
+      lockNewThread(real.id, () => startedRef.current?.id === real.id);
     },
-    [client, setLocked],
+    [client, lockNewThread],
   );
 
   const startThread = useCallback(
