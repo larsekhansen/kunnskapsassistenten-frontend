@@ -3,6 +3,7 @@ import {
   EXPERIMENTAL_Suggestion as Suggestion,
   Field,
   Label,
+  ValidationMessage,
 } from '@digdir/designsystemet-react';
 import { useImperativeHandle, useRef, type Ref } from 'react';
 import type { FilterFacet } from '../../model';
@@ -33,6 +34,17 @@ const SCREEN_READER_TEXTS = {
 
 /** What the view may do with a field from outside: put the keyboard in it. */
 export type FacetFieldHandle = { focus: () => void };
+
+/**
+ * The most values one field can be narrowed to.
+ *
+ * The backend's rule and not ours: headless-rag #15 takes 1 to 100 values per
+ * field, and the BFF answers more with `400 filter-too-many-values` instead of
+ * cutting the list without a word, as it used to
+ * (design/_briefs/bygg/form-d16-filtre-2026-09-29.md). The reader is told
+ * here, before the question, rather than by an error after it.
+ */
+const MAX_VALUES_PER_FIELD = 100;
 
 export type FacetFieldProps = {
   /** For the view's focus handling after the active filter goes (ActiveFilter). */
@@ -111,12 +123,26 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
    * restriction — that is still the logic — but it is not the same thing as
    * having chosen everything, and now it does not say so.
    */
+  /*
+   * «Alle valgt» says what it means as well (D16): every value chosen is no
+   * narrowing at all, and the field is not sent — the BFF strikes it, and
+   * sending 457 organisations would break the limit below for nothing. The
+   * two states still read differently, which is what funn 3 asked for; this
+   * one only adds the consequence.
+   */
   const state =
     chosen === 0
       ? 'Ingen avgrensning'
       : allChosen
-        ? `Alle ${total} valgt`
+        ? `Alle ${total} valgt, altså ingen avgrensning`
         : `${chosen} av ${total} valgt`;
+
+  /*
+   * Over the limit and short of all: a question asked like this would be
+   * turned away. The way out is in the sentence — fewer, or all, which is no
+   * narrowing and is not sent.
+   */
+  const overLimit = chosen > MAX_VALUES_PER_FIELD && !allChosen;
 
   /*
    * Empties the search text.
@@ -190,6 +216,19 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
           )}
         </div>
       </div>
+
+      {/*
+        Over the chips and not after them, where Designsystemet usually puts a
+        validation message: the message only exists when more than a hundred
+        values are ticked, and under a hundred chips it was a scroll away
+        from anyone who could act on it (measured at 101 of 457). `ds-field`
+        links it to the input wherever it stands.
+      */}
+      {overLimit && (
+        <ValidationMessage>
+          {`Høyst ${MAX_VALUES_PER_FIELD} kan brukes i ett felt, og ${chosen} er valgt. Fjern noen, eller velg alle.`}
+        </ValidationMessage>
+      )}
 
       <Suggestion
         multiple

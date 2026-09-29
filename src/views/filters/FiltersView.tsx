@@ -16,6 +16,7 @@ import { KudosDocuments } from './DocumentsList';
 import { OwnDocuments } from './OwnDocuments';
 import { CorpusLine } from './CorpusLine';
 import { FacetField, type FacetFieldHandle } from './FacetField';
+import { LockedFilter } from './LockedFilter';
 import './filters.css';
 
 export type FiltersViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> &
@@ -46,7 +47,22 @@ export function FiltersView({
   facets: given,
 }: FiltersViewProps) {
   const client = useMemo(() => createChatClient(), []);
-  const { selection, setSelection } = useFilterSelection();
+  /*
+   * Two selections, and the difference matters. `chosen` is what the reader
+   * ticked, and it is what the fields, the chips and every change here are
+   * made from. `selection` is what a question is asked with — the lock, or
+   * the ticks without the fields where every value is ticked — and it is
+   * what the counts are fetched for, since they describe what a question
+   * would search. filterContext.ts, `askedSelection`.
+   */
+  const {
+    selection,
+    setSelection,
+    locked,
+    chosen: ownChoice,
+    setKnownValues,
+  } = useFilterSelection();
+  const chosen = ownChoice ?? selection;
   const { documents } = useAnswerSources();
   const { options, active, option, choosable, set } = useCorpus();
   /**
@@ -86,7 +102,7 @@ export function FiltersView({
      * one event, so React commits them together and the fetch below is made
      * once, with the empty selection, instead of once with each.
      */
-    const hadFilter = !isEmptySelection(selection);
+    const hadFilter = !isEmptySelection(chosen);
     if (hadFilter) setSelection(emptyFilterSelection);
 
     setAnnouncement(
@@ -173,7 +189,21 @@ export function FiltersView({
    * flicker. A failure on a later change keeps the fields it had (see the
    * fetch below), and they still show their values.
    */
-  const withoutField = loading ? [] : valuesWithoutField(selection, facets);
+  const withoutField = loading ? [] : valuesWithoutField(chosen, facets);
+
+  /*
+   * Tell the shell every value each field has, so a question can leave out a
+   * field where the reader ticked them all. From the facets on screen, which
+   * list every value whatever is ticked — only the counts are conditioned.
+   */
+  useEffect(() => {
+    if (!facets) return;
+    setKnownValues?.(
+      Object.fromEntries(
+        facets.map((facet) => [facet.dimension, facet.values.map((v) => v.value)]),
+      ),
+    );
+  }, [facets, setKnownValues]);
 
   /*
    * Focus after a switch from the thread list. The button the user pressed
@@ -420,8 +450,12 @@ export function FiltersView({
       */}
       <KudosDocuments documents={documents} />
 
+      {/*
+        While the thread is locked the fields are not drawn, so a failure to
+        fetch them is not the reader's concern until they leave it.
+      */}
       <ErrorState
-        message={failed ? 'Klarte ikke å hente filtrene.' : undefined}
+        message={failed && !locked ? 'Klarte ikke å hente filtrene.' : undefined}
         onRetry={retry}
         retryRef={retryRef}
       />
@@ -435,7 +469,14 @@ export function FiltersView({
       */}
       <output className="ds-sr-only">{loading ? 'Henter filtre' : announcement}</output>
 
-      {loading && (
+      {/*
+        The thread on screen is locked to a filter, and every question in it
+        is asked with that (filterContext.ts, `locked`). The lock is drawn in
+        place of everything that would let the reader change it.
+      */}
+      {locked && <LockedFilter locked={locked} />}
+
+      {loading && !locked && (
         <div className="filters-view__loading">
           {['a', 'b', 'c'].map((key) => (
             <Skeleton key={key} height="var(--ds-size-14)" />
@@ -466,7 +507,7 @@ export function FiltersView({
           The description goes while a filter is in force: «uten å avgrense»
           is not true then, and the block under it says what is.
         */}
-        {facets?.length === 0 && (
+        {!locked && facets?.length === 0 && (
           <EmptyState
             title="Filtrering er ikke tilgjengelig ennå"
             description={
@@ -477,9 +518,9 @@ export function FiltersView({
           />
         )}
 
-        {withoutField.length > 0 && (
+        {!locked && withoutField.length > 0 && (
           <ActiveFilter
-            selection={selection}
+            selection={chosen}
             chosen={withoutField}
             hasFields={(facets?.length ?? 0) > 0}
             onChange={setSelection}
@@ -489,15 +530,16 @@ export function FiltersView({
         )}
       </div>
 
-      {facets?.map((facet, index) => (
-        <FacetField
-          key={facet.dimension}
-          ref={index === 0 ? firstFieldRef : undefined}
-          facet={facet}
-          selected={selection[facet.dimension]}
-          onChange={(values) => setSelection({ ...selection, [facet.dimension]: values })}
-        />
-      ))}
+      {!locked &&
+        facets?.map((facet, index) => (
+          <FacetField
+            key={facet.dimension}
+            ref={index === 0 ? firstFieldRef : undefined}
+            facet={facet}
+            selected={chosen[facet.dimension]}
+            onChange={(values) => setSelection({ ...chosen, [facet.dimension]: values })}
+          />
+        ))}
 
       {/*
         Last, and it is the one thing here with no claim on the space above

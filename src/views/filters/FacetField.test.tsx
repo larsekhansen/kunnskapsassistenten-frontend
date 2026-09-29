@@ -29,8 +29,44 @@ describe('FacetField', () => {
     expect(screen.getByText('Ingen avgrensning')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Velg alle dokumenttype' }));
-    expect(screen.getByText('Alle 2 valgt')).toBeTruthy();
+    expect(screen.getByText('Alle 2 valgt, altså ingen avgrensning')).toBeTruthy();
     expect(screen.queryByText('Ingen avgrensning')).toBeNull();
+  });
+
+  describe('over the limit of 100 values per field', () => {
+    const many: FilterFacet = {
+      dimension: 'organisation',
+      label: 'Virksomheter',
+      values: Array.from({ length: 150 }, (_, index) => ({
+        value: `Virksomhet ${index + 1}`,
+        label: `Virksomhet ${index + 1}`,
+      })),
+    };
+    const first = (count: number) => many.values.slice(0, count).map((value) => value.value);
+    const warning = /^Høyst 100 kan brukes i ett felt/;
+
+    it('says so, with the way out, when more than 100 are chosen', () => {
+      render(<FacetField facet={many} selected={first(101)} onChange={() => {}} />);
+
+      expect(
+        screen.getByText(
+          'Høyst 100 kan brukes i ett felt, og 101 er valgt. Fjern noen, eller velg alle.',
+        ),
+      ).toBeTruthy();
+    });
+
+    it('says nothing at 100', () => {
+      render(<FacetField facet={many} selected={first(100)} onChange={() => {}} />);
+
+      expect(screen.queryByText(warning)).toBeNull();
+    });
+
+    it('says nothing when all are chosen, which is no narrowing and is not sent', () => {
+      render(<FacetField facet={many} selected={first(150)} onChange={() => {}} />);
+
+      expect(screen.queryByText(warning)).toBeNull();
+      expect(screen.getByText('Alle 150 valgt, altså ingen avgrensning')).toBeTruthy();
+    });
   });
 
   it('teller opp et delvis utvalg', () => {

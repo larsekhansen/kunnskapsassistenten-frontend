@@ -7,7 +7,7 @@ import {
 } from '../model';
 import { AnswerSourcesContext } from './answerSourcesContext';
 import { CitationContext, type ActiveCitation } from './citationContext';
-import { FilterContext } from './filterContext';
+import { askedSelection, FilterContext, sameKnownValues, type KnownValues } from './filterContext';
 import { LayoutContext } from './layoutContext';
 import {
   readStoredFilter,
@@ -85,6 +85,22 @@ export function LayoutProvider({
   const [selection, setSelection] = useState<FilterSelection>(
     () => readStoredFilter() ?? emptyFilterSelection,
   );
+  /** The open thread's lock, if any. See filterContext.ts, `locked`. */
+  const [locked, setLocked] = useState<FilterSelection | undefined>(undefined);
+  /** Every value each field has, from the filter panel. See `askedSelection`. */
+  const [knownValues, setKnownValues] = useState<KnownValues>({});
+  /*
+   * Kept only when the values have changed, and that is what stops a loop.
+   * The panel reports them every time its facets arrive, and its facets are
+   * fetched for the selection a question is asked with — which is worked out
+   * from these. A new object for the same values gave a new selection, a new
+   * fetch, new facets and a new object again: seven fetches every two
+   * seconds with nobody touching anything (KA CC, blokkerende 1 on #183).
+   * Handing React the previous state makes it bail out, and the round stops.
+   */
+  const reportKnownValues = useCallback((next: KnownValues) => {
+    setKnownValues((previous) => (sameKnownValues(previous, next) ? previous : next));
+  }, []);
   const [answerDocuments, setAnswerDocuments] = useState<SourceDocument[] | undefined>(undefined);
   /**
    * The sources of every answer in the thread, oldest first.
@@ -329,7 +345,23 @@ export function LayoutProvider({
     [activeCitation, showCitation],
   );
 
-  const filter = useMemo(() => ({ selection, setSelection }), [selection]);
+  /*
+   * What questions are asked with: the lock when there is one, and otherwise
+   * the reader's choice without the fields they ticked every value of. The
+   * stored selection above stays the reader's own, and so does what is
+   * written back to `localStorage`.
+   */
+  const filter = useMemo(
+    () => ({
+      selection: locked ?? askedSelection(selection, knownValues),
+      chosen: selection,
+      setSelection,
+      locked,
+      setLocked,
+      setKnownValues: reportKnownValues,
+    }),
+    [locked, selection, knownValues, reportKnownValues],
+  );
 
   const answerSources = useMemo(
     () => ({

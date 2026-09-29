@@ -11,6 +11,7 @@ import { useAnswerSources } from '../useAnswerSources';
 import { useComposerPresence } from '../useComposerPresence';
 import { useNoAnswers } from '../useNoAnswers';
 import { useReportOpenThread } from '../useOpenThread';
+import { useThreadFilterLock } from '../useThreadFilterLock';
 
 /**
  * Mounts the chat view in whichever slot holds it.
@@ -105,6 +106,9 @@ function ChatSlot({ threadId }: { threadId?: string }) {
   useEffect(() => {
     startedRef.current = undefined;
   }, [corpusKey]);
+
+  // The filter lock of the thread on this page. See useThreadFilterLock.ts.
+  const lockNewThread = useThreadFilterLock(client, thread, corpusKey);
 
   useEffect(() => {
     if (!threadId) return;
@@ -248,8 +252,9 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       startedRef.current = real;
       setStarted(real);
       window.history.replaceState(window.history.state, '', `/threads/${real.id}`);
+      lockNewThread(real.id, () => startedRef.current?.id === real.id);
     },
-    [client],
+    [client, lockNewThread],
   );
 
   const startThread = useCallback(

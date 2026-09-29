@@ -119,7 +119,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
    */
   const filterSummary = useCallback(
     (messageId: string) => {
-      const applied = appliedFilters[messageId] ?? emptyFilterSelection;
+      // An answer read back from a locked thread was asked with the lock
+      // (ThreadDetail.filter); one asked here carries what it was asked with.
+      const applied = appliedFilters[messageId] ?? thread?.filter ?? emptyFilterSelection;
       const answer = messages.find((message) => message.id === messageId);
       /*
        * Named only when the answer came from a corpus this deployment knows
@@ -139,7 +141,7 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
           : undefined;
       return answerScopeText(applied, elsewhere);
     },
-    [appliedFilters, corpusKey, messages],
+    [appliedFilters, corpusKey, messages, thread?.filter],
   );
 
   /*
