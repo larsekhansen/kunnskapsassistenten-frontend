@@ -442,6 +442,7 @@ export function FiltersView({
           <ActiveFilter
             selection={selection}
             chosen={withoutField}
+            hasFields={(facets?.length ?? 0) > 0}
             onChange={setSelection}
             focusWhenGone={unavailableRef}
             onAnnounce={setAnnouncement}

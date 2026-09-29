@@ -115,6 +115,16 @@ describe('an active filter without facets', () => {
       expect(chip('2024')).toBeTruthy();
     });
 
+    it('says the filter can be removed, and changed once the filters can be fetched', async () => {
+      renderView(stored);
+
+      expect(
+        await screen.findByText(
+          'Filteret gjelder fortsatt for spørsmålene dine. Du kan fjerne det, men ikke endre det før filtrene kan hentes.',
+        ),
+      ).toBeTruthy();
+    });
+
     it('still says that filtering is not available, without claiming nothing is narrowed', async () => {
       renderView(stored);
 
@@ -206,6 +216,17 @@ describe('an active filter without facets', () => {
       expect(
         screen.queryByRole('heading', { name: 'Filtrering er ikke tilgjengelig ennå' }),
       ).toBeNull();
+    });
+
+    it('says there is no field for it, not that the filters cannot be fetched', async () => {
+      renderView(withOrganisation);
+
+      expect(
+        await screen.findByText(
+          'Det finnes ikke noe felt for dette, men det gjelder fortsatt for spørsmålene dine. Du kan fjerne det.',
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByText(/før filtrene kan hentes/)).toBeNull();
     });
 
     it('empties only what it shows with «Tøm», and leaves the fields alone', async () => {

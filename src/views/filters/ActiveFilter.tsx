@@ -7,6 +7,12 @@ export type ActiveFilterProps = {
   selection: FilterSelection;
   /** The values to show: those no field can. See `valuesWithoutField`. Never empty. */
   chosen: ChosenValue[];
+  /**
+   * Whether facets arrived and fields are drawn below. Then the values here
+   * are of a dimension the facets came without, and waiting for the facets
+   * will not bring a field for them, so the block has to say something else.
+   */
+  hasFields: boolean;
   onChange: (selection: FilterSelection) => void;
   /**
    * Where focus goes when the block takes the focused chip with it: the last
@@ -56,6 +62,7 @@ function keyOf({ dimension, value }: ChosenValue): string {
 export function ActiveFilter({
   selection,
   chosen,
+  hasFields,
   onChange,
   focusWhenGone,
   onAnnounce,
@@ -152,9 +159,16 @@ export function ActiveFilter({
         </Button>
       </div>
 
+      {/*
+        Two sentences for two situations. Without facets the fields may come
+        back, so «før filtrene kan hentes» is true. With fields on screen it
+        is not: the facets are here, this dimension is not among them, and no
+        wait will change that (KA CC, bør 1 on #177).
+      */}
       <Paragraph data-size="sm" variant="long">
-        Filteret gjelder fortsatt for spørsmålene dine. Du kan fjerne det, men ikke endre det før
-        filtrene kan hentes.
+        {hasFields
+          ? 'Det finnes ikke noe felt for dette, men det gjelder fortsatt for spørsmålene dine. Du kan fjerne det.'
+          : 'Filteret gjelder fortsatt for spørsmålene dine. Du kan fjerne det, men ikke endre det før filtrene kan hentes.'}
       </Paragraph>
 
       <div className="active-filter__chips">
