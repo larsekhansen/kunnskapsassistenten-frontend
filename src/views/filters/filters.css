@@ -145,8 +145,57 @@
   inline-size: 100%;
 }
 
-/* The label and its two actions share one line above the field. */
-.facet-field__label-row {
+/*
+ * The panel without facets: «Filtrering er ikke tilgjengelig ennå» and the
+ * filter still in force, in one region that focus can land on.
+ *
+ * The width is claimed so the chips wrap at the panel's edge rather than at
+ * the width of the heading above them.
+ */
+.filters-view__unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--ds-size-6);
+  inline-size: 100%;
+}
+
+/*
+ * Empty with facets on screen, and it must stay focusable all the same: it
+ * is where focus goes when the last chip is removed. The same rule, for the
+ * same reason, as `.error-state:empty` in global.css — out of flow and
+ * sizeless, so the view's gap is not reserved on each side of nothing.
+ */
+.filters-view__unavailable:empty {
+  position: absolute;
+  block-size: 0;
+  inline-size: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.active-filter {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--ds-size-2);
+  inline-size: 100%;
+}
+
+/*
+ * The chips on a row that wraps, which is what chip.md asks for — never a
+ * vertical list.
+ */
+.active-filter__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-2);
+}
+
+/* The label and its two actions share one line above the field. «Avgrenset
+   til» and its «Tøm» share one the same way. */
+.facet-field__label-row,
+.active-filter__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -266,6 +315,10 @@
 
 .filters-view[hidden],
 .filters-view__loading[hidden],
+.filters-view__unavailable[hidden],
+.active-filter[hidden],
+.active-filter__chips[hidden],
+.active-filter__head[hidden],
 .facet-field__label-row[hidden],
 .facet-field__actions[hidden],
 .documents-list[hidden],

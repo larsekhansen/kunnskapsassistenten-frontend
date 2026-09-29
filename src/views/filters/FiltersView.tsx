@@ -10,6 +10,7 @@ import { PanelHead } from '../../layout/PanelHead';
 import { ViewHead } from '../../layout/ViewHead';
 import type { SlotViewProps } from '../../layout/viewModel';
 import { emptyFilterSelection, isEmptySelection, type FilterFacet } from '../../model';
+import { ActiveFilter } from './ActiveFilter';
 import { KudosDocuments } from './DocumentsList';
 import { OwnDocuments } from './OwnDocuments';
 import { CorpusLine } from './CorpusLine';
@@ -48,7 +49,8 @@ export function FiltersView({
   const { documents } = useAnswerSources();
   const { options, active, option, choosable, set } = useCorpus();
   /**
-   * What the live region says after a corpus switch.
+   * What the live region says after a corpus switch, or after a value is
+   * removed from a filter that has no fields to show it in (ActiveFilter).
    *
    * The region already exists and already announces «Henter filtre»; this
    * reuses it rather than adding a second one, which is what the brief asks
@@ -60,7 +62,7 @@ export function FiltersView({
    * this, the one thing that changed — which corpus the next question is
    * asked of — is the one thing nobody is told.
    */
-  const [corpusAnnouncement, setCorpusAnnouncement] = useState('');
+  const [announcement, setAnnouncement] = useState('');
 
   function chooseCorpus(key: string) {
     const picked = options.find((candidate) => candidate.key === key);
@@ -86,7 +88,7 @@ export function FiltersView({
     const hadFilter = !isEmptySelection(selection);
     if (hadFilter) setSelection(emptyFilterSelection);
 
-    setCorpusAnnouncement(
+    setAnnouncement(
       hadFilter
         ? `Korpus: ${picked?.label ?? key}. Filteret er nullstilt fordi korpuset ble byttet.`
         : `Korpus: ${picked?.label ?? key}`,
@@ -155,7 +157,14 @@ export function FiltersView({
   }
   const [attempt, setAttempt] = useState(0);
   const backRef = useRef<HTMLButtonElement>(null);
+  const unavailableRef = useRef<HTMLDivElement>(null);
   const loading = !failed && !facets;
+  /*
+   * No fields to draw the selection in: the list came back empty, or the
+   * fetch failed before any arrived. A failure on a later change keeps the
+   * fields it had (see the fetch below), and they still show the selection.
+   */
+  const unavailable = !loading && (!facets || facets.length === 0);
 
   /*
    * Focus after a switch from the thread list. The button the user pressed
@@ -183,6 +192,12 @@ export function FiltersView({
    * the new ones land, instead of collapsing to a skeleton on every click.
    * The cleanup aborts the previous request, so two answers cannot arrive out
    * of order and leave the counts from a selection the user has moved past.
+   *
+   * An answer also clears the error. Only «Prøv igjen» used to, and it was the
+   * only way the selection could change while the error stood — until the
+   * active filter could be removed without fields (ActiveFilter). A removal
+   * refetches too, and when that one succeeds the fields are back; an alert
+   * saying they could not be fetched may not stand above them.
    */
   useEffect(() => {
     if (given) return;
@@ -192,6 +207,7 @@ export function FiltersView({
       .listFacets(abort.signal, selection)
       .then((found) => {
         setFacets(found);
+        setFailed(false);
         if (isEmptySelection(selection)) setCorpus(found);
       })
       .catch(() => {
@@ -373,7 +389,7 @@ export function FiltersView({
         mounting the region and its text together says nothing — the same
         reason ErrorState keeps its alert container. A retry has to announce.
       */}
-      <output className="ds-sr-only">{loading ? 'Henter filtre' : corpusAnnouncement}</output>
+      <output className="ds-sr-only">{loading ? 'Henter filtre' : announcement}</output>
 
       {loading && (
         <div className="filters-view__loading">
@@ -384,16 +400,50 @@ export function FiltersView({
       )}
 
       {/*
-        No facets is a normal state, not an error: nothing is narrowing the
-        answer, and the user can still ask. Separate from the loading branch
-        above, which tests !facets — an empty array is truthy.
+        The panel without facets: the key is missing and the server answers
+        with an empty list, or the fetch failed (the alert above). In both, a
+        filter stored on the thread still narrows every question, so it is
+        shown here and can be removed.
+
+        One region around both, rendered permanently and focusable without
+        being in the tab order — the pattern ErrorState uses. It is where
+        focus lands when the last chip goes, and it has to exist before and
+        after, so it cannot be one of the things that come and go inside it.
+        Landing here with no facets, the reader is on «Filtrering er ikke
+        tilgjengelig ennå», which says what the panel is now. After a failed
+        fetch it is empty by then and says nothing — the fallback ErrorState
+        settles for too — but the tab order goes on from where the chips were,
+        and «Prøv igjen» is one Shift+Tab away.
       */}
-      {facets?.length === 0 && (
-        <EmptyState
-          title="Filtrering er ikke tilgjengelig ennå"
-          description="Du kan stille spørsmål uten å avgrense dokumentene."
-        />
-      )}
+      <div ref={unavailableRef} tabIndex={-1} className="filters-view__unavailable ds-focus">
+        {/*
+          No facets is a normal state, not an error: nothing is narrowing the
+          answer, and the user can still ask. Separate from the loading branch
+          above, which tests !facets — an empty array is truthy.
+
+          The description goes while a filter is in force: «uten å avgrense»
+          is not true then, and the block under it says what is.
+        */}
+        {facets?.length === 0 && (
+          <EmptyState
+            title="Filtrering er ikke tilgjengelig ennå"
+            description={
+              isEmptySelection(selection)
+                ? 'Du kan stille spørsmål uten å avgrense dokumentene.'
+                : undefined
+            }
+          />
+        )}
+
+        {unavailable && (
+          <ActiveFilter
+            selection={selection}
+            onChange={setSelection}
+            focusWhenGone={unavailableRef}
+            onAnnounce={setAnnouncement}
+          />
+        )}
+      </div>
 
       {facets?.map((facet) => (
         <FacetField
