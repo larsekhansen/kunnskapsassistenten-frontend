@@ -103,6 +103,60 @@ function ClickableHarness({ answers }: { answers: readonly AnswerSources[] }) {
 }
 
 /**
+ * Two answers' `[1]`, each in its own `.markdown` as the main column draws
+ * them, and a way to draw them anew the way react-markdown does when it gets
+ * new components: equal markers, new elements. `redrawOnClick` does it in the
+ * click's own render, before the citation reaches the panel.
+ */
+function RedrawingHarness({
+  answers,
+  redrawOnClick = false,
+}: {
+  answers: readonly AnswerSources[];
+  redrawOnClick?: boolean;
+}) {
+  const [citation, setCitation] = useState<
+    { number: number; nonce: number; messageId?: string } | undefined
+  >(undefined);
+  const [drawing, setDrawing] = useState(0);
+
+  const marker = (answer: string) => (
+    <a
+      key={`${answer}-${drawing}`}
+      href={`#${excerptDomId(1)}`}
+      data-testid={`markoer-${answer}`}
+      onClick={(event) => {
+        event.preventDefault();
+        setCitation((previous) => ({
+          number: 1,
+          nonce: (previous?.nonce ?? 0) + 1,
+          messageId: 'svar-1',
+        }));
+        if (redrawOnClick) setDrawing((count) => count + 1);
+      }}
+    >
+      [1]
+    </a>
+  );
+
+  return (
+    <>
+      <div className="markdown">{marker('forste')}</div>
+      <div className="markdown">{marker('andre')}</div>
+      <button type="button" onClick={() => setDrawing((count) => count + 1)}>
+        Tegn svaret på nytt
+      </button>
+      <SourcesView
+        answers={answers}
+        activeCitationNumber={citation?.number}
+        activeCitationNonce={citation?.nonce}
+        activeCitationMessageId={citation?.messageId}
+      />
+    </>
+  );
+}
+
+/**
  * The visible counter, which is `aria-hidden` and therefore has no role to
  * query it by. Its spoken twin is the `role="status"` region, so a plain
  * `getByText` would find both.
@@ -413,6 +467,36 @@ describe('SourcesView, the way back to the answer', () => {
 
     fireEvent.keyDown(excerpt, { key: 'Escape' });
     expect(document.activeElement).toBe(marker);
+  });
+
+  it('finds the marker again when the answer is drawn anew after the click', async () => {
+    render(<RedrawingHarness answers={[firstAnswer, secondAnswer]} />);
+    const clicked = screen.getByTestId('markoer-andre');
+
+    clicked.focus();
+    fireEvent.click(clicked);
+    const excerpt = document.getElementById(excerptDomId(1)) as HTMLElement;
+    await waitFor(() => expect(document.activeElement).toBe(excerpt));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tegn svaret på nytt' }));
+    expect(clicked.isConnected).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tilbake til svaret' }));
+    expect(document.activeElement).toBe(screen.getByTestId('markoer-andre'));
+  });
+
+  it('goes back to the answer that was clicked when the click itself draws it anew', async () => {
+    render(<RedrawingHarness answers={[firstAnswer, secondAnswer]} redrawOnClick />);
+    const clicked = screen.getByTestId('markoer-andre');
+
+    clicked.focus();
+    fireEvent.click(clicked);
+    const excerpt = document.getElementById(excerptDomId(1)) as HTMLElement;
+    await waitFor(() => expect(document.activeElement).toBe(excerpt));
+    expect(clicked.isConnected).toBe(false);
+
+    fireEvent.keyDown(excerpt, { key: 'Escape' });
+    expect(document.activeElement).toBe(screen.getByTestId('markoer-andre'));
   });
 
   it('offers no way back from an excerpt nobody was sent to', () => {
