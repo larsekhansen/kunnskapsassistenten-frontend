@@ -4,7 +4,7 @@ import {
   Field,
   Label,
 } from '@digdir/designsystemet-react';
-import { useRef } from 'react';
+import { useImperativeHandle, useRef, type Ref } from 'react';
 import type { FilterFacet } from '../../model';
 
 /**
@@ -31,7 +31,12 @@ const SCREEN_READER_TEXTS = {
   'data-sr-of': 'av',
 };
 
+/** What the view may do with a field from outside: put the keyboard in it. */
+export type FacetFieldHandle = { focus: () => void };
+
 export type FacetFieldProps = {
+  /** For the view's focus handling after the active filter goes (ActiveFilter). */
+  ref?: Ref<FacetFieldHandle>;
   facet: FilterFacet;
   /** Selected {@link FacetValue.value}s. Empty means «no restriction». */
   selected: string[];
@@ -58,8 +63,9 @@ export type FacetFieldProps = {
  * selection: u-combobox hides it whenever the input is empty. «Tøm» is
  * therefore our own button, which is also what answer 50 asks for.
  */
-export function FacetField({ facet, selected, onChange }: FacetFieldProps) {
+export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  useImperativeHandle(ref, () => ({ focus: () => inputRef.current?.focus() }), []);
   const total = facet.values.length;
   const chosen = selected.length;
   const allChosen = chosen === total;

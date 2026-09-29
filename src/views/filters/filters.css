@@ -145,8 +145,68 @@
   inline-size: 100%;
 }
 
-/* The label and its two actions share one line above the field. */
-.facet-field__label-row {
+/*
+ * The panel without facets: «Filtrering er ikke tilgjengelig ennå» and the
+ * filter still in force, in one region that focus can land on.
+ *
+ * The width is claimed so the chips wrap at the panel's edge rather than at
+ * the width of the heading above them.
+ */
+.filters-view__unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--ds-size-6);
+  inline-size: 100%;
+}
+
+/*
+ * Empty with fields on screen, and after a failed fetch once the chips are
+ * gone. Out of flow and sizeless, as `.error-state:empty` in global.css, so
+ * the view's gap is not reserved on each side of nothing. It is not a focus
+ * target while empty — «Prøv igjen» or the first field is (FiltersView) — but
+ * `display: none` is still not used, so a focus that lands here anyway is
+ * kept rather than dropped to `<body>`.
+ */
+.filters-view__unavailable:empty {
+  position: absolute;
+  block-size: 0;
+  inline-size: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.active-filter {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--ds-size-2);
+  inline-size: 100%;
+}
+
+/*
+ * The whole width, so «Tøm» lands at the end of the row as it does over each
+ * field. A field is as wide as the panel and its label row with it; here the
+ * column's `align-items: start` would shrink the row to its two words.
+ */
+.active-filter__head {
+  align-self: stretch;
+}
+
+/*
+ * The chips on a row that wraps, which is what chip.md asks for — never a
+ * vertical list.
+ */
+.active-filter__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-2);
+}
+
+/* The label and its two actions share one line above the field. «Avgrenset
+   til» and its «Tøm» share one the same way. */
+.facet-field__label-row,
+.active-filter__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -266,6 +326,10 @@
 
 .filters-view[hidden],
 .filters-view__loading[hidden],
+.filters-view__unavailable[hidden],
+.active-filter[hidden],
+.active-filter__chips[hidden],
+.active-filter__head[hidden],
 .facet-field__label-row[hidden],
 .facet-field__actions[hidden],
 .documents-list[hidden],
