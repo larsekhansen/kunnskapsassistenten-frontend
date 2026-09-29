@@ -110,6 +110,20 @@ ikke et prefiks på det korte.
 `design/skjermbilder-frontend/e2e/`. Ingen av dem er en assert. Gjennomgangen
 mot Figma står i [`visuell-2026-09-11.md`](visuell-2026-09-11.md).
 
+**Bildene skrives bare når du ber om det** (fra 29.09), med
+`KA_E2E_SCREENSHOTS`:
+
+- uten variabel: ingen bilder. Det gjelder alle kjøringer fra en gren, en
+  arbeiders arbeidstre og en klone av monorepoet.
+- `KA_E2E_SCREENSHOTS=design`: referansebildene i
+  `design/skjermbilder-frontend/e2e/`. Kjøringen stopper hvis den ikke finner
+  `design/INDEX.md` oppover.
+- `KA_E2E_SCREENSHOTS=/en/absolutt/sti`: bildene havner der, for eksempel for å
+  se på poden uten å røre referansene.
+
+Referansebildene tas fra `main` etter en merge, med
+`KA_E2E_SCREENSHOTS=design KA_E2E_PORT=4173 CI=true npx playwright test screenshots.spec.ts`.
+
 **Ett ord er plattformavhengig — men ikke i denne suiten.** Hintet ved
 skrivefeltet (`shortcutHint()` i `src/views/chat/text.ts`) og hurtigtasten i
 hopplenka (`shortcutModifier()` i `src/layout/shortcutModifier.ts`) leser

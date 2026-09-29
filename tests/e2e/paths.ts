@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
@@ -90,8 +90,8 @@ pruneOldRuns();
  * depths. `docs/review/tools/a11y.sh` finds it the same way.
  *
  * Returns undefined when the design folder is not there, which is what a
- * clone without the umbrella looks like. Screenshots are then skipped
- * rather than written somewhere arbitrary.
+ * clone without the umbrella looks like. Only asked when a run wants the
+ * reference images (`screenshotFolder` below).
  */
 function findDesignFolder(): string | undefined {
   let candidate = REPO;
@@ -108,14 +108,43 @@ function findDesignFolder(): string | undefined {
   return undefined;
 }
 
-const designFolder = findDesignFolder();
-
 /**
- * Where the deliberate screenshots go, as the build rules ask:
- * `design/skjermbilder-frontend/e2e/<view>-<modus>.png`, always the same
- * names, so the conductor and Lars can compare them against the Figma
- * images in the `skjermbilder` folders under `design/omraader/`.
+ * Where the deliberate screenshots go, and whether they are written at all.
+ *
+ * `KA_E2E_SCREENSHOTS` decides, and without it nothing is written:
+ *
+ * - `design`: the reference images the build rules ask for,
+ *   `design/skjermbilder-frontend/e2e/<view>-<modus>.png`, always the same
+ *   names, so the conductor and Lars can compare them against the Figma
+ *   images in the `skjermbilder` folders under `design/omraader/`. A run that
+ *   asks for this and finds no `design/INDEX.md` stops, rather than quietly
+ *   writing nothing.
+ * - an absolute path: that folder, for a run whose pictures are not the
+ *   reference, such as a branch or the pod.
+ *
+ * Opt-in since 2026-09-29. The suite used to look for `design/INDEX.md` by
+ * itself, so any checkout under the umbrella wrote into the real `design/`:
+ * a worker's worktree on its branch, or a clone of the monorepo under
+ * `monorepo-proeve/`, overwrote the reference images with whatever it
+ * rendered. #5 had to run the suite from a copy outside the umbrella to
+ * avoid it.
  */
-export const SCREENSHOTS = designFolder
-  ? join(designFolder, 'skjermbilder-frontend', 'e2e')
-  : undefined;
+function screenshotFolder(setting: string | undefined): string | undefined {
+  if (!setting) return undefined;
+
+  if (setting === 'design') {
+    const designFolder = findDesignFolder();
+    if (!designFolder) {
+      throw new Error(
+        `KA_E2E_SCREENSHOTS=design, men fant ikke design/INDEX.md oppover fra ${REPO}.`,
+      );
+    }
+    return join(designFolder, 'skjermbilder-frontend', 'e2e');
+  }
+
+  if (isAbsolute(setting)) return setting;
+
+  throw new Error(`KA_E2E_SCREENSHOTS må være «design» eller en absolutt sti, ikke «${setting}».`);
+}
+
+export const SCREENSHOTS = screenshotFolder(process.env.KA_E2E_SCREENSHOTS?.trim());
