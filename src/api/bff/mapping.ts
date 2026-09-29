@@ -3,7 +3,6 @@ import type {
   ChatError,
   Excerpt,
   FilterSelection,
-  Message,
   SourceDocument,
   StreamEvent,
   ThinkingStep,
@@ -119,48 +118,14 @@ export function threadFromSummary(summary: BffConversationSummary, corpusKey?: s
  * `corpusKey` is the one the deployment says the BFF answers from. The BFF
  * tags nothing with a corpus, and it serves exactly one.
  */
-/**
- * The agent loop's own prefix for a turn it could not finish
- * (digdir/skills/builtin/agent/loop.clj). The backend stores that sentence as
- * the assistant's message, so it comes back with the conversation looking
- * exactly like an answer.
- *
- * Measured 2026-09-29: a turn whose caller disconnected mid-stream left
- * «LLM request failed at iteration 2: Interceptor Exception: » in the thread,
- * and reopening the thread put that on screen as the answer.
- *
- * Anchored, and only this one prefix. The other patterns this app reads
- * failures by are unanchored on purpose — «timeout», «rate limit» — and an
- * answer about public documents may well contain those words. A wrong match
- * here hides a real answer, which is worse than the English sentence it was
- * meant to catch.
- */
-const STORED_FAILURE = /^LLM request failed\b/u;
-
-const isStoredFailure = (message: Message): boolean =>
-  message.role === 'assistant' && STORED_FAILURE.test(message.content);
-
-/**
- * A turn the backend recorded as failed, drawn as failed rather than answered.
- *
- * The text goes, because it is English, technical, and was never written for
- * a reader; `status: 'error'` is what makes the chat draw its own sentence
- * under the question instead (`FAILED_NOTE`). The markers go with it: there
- * is no answer left for them to point into.
- */
-function asFailedTurn(message: Message): Message {
-  const { sources: _sources, citationCount: _citationCount, ...rest } = message;
-  return { ...rest, content: '', citations: [], status: 'error' };
-}
-
 export function threadDetailFromBff(
   detail: BffConversationDetail,
   corpusKey?: string,
 ): ThreadDetail {
   const thread = threadFromSummary(detail.conversation, corpusKey);
-  const turns = messagesFromApi(detail.messages, corpusKey).map((message) =>
-    isStoredFailure(message) ? asFailedTurn(message) : message,
-  );
+  // `messagesFromApi` has already turned a turn the backend recorded as failed
+  // into one with `status: 'error'` and no text, for both clients at once.
+  const turns = messagesFromApi(detail.messages, corpusKey);
 
   const documents = sourceDocumentsFrom(detail.sources);
   // The last ANSWER, not the last assistant turn: the BFF keeps one set of

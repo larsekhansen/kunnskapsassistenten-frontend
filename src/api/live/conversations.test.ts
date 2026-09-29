@@ -162,6 +162,46 @@ describe('messagesFromApi', () => {
     // i en samtale leses som en tegnefeil.
     expect(messagesFromApi([{ id: 'a', role: 'assistant', text: '   ' }])).toHaveLength(0);
   });
+
+  it('tegner backendens egen feilsetning som en mislykket tur, ikke som svaret', () => {
+    // Backenden lagrer setningen sin som assistentens melding, saa den kommer
+    // tilbake med samtalen og ser ut som et svar. Maalt 29.09 etter at
+    // leseren lastet paa nytt midt i stroemmen.
+    // Se digdir/digdir-headless-rag#22.
+    const [answer] = messagesFromApi([
+      {
+        id: 'a',
+        role: 'assistant',
+        text: 'LLM request failed at iteration 2: Interceptor Exception: ',
+        chunks: [
+          { chunkId: 'c1', docNum: '1', docTitle: 'Tildelingsbrev', contentMarkdown: 'tekst' },
+        ],
+      },
+    ]);
+
+    expect(answer?.status).toBe('error');
+    expect(answer?.content).toBe('');
+    expect(answer?.citations).toEqual([]);
+    expect(answer?.citationCount).toBeUndefined();
+    expect(answer?.sources).toBeUndefined();
+  });
+
+  it('lar et svar staa selv om det inneholder ordene timeout og rate limit', () => {
+    // De andre moenstrene appen leser feil med er uankret med vilje, og et
+    // svar om offentlige dokumenter kan godt inneholde de ordene. Et
+    // feiltreff her ville skjult et ekte svar.
+    const [answer] = messagesFromApi([
+      {
+        id: 'a',
+        role: 'assistant',
+        text: 'Rundskrivet nevner en timeout paa 30 sekunder og en rate limit [1].',
+      },
+    ]);
+
+    expect(answer?.status).toBe('complete');
+    expect(answer?.content).toContain('timeout');
+    expect(answer?.citationCount).toBe(1);
+  });
 });
 
 describe('citationCountIn', () => {
