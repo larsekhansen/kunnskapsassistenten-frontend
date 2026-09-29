@@ -562,6 +562,28 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
     });
   });
 
+  it('sier med egne ord at et valg ikke kan brukes, når BFF-en nekter verdien', async () => {
+    fromBff({
+      'POST /api/ask': () =>
+        json(
+          {
+            error: 'Et av valgene i dokumenttyper har tegn eller en lengde søket ikke tar imot.',
+            code: 'filter-invalid-value',
+            field: 'type',
+          },
+          400,
+        ),
+    });
+    const events = await drain(noBuildConfig().ask({ query: 'x', filters: documentType(['a`b']) }));
+    expect(events.at(-1)).toMatchObject({
+      type: 'error',
+      error: {
+        code: 'unknown',
+        message: 'Et av valgene i filteret kan ikke brukes i søket. Fjern det, og spør igjen.',
+      },
+    });
+  });
+
   it('venter på proben lenger enn de 12 sekundene den brukte å gi opp etter', async () => {
     vi.useFakeTimers();
     try {

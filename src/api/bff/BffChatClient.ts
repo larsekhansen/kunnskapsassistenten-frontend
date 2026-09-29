@@ -18,7 +18,7 @@ import type {
   BffConversationDetail,
   BffConversationSummary,
   BffFacet,
-  BffFilterTooManyValues,
+  BffFilterRefused,
   BffTurnEvent,
 } from './contract';
 import { facetsFrom } from '../facets';
@@ -480,14 +480,21 @@ export class BffChatClient implements ChatClient {
 async function errorFromResponse(response: Response): Promise<ChatError> {
   const fromStatus = errorFromStatus(response.status);
   if (fromStatus.code !== 'unknown') return fromStatus;
-  const body = (await response.json().catch(() => ({}))) as
-    { error?: unknown; code?: unknown } | Partial<BffFilterTooManyValues>;
+  const body = (await response.json().catch(() => ({}))) as Partial<BffFilterRefused> & {
+    error?: unknown;
+  };
   // The panel says so before it gets this far (#2); this is the BFF refusing
   // what a panel let through, in words this client wrote.
   if (body.code === 'filter-too-many-values') {
     return {
       code: 'unknown',
       message: 'Filteret har for mange verdier valgt i ett felt. Velg høyst 100, eller alle.',
+    };
+  }
+  if (body.code === 'filter-invalid-value') {
+    return {
+      code: 'unknown',
+      message: 'Et av valgene i filteret kan ikke brukes i søket. Fjern det, og spør igjen.',
     };
   }
   if (typeof body.error !== 'string' || !body.error.trim()) return fromStatus;

@@ -108,10 +108,13 @@ export interface BffCapabilities {
   dataset?: BffDataset;
 }
 
-/** `400` from `POST /api/ask`: more values in one field than the backend takes. */
-export interface BffFilterTooManyValues {
+/**
+ * `400` from `POST /api/ask` for a filter the backend would refuse: more
+ * values in one field than it takes, or a value it does not accept.
+ */
+export interface BffFilterRefused {
   error: string;
-  code: 'filter-too-many-values';
+  code: 'filter-too-many-values' | 'filter-invalid-value';
   field: string;
-  max: number;
+  max?: number;
 }
