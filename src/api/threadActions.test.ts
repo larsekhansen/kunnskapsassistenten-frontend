@@ -4,7 +4,7 @@ import { mockThreadDetail, mockThreadList, resetMockThreads } from './mock/sessi
 import {
   bffThreadActions,
   createThreadActions,
-  renamedThreadTitles,
+  renamedThreads,
   resetThreadActions,
   resetThreadRenames,
   subscribeToThreadRenames,
@@ -154,7 +154,10 @@ describe('a new name is published to whoever is listening', () => {
     await createThreadActions()!.rename(thread, 'Nkom 2024');
 
     expect(heard).toHaveBeenCalled();
-    expect(renamedThreadTitles().get('conv-1')).toBe('Nkom 2024');
+    expect(renamedThreads().get('conv-1')).toEqual({
+      title: 'Nkom 2024',
+      titleFromQuestion: false,
+    });
     off();
   });
 
@@ -163,7 +166,7 @@ describe('a new name is published to whoever is listening', () => {
     let underveis: string | undefined;
     fetchMock.mockImplementation(async () => {
       // Midt i kallet: lista har alt satt det nye navnet på raden sin.
-      underveis = renamedThreadTitles().get('conv-1');
+      underveis = renamedThreads().get('conv-1')?.title;
       return new Response('{"ok":true}', { status: 200 });
     });
 
@@ -180,7 +183,10 @@ describe('a new name is published to whoever is listening', () => {
 
     await expect(createThreadActions()!.rename(thread, 'Nkom 2024')).rejects.toThrow();
 
-    expect(renamedThreadTitles().get('conv-1')).toBe('Måloppnåelse i Nkom');
+    expect(renamedThreads().get('conv-1')).toEqual({
+      title: 'Måloppnåelse i Nkom',
+      titleFromQuestion: false,
+    });
     // Én gang for det nye navnet, én gang for det gamle tilbake.
     expect(heard).toHaveBeenCalledTimes(2);
     off();
@@ -207,13 +213,13 @@ describe('a new name is published to whoever is listening', () => {
     failFirst(new Response('nei', { status: 502 }));
     await expect(first).rejects.toThrow();
 
-    expect(renamedThreadTitles().get('conv-1')).toBe('Nkom C');
+    expect(renamedThreads().get('conv-1')?.title).toBe('Nkom C');
   });
 
   it('gir en ny Map hver gang, så useSyncExternalStore ser endringen', async () => {
-    const før = renamedThreadTitles();
+    const før = renamedThreads();
     await createThreadActions()!.rename(thread, 'Nkom 2024');
-    expect(renamedThreadTitles()).not.toBe(før);
+    expect(renamedThreads()).not.toBe(før);
   });
 
   it('slutter å høre etter avmelding', async () => {

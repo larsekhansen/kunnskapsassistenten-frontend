@@ -39,15 +39,27 @@ export type ThreadActions = {
  * the backend is asked, and the old one is published back if the backend says
  * no, so the heading and the row never disagree.
  */
-const renamedTitles = new Map<string, string>();
+/**
+ * A name, and whether it is the thread's own or the question over again.
+ *
+ * Both, because `titleFromQuestion` decides whether the heading is drawn at
+ * all: a title that only repeats the question is `ds-sr-only`, heard and not
+ * seen (`threadHeading`, `ChatView`). Publishing the title alone made a
+ * failed rename put the OLD title back as if the reader had chosen it, and
+ * the same sentence then stood visible right above the question it was made
+ * from. Measured 2026-09-29; found by KA CC on #185.
+ */
+export type RenamedThread = { title: string; titleFromQuestion: boolean };
+
+const renamed = new Map<string, RenamedThread>();
 const listeners = new Set<() => void>();
 
 /** A new `Map` each time, so `useSyncExternalStore` sees the change. */
-let snapshot: ReadonlyMap<string, string> = renamedTitles;
+let snapshot: ReadonlyMap<string, RenamedThread> = renamed;
 
-function publish(threadId: string, title: string): void {
-  renamedTitles.set(threadId, title);
-  snapshot = new Map(renamedTitles);
+function publish(threadId: string, name: RenamedThread): void {
+  renamed.set(threadId, name);
+  snapshot = new Map(renamed);
   for (const listener of [...listeners]) listener();
 }
 
@@ -57,13 +69,13 @@ export function subscribeToThreadRenames(listener: () => void): () => void {
 }
 
 /** Every name given in this session, by thread id. */
-export function renamedThreadTitles(): ReadonlyMap<string, string> {
+export function renamedThreads(): ReadonlyMap<string, RenamedThread> {
   return snapshot;
 }
 
 /** For tests: forget the names given so far. */
 export function resetThreadRenames(): void {
-  renamedTitles.clear();
+  renamed.clear();
   snapshot = new Map();
 }
 
@@ -77,8 +89,14 @@ function publishing(actions: ThreadActions): ThreadActions {
   return {
     ...actions,
     rename: async (thread, title) => {
-      const before = thread.title;
-      publish(thread.id, title);
+      // What to put back, flag and all, exactly as the list does
+      // (`ThreadsView.rename`).
+      const before: RenamedThread = {
+        title: thread.title,
+        titleFromQuestion: thread.titleFromQuestion === true,
+      };
+      // A name the reader typed is the thread's own, never the question again.
+      publish(thread.id, { title, titleFromQuestion: false });
       try {
         await actions.rename(thread, title);
       } catch (error) {
@@ -89,7 +107,7 @@ function publishing(actions: ThreadActions): ThreadActions {
          * failure says nothing about it (KA CC, kan 2 on #180). The thread
          * list follows the same rule for its own rows (ThreadsView.tsx).
          */
-        if (renamedTitles.get(thread.id) === title) publish(thread.id, before);
+        if (renamed.get(thread.id)?.title === title) publish(thread.id, before);
         throw error;
       }
     },
