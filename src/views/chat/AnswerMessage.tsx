@@ -1,6 +1,6 @@
 import { Button, Card, Paragraph, Skeleton, Spinner } from '@digdir/designsystemet-react';
 import { ArrowsCirclepathIcon } from '@navikt/aksel-icons';
-import { useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Markdown } from '../../components';
 import { ViewHead } from '../../layout/ViewHead';
 import { citationTargets, type Message } from '../../model';
@@ -147,6 +147,39 @@ export function AnswerMessage({
 
   const searching = searchOpen;
   const query = searchQuery;
+  /*
+   * Begge to holdes i ro mellom tegninger, og det er ikke finpuss.
+   *
+   * `Markdown` memoiserer `components` på nettopp disse to. Kom de nye ved
+   * hver tegning, byttet hver komponent i `components` identitet, React så
+   * dem som andre komponenttyper, og react-markdown monterte hele svaret på
+   * nytt. Målt av #4 mot poden: ett klikk på en markør fjernet fire
+   * markørnoder og la fire nye inn, og fokus mistet målet sitt, fordi noden
+   * det sto i var borte.
+   *
+   * `onSelectSource` kommer fra `showCitation`, som skallet alt har i en
+   * `useCallback`, så avhengighetene her står i ro av seg selv.
+   */
+  const citations = useMemo(() => citationTargets(message.sources ?? []), [message.sources]);
+
+  /*
+   * Gjennom en ref, ikke som avhengighet.
+   *
+   * Skallets egen `showCitation` står allerede i ro, men da hviler hele
+   * svaret på at hver forelder mellom den og hit husker det samme. Én
+   * `onSelectSource={(n) => ...}` et sted i kjeden, og markørene byttes ut
+   * igjen — uten at noe i denne fila ser annerledes ut. Refen tar den
+   * muligheten bort: funksjonen er den samme så lenge svaret er det samme.
+   */
+  const selectSource = useRef(onSelectSource);
+  useEffect(() => {
+    selectSource.current = onSelectSource;
+  }, [onSelectSource]);
+  const activateCitation = useCallback(
+    (number: number) => selectSource.current(number, message.id),
+    [message.id],
+  );
+
   const answerRef = useRef<HTMLDivElement>(null);
   const searchFieldRef = useRef<HTMLInputElement>(null);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
@@ -250,9 +283,9 @@ export function AnswerMessage({
             <div ref={answerRef}>
               {empty ? null : (
                 <Markdown
-                  citations={citationTargets(message.sources ?? [])}
+                  citations={citations}
                   markClassName={ANSWER_MARK_CLASS}
-                  onCitationActivate={(number) => onSelectSource(number, message.id)}
+                  onCitationActivate={activateCitation}
                   searchQuery={searching ? query : ''}
                   // A stopped answer wrote its markers; the excerpts were
                   // still on their way. Then `[3]` is drawn as text that says
