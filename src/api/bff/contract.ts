@@ -47,6 +47,28 @@ export type BffTurnEvent =
       maxIterations: number;
       queries?: string[];
     }
+  /**
+   * Agentens egne ord om hva den holder på med, ett per `agent/thinking`.
+   *
+   * `stage` sier hvilken fase agenten er i og ingenting om hva den gjorde.
+   * Det var alt BFF-en sendte, så panelet fikk fire faste setninger, mens
+   * live — som leser de samme rammene rett fra backenden — viste agentens
+   * resonnement, hva hvert verktøykall fant og hvor lang tid det tok.
+   */
+  | { type: 'thinking'; reasoning: string }
+  /**
+   * Ett verktøykall, slik `agent/turn-completed` meldte det. Ett per kall og
+   * ikke per ramme: en ramme bærer flere, og tre `read_chunks` på rad er
+   * vanlig.
+   */
+  | {
+      type: 'tool-call';
+      tool: string;
+      detail?: string;
+      queries?: string[];
+      durationMs?: number;
+      chunkCount?: number;
+    }
   | { type: 'delta'; text: string }
   | { type: 'sources'; sources: BffSource[] }
   | { type: 'done'; conversationId: string; insufficient: boolean }
