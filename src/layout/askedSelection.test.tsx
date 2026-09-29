@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AskParams, ChatClient } from '../api/chatClient';
 import { emptyFilterSelection, type FilterSelection } from '../model';
-import { askedSelection } from './filterContext';
+import { askedSelection, sameKnownValues } from './filterContext';
 
 /**
  * A field where every value is ticked is not sent with the question.
@@ -83,6 +83,34 @@ describe('askedSelection', () => {
 
   it('gives back what it was given when nothing is left out', () => {
     expect(askedSelection(chosen, { year: ['2023', '2024'] })).toBe(chosen);
+  });
+});
+
+describe('sameKnownValues', () => {
+  it('says the same for the same values', () => {
+    expect(
+      sameKnownValues(
+        { documentType: ['Årsrapport', 'Evaluering'], year: ['2024'] },
+        { documentType: ['Årsrapport', 'Evaluering'], year: ['2024'] },
+      ),
+    ).toBe(true);
+  });
+
+  it('tells lists of the same length apart by their values', () => {
+    // A corpus with as many values, but others: comparing the counts alone
+    // would keep the old ones, and «alle valgt» would be worked out against
+    // the wrong list (KA CC, kan 1 on #183).
+    expect(
+      sameKnownValues(
+        { documentType: ['Årsrapport', 'Evaluering'] },
+        { documentType: ['Årsrapport', 'Instruks'] },
+      ),
+    ).toBe(false);
+  });
+
+  it('tells a missing field from an empty one, and lists of other lengths apart', () => {
+    expect(sameKnownValues({ year: ['2024'] }, {})).toBe(false);
+    expect(sameKnownValues({ year: ['2024'] }, { year: ['2024', '2023'] })).toBe(false);
   });
 });
 
