@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BffConversationDetail } from './contract';
-import { chatErrorFromBff, threadDetailFromBff } from './mapping';
+import { BffTurnState, chatErrorFromBff, threadDetailFromBff } from './mapping';
 
 /**
  * The BFF's own codes for what only it can know. Everything else goes on to
@@ -40,6 +40,29 @@ describe('chatErrorFromBff', () => {
     expect(chatErrorFromBff(undefined, 'LLM request failed at iteration 2').code).toBe(
       'model-unavailable',
     );
+  });
+});
+
+/**
+ * Reading the code is one thing; carrying it from the stream to the reader is
+ * another. A mutation that left `chatErrorFromBff` in place but stopped the
+ * stream from calling it went unnoticed by every test above, because they call
+ * it directly. This one goes through the turn state, with a message no pattern
+ * matches so that only the code can answer.
+ */
+describe('BffTurnState: the code travels with the error', () => {
+  it('an unreachable backend is named by its code, not by its English sentence', () => {
+    const state = new BffTurnState();
+    const [event] = state.read({
+      type: 'error',
+      message: 'Fikk ikke kontakt med backend (ECONNREFUSED).',
+      code: 'backend_unreachable',
+    });
+    expect(event?.type).toBe('error');
+    expect(event?.type === 'error' ? event.error : undefined).toEqual({
+      code: 'unknown',
+      message: 'Tjenesten svarte ikke.',
+    });
   });
 });
 
