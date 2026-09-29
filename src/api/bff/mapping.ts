@@ -1,5 +1,7 @@
 import { filterDimensions } from '../../model';
 import type {
+  ChatError,
+  Excerpt,
   FilterSelection,
   SourceDocument,
   StreamEvent,
@@ -7,7 +9,7 @@ import type {
   Thread,
   ThreadDetail,
 } from '../../model';
-import { errorFromBackend } from '../backendErrors';
+import { errorFromBackend, errorFromStatus } from '../backendErrors';
 import type { DatasetFilterFields } from '../filterFields';
 import { messagesFromApi, threadFromConversation } from '../live/conversations';
 import { relevanceFromRank, toCitations } from '../live/mcp';
@@ -55,34 +57,49 @@ export function filterBody(
 /**
  * The BFF's sources as documents with excerpts.
  *
- * One excerpt per source, because that is what arrives: the BFF joins every
- * passage of a document into one `excerpt`, and numbers the DOCUMENTS. The
- * agent numbers its `[n]` by chunk (live/mcp.ts, `toSourceDocuments`), so the
- * two agree only when each document gave one chunk. A marker with nothing
- * behind it is drawn as plain text, which is the rule for any marker that
- * cannot be resolved (model/citation.ts). Chunks in the contract is item 3
- * of «Det som må endres» in docs/arkitektur/0002.
+ * One entry per CHUNK arrives, and `marker` is the answer's own `[n]`, so the
+ * grouping here is the same one the live client does in `toSourceDocuments`:
+ * the excerpts keep their numbers, and the documents are the coarser view of
+ * the same list. Excerpts are grouped per document so the title is not
+ * repeated once per excerpt (answer 57).
+ *
+ * Before the BFF numbered per chunk this had to say the opposite, and a
+ * document that gave two chunks swallowed every marker after the first.
+ *
+ * `excerpt` absent is not an empty quote: the chunk was retrieved, its text
+ * could not be looked up. That is `textUnavailable`, which the sources panel
+ * says in words rather than drawing a blank.
  */
 export function sourceDocumentsFrom(sources: BffSource[] | undefined): SourceDocument[] {
   const list = sources ?? [];
-  return list.map((source, index) => {
-    const id = source.docNum || `doc-${source.marker}`;
+  const documents = new Map<string, SourceDocument>();
+
+  list.forEach((source, index) => {
+    const id = source.docNum || source.chunkId || `doc-${source.marker}`;
     const url = source.url || undefined;
-    return {
+    const excerpt: Excerpt = {
+      id: source.chunkId ?? `${id}-${source.marker}`,
+      text: source.excerpt ?? '',
+      ...(source.excerpt ? {} : { textUnavailable: true as const }),
+      relevance: relevanceFromRank(index, list.length),
+      ...(url ? { kudosUrl: url } : {}),
+      citationNumber: source.marker,
+    };
+
+    const existing = documents.get(id);
+    if (existing) {
+      existing.excerpts.push(excerpt);
+      return;
+    }
+    documents.set(id, {
       id,
       title: source.title.trim() || 'Uten tittel',
       ...(url ? { url } : {}),
-      excerpts: [
-        {
-          id: `${id}-${source.marker}`,
-          text: source.excerpt ?? '',
-          relevance: relevanceFromRank(index, list.length),
-          ...(url ? { kudosUrl: url } : {}),
-          citationNumber: source.marker,
-        },
-      ],
-    };
+      excerpts: [excerpt],
+    });
   });
+
+  return [...documents.values()];
 }
 
 /** A stored conversation as a thread. Same shape as the backend's own. */
@@ -107,17 +124,24 @@ export function threadDetailFromBff(
   corpusKey?: string,
 ): ThreadDetail {
   const thread = threadFromSummary(detail.conversation, corpusKey);
+  // `messagesFromApi` has already turned a turn the backend recorded as failed
+  // into one with `status: 'error'` and no text, for both clients at once.
   const turns = messagesFromApi(detail.messages, corpusKey);
 
   const documents = sourceDocumentsFrom(detail.sources);
-  const last = turns.findLastIndex((message) => message.role === 'assistant');
+  // The last ANSWER, not the last assistant turn: the BFF keeps one set of
+  // sources per conversation, and they are the last answer's. Hanging them on
+  // a turn that failed would credit it with excerpts it never had.
+  const last = turns.findLastIndex(
+    (message) => message.role === 'assistant' && message.status !== 'error',
+  );
 
   return {
     ...thread,
     // As in live: the last turn is the best «last activity» there is.
     updatedAt: turns.at(-1)?.createdAt ?? thread.updatedAt,
     messages:
-      documents.length === 0
+      documents.length === 0 || last === -1
         ? turns
         : turns.map((message, index) =>
             index === last
@@ -144,6 +168,37 @@ const FINALIZING_LABEL = 'Jeg skriver svaret med kildehenvisninger.';
  * again, which the live client drops too; `writing` is the BFF's name for the
  * agent thinking, and it carries none of the thinking's words.
  */
+/**
+ * What the BFF said went wrong, as one of this app's cases.
+ *
+ * Three of the codes are the BFF's own words about itself, and only it can
+ * know them, so only this file can read them. Everything else — the backend's
+ * `dataset_not_authorized`, its `LLM request failed …`, its own sentence
+ * about a question that is too long — goes on to `errorFromBackend`, which is
+ * the same reading the live client does.
+ *
+ * `backend_http_<status>` carries the status rather than a case, because the
+ * status is all the BFF knows: a 5xx from the backend does not say whether it
+ * was the search or the model, and the two ask the reader for opposite
+ * things. `errorFromStatus` is where that judgement already lives.
+ */
+export function chatErrorFromBff(code: string | undefined, message: string): ChatError {
+  const status = code?.match(/^backend_http_(\d{3})$/u);
+  if (status) return errorFromStatus(Number(status[1]));
+
+  switch (code) {
+    // The BFF never got an answer to pass on. Not the same as the backend
+    // answering badly, and the only place that can tell them apart is the BFF.
+    case 'backend_unreachable':
+      return { code: 'unknown', message: 'Tjenesten svarte ikke.' };
+    // The stream ended before the answer did.
+    case 'stream_broken':
+      return { code: 'unknown', message: 'Forbindelsen brøt sammen mens svaret kom.' };
+    default:
+      return errorFromBackend(message, code);
+  }
+}
+
 export class BffTurnState {
   #text = '';
   #sources: BffSource[] = [];
@@ -183,7 +238,7 @@ export class BffTurnState {
         return [
           {
             type: 'error',
-            error: errorFromBackend(event.message),
+            error: chatErrorFromBff(event.code, event.message),
             ...askedOf,
           },
         ];
@@ -201,9 +256,11 @@ export class BffTurnState {
             documents,
             citations: toCitations(documents),
             retrieval: {
-              // One excerpt per document is what arrived, so that is the
-              // count of hits there is to show. See `sourceDocumentsFrom`.
-              hitCount: documents.length,
+              // A hit is one chunk and a document is the grouping of them, so
+              // the two are counted apart now that the BFF sends one source
+              // per chunk. They were the same number for as long as it sent
+              // one per document. See `sourceDocumentsFrom`.
+              hitCount: documents.reduce((n, document) => n + document.excerpts.length, 0),
               documentCount: documents.length,
               keywords: this.#keywords,
             },

@@ -221,6 +221,26 @@ export function citationCountIn(text: string | null | undefined): number {
  * what lets a restored answer say which corpus it came from instead of
  * borrowing whatever the chooser stands on now (KA CC on #129).
  */
+/**
+ * The agent loop's own prefix for a turn it could not finish
+ * (`digdir/skills/builtin/agent/loop.clj`). The backend stores that sentence
+ * as the assistant's message, so it comes back with the conversation looking
+ * exactly like an answer, and both clients read it from here.
+ *
+ * Measured 2026-09-29: a turn whose caller disconnected mid-stream left «LLM
+ * request failed at iteration 2: Interceptor Exception: » in the thread, and
+ * reopening the thread put that on screen as the answer. Reported as
+ * digdir/digdir-headless-rag#22; until it is fixed there, a reader must not be
+ * shown an English stack-trace fragment as the answer to their question.
+ *
+ * Anchored, and only this one prefix. The other patterns this app reads
+ * failures by are unanchored on purpose — «timeout», «rate limit» — and an
+ * answer about public documents may well contain those words. A wrong match
+ * here hides a real answer, which is worse than the English sentence it was
+ * meant to catch.
+ */
+const STORED_FAILURE = /^LLM request failed\b/u;
+
 export function messagesFromApi(
   messages: ApiMessage[] | null | undefined,
   corpusKey?: string,
@@ -231,22 +251,30 @@ export function messagesFromApi(
     .map((message) => {
       const sources = sourcesFromChunks(message.chunks);
       const role = message.role === 'user' ? ('user' as const) : ('assistant' as const);
+      // A turn the backend recorded as failed, drawn as failed rather than
+      // answered. The text goes, because it is English, technical, and was
+      // never written for a reader; `status: 'error'` is what makes the chat
+      // draw its own sentence under the question instead (`FAILED_NOTE`).
+      const failed = role === 'assistant' && STORED_FAILURE.test(message.text ?? '');
       return {
         id: message.id,
         role,
-        content: message.text ?? '',
+        content: failed ? '' : (message.text ?? ''),
         createdAt: isoFrom(message.created, new Date(0).toISOString()),
-        citations: citationsFromSources(sources),
+        // No answer left for a marker to point into, on a failed turn.
+        citations: failed ? [] : citationsFromSources(sources),
         // Only an answer cites. A question with brackets in it is a question
         // with brackets in it.
-        ...(role === 'assistant' ? { citationCount: citationCountIn(message.text) } : {}),
+        ...(role === 'assistant' && !failed
+          ? { citationCount: citationCountIn(message.text) }
+          : {}),
         // On the answer and not on the question, for the same reason: the
         // corpus is where the answer was retrieved from, and a question was
         // retrieved from nothing. Absent when the thread carries no tag,
         // which is every thread from before there was a choice.
         ...(role === 'assistant' && corpusKey ? { corpusKey } : {}),
-        ...(sources ? { sources } : {}),
-        status: 'complete' as const,
+        ...(sources && !failed ? { sources } : {}),
+        status: failed ? ('error' as const) : ('complete' as const),
       };
     });
 }

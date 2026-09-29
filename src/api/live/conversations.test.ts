@@ -162,6 +162,62 @@ describe('messagesFromApi', () => {
     // i en samtale leses som en tegnefeil.
     expect(messagesFromApi([{ id: 'a', role: 'assistant', text: '   ' }])).toHaveLength(0);
   });
+
+  it('tegner backendens egen feilsetning som en mislykket tur, ikke som svaret', () => {
+    // The backend stores that sentence as the assistant's message, so it comes
+    // back with the conversation looking exactly like an answer. Measured
+    // 2026-09-29 after a reader reloaded mid-stream.
+    // See digdir/digdir-headless-rag#22.
+    const [answer] = messagesFromApi([
+      {
+        id: 'a',
+        role: 'assistant',
+        text: 'LLM request failed at iteration 2: Interceptor Exception: ',
+        chunks: [
+          { chunkId: 'c1', docNum: '1', docTitle: 'Tildelingsbrev', contentMarkdown: 'tekst' },
+        ],
+      },
+    ]);
+
+    expect(answer?.status).toBe('error');
+    expect(answer?.content).toBe('');
+    expect(answer?.citations).toEqual([]);
+    expect(answer?.citationCount).toBeUndefined();
+    expect(answer?.sources).toBeUndefined();
+  });
+
+  it('lar et svar som SITERER feilsetningen midt i teksten, stå', () => {
+    // The pattern is anchored on purpose. Without `^`, an answer that reports
+    // what the service said would be hidden as a failure, and the reader would
+    // lose a real answer (KA CC on #182).
+    const [answer] = messagesFromApi([
+      {
+        id: 'a',
+        role: 'assistant',
+        text: 'Loggen viser at LLM request failed at iteration 2 er den vanligste feilen [1].',
+      },
+    ]);
+
+    expect(answer?.status).toBe('complete');
+    expect(answer?.content).toContain('LLM request failed');
+  });
+
+  it('lar et svar stå selv om det inneholder ordene timeout og rate limit', () => {
+    // The other patterns this app reads failures by are unanchored on purpose,
+    // and an answer about public documents may well contain those words. A
+    // wrong match here would hide a real answer.
+    const [answer] = messagesFromApi([
+      {
+        id: 'a',
+        role: 'assistant',
+        text: 'Rundskrivet nevner en timeout på 30 sekunder og en rate limit [1].',
+      },
+    ]);
+
+    expect(answer?.status).toBe('complete');
+    expect(answer?.content).toContain('timeout');
+    expect(answer?.citationCount).toBe(1);
+  });
 });
 
 describe('citationCountIn', () => {

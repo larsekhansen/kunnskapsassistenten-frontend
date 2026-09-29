@@ -20,8 +20,19 @@ export interface BffSource {
   docNum: string;
   title: string;
   url: string;
-  /** 1-based. One per DOCUMENT: the BFF joins a document's chunks into one. */
+  /**
+   * 1-based, and ONE PER CHUNK, which is what `[N]` in the answer counts.
+   *
+   * It used to be one per document, with a document's chunks joined into a
+   * single excerpt. The two only agreed when every document gave exactly one
+   * chunk: measured against kudos-full 2026-09-29, a question returned eight
+   * chunks of the same document and the answer cited `[1]`..`[8]`, while the
+   * BFF offered one source with marker 1.
+   */
   marker: number;
+  /** The chunk this marker points at, when the backend named it. */
+  chunkId?: string;
+  /** The passage. Absent when the BFF could not look it up. */
   excerpt?: string;
 }
 
@@ -39,7 +50,7 @@ export type BffTurnEvent =
   | { type: 'delta'; text: string }
   | { type: 'sources'; sources: BffSource[] }
   | { type: 'done'; conversationId: string; insufficient: boolean }
-  | { type: 'error'; message: string; conversationId?: string };
+  | { type: 'error'; message: string; code?: string; conversationId?: string };
 
 /** `POST /api/ask`. `filter` is keyed by the corpus's own field names. */
 export interface BffAskRequest {
