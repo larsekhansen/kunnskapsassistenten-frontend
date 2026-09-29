@@ -38,6 +38,7 @@ const SHOWN: ChatErrorCode[] = [
   'timeout',
   'unauthorized',
   'rate-limited',
+  'question-too-long',
   'unknown',
 ];
 
