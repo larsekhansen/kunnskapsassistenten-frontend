@@ -186,6 +186,30 @@ describe('a new name is published to whoever is listening', () => {
     off();
   });
 
+  it('does not go back to the oldest name when a rename fails after a newer one', async () => {
+    // A to B, then B to C before the first has answered; C lands, then B fails.
+    // The name on screen is C's, and B's failure says nothing about it
+    // (KA CC, kan 2 on #180).
+    vi.stubEnv('VITE_API_MODE', 'bff');
+    let failFirst: (response: Response) => void = () => {};
+    fetchMock
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            failFirst = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(new Response('{"ok":true}', { status: 200 }));
+    const actions = createThreadActions()!;
+
+    const first = actions.rename(thread, 'Nkom B');
+    await actions.rename({ ...thread, title: 'Nkom B' }, 'Nkom C');
+    failFirst(new Response('nei', { status: 502 }));
+    await expect(first).rejects.toThrow();
+
+    expect(renamedThreadTitles().get('conv-1')).toBe('Nkom C');
+  });
+
   it('gir en ny Map hver gang, så useSyncExternalStore ser endringen', async () => {
     const før = renamedThreadTitles();
     await createThreadActions()!.rename(thread, 'Nkom 2024');
