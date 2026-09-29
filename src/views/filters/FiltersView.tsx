@@ -16,6 +16,7 @@ import { KudosDocuments } from './DocumentsList';
 import { OwnDocuments } from './OwnDocuments';
 import { CorpusLine } from './CorpusLine';
 import { FacetField, type FacetFieldHandle } from './FacetField';
+import { LockedFilter } from './LockedFilter';
 import './filters.css';
 
 export type FiltersViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> &
@@ -46,7 +47,7 @@ export function FiltersView({
   facets: given,
 }: FiltersViewProps) {
   const client = useMemo(() => createChatClient(), []);
-  const { selection, setSelection } = useFilterSelection();
+  const { selection, setSelection, locked } = useFilterSelection();
   const { documents } = useAnswerSources();
   const { options, active, option, choosable, set } = useCorpus();
   /**
@@ -420,8 +421,12 @@ export function FiltersView({
       */}
       <KudosDocuments documents={documents} />
 
+      {/*
+        While the thread is locked the fields are not drawn, so a failure to
+        fetch them is not the reader's concern until they leave it.
+      */}
       <ErrorState
-        message={failed ? 'Klarte ikke å hente filtrene.' : undefined}
+        message={failed && !locked ? 'Klarte ikke å hente filtrene.' : undefined}
         onRetry={retry}
         retryRef={retryRef}
       />
@@ -435,7 +440,14 @@ export function FiltersView({
       */}
       <output className="ds-sr-only">{loading ? 'Henter filtre' : announcement}</output>
 
-      {loading && (
+      {/*
+        The thread on screen is locked to a filter, and every question in it
+        is asked with that (filterContext.ts, `locked`). The lock is drawn in
+        place of everything that would let the reader change it.
+      */}
+      {locked && <LockedFilter locked={locked} />}
+
+      {loading && !locked && (
         <div className="filters-view__loading">
           {['a', 'b', 'c'].map((key) => (
             <Skeleton key={key} height="var(--ds-size-14)" />
@@ -466,7 +478,7 @@ export function FiltersView({
           The description goes while a filter is in force: «uten å avgrense»
           is not true then, and the block under it says what is.
         */}
-        {facets?.length === 0 && (
+        {!locked && facets?.length === 0 && (
           <EmptyState
             title="Filtrering er ikke tilgjengelig ennå"
             description={
@@ -477,7 +489,7 @@ export function FiltersView({
           />
         )}
 
-        {withoutField.length > 0 && (
+        {!locked && withoutField.length > 0 && (
           <ActiveFilter
             selection={selection}
             chosen={withoutField}
@@ -489,15 +501,16 @@ export function FiltersView({
         )}
       </div>
 
-      {facets?.map((facet, index) => (
-        <FacetField
-          key={facet.dimension}
-          ref={index === 0 ? firstFieldRef : undefined}
-          facet={facet}
-          selected={selection[facet.dimension]}
-          onChange={(values) => setSelection({ ...selection, [facet.dimension]: values })}
-        />
-      ))}
+      {!locked &&
+        facets?.map((facet, index) => (
+          <FacetField
+            key={facet.dimension}
+            ref={index === 0 ? firstFieldRef : undefined}
+            facet={facet}
+            selected={selection[facet.dimension]}
+            onChange={(values) => setSelection({ ...selection, [facet.dimension]: values })}
+          />
+        ))}
 
       {/*
         Last, and it is the one thing here with no claim on the space above

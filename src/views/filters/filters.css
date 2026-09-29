@@ -176,6 +176,24 @@
   overflow: hidden;
 }
 
+/* The lock: its heading, the values as tags, what it means and the way out. */
+.locked-filter {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--ds-size-2);
+  inline-size: 100%;
+}
+
+.locked-filter__values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .active-filter {
   display: flex;
   flex-direction: column;
@@ -327,6 +345,8 @@
 .filters-view[hidden],
 .filters-view__loading[hidden],
 .filters-view__unavailable[hidden],
+.locked-filter[hidden],
+.locked-filter__values[hidden],
 .active-filter[hidden],
 .active-filter__chips[hidden],
 .active-filter__head[hidden],

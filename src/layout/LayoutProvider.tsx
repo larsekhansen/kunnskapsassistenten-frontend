@@ -85,6 +85,8 @@ export function LayoutProvider({
   const [selection, setSelection] = useState<FilterSelection>(
     () => readStoredFilter() ?? emptyFilterSelection,
   );
+  /** The open thread's lock, if any. See filterContext.ts, `locked`. */
+  const [locked, setLocked] = useState<FilterSelection | undefined>(undefined);
   const [answerDocuments, setAnswerDocuments] = useState<SourceDocument[] | undefined>(undefined);
   /**
    * The sources of every answer in the thread, oldest first.
@@ -329,7 +331,15 @@ export function LayoutProvider({
     [activeCitation, showCitation],
   );
 
-  const filter = useMemo(() => ({ selection, setSelection }), [selection]);
+  /*
+   * The lock, when there is one, is what questions are asked with; the stored
+   * selection above stays the reader's own, and so does what is written back
+   * to `localStorage`.
+   */
+  const filter = useMemo(
+    () => ({ selection: locked ?? selection, setSelection, locked, setLocked }),
+    [locked, selection],
+  );
 
   const answerSources = useMemo(
     () => ({
