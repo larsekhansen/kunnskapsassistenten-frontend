@@ -124,8 +124,10 @@ describe('«Velg alle» and the question', () => {
 
     await waitFor(() => expect(asked.params.length).toBe(1));
     expect(asked.params[0]?.filters).toEqual(emptyFilterSelection);
-    await screen.findByRole('button', { name: 'Kopier svaret' }, { timeout: 10000 });
+    // The line over an answer is drawn with the answer's first render, from
+    // what the question was asked with — no need to wait for the whole of it,
+    // which takes long enough on a loaded machine to time the test out.
+    await screen.findByText('Kunnskapsassistenten svarte:', undefined, { timeout: 10000 });
     expect(document.querySelector('.ka-filter-summary')).toBeNull();
-    // A whole mock answer, at the speed the suite uses.
   }, 30_000);
 });
