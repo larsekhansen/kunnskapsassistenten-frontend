@@ -42,8 +42,11 @@ test.describe('kildepanelet', () => {
     // be a lie. Answer 36.
     await expect(empty.getByText('Ingen kilder ennå')).toBeVisible();
 
+    // A question the corpus can answer. On a fresh page «Hva mer sier
+    // rapporten?» got a question back from a real model — «hvilken rapport
+    // mener du?» — and an answer like that has no sources to wait for.
     await composer(page).click();
-    await page.keyboard.type('Hva mer sier rapporten?');
+    await page.keyboard.type('Hva skriver DFØ om måloppnåelse i årsrapporten for 2024?');
     await page.keyboard.press('Enter');
 
     const panel = page.getByRole('complementary', { name: 'Kilder' });
