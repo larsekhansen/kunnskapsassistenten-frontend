@@ -1,11 +1,5 @@
 import { useMemo, useSyncExternalStore } from 'react';
-import {
-  activeCorpusKey,
-  corpusDisplayName,
-  corpusOption,
-  subscribeToCorpus,
-  type CorpusOption,
-} from '../api';
+import { activeCorpus, corpusDisplayName, subscribeToCorpus, type CorpusOption } from '../api';
 
 /** The corpus the chooser stands on, for anything that only reads it. */
 export type ActiveCorpus = {
@@ -33,10 +27,17 @@ export type ActiveCorpus = {
  * the same paint, and there is one place that knows how the store is read.
  */
 export function useActiveCorpus(): ActiveCorpus {
-  const key = useSyncExternalStore(subscribeToCorpus, activeCorpusKey, activeCorpusKey);
+  // The snapshot and not the key: in bff mode the corpus's name arrives from
+  // the BFF after the first paint, often under the key the build already had
+  // (src/api/corpus.ts, `adoptServerCorpus`).
+  const current = useSyncExternalStore(subscribeToCorpus, activeCorpus, activeCorpus);
 
-  return useMemo(() => {
-    const option = corpusOption(key);
-    return { key, option, displayName: corpusDisplayName(option) };
-  }, [key]);
+  return useMemo(
+    () => ({
+      key: current.key,
+      option: current.option,
+      displayName: corpusDisplayName(current.option),
+    }),
+    [current],
+  );
 }

@@ -17,7 +17,9 @@ export {
 } from './userDocuments';
 export type { CorpusOption } from './corpus';
 export {
+  activeCorpus,
   activeCorpusKey,
+  adoptServerCorpus,
   corpusDisplayName,
   corpusDisplayNameFor,
   corpusIsChoosable,
@@ -41,7 +43,13 @@ export {
 export function createChatClient(): ChatClient {
   const env = kaEnv();
   const mode = env.VITE_API_MODE ?? 'mock';
-  if (mode === 'bff') return new BffChatClient({ datasetConfigKey: activeCorpusKey });
+  if (mode === 'bff') {
+    const bff = new BffChatClient({ datasetConfigKey: activeCorpusKey });
+    // The corpus's name comes from the BFF (docs/arkitektur/0003); ask for it
+    // now rather than when the filter panel first draws.
+    bff.prime();
+    return bff;
+  }
   if (mode !== 'live') {
     // `VITE_MOCK_SPEED` decides how long the mock takes to answer. The default
     // is the slow, lifelike one on purpose: a mock that answers instantly

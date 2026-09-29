@@ -8,6 +8,10 @@ import capabilities from './fixtures/capabilities.json';
 import conversation from './fixtures/conversation.json';
 import conversations from './fixtures/conversations.json';
 import facets from './fixtures/facets.json';
+import askTooManyValues from './fixtures/ask-too-many-values.json';
+import capabilitiesD16 from './fixtures/capabilities-d16.json';
+import facetsD16 from './fixtures/facets-d16.json';
+import { activeCorpusKey, corpusOption } from '../corpus';
 
 /**
  * Fixturene er tatt opp fra Nikolais BFF (`8639267`, med rettelsen for plan og
@@ -465,6 +469,123 @@ describe('BffChatClient.listFacets', () => {
     expect(await bff.listFacets()).toEqual([]);
     expect(await bff.listFacets()).toEqual([]);
     expect(asked).toBe(2);
+  });
+});
+
+/**
+ * `*-d16.json` er tatt opp fra BFF-en på grenen `bff/filterkjede` i poden
+ * (dd3b3c1) mot hele Kudos lokalt, 2026-09-29, med `KA_FILTER_FIELDS` og
+ * `KA_DATASETS` satt. Virksomhetene er kuttet til ti; typene (8) og årene (46)
+ * er som de kom. Byggets eget oppsett er av i disse testene, så alt om feltene
+ * må komme fra BFF-en.
+ */
+describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
+  const fromBff = (routes: Record<string, Route> = {}) =>
+    fakeBff({
+      'GET /api/capabilities': () => json(capabilitiesD16),
+      'GET /api/facets': () => json(facetsD16),
+      ...routes,
+    });
+  const noBuildConfig = () => client({ filterFields: () => undefined });
+
+  it('lager de tre nedtrekkene fra BFF-ens id-er og etiketter, med alle verdiene', async () => {
+    fromBff();
+    const found = await noBuildConfig().listFacets();
+    expect(found.map(({ dimension, label, values }) => [dimension, label, values.length])).toEqual([
+      ['documentType', 'Dokumenttyper', 8],
+      ['organisation', 'Virksomheter', 10],
+      ['year', 'År', 46],
+    ]);
+    expect(found[2]?.values[0]).toEqual({ value: '2035', label: '2035', count: 27 });
+  });
+
+  it('sender filteret med BFF-ens feltnavn, uten felt i bygget', async () => {
+    const fetchMock = fromBff();
+    await drain(
+      noBuildConfig().ask({
+        query: 'Hva sier årsrapportene?',
+        filters: { documentType: ['Årsrapport'], organisation: [], year: ['2024'] },
+      }),
+    );
+    expect(askBodies(fetchMock)[0]?.filter).toEqual({
+      type: ['Årsrapport'],
+      concerned_years: ['2024'],
+    });
+  });
+
+  it('gir tråden filteret den er låst til, med dimensjoner og ikke feltnavn', async () => {
+    fromBff();
+    const thread = await noBuildConfig().getThread(CONVERSATION_ID);
+    expect(thread?.filter).toEqual({ documentType: ['Årsrapport'], organisation: [], year: [] });
+  });
+
+  it('gir ingen filter på en tråd uten', async () => {
+    fromBff({
+      [`GET /api/conversations/${CONVERSATION_ID}`]: () =>
+        json({ ...conversation, filter: undefined }),
+    });
+    const thread = await noBuildConfig().getThread(CONVERSATION_ID);
+    expect(thread).not.toBeNull();
+    expect(thread && 'filter' in thread).toBe(false);
+  });
+
+  it('tar korpusets navn og beskrivelse fra BFF-en, i bff-modus', async () => {
+    vi.stubEnv('VITE_API_MODE', 'bff');
+    try {
+      fromBff();
+      await noBuildConfig().listFacets();
+      expect(activeCorpusKey()).toBe('kudos-full');
+      expect(corpusOption('kudos-full')).toEqual({
+        key: 'kudos-full',
+        label: 'Kudos',
+        description: '10 064 dokumenter fra kudos.dfo.no',
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('sier med egne ord at filteret har for mange verdier, når BFF-en nekter', async () => {
+    fromBff({ 'POST /api/ask': () => json(askTooManyValues, 400) });
+    const events = await drain(
+      noBuildConfig().ask({
+        query: 'x',
+        filters: { documentType: [], organisation: ['A', 'B'], year: [] },
+      }),
+    );
+    expect(events.at(-1)).toMatchObject({
+      type: 'error',
+      error: {
+        code: 'unknown',
+        message: 'Filteret har for mange verdier valgt i ett felt. Velg høyst 100, eller alle.',
+      },
+    });
+  });
+
+  it('venter på proben lenger enn de 12 sekundene den brukte å gi opp etter', async () => {
+    vi.useFakeTimers();
+    try {
+      let asked = 0;
+      fromBff({
+        'GET /api/capabilities': () =>
+          (asked += 1) < 6
+            ? json({
+                ...capabilitiesD16,
+                capabilities: { ...capabilitiesD16.capabilities, filters: false },
+                settled: false,
+              })
+            : json(capabilitiesD16),
+      });
+      const pending = client({
+        filterFields: () => undefined,
+        settleDelaysMs: undefined,
+      }).listFacets();
+      await vi.advanceTimersByTimeAsync(25_000);
+      expect(await pending).toHaveLength(3);
+      expect(asked).toBe(6);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
