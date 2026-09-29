@@ -47,7 +47,22 @@ export function FiltersView({
   facets: given,
 }: FiltersViewProps) {
   const client = useMemo(() => createChatClient(), []);
-  const { selection, setSelection, locked } = useFilterSelection();
+  /*
+   * Two selections, and the difference matters. `chosen` is what the reader
+   * ticked, and it is what the fields, the chips and every change here are
+   * made from. `selection` is what a question is asked with — the lock, or
+   * the ticks without the fields where every value is ticked — and it is
+   * what the counts are fetched for, since they describe what a question
+   * would search. filterContext.ts, `askedSelection`.
+   */
+  const {
+    selection,
+    setSelection,
+    locked,
+    chosen: ownChoice,
+    setKnownValues,
+  } = useFilterSelection();
+  const chosen = ownChoice ?? selection;
   const { documents } = useAnswerSources();
   const { options, active, option, choosable, set } = useCorpus();
   /**
@@ -87,7 +102,7 @@ export function FiltersView({
      * one event, so React commits them together and the fetch below is made
      * once, with the empty selection, instead of once with each.
      */
-    const hadFilter = !isEmptySelection(selection);
+    const hadFilter = !isEmptySelection(chosen);
     if (hadFilter) setSelection(emptyFilterSelection);
 
     setAnnouncement(
@@ -174,7 +189,21 @@ export function FiltersView({
    * flicker. A failure on a later change keeps the fields it had (see the
    * fetch below), and they still show their values.
    */
-  const withoutField = loading ? [] : valuesWithoutField(selection, facets);
+  const withoutField = loading ? [] : valuesWithoutField(chosen, facets);
+
+  /*
+   * Tell the shell every value each field has, so a question can leave out a
+   * field where the reader ticked them all. From the facets on screen, which
+   * list every value whatever is ticked — only the counts are conditioned.
+   */
+  useEffect(() => {
+    if (!facets) return;
+    setKnownValues?.(
+      Object.fromEntries(
+        facets.map((facet) => [facet.dimension, facet.values.map((v) => v.value)]),
+      ),
+    );
+  }, [facets, setKnownValues]);
 
   /*
    * Focus after a switch from the thread list. The button the user pressed
@@ -491,7 +520,7 @@ export function FiltersView({
 
         {!locked && withoutField.length > 0 && (
           <ActiveFilter
-            selection={selection}
+            selection={chosen}
             chosen={withoutField}
             hasFields={(facets?.length ?? 0) > 0}
             onChange={setSelection}
@@ -507,8 +536,8 @@ export function FiltersView({
             key={facet.dimension}
             ref={index === 0 ? firstFieldRef : undefined}
             facet={facet}
-            selected={selection[facet.dimension]}
-            onChange={(values) => setSelection({ ...selection, [facet.dimension]: values })}
+            selected={chosen[facet.dimension]}
+            onChange={(values) => setSelection({ ...chosen, [facet.dimension]: values })}
           />
         ))}
 

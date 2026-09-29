@@ -7,7 +7,7 @@ import {
 } from '../model';
 import { AnswerSourcesContext } from './answerSourcesContext';
 import { CitationContext, type ActiveCitation } from './citationContext';
-import { FilterContext } from './filterContext';
+import { askedSelection, FilterContext, type KnownValues } from './filterContext';
 import { LayoutContext } from './layoutContext';
 import {
   readStoredFilter,
@@ -87,6 +87,8 @@ export function LayoutProvider({
   );
   /** The open thread's lock, if any. See filterContext.ts, `locked`. */
   const [locked, setLocked] = useState<FilterSelection | undefined>(undefined);
+  /** Every value each field has, from the filter panel. See `askedSelection`. */
+  const [knownValues, setKnownValues] = useState<KnownValues>({});
   const [answerDocuments, setAnswerDocuments] = useState<SourceDocument[] | undefined>(undefined);
   /**
    * The sources of every answer in the thread, oldest first.
@@ -332,13 +334,21 @@ export function LayoutProvider({
   );
 
   /*
-   * The lock, when there is one, is what questions are asked with; the stored
-   * selection above stays the reader's own, and so does what is written back
-   * to `localStorage`.
+   * What questions are asked with: the lock when there is one, and otherwise
+   * the reader's choice without the fields they ticked every value of. The
+   * stored selection above stays the reader's own, and so does what is
+   * written back to `localStorage`.
    */
   const filter = useMemo(
-    () => ({ selection: locked ?? selection, setSelection, locked, setLocked }),
-    [locked, selection],
+    () => ({
+      selection: locked ?? askedSelection(selection, knownValues),
+      chosen: selection,
+      setSelection,
+      locked,
+      setLocked,
+      setKnownValues,
+    }),
+    [locked, selection, knownValues],
   );
 
   const answerSources = useMemo(

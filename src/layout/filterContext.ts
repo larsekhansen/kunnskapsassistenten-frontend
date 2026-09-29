@@ -1,5 +1,8 @@
 import { createContext } from 'react';
-import type { FilterSelection } from '../model';
+import { filterDimensions, type FilterDimension, type FilterSelection } from '../model';
+
+/** Every value a field has, by dimension, as the filter panel was given them. */
+export type KnownValues = Partial<Record<FilterDimension, string[]>>;
 
 /**
  * The document filter, held above the views.
@@ -11,11 +14,25 @@ import type { FilterSelection } from '../model';
  */
 export type FilterContextValue = {
   /**
-   * What questions are asked with. The reader's own choice — or, while the
-   * thread on screen is locked, the lock (see `locked`).
+   * What questions are asked with: the lock while the thread on screen is
+   * locked (see `locked`), and otherwise the reader's own choice without the
+   * fields where every value is ticked (see `askedSelection`).
    */
   selection: FilterSelection;
+  /** Sets the reader's own choice, which `chosen` then says. */
   setSelection: (selection: FilterSelection) => void;
+  /**
+   * What the reader has ticked, as the panel shows it: every tick, with no
+   * lock in it. Differs from `selection` while a thread is locked and where
+   * a field has every value ticked. Optional, so a test that builds the
+   * context by hand need not say it; the panel falls back on `selection`.
+   */
+  chosen?: FilterSelection;
+  /**
+   * Said by the filter panel when its fields arrive: every value each field
+   * has. Without it no field is known to be complete, and nothing is left out.
+   */
+  setKnownValues?: (known: KnownValues) => void;
   /**
    * The filter the thread on screen is locked to, when it is.
    *
@@ -37,3 +54,34 @@ export type FilterContextValue = {
 };
 
 export const FilterContext = createContext<FilterContextValue | undefined>(undefined);
+
+/**
+ * The reader's choice as a question is asked with it: a field where every
+ * value is ticked is left out.
+ *
+ * Every value is no narrowing at all, and sending it is worse than nothing.
+ * KA CC measured it through the BFF: all 457 organisations went with the
+ * question, and ten minutes later the answer was a 400 — headless-rag #15
+ * takes 1 to 100 values per field. Left out, the question is asked of the
+ * whole corpus, which is what «Alle 457 valgt, altså ingen avgrensning» in
+ * the panel says it is.
+ *
+ * «Every value» is every value the panel was given for the field, compared
+ * value by value and not by count, so a stale value from somewhere else
+ * cannot make a field look complete. A field the panel has not been given is
+ * never complete.
+ */
+export function askedSelection(chosen: FilterSelection, known: KnownValues): FilterSelection {
+  let changed = false;
+  const asked = { ...chosen };
+  for (const dimension of filterDimensions) {
+    const all = known[dimension];
+    if (!all || all.length === 0 || chosen[dimension].length === 0) continue;
+    const ticked = new Set(chosen[dimension]);
+    if (all.every((value) => ticked.has(value))) {
+      asked[dimension] = [];
+      changed = true;
+    }
+  }
+  return changed ? asked : chosen;
+}
