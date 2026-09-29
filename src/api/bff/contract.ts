@@ -48,7 +48,7 @@ export type BffTurnEvent =
   | { type: 'delta'; text: string }
   | { type: 'sources'; sources: BffSource[] }
   | { type: 'done'; conversationId: string; insufficient: boolean }
-  | { type: 'error'; message: string; conversationId?: string };
+  | { type: 'error'; message: string; code?: string; conversationId?: string };
 
 /** `POST /api/ask`. `filter` is keyed by the corpus's own field names. */
 export interface BffAskRequest {

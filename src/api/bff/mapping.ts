@@ -1,14 +1,16 @@
 import { filterDimensions } from '../../model';
 import type {
+  ChatError,
   Excerpt,
   FilterSelection,
+  Message,
   SourceDocument,
   StreamEvent,
   ThinkingStep,
   Thread,
   ThreadDetail,
 } from '../../model';
-import { errorFromBackend } from '../backendErrors';
+import { errorFromBackend, errorFromStatus } from '../backendErrors';
 import type { DatasetFilterFields } from '../filterFields';
 import { messagesFromApi, threadFromConversation } from '../live/conversations';
 import { relevanceFromRank, toCitations } from '../live/mcp';
@@ -117,22 +119,63 @@ export function threadFromSummary(summary: BffConversationSummary, corpusKey?: s
  * `corpusKey` is the one the deployment says the BFF answers from. The BFF
  * tags nothing with a corpus, and it serves exactly one.
  */
+/**
+ * The agent loop's own prefix for a turn it could not finish
+ * (digdir/skills/builtin/agent/loop.clj). The backend stores that sentence as
+ * the assistant's message, so it comes back with the conversation looking
+ * exactly like an answer.
+ *
+ * Measured 2026-09-29: a turn whose caller disconnected mid-stream left
+ * «LLM request failed at iteration 2: Interceptor Exception: » in the thread,
+ * and reopening the thread put that on screen as the answer.
+ *
+ * Anchored, and only this one prefix. The other patterns this app reads
+ * failures by are unanchored on purpose — «timeout», «rate limit» — and an
+ * answer about public documents may well contain those words. A wrong match
+ * here hides a real answer, which is worse than the English sentence it was
+ * meant to catch.
+ */
+const STORED_FAILURE = /^LLM request failed\b/u;
+
+const isStoredFailure = (message: Message): boolean =>
+  message.role === 'assistant' && STORED_FAILURE.test(message.content);
+
+/**
+ * A turn the backend recorded as failed, drawn as failed rather than answered.
+ *
+ * The text goes, because it is English, technical, and was never written for
+ * a reader; `status: 'error'` is what makes the chat draw its own sentence
+ * under the question instead (`FAILED_NOTE`). The markers go with it: there
+ * is no answer left for them to point into.
+ */
+function asFailedTurn(message: Message): Message {
+  const { sources: _sources, citationCount: _citationCount, ...rest } = message;
+  return { ...rest, content: '', citations: [], status: 'error' };
+}
+
 export function threadDetailFromBff(
   detail: BffConversationDetail,
   corpusKey?: string,
 ): ThreadDetail {
   const thread = threadFromSummary(detail.conversation, corpusKey);
-  const turns = messagesFromApi(detail.messages, corpusKey);
+  const turns = messagesFromApi(detail.messages, corpusKey).map((message) =>
+    isStoredFailure(message) ? asFailedTurn(message) : message,
+  );
 
   const documents = sourceDocumentsFrom(detail.sources);
-  const last = turns.findLastIndex((message) => message.role === 'assistant');
+  // The last ANSWER, not the last assistant turn: the BFF keeps one set of
+  // sources per conversation, and they are the last answer's. Hanging them on
+  // a turn that failed would credit it with excerpts it never had.
+  const last = turns.findLastIndex(
+    (message) => message.role === 'assistant' && message.status !== 'error',
+  );
 
   return {
     ...thread,
     // As in live: the last turn is the best «last activity» there is.
     updatedAt: turns.at(-1)?.createdAt ?? thread.updatedAt,
     messages:
-      documents.length === 0
+      documents.length === 0 || last === -1
         ? turns
         : turns.map((message, index) =>
             index === last
@@ -159,6 +202,37 @@ const FINALIZING_LABEL = 'Jeg skriver svaret med kildehenvisninger.';
  * again, which the live client drops too; `writing` is the BFF's name for the
  * agent thinking, and it carries none of the thinking's words.
  */
+/**
+ * What the BFF said went wrong, as one of this app's cases.
+ *
+ * Three of the codes are the BFF's own words about itself, and only it can
+ * know them, so only this file can read them. Everything else — the backend's
+ * `dataset_not_authorized`, its `LLM request failed …`, its own sentence
+ * about a question that is too long — goes on to `errorFromBackend`, which is
+ * the same reading the live client does.
+ *
+ * `backend_http_<status>` carries the status rather than a case, because the
+ * status is all the BFF knows: a 5xx from the backend does not say whether it
+ * was the search or the model, and the two ask the reader for opposite
+ * things. `errorFromStatus` is where that judgement already lives.
+ */
+export function chatErrorFromBff(code: string | undefined, message: string): ChatError {
+  const status = code?.match(/^backend_http_(\d{3})$/u);
+  if (status) return errorFromStatus(Number(status[1]));
+
+  switch (code) {
+    // The BFF never got an answer to pass on. Not the same as the backend
+    // answering badly, and the only place that can tell them apart is the BFF.
+    case 'backend_unreachable':
+      return { code: 'unknown', message: 'Tjenesten svarte ikke.' };
+    // The stream ended before the answer did.
+    case 'stream_broken':
+      return { code: 'unknown', message: 'Forbindelsen brøt sammen mens svaret kom.' };
+    default:
+      return errorFromBackend(message, code);
+  }
+}
+
 export class BffTurnState {
   #text = '';
   #sources: BffSource[] = [];
@@ -198,7 +272,7 @@ export class BffTurnState {
         return [
           {
             type: 'error',
-            error: errorFromBackend(event.message),
+            error: chatErrorFromBff(event.code, event.message),
             ...askedOf,
           },
         ];
