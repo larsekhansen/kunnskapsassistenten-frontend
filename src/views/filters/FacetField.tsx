@@ -217,6 +217,19 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
         </div>
       </div>
 
+      {/*
+        Over the chips and not after them, where Designsystemet usually puts a
+        validation message: the message only exists when more than a hundred
+        values are ticked, and under a hundred chips it was a scroll away
+        from anyone who could act on it (measured at 101 of 457). `ds-field`
+        links it to the input wherever it stands.
+      */}
+      {overLimit && (
+        <ValidationMessage>
+          {`Høyst ${MAX_VALUES_PER_FIELD} kan brukes i ett felt, og ${chosen} er valgt. Fjern noen, eller velg alle.`}
+        </ValidationMessage>
+      )}
+
       <Suggestion
         multiple
         selected={selectedItems}
@@ -250,11 +263,6 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
       </Suggestion>
 
       <Field.Description>{state}</Field.Description>
-      {overLimit && (
-        <ValidationMessage>
-          {`Høyst ${MAX_VALUES_PER_FIELD} kan brukes i ett felt, og ${chosen} er valgt. Fjern noen, eller velg alle.`}
-        </ValidationMessage>
-      )}
     </Field>
   );
 }
