@@ -54,6 +54,19 @@ type SourceExcerptProps = {
 };
 
 /**
+ * Where the quote would have been, when its text could not be fetched.
+ *
+ * One sentence, and it does not offer the way on: «Les dokumentet på Kudos»
+ * is the next line in the same card, and a note that asks for what the link
+ * under it does is the finding this team already wrote down once
+ * (brukerblikk 2026-09-15, funn 9).
+ *
+ * It says the excerpt is unavailable, not that it is empty. The chunk was
+ * retrieved and the answer may cite it; it is the passage lookup that failed.
+ */
+export const EXCERPT_UNAVAILABLE = 'Utdraget er ikke tilgjengelig.';
+
+/**
  * One excerpt: its number, how relevant it is, and the quote itself.
  *
  * The number is the whole point of this component. `citationNumber` is the
@@ -100,7 +113,7 @@ export function SourceExcerpt({
   active,
   onReturnToAnswer,
 }: SourceExcerptProps) {
-  const { citationNumber, relevance, heading, text, page, kudosUrl } = excerpt;
+  const { citationNumber, relevance, heading, text, page, kudosUrl, textUnavailable } = excerpt;
   const cited = citationNumber !== undefined;
 
   // Unique per excerpt, so a screen reader reading the list of controls does
@@ -177,14 +190,30 @@ export function SourceExcerpt({
         </Details.Summary>
         <Details.Content>
           {quoteHeading}
-          <Paragraph data-size="sm" variant="long" className="source-excerpt__quote">
-            <HighlightedText
-              text={text}
-              hits={hits}
-              currentHit={currentHit}
-              markClassName="sources-mark"
-            />
-          </Paragraph>
+          {/* The passage is looked up apart from the answer, so it can be
+              missing while the excerpt itself is real and cited. Saying so is
+              the whole point: the heading, «Mest relevant» and «Utdrag 1»
+              drawn around a blank space read as a rendering fault. The way on
+              is the Kudos link right below, so this sentence does not repeat
+              it (brukerblikk 2026-09-15, funn 9). */}
+          {textUnavailable ? (
+            <Paragraph
+              data-size="sm"
+              variant="long"
+              className="source-excerpt__quote source-excerpt__quote--unavailable"
+            >
+              {EXCERPT_UNAVAILABLE}
+            </Paragraph>
+          ) : (
+            <Paragraph data-size="sm" variant="long" className="source-excerpt__quote">
+              <HighlightedText
+                text={text}
+                hits={hits}
+                currentHit={currentHit}
+                markClassName="sources-mark"
+              />
+            </Paragraph>
+          )}
 
           {/* `kudosUrl` is absent for corpora without public URLs — the model
               says so plainly, and a link to nothing is worse than no link.

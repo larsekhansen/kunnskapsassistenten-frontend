@@ -45,6 +45,22 @@ export interface Excerpt {
    */
   kudosUrl?: string;
   /**
+   * True when the passage itself could not be fetched, though the chunk was
+   * retrieved and the answer may well cite it.
+   *
+   * Not the same as an empty document: the excerpt exists, its text is what
+   * is missing. The BFF looks the passages up in Typesense separately from
+   * the answer, so the lookup can fail on its own — measured 2026-09-29 with
+   * Typesense unreachable, where every source arrived with its title and its
+   * Kudos link and no `excerpt` at all.
+   *
+   * A flag and not an empty `text`, so the panel can say so in words. Drawing
+   * the heading, «Mest relevant» and «Utdrag 1» around a blank space tells
+   * the reader nothing, and reads as a rendering fault rather than as what it
+   * is.
+   */
+  textUnavailable?: boolean;
+  /**
    * 1-indexed position in the answer's flat excerpt list, which is what a
    * `[n]` marker in the answer text points at. See {@link Citation}.
    *

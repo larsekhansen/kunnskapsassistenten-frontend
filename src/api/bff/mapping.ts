@@ -1,5 +1,6 @@
 import { filterDimensions } from '../../model';
 import type {
+  Excerpt,
   FilterSelection,
   SourceDocument,
   StreamEvent,
@@ -54,34 +55,49 @@ export function filterBody(
 /**
  * The BFF's sources as documents with excerpts.
  *
- * One excerpt per source, because that is what arrives: the BFF joins every
- * passage of a document into one `excerpt`, and numbers the DOCUMENTS. The
- * agent numbers its `[n]` by chunk (live/mcp.ts, `toSourceDocuments`), so the
- * two agree only when each document gave one chunk. A marker with nothing
- * behind it is drawn as plain text, which is the rule for any marker that
- * cannot be resolved (model/citation.ts). Chunks in the contract is item 3
- * of «Det som må endres» in docs/arkitektur/0002.
+ * One entry per CHUNK arrives, and `marker` is the answer's own `[n]`, so the
+ * grouping here is the same one the live client does in `toSourceDocuments`:
+ * the excerpts keep their numbers, and the documents are the coarser view of
+ * the same list. Excerpts are grouped per document so the title is not
+ * repeated once per excerpt (answer 57).
+ *
+ * Before the BFF numbered per chunk this had to say the opposite, and a
+ * document that gave two chunks swallowed every marker after the first.
+ *
+ * `excerpt` absent is not an empty quote: the chunk was retrieved, its text
+ * could not be looked up. That is `textUnavailable`, which the sources panel
+ * says in words rather than drawing a blank.
  */
 export function sourceDocumentsFrom(sources: BffSource[] | undefined): SourceDocument[] {
   const list = sources ?? [];
-  return list.map((source, index) => {
-    const id = source.docNum || `doc-${source.marker}`;
+  const documents = new Map<string, SourceDocument>();
+
+  list.forEach((source, index) => {
+    const id = source.docNum || source.chunkId || `doc-${source.marker}`;
     const url = source.url || undefined;
-    return {
+    const excerpt: Excerpt = {
+      id: source.chunkId ?? `${id}-${source.marker}`,
+      text: source.excerpt ?? '',
+      ...(source.excerpt ? {} : { textUnavailable: true as const }),
+      relevance: relevanceFromRank(index, list.length),
+      ...(url ? { kudosUrl: url } : {}),
+      citationNumber: source.marker,
+    };
+
+    const existing = documents.get(id);
+    if (existing) {
+      existing.excerpts.push(excerpt);
+      return;
+    }
+    documents.set(id, {
       id,
       title: source.title.trim() || 'Uten tittel',
       ...(url ? { url } : {}),
-      excerpts: [
-        {
-          id: `${id}-${source.marker}`,
-          text: source.excerpt ?? '',
-          relevance: relevanceFromRank(index, list.length),
-          ...(url ? { kudosUrl: url } : {}),
-          citationNumber: source.marker,
-        },
-      ],
-    };
+      excerpts: [excerpt],
+    });
   });
+
+  return [...documents.values()];
 }
 
 /** A stored conversation as a thread. Same shape as the backend's own. */
@@ -200,9 +216,11 @@ export class BffTurnState {
             documents,
             citations: toCitations(documents),
             retrieval: {
-              // One excerpt per document is what arrived, so that is the
-              // count of hits there is to show. See `sourceDocumentsFrom`.
-              hitCount: documents.length,
+              // A hit is one chunk and a document is the grouping of them, so
+              // the two are counted apart now that the BFF sends one source
+              // per chunk. They were the same number for as long as it sent
+              // one per document. See `sourceDocumentsFrom`.
+              hitCount: documents.reduce((n, document) => n + document.excerpts.length, 0),
               documentCount: documents.length,
               keywords: this.#keywords,
             },
