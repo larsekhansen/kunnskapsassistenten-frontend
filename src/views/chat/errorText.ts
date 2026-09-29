@@ -80,7 +80,7 @@ const BY_CODE: Record<Exclude<ChatErrorCode, 'aborted' | 'no-hits'>, ChatErrorTe
   'thread-not-found': {
     title: 'Tråden er borte',
     what: 'Tråden finnes ikke lenger, kanskje fordi den er slettet et annet sted.',
-    advice: 'Start en ny tråd med «Ny tråd» og still spørsmålet der.',
+    advice: 'Start en ny tråd med «Ny tråd» i trådlista, og still spørsmålet der.',
     retryable: false,
   },
   unknown: {

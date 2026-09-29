@@ -150,7 +150,7 @@ describe('errorFromBackend', () => {
       title: 'Tråden er borte',
       message:
         'Tråden finnes ikke lenger, kanskje fordi den er slettet et annet sted. ' +
-        'Start en ny tråd med «Ny tråd» og still spørsmålet der.',
+        'Start en ny tråd med «Ny tråd» i trådlista, og still spørsmålet der.',
       retryable: false,
     });
   });
