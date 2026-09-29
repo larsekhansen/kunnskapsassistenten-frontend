@@ -119,6 +119,18 @@ beforeEach(() => {
 });
 
 describe('an active filter without facets', () => {
+  describe('while the facets load', () => {
+    it('draws no chips, since the fields are on their way', () => {
+      // An answer that never comes: the view stays in its loading state.
+      client.answer = () => new Promise(() => {});
+      const { container } = renderView(stored);
+
+      expect(container.querySelector('.filters-view__loading')).not.toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Avgrenset til' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Fjern filter: 2024' })).toBeNull();
+    });
+  });
+
   describe('when the list comes back empty', () => {
     it('shows every value in force, under «Avgrenset til»', async () => {
       renderView(stored);
