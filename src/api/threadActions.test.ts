@@ -213,7 +213,7 @@ describe('a new name is published to whoever is listening', () => {
     failFirst(new Response('nei', { status: 502 }));
     await expect(first).rejects.toThrow();
 
-    expect(renamedThreadTitles().get('conv-1')).toBe('Nkom C');
+    expect(renamedThreads().get('conv-1')?.title).toBe('Nkom C');
   });
 
   it('gir en ny Map hver gang, så useSyncExternalStore ser endringen', async () => {

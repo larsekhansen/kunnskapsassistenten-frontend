@@ -107,7 +107,7 @@ function publishing(actions: ThreadActions): ThreadActions {
          * failure says nothing about it (KA CC, kan 2 on #180). The thread
          * list follows the same rule for its own rows (ThreadsView.tsx).
          */
-        if (renamedTitles.get(thread.id) === title) publish(thread.id, before);
+        if (renamed.get(thread.id)?.title === title) publish(thread.id, before);
         throw error;
       }
     },
