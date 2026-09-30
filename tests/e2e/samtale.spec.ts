@@ -8,6 +8,7 @@ import {
   composer,
   facetField,
   openSources,
+  showDetailedAnswers,
   showThreads,
   MOCK,
   REAL_ANSWER,
@@ -90,6 +91,9 @@ test.describe('samtalen', () => {
   test('en samtale startet på forsida overlever en reload', MOCK, async ({ page }, testInfo) => {
     covers(testInfo, 'mocken husker samtalen over reload');
 
+    // Tenketiden, som er det denne sammenlikner over reloaden, står bare på
+    // det detaljerte nivået (Simens issue 88).
+    await showDetailedAnswers(page);
     await page.goto('/');
     await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
     await expect(page).toHaveURL(/\/threads\/[\w-]+$/);
@@ -229,6 +233,9 @@ test.describe('samtalen', () => {
     REAL_ANSWER,
     async ({ page }, testInfo) => {
       covers(testInfo, 'tenkepanelet: sammenlagt tilstand');
+      // Tenkepanelet er det detaljerte nivået (Simens issue 88). Standard
+      // tegner «Fremgangsmåte», som står åpent og ikke sier noen tid.
+      await showDetailedAnswers(page);
       await page.goto('/');
       await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
@@ -323,6 +330,8 @@ test.describe('samtalen', () => {
     MOCK,
     async ({ page }, testInfo) => {
       covers(testInfo, 'filter → spørring');
+      // Tellingen står bare på det detaljerte nivået (Simens issue 88).
+      await showDetailedAnswers(page);
       await page.goto('/');
 
       await chooseFacetValue(page, 'År', '2025');

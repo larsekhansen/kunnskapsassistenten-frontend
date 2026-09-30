@@ -220,6 +220,72 @@
   font-size: var(--ds-font-size-minus-1);
 }
 
+/* ---------------------------------------------------------- fremgangsmåte */
+
+/*
+ * «Fremgangsmåte» over the answer at the standard display level (Simens issue
+ * 88, drawn in his issue 113). It draws the same steps as the detailed panel
+ * — the rules below name both — so switching level changes what a step SAYS
+ * and never where it sits.
+ */
+.ka-procedure {
+  inline-size: 100%;
+}
+
+/* The robot in the summary. Same size as Details' own chevron, from the same
+   token, so the two ends of the bar line up. */
+.ka-procedure__icon {
+  font-size: var(--ds-icon-size);
+}
+
+.ka-procedure__block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+}
+
+/*
+ * The rule Simen draws between the steps and the keywords. A border and not a
+ * `<hr>`: it separates two blocks that are already two blocks, and an element
+ * of its own would be one more thing for a screen reader to walk past.
+ */
+.ka-procedure__block--ruled {
+  margin-block-start: var(--ds-size-4);
+  padding-block-start: var(--ds-size-4);
+  border-block-start: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+}
+
+/* «Tenker …», «Nøkkelord som ble brukt i søket». Subtle, because each one
+   names what is under it rather than saying something of its own. */
+.ka-procedure__label {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-2);
+  margin: 0;
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+.ka-procedure__keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ------------------------------------------------------------ innstillinger */
+
+/*
+ * The line under the choice in the hidden settings menu. Designsystemet puts
+ * no space between a Fieldset and what follows it inside a Dialog.Block, and
+ * without one the note reads as a third option's description.
+ */
+.ka-settings__note {
+  margin-block-start: var(--ds-size-4);
+  color: var(--ds-color-neutral-text-subtle);
+}
+
 /* --------------------------------------------------------------- thinking */
 
 /*
@@ -230,12 +296,14 @@
   inline-size: 100%;
 }
 
+.ka-procedure__summary,
 .ka-thinking__summary {
   display: flex;
   align-items: center;
   gap: var(--ds-size-2);
 }
 
+.ka-procedure__steps,
 .ka-thinking__steps {
   display: flex;
   flex-direction: column;
@@ -251,12 +319,14 @@
  * colour, because the marker is the only thing saying which step is current
  * (WCAG 1.4.1). `aria-current` says the same to a screen reader.
  */
+.ka-procedure__step,
 .ka-thinking__step {
   position: relative;
   padding-inline-start: var(--ds-size-5);
   color: var(--ds-color-neutral-text-subtle);
 }
 
+.ka-procedure__step::before,
 .ka-thinking__step::before {
   content: '';
   position: absolute;
@@ -272,10 +342,12 @@
   border-radius: var(--ds-border-radius-full);
 }
 
+.ka-procedure__step[data-ongoing],
 .ka-thinking__step[data-ongoing] {
   color: var(--ds-color-neutral-text-default);
 }
 
+.ka-procedure__step[data-ongoing]::before,
 .ka-thinking__step[data-ongoing]::before {
   background: var(--ds-color-neutral-base-default);
   border-color: var(--ds-color-neutral-base-default);
@@ -900,6 +972,13 @@
 .ka-filter-summary[hidden],
 .ka-answer-skeleton[hidden],
 .ka-streaming-status[hidden],
+.ka-procedure[hidden],
+.ka-procedure__summary[hidden],
+.ka-procedure__block[hidden],
+.ka-procedure__keywords[hidden],
+.ka-procedure__label[hidden],
+.ka-procedure__steps[hidden],
+.ka-procedure__step[hidden],
 .ka-thinking[hidden],
 .ka-thinking__summary[hidden],
 .ka-thinking__steps[hidden],

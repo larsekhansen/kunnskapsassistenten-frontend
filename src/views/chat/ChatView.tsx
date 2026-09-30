@@ -1,5 +1,6 @@
 import { Heading } from '@digdir/designsystemet-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { corpusDisplayNameFor, corpusOption, createChatClient, type ChatClient } from '../../api';
 import { ErrorState } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
@@ -21,6 +22,8 @@ import { useAttachments } from './useAttachments';
 import { useChat } from './useChat';
 import { ThreadLoading } from './ThreadLoading';
 import { Welcome } from './Welcome';
+import { SettingsDialog } from './SettingsDialog';
+import { SETTINGS_HASH, useDisplayLevel } from './displayLevel';
 import './chat.css';
 
 export type ChatViewProps = {
@@ -479,6 +482,20 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   useComposerShortcut(fieldRef);
 
   /*
+   * The hidden settings menu. `#innstillinger` in the address opens it, and
+   * nothing else does — without the hash nobody can see that it is there,
+   * which is what Lars asked for on 30.09.
+   *
+   * The hash and not a query: it never reaches the server, it never changes
+   * which route is showing, and it does not travel in a link somebody pastes
+   * into a ticket. See SettingsDialog.tsx.
+   */
+  const { hash } = useLocation();
+  const navigate = useNavigate();
+  const settingsOpen = hash === SETTINGS_HASH;
+  const displayLevel = useDisplayLevel();
+
+  /*
    * The same rescue, for the error that arrives on its own.
    *
    * The send button becomes the stop button while an answer is on its way,
@@ -621,6 +638,27 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
       <p aria-live="polite" className="ds-sr-only">
         {announcement || loadingNotice}
       </p>
+
+      {/*
+        The hidden settings menu, opened by `#innstillinger` in the address
+        (Lars, 30.09). It lives here rather than in the shell because the one
+        setting it holds is this view's, and a menu with one setting belongs
+        next to it until there is a second. See SettingsDialog.tsx.
+
+        Mounted only while the address asks for it, unlike the delete dialog
+        in the threads view: that one is permanent so it can animate and take
+        focus the moment a thread is picked, and this one is supposed to leave
+        no trace in the page for anyone who has not asked for it.
+
+        `replace`, so closing it does not leave a step in the history that
+        Back walks straight into again.
+      */}
+      {settingsOpen ? (
+        <SettingsDialog
+          level={displayLevel}
+          onClose={() => navigate({ hash: '' }, { replace: true })}
+        />
+      ) : null}
     </div>
   );
 }

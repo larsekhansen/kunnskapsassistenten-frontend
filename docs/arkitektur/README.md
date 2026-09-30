@@ -11,3 +11,4 @@ ble målt, og hva det koster.
 | [0001](0001-fasetter-og-korpuskunnskap.md) | Hvor kunnskapen om et korpus skal bo          | foreslått     |
 | [0002](0002-klienten-bak-bff.md)           | Klienten vår som `apps/web`, bak Nikolais BFF | retning valgt |
 | [0003](0003-felt-og-korpus-fra-bff.md)     | Filterfelt og korpusnavn fra BFF-en           | valgt         |
+| [0004](0004-visningsnivaa.md)              | Visningsnivå, og en skjult meny å velge det i | valgt         |
