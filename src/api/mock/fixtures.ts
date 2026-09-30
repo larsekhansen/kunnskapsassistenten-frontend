@@ -131,6 +131,12 @@ const nkomInstruks: SourceDocument = {
  * eight links that all 404, while a scripted conversation gave nine that all
  * answered 200.
  *
+ * The 2025 annual report has no link since 30.09: Kudos answers 404 for its
+ * page and for the document in its API, so the corpus carries `urlMissing`
+ * instead (DEAD_LINKS in scripts/fetch-mock-corpus.mjs), and the panel says
+ * «ingen offentlig lenke». Moving the fixture to a report Kudos still has is
+ * for the next fetch of the corpus.
+ *
  * No `page` on any excerpt any more. Kudos gives a summary per document and
  * no page for any part of it, the backend's chunk schema has no page either,
  * and `#page=N` only works on the PDF's own address, which the corpus does

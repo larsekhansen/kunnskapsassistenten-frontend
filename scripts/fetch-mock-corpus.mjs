@@ -48,6 +48,33 @@ const EARLIEST_YEAR = 2020;
 const MIN_SUMMARY = 200;
 const PAUSE_MS = 1000;
 
+/**
+ * Documents Kudos no longer has a page for, by uuid, and why. They keep their
+ * place in the corpus, since a scripted answer may quote them, but get no
+ * `url`: a link that 404s is worse than the panel's «ingen offentlig lenke».
+ * The reason is written into the JSON as `urlMissing`, because JSON has no
+ * comments and the next person to read it should not have to find this file.
+ *
+ * Measured, not assumed. Take an entry out when the page answers again, or
+ * when the document is gone from the corpus altogether.
+ *
+ *   a1c6feb9-…  Årsrapport Nasjonal kommunikasjonsmyndighet 2025, the NKOM
+ *               fixture's first source (src/api/mock/fixtures.ts). 404 on
+ *               /dokument/<uuid> and on /api/v0/documents/<uuid>, 30.09,
+ *               while 16 of the 17 documents the scripted conversations cite
+ *               answered 200. It is not in the local Typesense either, so
+ *               there is no number to link it by. Because the API has lost it,
+ *               the next fetch will most likely not return it at all; then the
+ *               fixture has to move to another report, which is the plan
+ *               (the conductor, 30.09, option b).
+ */
+const DEAD_LINKS = new Map([
+  [
+    'a1c6feb9-3a47-4889-b049-92adae575b9f',
+    'Kudos svarer 404 på denne adressen og på dokumentet i API-et (målt 30.09). Se DEAD_LINKS i scripts/fetch-mock-corpus.mjs.',
+  ],
+]);
+
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = join(here, '..', 'src', 'api', 'mock', 'corpus', 'kudos-korpus.json');
 
@@ -127,8 +154,11 @@ async function main() {
           summary,
           // The Kudos page for the document, so «Les dokumentet på Kudos»
           // goes somewhere that exists. `external_public_url` points at the
-          // publisher instead and is often missing.
-          url: `https://kudos.dfo.no/dokument/${record.uuid}`,
+          // publisher instead and is often missing. Not for a page Kudos has
+          // lost; see DEAD_LINKS.
+          ...(DEAD_LINKS.has(record.uuid)
+            ? { urlMissing: DEAD_LINKS.get(record.uuid) }
+            : { url: `https://kudos.dfo.no/dokument/${record.uuid}` }),
         });
       }
       process.stderr.write(`${type} side ${page}: ${documents.size} beholdt av ${seen}\n`);
