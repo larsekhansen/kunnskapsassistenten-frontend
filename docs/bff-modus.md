@@ -24,6 +24,9 @@ verken `VITE_KA_FILTER_FIELDS`, `VITE_KA_DATASETS` eller
 bruker klienten fortsatt `VITE_KA_FILTER_FIELDS`. Det blir ingen
 korpusvelger i bff-modus.
 
+BFF-en har ingen rute for opplasting, så opplastingen sier fra at den ikke
+finnes, som i live.
+
 ## Kjøre
 
 BFF-en fra `src/` i sitt eget arbeidstre, på `:8788` med `AUTH_MODE=off`.
