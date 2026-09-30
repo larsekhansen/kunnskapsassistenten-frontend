@@ -45,7 +45,7 @@ import { slotLabel, type SidebarSlot } from './viewModel';
  * neither fact is written down per slot.
  */
 export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
-  const { layout } = useLayout();
+  const { layout, setCollapsed } = useLayout();
   const [dragging, setDragging] = useState(false);
   /** Where the drag started, and the width it started from. */
   const origin = useRef({ x: 0, width: 0 });
@@ -79,7 +79,35 @@ export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
 
   function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     if (!dragging) return;
-    resize(origin.current.width + direction * (event.clientX - origin.current.x));
+    const wanted = origin.current.width + direction * (event.clientX - origin.current.x);
+
+    /*
+     * Dragged past the middle of its own floor, the panel folds away instead
+     * of stopping at the floor. Simens issue 80: a panel narrower than its
+     * content can be read in is a state nobody wants, so the edge does not
+     * stop in one; it either holds the floor or the panel goes. Half the
+     * floor is where VS Code's split view snaps a view shut, and it keeps
+     * the two apart: the pointer has to go 200 px past the floor of the
+     * navigation panel, and 168 past the sources panel's, so a drag that
+     * only overshoots the floor a little still just stops there.
+     *
+     * The width goes back to what it was when the drag began, so the panel
+     * opens again as the reader left it and not at the floor the drag was
+     * pressed against on the way. The pointer path for this without a drag
+     * is the collapse button, which is what WCAG 2.5.7 asks.
+     *
+     * Collapsed, the slot is a rail and draws no separator, so this element
+     * goes away with the pointer on it: the capture goes with it, and the
+     * slot sends the focus to its toggle button (Shell.tsx).
+     */
+    if (wanted < range.min / 2) {
+      setDragging(false);
+      resize(origin.current.width);
+      setCollapsed(slot, true);
+      return;
+    }
+
+    resize(wanted);
   }
 
   function endDrag(event: ReactPointerEvent<HTMLDivElement>) {
