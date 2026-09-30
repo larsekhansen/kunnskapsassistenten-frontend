@@ -32,9 +32,13 @@
    *
    * Inside a block the gap stays small (`.documents-list`, the field's own
    * label and description), so the two distances are what tell the reader
-   * which things belong together.
+   * which things belong together. The line between the filters and the
+   * documents is the third distance, and is made from this one; see
+   * `.filters-view__divider`.
    */
-  gap: clamp(var(--ds-size-6), 3.6dvh, var(--ds-size-8));
+  --ka-filters-gap: clamp(var(--ds-size-6), 3.6dvh, var(--ds-size-8));
+
+  gap: var(--ka-filters-gap);
   /* The slot lays its children out with align-items: start, so the view has
      to claim the width itself. */
   inline-size: 100%;
@@ -55,17 +59,23 @@
 }
 
 /*
- * The line between the corpus's documents and the reader's own (Simen,
- * 30.09). The facets above it narrow the corpus, so everything over the line
- * is about Kudos and everything under it is about files the reader brought.
+ * The line between the filters and the documents (Simens issue 76). Over it
+ * is what narrows the search; under it are the corpus, the documents behind
+ * the answer and the reader's own.
  *
- * Designsystemet's own margin is taken off: the view's gap puts the same air
- * on each side of the line, and the line with its two gaps is what makes this
- * break larger than the one between two fields. The meaning is in the
- * «Dine dokumenter» heading under it; the line is `aria-hidden`.
+ * Twice the air of the rhythm between two fields on each side: the gap, and
+ * a margin of the same size. That is 64 px on a desktop, where Simen's
+ * sketch measures 63 above the line and 68 below it, and it shrinks with the
+ * gap on a short screen — 52 at 720 px high — so a break is always twice a
+ * step and never a fixed number of pixels. The scale has no 64 to take
+ * instead (it goes 15, 18, 22), and a sum of two tokens would not follow the
+ * window's height.
+ *
+ * The margin replaces Designsystemet's own. The meaning is in the headings
+ * under the line; the line itself is `aria-hidden`.
  */
 .filters-view__divider {
-  margin-block: 0;
+  margin-block: var(--ka-filters-gap);
 }
 
 /*
@@ -80,11 +90,28 @@
 }
 
 /*
- * The corpus line under «Filtrering». Muted, because it is context for the
- * controls below rather than one of them.
+ * The corpus line and the documents behind the answer, as one block under the
+ * divider (Simens issue 76). The line says which corpus, the list under it
+ * which of its documents, so they are one step apart like the parts inside
+ * a block, and the view's larger gap goes between this and «Dine dokumenter».
+ * Alone, with the view's gap on both sides, the line hung between the divider
+ * and «Dokumenter» and belonged to neither.
  */
+.filters-view__documents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-3);
+  inline-size: 100%;
+}
+
+.filters-view__documents[hidden] {
+  display: none;
+}
+
 /*
- * The corpus line: the name, «Vis mer», and the detail under them.
+ * The corpus line under the divider: the name, «Vis mer», and the detail
+ * under them. Muted, because it is context for the documents below rather
+ * than one of them.
  *
  * A flex row rather than running text, so the button sits at the end of the
  * name's line instead of starting one of its own — the 32 px this exists to
@@ -124,12 +151,12 @@
  * 24 px and a negative margin of the same size hands those pixels back to the
  * layout, so the line measures exactly what it did before.
  *
- * DOWNWARD only, measured rather than assumed: the corpus Select above ends
- * within 3 px of this line, and a target that grew upward would have its top
- * edge covered by the Select — a click meant for «Vis mer» would open the
- * corpus list (measured: elementFromPoint at the top edge returned the
- * select). Under the line there is nothing but the detail text, which is not
- * a target.
+ * DOWNWARD only. It was measured rather than assumed while the corpus Select
+ * stood 3 px above this line: a target that grew upward had its top edge
+ * covered by the Select (elementFromPoint at the top edge returned the
+ * select). The line has had the divider over it since Simens issue 76, so
+ * either way would fit now; downward is kept because under the line there
+ * is nothing but the detail text, which is not a target.
  *
  * WCAG's inline exception would have covered this — the control's size is
  * constrained by the line-height of the sentence beside it — but an exception
