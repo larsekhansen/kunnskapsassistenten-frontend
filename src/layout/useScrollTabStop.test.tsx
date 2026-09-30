@@ -133,6 +133,46 @@ describe('a scrolling region’s own tab stop', () => {
     expect(needsTabStop()).toBe(true);
   });
 
+  /*
+   * The next two change an attribute and nothing else: the same elements,
+   * in the same place, so no child is added or removed and only the
+   * attribute observation can see it (KA CC on #211).
+   */
+  it('comes when the only control is hidden, and goes when it shows again', async () => {
+    const content = (hidden: boolean) => (
+      <div data-testid="content">
+        <button type="button" hidden={hidden}>
+          Velg alle
+        </button>
+      </div>
+    );
+    render(<Region initial={content(false)} />);
+    contentHeight(1100);
+    expect(needsTabStop()).toBe(false);
+
+    await act(async () => setChildren(content(true)));
+    expect(needsTabStop()).toBe(true);
+
+    await act(async () => setChildren(content(false)));
+    expect(needsTabStop()).toBe(false);
+  });
+
+  it('goes when a control taken out of the order is given tabindex 0', async () => {
+    const content = (inOrder: boolean) => (
+      <div data-testid="content">
+        <button type="button" tabIndex={inOrder ? 0 : -1}>
+          Velg alle
+        </button>
+      </div>
+    );
+    render(<Region initial={content(false)} />);
+    contentHeight(1100);
+    expect(needsTabStop()).toBe(true);
+
+    await act(async () => setChildren(content(true)));
+    expect(needsTabStop()).toBe(false);
+  });
+
   it('does not count a control the keyboard cannot land on', () => {
     render(
       <Region
