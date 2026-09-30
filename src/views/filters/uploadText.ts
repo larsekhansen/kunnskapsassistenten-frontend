@@ -30,6 +30,18 @@ const UPLOAD_ERROR_TEXT: Record<UploadErrorCode, string> = {
   unavailable: 'Opplasting er ikke tilgjengelig i denne tjenesten ennå.',
 };
 
+/**
+ * What the zone says where there is nowhere to upload to yet.
+ *
+ * Not the `unavailable` sentence above, which is a refusal: nothing was tried
+ * here, so there is nothing to refuse. It is Simen's wording (30.09), and it
+ * is word for word what the compose field's paper clip says (#3,
+ * src/views/chat/attachmentText.ts): one missing feature, one sentence,
+ * wherever the reader meets it (KA CC, 30.09). Two views may not import each
+ * other, so if it changes, it changes in both places.
+ */
+export const UPLOAD_COMING_TEXT = 'Snart kan du laste opp dokumenter her';
+
 export function uploadErrorText(code: UploadErrorCode): string {
   return UPLOAD_ERROR_TEXT[code];
 }

@@ -403,6 +403,66 @@
   gap: var(--ds-size-2);
 }
 
+/*
+ * «Dine dokumenter» where there is nowhere to upload to yet: a box of its own,
+ * as Simen drew it (30.09).
+ *
+ * Designsystemet's Card, neutral. Not its tinted variant, which paints the
+ * same surface-tinted the zone inside it has; Simen draws a lighter box
+ * around a darker zone, so the box takes the step below, background-tinted,
+ * and no border. The card's default variant writes `background` directly
+ * rather than through its variable, so it is written directly here too.
+ *
+ * The card's own padding (24 px) stays. The panel is 389–399 px wide on all
+ * five surfaces measured, so it has no reason to shrink.
+ *
+ * The card puts a margin between its children, and the section already has
+ * a gap; the margin is taken off so the gap is the one distance. The tag gets
+ * more air under it than the heading gets over the zone: it is a note about
+ * the whole box, and the heading and the zone belong together.
+ */
+.own-documents--unavailable {
+  --dsc-card-content-margin-block: 0;
+  --dsc-card-border-color: transparent;
+
+  gap: var(--ds-size-3);
+  background: var(--ds-color-background-tinted);
+}
+
+/*
+ * Across the whole box, as drawn: Designsystemet sizes a tag to its words
+ * (`max-content`), and the flex column would otherwise have stretched it.
+ */
+.own-documents__soon {
+  inline-size: auto;
+  gap: var(--ds-size-1);
+  margin-block-end: var(--ds-size-3);
+}
+
+/*
+ * The zone when there is nowhere to upload to: it looks switched off, and
+ * nothing happens under the pointer (Simen, 30.09).
+ *
+ * The ground Designsystemet gives a read-only zone, and the hover ground set
+ * to the same so the box does not light up. The dash in the subtle border
+ * colour rather than the default one, which is what makes it read as
+ * inactive: the zone is not a control, so its edge does not have to reach
+ * 3:1. The cursor goes back to the arrow, since Designsystemet's `:hover`
+ * rule makes it a hand — the other half of saying «click here».
+ *
+ * The text is left alone. What says «switched off» is the zone, the icon and
+ * the missing hover; the sentence has to be read, and keeps its colour.
+ *
+ * The same on every surface: this is a state, not a size.
+ */
+.own-documents__zone--unavailable {
+  --dsc-file-upload-background: var(--ds-color-surface-tinted);
+  --dsc-file-upload-background--hover: var(--ds-color-surface-tinted);
+  --dsc-file-upload-border-color: var(--ds-color-border-subtle);
+
+  cursor: default;
+}
+
 .own-documents__list {
   list-style: none;
   margin: 0;
