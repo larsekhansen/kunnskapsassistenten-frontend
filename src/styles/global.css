@@ -83,6 +83,36 @@
    * background, so the head cannot drift from the surface it is painted on.
    */
   --ka-region-surface: var(--ds-color-neutral-background-tinted);
+
+  /*
+   * The air on either side of the text in the answer column. The desktop value
+   * is the slot gap, 32 px, which is what an open panel keeps between itself
+   * and the column; on a phone it shrinks to 16 px, which is Designsystemet's
+   * `--ds-size-4` and the narrowest a line can start at without reading as
+   * pressed against the glass.
+   *
+   * `vw` in the middle, because below 774 the answer column IS the window (see
+   * `compactMaxViewport` in viewModel.ts), so 4 % of the window is 4 % of the
+   * column. Above it the clamp is already at its ceiling: 4 % of 774 is 31.
+   * Measured at 440: 17.6 px, where it was 0 and the text stood against the
+   * rails.
+   */
+  --ka-main-padding-inline: clamp(var(--ds-size-4), 4vw, var(--ds-size-8));
+
+  /*
+   * The space under the answer column's content, and the one number the
+   * compose field has to agree with: it is sticky at the bottom of `.main`,
+   * and a sticky offset is measured against the scrollport SHRUNK BY the
+   * scroller's own padding. So this sits on `.main`, the scroller, and the
+   * chat view reads it back to take the field all the way down.
+   *
+   * `env(safe-area-inset-bottom)` is the phone's home indicator. It is 0
+   * until the viewport meta says `viewport-fit=cover`, which index.html does
+   * not: without it Safari keeps the page out of the unsafe areas by itself.
+   * The term is here so the day the page is drawn edge to edge (a web app on
+   * the home screen), the field moves up with it rather than under the bar.
+   */
+  --ka-main-padding-block-end: calc(var(--ds-size-8) + env(safe-area-inset-bottom, 0px));
 }
 
 html,
@@ -724,13 +754,50 @@ body {
   flex: 1 0 0;
   min-inline-size: var(--ka-main-min-width);
   overflow-y: auto;
+  /*
+   * The END padding stays on the scroller, and only the end. When the column
+   * was split in two (21.09) both paddings moved to `.main-column`, which was
+   * right for the start — the pinned view head measures from the top of the
+   * scrollport — and wrong for the end: the compose field is sticky at the
+   * bottom with an offset of minus this padding, written for a scroller that
+   * had it. Without it the field was parked 32 px under the bottom of the
+   * window whenever the answer was taller than the window. Measured by KA CC
+   * on d78d063 at 390 × 844.
+   */
+  padding-block-end: var(--ka-main-padding-block-end);
 }
 
+/*
+ * A column of its own at least as tall as the scroller, and the view in it
+ * stretched to fill it.
+ *
+ * The chat view keeps its compose field at the bottom of a short conversation
+ * with `min-block-size: 100%`, and a percentage height only resolves against
+ * a parent whose height is known. `.main` was that parent until the split on
+ * 21.09; `.main-column` in between has no height of its own, so the 100 % came
+ * to nothing and the field stood under the last suggestion instead — 253 px
+ * above the bottom at 1440 × 900 and in the middle of a phone. So the column
+ * takes the height here, and the view in it grows into the column as a flex
+ * item: a flexed size is a real size, and the view's own `margin-block-start:
+ * auto` has room to push against again.
+ *
+ * `:last-child` is the view. The route's heading comes first and is
+ * screen-reader text, out of flow; the view head is first when it has
+ * anything in it, and must not grow.
+ */
 .main-column {
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100%;
   max-inline-size: var(--ka-main-max-width);
   margin-inline: auto;
-  padding-block: var(--ds-size-8);
+  padding-block-start: var(--ds-size-8);
+  padding-inline: var(--ka-main-padding-inline);
+}
+
+.main-column > :last-child {
+  flex-grow: 1;
 }
 
 /* A plain vertical stack. Designsystemet ships no layout primitives, see
