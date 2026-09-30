@@ -93,7 +93,7 @@ Når du skriver som om du snakker med en kollega – gir litt bakgrunn og åpner
 
 **Ha en samtale:** Mer utforskende og gir mer kontekst. Ved å gi bakgrunn og stille åpne spørsmål, hjelper du kunnskapsassistenten å forstå behovet ditt og gi bedre svar.
 
-|  | **Gi en ordre** | **Ha en samtale** |
+| **Formål** | **Gi en ordre** | **Ha en samtale** |
 | --- | --- | --- |
 | **Få oversikt over et tema eller en problemstilling** | «Lag en kort oppsummering av temaet digital inkludering.» | «Jeg skal lage en oversikt over digital inkludering. Hvilke hovedpunkter bør jeg ta med, og kan du foreslå struktur?» |
 | **Finne relevante kilder og utdrag fra dokumenter** | «Finn kilder om kunstig intelligens i offentlig sektor.» | «Jeg jobber med en rapport om KI i offentlig sektor. Hvilke kilder bør jeg lese, og hva er hovedpoengene i dem?» |

@@ -69,12 +69,26 @@ describe('InfoPage', () => {
     render(<InfoPage title="Onboarding" parts={onboardingParts} />);
 
     const table = screen.getByRole('table');
+    // «Formål» er vårt ord. Den gamle lot ruta stå tom, og en tom
+    // kolonneoverskrift har ingenting å si til den som ikke ser tabellen.
     expect(
       within(table)
         .getAllByRole('columnheader')
         .map((cell) => cell.textContent),
-    ).toEqual(['', 'Gi en ordre', 'Ha en samtale']);
+    ).toEqual(['Formål', 'Gi en ordre', 'Ha en samtale']);
     expect(within(table).getAllByRole('row')).toHaveLength(5);
+  });
+
+  it('har ingen tom kolonneoverskrift i noen tabell', () => {
+    for (const page of infoPages) {
+      const { unmount } = render(<InfoPage title={page.title} parts={page.parts} />);
+
+      for (const cell of screen.queryAllByRole('columnheader')) {
+        expect(cell.textContent?.trim()).not.toBe('');
+      }
+
+      unmount();
+    }
   });
 
   it('skiller bolkene i loggen med en linje, som den gamle', () => {
