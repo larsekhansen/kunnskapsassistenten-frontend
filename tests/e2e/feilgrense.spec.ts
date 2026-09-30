@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { covers, expectNoAxeViolations } from './a11y';
-import { composer, MOCK } from './helpers';
+import { ANSWER_TIMEOUT, composer, MOCK } from './helpers';
 
 /**
  * The page that stands where the app was, after an error React cannot recover
@@ -16,27 +16,54 @@ import { composer, MOCK } from './helpers';
  * before #221, 8 of 8 white pages, with `#root` empty; with #221, 8 of 8 times
  * the page below.
  *
- * The imitation is what Google Translate does: every text node in `body`
- * swapped for a `<font>` with the same text, once, while the answer is still
- * coming. Narrower or repeated swaps inside the chat alone did not trigger it
- * in the measuring, so this is the one that does.
+ * The imitation is what a page translator does: it watches the page, and
+ * every text node that appears is swapped for a `<font>` with the same text.
+ * It starts when the answer's text starts, and stops when the error page is
+ * there. Swapping once, at a moment chosen by the test, was the first version,
+ * and it was green 15 of 15 locally but red on CI, where the one swap landed
+ * after the stream had done its last update. Watching makes it independent of
+ * the machine's speed: every update React makes from then on meets text it no
+ * longer owns, and the lists that are redrawn when the sources arrive are
+ * among them.
  */
-function translatePage(): number {
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  const texts: Text[] = [];
-  while (walker.nextNode()) {
-    const text = walker.currentNode as Text;
-    const tag = text.parentElement?.tagName;
-    if (text.textContent?.trim() && tag !== 'SCRIPT' && tag !== 'STYLE' && tag !== 'TEXTAREA') {
-      texts.push(text);
+function installTranslator(): void {
+  const state = window as unknown as { translatedTexts: number };
+  state.translatedTexts = 0;
+
+  const translate = () => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const texts: Text[] = [];
+    while (walker.nextNode()) {
+      const text = walker.currentNode as Text;
+      const tag = text.parentElement?.tagName;
+      // Text already translated sits in a <font>, and swapping it again would
+      // feed the observer its own changes for ever.
+      if (
+        text.textContent?.trim() &&
+        tag !== 'FONT' &&
+        tag !== 'SCRIPT' &&
+        tag !== 'STYLE' &&
+        tag !== 'TEXTAREA'
+      ) {
+        texts.push(text);
+      }
     }
-  }
-  for (const text of texts) {
-    const font = document.createElement('font');
-    font.textContent = text.textContent;
-    text.replaceWith(font);
-  }
-  return texts.length;
+    for (const text of texts) {
+      const font = document.createElement('font');
+      font.textContent = text.textContent;
+      text.replaceWith(font);
+    }
+    state.translatedTexts += texts.length;
+  };
+
+  const observer = new MutationObserver(() => {
+    if (document.querySelector('.app-crash')) {
+      observer.disconnect();
+      return;
+    }
+    if (document.querySelector('.ka-answer-card .markdown p')) translate();
+  });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 }
 
 test.describe('feilgrensen', () => {
@@ -53,20 +80,19 @@ test.describe('feilgrensen', () => {
       page.on('pageerror', (error) => uncaught.push(`${error.name}: ${error.message}`));
 
       await page.goto('/');
+      await page.evaluate(installTranslator);
       await composer(page).click();
       await page.keyboard.type('Hva sier dokumentene om romfart?');
       await page.keyboard.press('Enter');
 
-      // While it streams: the answer's text has started, and it is not
-      // finished. The card alone is too early — it stands as a skeleton before
-      // any text, and a swap then gave no error in the measuring (600 ms in,
-      // #5's note).
-      await expect(page.locator('.ka-answer-card .markdown p').first()).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Avbryt genereringen' })).toBeVisible();
-      expect(await page.evaluate(translatePage)).toBeGreaterThan(0);
-
       const heading = page.getByRole('heading', { name: 'Noe gikk galt', level: 1 });
-      await expect(heading).toBeVisible();
+      await expect(heading).toBeVisible({ timeout: ANSWER_TIMEOUT });
+      expect(
+        await page.evaluate(
+          () => (window as unknown as { translatedTexts: number }).translatedTexts,
+        ),
+        'oversetteren byttet tekst',
+      ).toBeGreaterThan(0);
       // Whatever held the focus is gone, so the heading takes it.
       await expect(heading).toBeFocused();
       await expect(
