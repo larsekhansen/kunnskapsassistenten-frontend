@@ -86,7 +86,7 @@ export function SettingsDialog({ level, onClose }: SettingsDialogProps) {
             />
           ))}
         </Fieldset>
-        <Paragraph data-size="sm" variant="long">
+        <Paragraph className="ka-settings__note" data-size="sm" variant="long">
           Valget huskes i denne nettleseren.
         </Paragraph>
       </Dialog.Block>

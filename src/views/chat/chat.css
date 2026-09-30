@@ -274,6 +274,18 @@
   list-style: none;
 }
 
+/* ------------------------------------------------------------ innstillinger */
+
+/*
+ * The line under the choice in the hidden settings menu. Designsystemet puts
+ * no space between a Fieldset and what follows it inside a Dialog.Block, and
+ * without one the note reads as a third option's description.
+ */
+.ka-settings__note {
+  margin-block-start: var(--ds-size-4);
+  color: var(--ds-color-neutral-text-subtle);
+}
+
 /* --------------------------------------------------------------- thinking */
 
 /*
