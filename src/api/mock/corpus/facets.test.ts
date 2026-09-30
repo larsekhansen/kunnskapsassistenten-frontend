@@ -168,11 +168,23 @@ describe('det ekte korpuset', () => {
     }
   });
 
-  it('har sammendrag å sitere fra, og lenke til Kudos', () => {
+  it('har sammendrag å sitere fra, og lenke til Kudos eller en grunn til at den mangler', () => {
     for (const document of corpusDocuments) {
       expect(document.summary.length).toBeGreaterThanOrEqual(200);
-      expect(document.url).toMatch(/^https:\/\/kudos\.dfo\.no\/dokument\//);
+      if (document.url === undefined) {
+        expect(document.urlMissing, `${document.id} mangler både lenke og grunn`).toMatch(/404/);
+      } else {
+        expect(document.url).toMatch(/^https:\/\/kudos\.dfo\.no\/dokument\//);
+      }
       expect(document.year).toBeGreaterThanOrEqual(2020);
     }
+  });
+
+  it('lenker ikke til NKOM-årsrapporten for 2025, som Kudos svarer 404 på', () => {
+    // Målt 30.09: 404 på nettstedet og i API-et. Panelet skal si «ingen
+    // offentlig lenke» heller enn sende leseren til en feilside.
+    const nkom = corpusDocuments.find((d) => d.id === 'a1c6feb9-3a47-4889-b049-92adae575b9f');
+    expect(nkom?.url).toBeUndefined();
+    expect(nkom?.urlMissing).toMatch(/404/);
   });
 });
