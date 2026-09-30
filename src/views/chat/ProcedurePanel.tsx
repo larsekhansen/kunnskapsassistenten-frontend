@@ -38,7 +38,37 @@ type ProcedurePanelProps = {
   status: 'thinking' | 'done';
   /** What the answer was built from. Absent until the turn is finished. */
   retrieval?: RetrievalDetails;
+  /** The question this answer is an answer to. See `worthShowing`. */
+  question?: string;
 };
+
+/** Same string, allowing for case, spacing and a closing mark. */
+function sameWords(a: string, b: string): boolean {
+  const plain = (text: string) =>
+    text
+      .toLowerCase()
+      .replace(/[?.!\s]+$/u, '')
+      .replace(/\s+/gu, ' ')
+      .trim();
+  return plain(a) === plain(b);
+}
+
+/**
+ * The search words, less the one that is only the question over again.
+ *
+ * The agent plans its searches from the question, and the first thing it
+ * plans is often the question itself: against the whole of Kudos the reader's
+ * own sentence came back as one of the words it «searched for» (#4 on #208).
+ * It is true, and it says nothing — the reader wrote it, and it is on screen
+ * two lines above. What is worth reading here is what the agent made of it.
+ *
+ * Only at this level. The detailed panel shows what the machine did, verbatim,
+ * and a developer reading it wants the list the backend actually sent.
+ */
+function worthShowing(keywords: readonly string[], question?: string): string[] {
+  if (!question) return [...keywords];
+  return keywords.filter((keyword) => !sameWords(keyword, question));
+}
 
 /**
  * «Fremgangsmåte»: what the assistant set out to do, in its own words.
@@ -73,7 +103,7 @@ type ProcedurePanelProps = {
  * arrive seconds apart, and the view's own region already says once that the
  * assistant is searching.
  */
-export function ProcedurePanel({ steps, status, retrieval }: ProcedurePanelProps) {
+export function ProcedurePanel({ steps, status, retrieval, question }: ProcedurePanelProps) {
   const thinking = status === 'thinking';
   // The reader's own choice outranks the automatic state for the rest of the
   // turn, in either direction. Same rule as the detailed panel.
@@ -86,7 +116,7 @@ export function ProcedurePanel({ steps, status, retrieval }: ProcedurePanelProps
   if (steps.length === 0) return null;
 
   const open = chosen ?? room;
-  const keywords = retrieval?.keywords ?? [];
+  const keywords = worthShowing(retrieval?.keywords ?? [], question);
   const lastIndex = steps.length - 1;
 
   return (

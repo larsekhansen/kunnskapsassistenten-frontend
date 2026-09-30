@@ -10,6 +10,7 @@ import { MainScrollContext } from '../../layout/scrollContext';
 import { ThreadContext } from '../../layout/threadContext';
 import { emptyFilterSelection, threadFromQuestion, type Message } from '../../model';
 import { AnswerMessage } from './AnswerMessage';
+import { MessageList } from './MessageList';
 import { ChatView } from './ChatView';
 import { getDisplayLevel, resetDisplayLevel, setDisplayLevel } from './displayLevel';
 import { resetViewport, setViewportWidth } from '../../test/matchMedia';
@@ -158,6 +159,53 @@ describe('visningsnivået i svaret', () => {
     } finally {
       resetViewport();
     }
+  });
+
+  it('tar bort et nøkkelord som bare er spørsmålet om igjen', () => {
+    /*
+     * Agenten planlegger søkene sine ut fra spørsmålet, og det første den
+     * planlegger er ofte spørsmålet selv: mot hele Kudos kom leserens egen
+     * setning tilbake som ett av ordene den «søkte på» (#4 på #208). Det er
+     * sant, og det sier ingenting — leseren skrev det, og det står to linjer
+     * lenger opp.
+     *
+     * Gjennom `MessageList`, fordi det er den som vet hva spørsmålet var: et
+     * svar bærer det ikke selv.
+     */
+    const spoersmaal = 'Hva sier årsrapportene om måloppnåelse?';
+    render(
+      <ol>
+        <MessageList
+          canScrollToBottom={false}
+          messages={[
+            {
+              id: 'q1',
+              role: 'user',
+              content: spoersmaal,
+              createdAt: '2026-09-15T08:59:00Z',
+              citations: [],
+              status: 'complete',
+            },
+            {
+              ...answer,
+              retrieval: {
+                hitCount: 10,
+                documentCount: 3,
+                // Ordrett, og med annen store bokstav og uten spørsmålstegn.
+                keywords: ['hva sier årsrapportene om måloppnåelse', 'måloppnåelse'],
+              },
+            },
+          ]}
+          onRegenerate={() => {}}
+          onScrollToBottom={() => {}}
+          onSelectSource={() => {}}
+        />
+      </ol>,
+    );
+
+    expect(screen.getByText('Nøkkelord som ble brukt i søket')).toBeTruthy();
+    expect(screen.getByText('måloppnåelse')).toBeTruthy();
+    expect(screen.queryByText('hva sier årsrapportene om måloppnåelse')).toBeNull();
   });
 
   it('viser tenkepanelet og treffene på detaljert', () => {

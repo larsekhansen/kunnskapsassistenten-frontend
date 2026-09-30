@@ -108,7 +108,7 @@ export function MessageList({
 
   return (
     <ol className="ka-messages">
-      {messages.map((message) => {
+      {messages.map((message, index) => {
         if (message.role === 'user') {
           const attached = attachmentsFor?.(message.id);
           return (
@@ -163,6 +163,11 @@ export function MessageList({
             liveErrorId={liveErrorId}
             message={message}
             narrowedTo={filterSummary?.(message.id)}
+            /* What this answer is an answer to. «Fremgangsmåte» drops a search
+               word that is the question over again — see ProcedurePanel. The
+               list is the one place that knows: an answer carries no question,
+               and the turn before it is right here. */
+            question={questionBefore(messages, index)}
             onCloseSearch={closeSearch}
             onRegenerate={onRegenerate}
             onScrollToBottom={onScrollToBottom}
@@ -177,4 +182,18 @@ export function MessageList({
       })}
     </ol>
   );
+}
+
+/**
+ * The reader's own question, for the answer at `index`.
+ *
+ * Backwards from the answer rather than «the message before», because a turn
+ * is not always two messages: a clarification sits between a question and the
+ * answer it finally gets, and the question is still the one the reader asked.
+ */
+function questionBefore(messages: Message[], index: number): string | undefined {
+  for (let i = index - 1; i >= 0; i -= 1) {
+    if (messages[i]?.role === 'user') return messages[i]?.content;
+  }
+  return undefined;
 }

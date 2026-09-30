@@ -82,6 +82,7 @@ slik de ble anmeldt.
 | Ser hva korpuset dekker, i én linje                        | `primary-sidebar.spec.ts`   |
 | Ser en ny tråd dukke opp i lista mens den står åpen        | `traadliste.spec.ts`        |
 | Ser en eldre tråd flytte seg til «I dag» etter et svar     | `traadliste.spec.ts`        |
+| Sletter den siste tråden midt i et søk og ser den neste    | `traadliste.spec.ts`        |
 | Ser at tenketiden er målt og ikke summert                  | `chat.spec.ts`              |
 | Går tilbake til svaret fra et utdrag, med Escape og knapp  | `sources.spec.ts`           |
 | En lang filterchip holder seg i feltet, 1440 og i skuffa   | `filter-chip.spec.ts`       |

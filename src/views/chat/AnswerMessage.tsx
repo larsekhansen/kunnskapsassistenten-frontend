@@ -63,6 +63,12 @@ type AnswerMessageProps = {
    */
   narrowedTo?: string;
   /**
+   * The reader's own question, for «Fremgangsmåte» to recognise a search word
+   * that is only the question over again. Absent where nothing asked it — a
+   * thread read back with no question before the answer. See ProcedurePanel.
+   */
+  question?: string;
+  /**
    * The search behind this answer came back empty.
    *
    * Then the answer is the notice saying so, and the two things a finished
@@ -133,6 +139,7 @@ export function AnswerMessage({
   searchLabel,
   liveErrorId,
   narrowedTo,
+  question,
   foundNothing,
 }: AnswerMessageProps) {
   const streaming = message.status === 'streaming';
@@ -272,6 +279,7 @@ export function AnswerMessage({
           />
         ) : (
           <ProcedurePanel
+            question={question}
             retrieval={message.retrieval}
             status={streaming && empty ? 'thinking' : 'done'}
             steps={message.thinkingSteps}

@@ -1,5 +1,6 @@
 import { Button, Dialog, SkipLink, Tooltip } from '@digdir/designsystemet-react';
 import {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -19,6 +20,7 @@ import { PanelHeadContext } from './panelHeadContext';
 import { MainScrollContext } from './scrollContext';
 import { shortcutModifier } from './shortcutModifier';
 import { useNoAnswers } from './useNoAnswers';
+import { useScrollTabStop } from './useScrollTabStop';
 import { useOpenThreadRegistry } from './useOpenThread';
 import { useCitation } from './useCitation';
 import { useComposerRegistry } from './useComposerPresence';
@@ -339,6 +341,42 @@ function Sidebar({
   const element = useRef<HTMLElement>(null);
   const content = useRef<HTMLDivElement>(null);
 
+  /*
+   * The scrolling region takes the keyboard when nothing else can reach it
+   * (WCAG 2.1.1; axe's `scrollable-region-focusable`, found by KA CC). The
+   * filter panel waiting for the BFF scrolls with nothing in it but
+   * skeletons, and the way out is on the panel's own row, outside the
+   * region. Measured at 1280 × 720, 786 px of content in a 592 px window.
+   *
+   * Only when it scrolls AND has no control in it — Chromium's rule since
+   * 130, and axe's. A region with a control in it is already scrolled from
+   * the keyboard, and the filter panel always scrolls at 1440 and 1280: an
+   * extra stop there, between «Tråder» and the corpus chooser, was what the
+   * first version cost every keyboard user (KA CC on #211). See
+   * useScrollTabStop.ts.
+   *
+   * Kept while it has focus, even when it no longer needs to be a stop: an
+   * element that stops being focusable while it holds the focus hands it to
+   * `<body>`, above the skip link (WCAG 2.4.3).
+   *
+   * A group and not a region: the slot is already a landmark with the same
+   * name, and a second landmark inside it would say it twice in every
+   * landmark list. The name is what says why the focus stopped there.
+   *
+   * The ring is Designsystemet's inset one: the panel clips what reaches past
+   * its edge, and an outer ring would be cut away on three sides.
+   */
+  const [needsTabStop, measureScroll] = useScrollTabStop();
+  const [holdsFocus, setHoldsFocus] = useState(false);
+  const focusable = needsTabStop || holdsFocus;
+  const setContent = useCallback(
+    (node: HTMLDivElement | null) => {
+      content.current = node;
+      measureScroll(node);
+    },
+    [measureScroll],
+  );
+
   /**
    * This slot's view head. Outside `ActiveView`, so switching between the two
    * views in a slot does not take the box away and put a new one back — the
@@ -499,9 +537,18 @@ function Sidebar({
   const panelContent = (
     <div
       id={contentId}
-      ref={content}
+      ref={setContent}
       hidden={(state.collapsed && !drawer) || undefined}
-      className="sidebar-content"
+      className={focusable ? 'sidebar-content ds-focus--inset' : 'sidebar-content'}
+      role={focusable ? 'group' : undefined}
+      aria-label={focusable ? label : undefined}
+      tabIndex={focusable ? 0 : undefined}
+      onFocus={(event) => {
+        if (event.target === event.currentTarget) setHoldsFocus(true);
+      }}
+      onBlur={(event) => {
+        if (event.target === event.currentTarget) setHoldsFocus(false);
+      }}
     >
       {/*
         The view head, and it is FIRST in the scrolling region on purpose.

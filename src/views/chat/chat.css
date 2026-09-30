@@ -46,11 +46,22 @@
  * it is short of height, and it is the width that makes the suggestions below
  * wrap onto three lines each. 5vw reaches the ceiling at 1200 and the floor at
  * 480.
+ *
+ * That padding is the least the greeting gets. On a window with height to
+ * spare it goes further down (Lars, 30.09: still too high on a desktop): the
+ * `auto` here and the one on `.ka-composer-area` share the column's free
+ * height between them, so the greeting and the suggestions stand in the
+ * middle of the room above the field, which is where Simen's sketch in issue
+ * 78 puts the suggestions. It follows the window's height by itself, without
+ * a `dvh` to tune, and where there is nothing to spare it is 0 — a phone gets
+ * no more air than it had, and the margin can never be what makes the start
+ * screen scroll.
  */
 .ka-chat-greeting {
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-1);
+  margin-block-start: auto;
   padding-block-start: clamp(var(--ds-size-6), 5vw, var(--ds-size-15));
 }
 
@@ -892,9 +903,11 @@
  * spare, and it grows with the text: 600 px at 20 px, against the 590 the
  * sentence then needs.
  *
- * A container query's lengths resolve against the ROOT font size, not the
- * container's own — that is what makes this work, and it is also why
- * `container-type: inline-size` on the box does not make the unit circular.
+ * `rem` in a container query resolves against the ROOT font size, which is
+ * what makes this follow the reader's text size. `em` would not: in a
+ * container condition it follows the CONTAINER's own font size. Measured in
+ * Chromium with a 300 px box and `(max-width: 12em)`: no match at a 16 px
+ * container font, a match at 32 px, with the root at 16 px throughout.
  */
 .ka-composer {
   container: ka-composer / inline-size;
