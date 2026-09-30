@@ -124,3 +124,28 @@ describe('the way to a new thread', () => {
     expect(screen.queryByRole('link', { name: /Start din første tråd/ })).toBeNull();
   });
 });
+
+/*
+ * The search field goes with «Ny tråd» (KA CC on #197): over a list known to
+ * be empty there is nothing to search, and the empty state stands alone.
+ */
+describe('the search field', () => {
+  it('is not drawn over a list known to be empty', () => {
+    renderView([]);
+
+    expect(screen.queryByRole('searchbox', { name: 'Søk i tråder' })).toBeNull();
+    expect(screen.queryByRole('search')).toBeNull();
+  });
+
+  it('stays while the list loads', () => {
+    renderView(undefined);
+
+    expect(screen.getByRole('searchbox', { name: 'Søk i tråder' })).toBeTruthy();
+  });
+
+  it('stays when there are threads', () => {
+    renderView(threads);
+
+    expect(screen.getByRole('searchbox', { name: 'Søk i tråder' })).toBeTruthy();
+  });
+});
