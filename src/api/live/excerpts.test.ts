@@ -19,13 +19,13 @@ const documents: SourceDocument[] = [
 ];
 
 function answering(status: number, body: unknown) {
-  const fetchMock = vi.fn(
-    async () =>
-      new Response(JSON.stringify(body), {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-  );
+  const fetchMock = vi.fn(async (url: unknown) => {
+    void url;
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }
