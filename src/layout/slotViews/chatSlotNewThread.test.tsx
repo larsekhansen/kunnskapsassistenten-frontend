@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { BrowserRouter, MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setActiveCorpusKey } from '../../api';
-import { recordMockTurn, resetMockThreads } from '../../api/mock/sessionThreads';
+import { resetMockThreads } from '../../api/mock/sessionThreads';
 import { emptyFilterSelection, type FilterSelection, type Thread } from '../../model';
 import { resetViewport, setViewportWidth } from '../../test/matchMedia';
 import { ThreadsView } from '../../views/threads';
@@ -304,6 +304,16 @@ describe('«Ny tråd» after a conversation started on this page', () => {
  * a memory router has a history of its own and never reads `window.location`,
  * so it cannot see an address written behind its back and cannot reproduce
  * this at all. The `popstate` below is how the browser tells it to look again.
+ *
+ * **What this test cannot reach**, and it is worth saying rather than faking:
+ * the second half of the same bug, where the slot keeps its instance but reads
+ * the thread back in ON TOP of the conversation. That needs a finished turn
+ * beside a stored copy of it, and the stream does not finish in jsdom — the
+ * turn here is stopped, so there is nothing for a re-read to be laid in front
+ * of. Writing the conversation into the mock store by hand was tried and
+ * changes nothing, measured. It is `tests/e2e/chat.spec.ts` that counts the
+ * questions and the answer cards, and holds the count for 1.5 s because the
+ * re-read is asynchronous (KA CC, #217).
  */
 describe('adressen denne sida skrev til seg selv', () => {
   function showOnBrowserRouter() {
@@ -329,23 +339,6 @@ describe('adressen denne sida skrev til seg selv', () => {
     const address = window.location.pathname;
     expect(address).toMatch(/^\/threads\/.+/u);
 
-    /*
-     * Turen skrives ned, slik mocken gjør det når svaret er ferdig. Uten den
-     * har backenden ingenting å lese tilbake, og doblingen under kan ikke
-     * skje i det hele tatt — strømmen gjør seg ikke ferdig i jsdom, så en
-     * test som bare stoppet turen var grønn uansett.
-     */
-    recordMockTurn({
-      question: 'Hva står i årsrapporten?',
-      answerId: 'a1',
-      answer: {
-        content: 'Et svar.',
-        createdAt: new Date().toISOString(),
-        citations: [],
-        status: 'complete',
-      },
-    });
-
     // Et utkast er den reneste prøven: en remontering tar det med seg.
     fireEvent.change(field(), { target: { value: 'Halvskrevet' } });
 
@@ -356,9 +349,6 @@ describe('adressen denne sida skrev til seg selv', () => {
 
     expect(window.location.pathname).toBe(address);
     expect(field().value).toBe('Halvskrevet');
-    // Én gang, ikke to. Å beholde nøkkelen alene lot instansen stå, men ga
-    // den en `threadId` for første gang, og effekten på den leste tråden inn
-    // IGJEN oppå samtalen som alt sto der (KA CC på #218).
-    expect(document.querySelectorAll('.ka-message--user')).toHaveLength(1);
+    expect(screen.getAllByText('Hva står i årsrapporten?').length).toBeGreaterThan(0);
   });
 });
