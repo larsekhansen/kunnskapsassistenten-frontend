@@ -29,6 +29,21 @@ import { slotLabel, type SidebarSlot } from './viewModel';
 const CLICK_SLOP = 4;
 
 /**
+ * How far back past the fold line a drag has to come before a panel it folded
+ * opens again. Simens issue 80, round 2: the drag goes on after the fold, and
+ * dragging back toward the answer column opens the panel before the pointer is
+ * let go.
+ *
+ * The same line both ways, so the panel is open whenever the pointer is on the
+ * panel's side of it and folded whenever it is not, and the reader can tell
+ * which from where their hand is. The 16 px are there only so a hand holding
+ * still on the line does not make the panel blink. It is the arrow key's step,
+ * and short beside the 200 px (navigation panel) and 168 px (sources panel)
+ * from the floor to the line, so coming back is short too.
+ */
+const REOPEN_MARGIN = 16;
+
+/**
  * The edge between an open panel and the answer column, which the reader can
  * move.
  *
@@ -58,9 +73,26 @@ const CLICK_SLOP = 4;
  * pointer moves toward the inline end, one that sits after it shrinks, and
  * neither fact is written down per slot.
  */
-export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
+export function PanelSeparator({
+  slot,
+  onDraggingChange,
+}: {
+  slot: SidebarSlot;
+  /**
+   * Told when a drag starts and when it ends. The slot draws no separator on
+   * a rail, and a drag that folds the panel has to keep this element, and the
+   * pointer capture on it, until the pointer is let go. Shell.tsx.
+   */
+  onDraggingChange?: (dragging: boolean) => void;
+}) {
   const { layout, setCollapsed } = useLayout();
-  const [dragging, setDragging] = useState(false);
+  const [dragging, setDraggingState] = useState(false);
+  const folded = layout.slots[slot].collapsed;
+
+  function setDragging(next: boolean) {
+    setDraggingState(next);
+    onDraggingChange?.(next);
+  }
   /**
    * Where the press started, the width it started from, and whether the
    * pointer has travelled far enough since for it to be a drag rather than a
@@ -114,12 +146,23 @@ export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
      * pressed against on the way. The pointer path for this without a drag
      * is the collapse button, which is what WCAG 2.5.7 asks.
      *
-     * Collapsed, the slot is a rail and draws no separator, so this element
-     * goes away with the pointer on it: the capture goes with it, and the
+     * The drag does not end there (Simens issue 80, round 2). The slot keeps
+     * this element while the pointer is held, over the rail, and the panel
+     * opens again once the pointer is back REOPEN_MARGIN past the same line.
+     * It opens where the pointer says, which is the floor, and follows the
+     * pointer from there. Let go while folded, the element goes, and the
      * slot sends the focus to its toggle button (Shell.tsx).
      */
-    if (wanted < range.min / 2) {
-      setDragging(false);
+    const line = range.min / 2;
+
+    if (folded) {
+      if (wanted < line + REOPEN_MARGIN) return;
+      setCollapsed(slot, false);
+      resize(wanted);
+      return;
+    }
+
+    if (wanted < line) {
       resize(origin.current.width);
       setCollapsed(slot, true);
       return;
@@ -211,8 +254,11 @@ export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
    * drawn in — so it is not a corner case.
    *
    * It comes back when the window grows, through `useViewportWidth`.
+   *
+   * Never mid-drag: returning nothing would take the pointer capture with it
+   * and leave the drag with no end.
    */
-  if (fixed) return null;
+  if (fixed && !dragging) return null;
 
   return (
     // The rule wants an `<hr>` for anything with `role="separator"`, and an
@@ -226,13 +272,18 @@ export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
       aria-orientation="vertical"
       aria-valuemax={range.max}
       aria-valuemin={range.min}
-      aria-valuenow={width}
+      /*
+        Folded mid-drag, the panel is drawn as a 67 px rail, below the floor
+        the value may not leave. The value holds the floor and the text says
+        what is true, which is that the panel is not there.
+      */
+      aria-valuenow={folded ? range.min : width}
       /*
         A separator carries no unit a screen reader can guess, so
         `aria-valuenow` on its own is read as a bare number. This is the one
         attribute that says what the number is. KA CC, reviewing PR #50.
       */
-      aria-valuetext={`${width} piksler`}
+      aria-valuetext={folded ? 'Skjult' : `${width} piksler`}
       className="panel-separator ds-focus"
       data-before-main={direction === 1 || undefined}
       data-dragging={dragging || undefined}

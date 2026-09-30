@@ -261,11 +261,13 @@ test.describe('skuffer under 1139', () => {
     await page.setViewportSize({ width: 1920, height: 900 });
     await page.goto('/threads/nkom-maaloppnaaelse');
 
-    // Opp til taket på 480, som huskes i ka.layout.v1.
+    // Up to the widest the window allows, which is remembered in ka.layout.v1:
+    // 1920 − 67 (the sources rail) − 32 − 640 (the answer column's floor).
+    // There is no ceiling of the panel's own since Simens issue 80, round 2.
     const handle = page.getByRole('separator', { name: 'Endre bredde på tråder og filter' });
     await handle.focus();
     await page.keyboard.press('End');
-    await expect(handle).toHaveAttribute('aria-valuenow', '480');
+    await expect(handle).toHaveAttribute('aria-valuenow', '1181');
 
     await page.setViewportSize(NARROW);
     await openDrawer(page, 'tråder og filter');

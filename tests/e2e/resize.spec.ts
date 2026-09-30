@@ -27,20 +27,41 @@ import { walkWithTab } from './helpers';
  * agrees with the code even when the code and the decision do not.
  */
 const NAV_DEFAULT = 400;
-const NAV_MAX = 480;
 const SOURCES_DEFAULT = 432;
 const SOURCES_FLOOR = 336;
-const SOURCES_MAX = 560;
+const RAIL = 67;
 
 /**
- * Navigasjonspanelet ved 1480 når 480 er lagret.
- *
- * 480 + 32 + 640 + 32 + 432 = 1616, og vinduet er 1480: kildepanelet gir 96
- * ned til gulvet sitt, dette panelet de siste 40. Den ene bredden der tegnet
- * og lagret er forskjellige tall samtidig som skillet finnes — som er det
- * «taket er vinduets» må ha for å kunne bli rød.
+ * The widest a panel can be. Since Simens issue 80, round 2, a panel has no
+ * ceiling of its own — the 480 and the 560 are gone — and takes what the
+ * window leaves when the answer column stands on its floor, 640. The other
+ * sidebar takes 67 as a rail, flush against the column, or its own width and
+ * a 32 px gap when it is open. #5's numbers, 30.09.
  */
-const NAV_AT_1480 = 440;
+const NAV_WIDEST_1920 = 1181; // 1920 − 67 − 640 − 32
+const NAV_WIDEST_1680_BESIDE_SOURCES = 544; // 1680 − 432 − 32 − 640 − 32
+
+/**
+ * Where a drag folds the navigation panel away, and where it opens it again
+ * (Simens issue 80, round 2). It folds when the width the drag asks for is
+ * under half its floor, 200, and opens again at half the floor and 16 more,
+ * so a hand hovering at the line does not make it flicker.
+ */
+const NAV_FOLDS_BELOW = 200;
+const NAV_OPENS_AT = 216;
+
+/**
+ * The navigation panel drawn narrower than it is stored, which is what «the
+ * ceiling is the window's» needs to be able to fail. With 1181 stored (End at
+ * 1920, the sources panel a rail) and the sources panel then opened, a panel
+ * first gives up what it was made wider by, and a widening takes room from the
+ * answer column, never from the other panel. So the sources panel keeps its
+ * 432, and the navigation panel takes what is left beside the answer column's
+ * floor. Measured on #224 (6bb2e24).
+ */
+const NAV_AT_1920_BESIDE_SOURCES = 784; // 1920 − 432 − 32 − 640 − 32
+const NAV_AT_1600 = 464; // 1600 − 432 − 32 − 640 − 32
+const NAV_AT_1680 = 544; // 1680 − 432 − 32 − 640 − 32
 
 /** Arrow keys move the edge this far; Shift makes it a stride. */
 const STEP = 16;
@@ -161,6 +182,68 @@ test.describe('panelbredder', () => {
   });
 
   /*
+   * A panel dragged past half its floor folds away, and the drag goes on:
+   * dragged back, it opens again before the pointer is let go (Simens issue
+   * 80, round 2). The press is at x 400, the panel's edge, so the width the
+   * drag asks for is the pointer's x.
+   */
+  test('dratt forbi halve gulvet lukkes panelet, og tilbake åpnes det igjen før slipp', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'panelbredde: lukkes og åpnes under dragingen');
+    await page.goto('/');
+    const handle = separator(page, 'tråder og filter');
+    const box = (await handle.boundingBox())!;
+    expect(box.x <= NAV_DEFAULT && NAV_DEFAULT <= box.x + box.width, 'trykket er på kanten').toBe(
+      true,
+    );
+    const y = box.y + box.height / 2;
+
+    await page.mouse.move(NAV_DEFAULT, y);
+    await page.mouse.down();
+    await page.mouse.move(300, y);
+    await page.mouse.move(NAV_FOLDS_BELOW - 11, y);
+    await expectPanelWidth(page, '.primary-sidebar', RAIL, `dratt til x ${NAV_FOLDS_BELOW - 11}`);
+
+    // Under the line where it opens again, it stays folded.
+    await page.mouse.move(NAV_OPENS_AT - 1, y);
+    await expectPanelWidth(page, '.primary-sidebar', RAIL, `tilbake til x ${NAV_OPENS_AT - 1}`);
+
+    // At it, the panel is back at the width the drag began from, before the
+    // pointer is let go.
+    await page.mouse.move(NAV_OPENS_AT, y);
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, `tilbake til x ${NAV_OPENS_AT}`);
+
+    await page.mouse.up();
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, 'etter slipp');
+  });
+
+  test('slippes pekeren mens panelet er lukket, går fokuset til Vis-knappen', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'panelbredde: lukkes og åpnes under dragingen');
+    await page.goto('/');
+    const handle = separator(page, 'tråder og filter');
+    const y = (await handle.boundingBox())!.y + 100;
+
+    await page.mouse.move(NAV_DEFAULT, y);
+    await page.mouse.down();
+    await page.mouse.move(300, y);
+    await page.mouse.move(NAV_FOLDS_BELOW - 11, y);
+    await page.mouse.up();
+
+    // Folded, and the focus on the control that brings the panel back.
+    const show = page.getByRole('button', { name: 'Vis tråder og filter' });
+    await expect(show).toBeFocused();
+    await expect(show).toHaveAttribute('aria-expanded', 'false');
+    await expectPanelWidth(page, '.primary-sidebar', RAIL, 'lukket etter slipp');
+
+    // Opened again, it has the width the drag began from.
+    await show.click();
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, 'åpnet igjen');
+  });
+
+  /*
    * The pointer path without a drag (WCAG 2.5.7). It was two arrow buttons in
    * the panel head until Simens issue 81 took them away; now a click on the
    * edge itself does it. One click takes the panel as wide as it can be, the
@@ -178,9 +261,9 @@ test.describe('panelbredder', () => {
     // between, which is exactly what 2.5.7 asks to be enough. No
     // mouse.down/move here, on purpose.
     await handle.click();
-    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter ett klikk');
+    await expectPanelWidth(page, '.primary-sidebar', NAV_WIDEST_1920, 'etter ett klikk');
     // And the separator reports the same number the panel is drawn at.
-    await expect(handle).toHaveAttribute('aria-valuenow', String(NAV_MAX));
+    await expect(handle).toHaveAttribute('aria-valuenow', String(NAV_WIDEST_1920));
 
     await handle.click();
     await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, 'etter ett klikk til');
@@ -197,7 +280,12 @@ test.describe('panelbredder', () => {
     // quite still, and it is still a click. `CLICK_SLOP` is 4, where Windows
     // starts a drag.
     await drag(page, handle, 3);
-    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter et klikk med skjelving');
+    await expectPanelWidth(
+      page,
+      '.primary-sidebar',
+      NAV_WIDEST_1920,
+      'etter et klikk med skjelving',
+    );
 
     await handle.focus();
     await page.keyboard.press('Enter');
@@ -273,7 +361,12 @@ test.describe('panelbredder', () => {
     // And they work: an edge that is drawn has to be able to do something,
     // with a click too.
     await separator(page, 'tråder og filter').click();
-    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter ett klikk ved 1680');
+    await expectPanelWidth(
+      page,
+      '.primary-sidebar',
+      NAV_WIDEST_1680_BESIDE_SOURCES,
+      'etter ett klikk ved 1680',
+    );
   });
 
   test('skillene forsvinner og kommer tilbake med vinduet', async ({ page }, testInfo) => {
@@ -323,11 +416,11 @@ test.describe('panelbredder', () => {
     expect(await panelWidth(page, '.secondary-sidebar')).toBe(SOURCES_FLOOR);
 
     await page.keyboard.press('End');
-    // 1536 − 400 (navigasjonspanelet) − 64 (to gap) − 640 (gulvet til
-    // hovedkolonnen) = 432, som er under taket på 560. Det trangeste av de to
-    // vinner, og det er vinduet.
+    // 1536 − 400 (the navigation panel) − 64 (two gaps) − 640 (the answer
+    // column's floor) = 432. The window is the only ceiling there is since
+    // Simens issue 80, round 2.
     await expectPanelWidth(page, '.secondary-sidebar', SOURCES_DEFAULT, 'kildepanelet på End');
-    expect(Number(await handle.getAttribute('aria-valuenow'))).toBeLessThanOrEqual(SOURCES_MAX);
+    await expect(handle).toHaveAttribute('aria-valuenow', String(SOURCES_DEFAULT));
   });
 
   /*
@@ -391,48 +484,59 @@ test.describe('panelbredder', () => {
     await handle.focus();
     await page.keyboard.press('End');
 
-    // 1920 har rikelig plass, så modellens tak på 480 er det trangeste.
-    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'navigasjonspanelet ved 1920');
+    // The sources panel is a rail, so the widest is what the window leaves
+    // beside it and the answer column's floor.
+    await expectPanelWidth(
+      page,
+      '.primary-sidebar',
+      NAV_WIDEST_1920,
+      'navigasjonspanelet ved 1920',
+    );
 
-    // Ved 1440 med begge sidekolonner åpne står alt på gulvet sitt, og da er
-    // det ingenting å dra i. Den lagrede 480-en står igjen i modellen og skal
-    // verken tegnes eller meldes.
+    // Opening the sources panel takes room the stored width counted on. The
+    // sources panel keeps its width, the navigation panel is drawn narrower
+    // than it is stored, and aria-valuenow says the drawn width: it is the
+    // only thing that tells a reader who cannot see the edge where it is, and
+    // the stored 1181 over a panel drawn at 784 would be a lie told to exactly
+    // that reader.
     await showSources(page);
-    await page.setViewportSize({ width: 1440, height: HEIGHT });
+    await expectPanelWidth(
+      page,
+      '.primary-sidebar',
+      NAV_AT_1920_BESIDE_SOURCES,
+      'navigasjonspanelet ved 1920 med kildene åpne',
+    );
+    await expect(handle).toHaveAttribute('aria-valuenow', String(NAV_AT_1920_BESIDE_SOURCES));
 
+    // At 1440 with both sidebars open everything stands on its floor, and there
+    // is nothing to drag: the edge is gone, and the stored width is neither
+    // drawn nor reported.
+    await page.setViewportSize({ width: 1440, height: HEIGHT });
     await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, 'navigasjonspanelet ved 1440');
     await expectPanelWidth(page, '.secondary-sidebar', SOURCES_FLOOR, 'kildepanelet ved 1440');
-    // Og skillet er borte, for det er ingen kant å flytte. Den lagrede 480-en
-    // står igjen i modellen og skal verken tegnes eller meldes.
     await expect(separator(page, 'tråder og filter')).toHaveCount(0);
 
-    // Så på 1480, som er den ene bredden der spørsmålet i det hele tatt kan
-    // stilles: skillet finnes, og tegnet (440) og lagret (480) er forskjellige
-    // tall. aria-valuenow er det eneste som sier hvor kanten står til en som
-    // ikke ser den, og en verdi på 480 over et panel tegnet på 440 er en løgn
-    // fortalt til nettopp den leseren.
-    //
-    // 1680 under her duger ikke til den målingen: der er det plass til alt, så
-    // tegnet og lagret er det samme tallet og påstanden kan ikke bli rød.
-    // Målt av KA CC på #93 ved å sette aria-valuenow til den lagrede bredden —
-    // grønn på 1680, rød på 1480.
+    // At 1480 the navigation panel stands at 400, which is its floor and,
+    // beside the sources panel, all the room there is, so it has no edge to
+    // move.
     await page.setViewportSize({ width: 1480, height: HEIGHT });
-    await expectPanelWidth(page, '.primary-sidebar', NAV_AT_1480, 'navigasjonspanelet ved 1480');
-    await expect(separator(page, 'tråder og filter')).toHaveAttribute(
-      'aria-valuenow',
-      String(NAV_AT_1480),
-    );
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, 'navigasjonspanelet ved 1480');
+    await expect(separator(page, 'tråder og filter')).toHaveCount(0);
 
-    // Og på 1680 er det plass til den lagrede bredden igjen: 400 + 32 + 640 +
-    // 32 + 432 = 1536, så de 144 som er til overs tar navigasjonspanelet helt
-    // opp til sitt eget tak. Den lagrede bredden var aldri borte, bare ikke
-    // tegnbar.
-    await page.setViewportSize({ width: 1680, height: HEIGHT });
-    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'navigasjonspanelet ved 1680');
-    await expect(separator(page, 'tråder og filter')).toHaveAttribute(
-      'aria-valuenow',
-      String(NAV_MAX),
-    );
+    // And as the window grows, the edge comes back and the drawn width follows
+    // the window, with the stored one never gone. Measured by KA CC on #93 by
+    // setting aria-valuenow to the stored width: red wherever the two differ.
+    for (const [width, drawn] of [
+      [1600, NAV_AT_1600],
+      [1680, NAV_AT_1680],
+    ] as const) {
+      await page.setViewportSize({ width, height: HEIGHT });
+      await expectPanelWidth(page, '.primary-sidebar', drawn, `navigasjonspanelet ved ${width}`);
+      await expect(separator(page, 'tråder og filter')).toHaveAttribute(
+        'aria-valuenow',
+        String(drawn),
+      );
+    }
   });
 
   test('en kollapset sidekolonne har ingen skille å dra i', async ({ page }, testInfo) => {

@@ -69,7 +69,9 @@ describe('the separator as a control', () => {
     expect(separator.getAttribute('aria-orientation')).toBe('vertical');
     expect(width(separator)).toBe(400);
     expect(separator.getAttribute('aria-valuemin')).toBe('400');
-    expect(separator.getAttribute('aria-valuemax')).toBe('480');
+    // 1920 − 432 (sources) − 32 − 32 (two gaps) − 640 (the answer column's
+    // floor). The window is the ceiling; the panel has none of its own.
+    expect(separator.getAttribute('aria-valuemax')).toBe('784');
   });
 
   it('says what the number is, since a separator carries no unit', () => {
@@ -130,7 +132,7 @@ describe('the arrow keys', () => {
     for (let press = 0; press < 20; press += 1) {
       fireEvent.keyDown(separator, { key: 'ArrowRight', shiftKey: true });
     }
-    expect(width(separator)).toBe(480);
+    expect(width(separator)).toBe(784);
 
     for (let press = 0; press < 20; press += 1) {
       fireEvent.keyDown(separator, { key: 'ArrowLeft', shiftKey: true });
@@ -224,31 +226,30 @@ describe('a window with no room in it', () => {
 
     const separator = screen.getByRole('separator');
     expect(width(separator)).toBe(400);
-    expect(separator.getAttribute('aria-valuemax')).toBe('480');
+    expect(separator.getAttribute('aria-valuemax')).toBe('784');
     expect(separator.getAttribute('tabindex')).toBe('0');
   });
 
   it('reports the width on screen, not the one the reader asked for elsewhere', () => {
-    // Widened in a window with room, then met at 1480. `aria-valuenow` is the
-    // only thing that tells a screen reader user where the edge is; a value
-    // that says 480 over a panel drawn at 400 is a lie told to the one reader
-    // who cannot see the difference.
+    // Widened with the sources panel on its rail, then met with it open.
+    // `aria-valuenow` is the only thing that tells a screen reader user where
+    // the edge is; a value that says 1181 over a panel drawn at 784 is a lie
+    // told to the one reader who cannot see the difference.
     localStorage.setItem(
       LAYOUT_STORAGE_KEY,
       JSON.stringify({
         collapsed: { 'secondary-sidebar': false },
-        widths: { 'primary-sidebar': 480 },
+        widths: { 'primary-sidebar': 1181 },
         sourcesDismissed: false,
       }),
     );
 
-    // 1480 and not 1440: at 1440 there is nothing to drag and no separator to
-    // read. 480 + 32 + 640 + 32 + 432 is 1616 and the window is 1480, so the
-    // sources panel gives 96 and this panel the last 40 — drawn at 440, which
-    // is neither the stored 480 nor the default 400.
-    const separator = open('primary-sidebar', { restore: true, width: 1480 });
-    expect(width(separator)).toBe(440);
-    expect(separator.getAttribute('aria-valuemax')).toBe('440');
+    // 1181 + 32 + 640 + 32 + 432 is 2317 and the window is 1920. The widening
+    // gives the 397 back and the sources panel keeps its 432, so the panel is
+    // drawn at 784, which is also where End stops. See `fittedWidths`.
+    const separator = open('primary-sidebar', { restore: true, width: 1920 });
+    expect(width(separator)).toBe(784);
+    expect(separator.getAttribute('aria-valuemax')).toBe('784');
   });
 });
 
@@ -347,22 +348,92 @@ describe('the pointer on the edge', () => {
   });
 
   /*
+   * Simens issue 80, round 2: the drag goes on after the fold, and dragging
+   * back opens the panel before the pointer is let go. The line is the same
+   * both ways, half the floor, and the panel opens 16 px back past it.
+   */
+  it('åpner navigasjonspanelet igjen når pekeren kommer 16 px tilbake forbi linja', () => {
+    // Half the floor is 200, and 200 + 16 = 216.
+    const separator = drawWithProbe('primary-sidebar');
+    fireEvent.pointerDown(separator, { button: 0, clientX: 400, pointerId: 1 });
+    fireEvent.pointerMove(separator, { clientX: 189, pointerId: 1 });
+    expect(slotState()).toBe('lukket 400');
+
+    fireEvent.pointerMove(separator, { clientX: 215, pointerId: 1 });
+    expect(slotState()).toBe('lukket 400');
+
+    fireEvent.pointerMove(separator, { clientX: 216, pointerId: 1 });
+    expect(slotState()).toBe('åpen 400');
+
+    // And the edge follows the pointer from there, in the same drag.
+    fireEvent.pointerMove(separator, { clientX: 450, pointerId: 1 });
+    expect(slotState()).toBe('åpen 450');
+  });
+
+  it('åpner kildepanelet igjen på samme måte, den andre veien', () => {
+    // Half the floor is 168, and 168 + 16 = 184: 432 − (1736 − 1488) = 184.
+    const separator = drawWithProbe('secondary-sidebar');
+    fireEvent.pointerDown(separator, { button: 0, clientX: 1488, pointerId: 1 });
+    fireEvent.pointerMove(separator, { clientX: 1753, pointerId: 1 });
+    expect(slotState()).toBe('lukket 432');
+
+    fireEvent.pointerMove(separator, { clientX: 1737, pointerId: 1 });
+    expect(slotState()).toBe('lukket 432');
+
+    fireEvent.pointerMove(separator, { clientX: 1736, pointerId: 1 });
+    expect(slotState()).toBe('åpen 336');
+  });
+
+  it('lukker og åpner så mange ganger pekeren krysser linja, og slipper lukket med bredden fra starten', () => {
+    const separator = drawWithProbe('primary-sidebar');
+    fireEvent.keyDown(separator, { key: 'ArrowRight', shiftKey: true });
+    expect(width(separator)).toBe(464);
+
+    fireEvent.pointerDown(separator, { button: 0, clientX: 464, pointerId: 1 });
+    fireEvent.pointerMove(separator, { clientX: 150, pointerId: 1 });
+    expect(slotState()).toBe('lukket 464');
+
+    fireEvent.pointerMove(separator, { clientX: 300, pointerId: 1 });
+    expect(slotState()).toBe('åpen 400');
+
+    fireEvent.pointerMove(separator, { clientX: 150, pointerId: 1 });
+    expect(slotState()).toBe('lukket 464');
+
+    fireEvent.pointerUp(separator, { clientX: 150, pointerId: 1 });
+    fireEvent.click(separator);
+    expect(slotState()).toBe('lukket 464');
+  });
+
+  it('sier «Skjult» mens panelet er lukket midt i en draging, og holder verdien innenfor grensene', () => {
+    const separator = drawWithProbe('primary-sidebar');
+    fireEvent.pointerDown(separator, { button: 0, clientX: 400, pointerId: 1 });
+    fireEvent.pointerMove(separator, { clientX: 189, pointerId: 1 });
+
+    expect(separator.getAttribute('aria-valuetext')).toBe('Skjult');
+    expect(width(separator)).toBe(400);
+    expect(separator.getAttribute('aria-valuemin')).toBe('400');
+    // The room the panel has OPEN: 1920 − 432 − 32 − 32 − 640. Read off the
+    // folded layout it would be 816, with no gap beside this slot.
+    expect(separator.getAttribute('aria-valuemax')).toBe('784');
+  });
+
+  /*
    * Simens issue 81 took the arrow buttons out of the panel head, and they
    * were the pointer path without a drag that WCAG 2.5.7 asks for. A click on
    * the edge is that path now: it goes between the design's width and the
    * widest the window has room for (the conductor's option A, 30.09).
    */
   it('klikk uten å dra gjør panelet så bredt det får plass til, og neste klikk tilbake', () => {
-    // 1920 har plass til taket, 480.
+    // 1920 has room for 784 with the sources panel open beside it.
     const separator = drawWithProbe('primary-sidebar');
 
     fireEvent.pointerDown(separator, { button: 0, clientX: 400, pointerId: 1 });
     fireEvent.pointerUp(separator, { clientX: 400, pointerId: 1 });
     fireEvent.click(separator);
-    expect(slotState()).toBe('åpen 480');
+    expect(slotState()).toBe('åpen 784');
 
-    fireEvent.pointerDown(separator, { button: 0, clientX: 480, pointerId: 1 });
-    fireEvent.pointerUp(separator, { clientX: 480, pointerId: 1 });
+    fireEvent.pointerDown(separator, { button: 0, clientX: 784, pointerId: 1 });
+    fireEvent.pointerUp(separator, { clientX: 784, pointerId: 1 });
     fireEvent.click(separator);
     expect(slotState()).toBe('åpen 400');
   });
@@ -375,7 +446,7 @@ describe('the pointer on the edge', () => {
     fireEvent.pointerUp(separator, { clientX: 403, pointerId: 1 });
     fireEvent.click(separator);
 
-    expect(slotState()).toBe('åpen 480');
+    expect(slotState()).toBe('åpen 784');
   });
 
   it('lar en draging være en draging, også når den ender i et klikk', () => {

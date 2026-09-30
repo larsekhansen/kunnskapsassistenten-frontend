@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   bothSidebarsMinViewport,
   defaultLayout,
+  fittedWidths,
   railWidth,
   layoutStyle,
   narrowViewportQuery,
@@ -171,15 +172,17 @@ describe('withWidth', () => {
     expect(narrower.slots['secondary-sidebar'].sizing).toMatchObject({ width: 336 });
   });
 
-  it('will not drag a panel past the ceiling the design gives it', () => {
-    expect(
-      withWidth(defaultLayout, 'primary-sidebar', 900).slots['primary-sidebar'].sizing,
-    ).toMatchObject({
-      width: 480,
-    });
+  it('keeps a width wider than the window, and leaves the drawing to fittedWidths', () => {
+    // The sidebars have no ceiling of their own since Simens issue 80. The
+    // model keeps what it was given; what is drawn is what the window holds:
+    // 1920 − 67 (the rail) − 32 − 640 = 1181.
+    const wide = withWidth(defaultLayout, 'primary-sidebar', 5000);
+    expect(wide.slots['primary-sidebar'].sizing).toMatchObject({ width: 5000 });
+    expect(fittedWidths(wide, 1920)['primary-sidebar']).toBe(1181);
+
     expect(
       withWidth(defaultLayout, 'secondary-sidebar', 900).slots['secondary-sidebar'].sizing,
-    ).toMatchObject({ width: 560 });
+    ).toMatchObject({ width: 900 });
   });
 
   it('keeps whole pixels, because a fraction of one is a fraction of a border', () => {

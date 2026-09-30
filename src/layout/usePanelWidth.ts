@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { clampWidth, growthDirection, widthRange, type WidthRange } from './resize';
 import { useLayout } from './useLayout';
 import { useViewportWidth } from './useViewportWidth';
-import { defaultLayout, fittedWidths, type SidebarSlot } from './viewModel';
+import { defaultLayout, fittedWidths, withCollapsed, type SidebarSlot } from './viewModel';
 
 export type PanelWidth = {
   /** What the panel is DRAWN at. See `fittedWidths`. */
@@ -41,7 +41,12 @@ export function usePanelWidth(slot: SidebarSlot): PanelWidth {
   const { layout, setWidth: write } = useLayout();
   const viewport = useViewportWidth();
 
-  const range = widthRange(layout, slot, viewport);
+  // The range the panel has OPEN, also while it is folded. The one place a
+  // folded panel has a live separator is a drag that folded it and is still
+  // going, and what that drag needs to know is where the panel would stand if
+  // it opened again. Folded, the slot puts no gap beside itself, so the range
+  // read off the folded layout would be 32 px too wide. See PanelSeparator.tsx.
+  const range = widthRange(withCollapsed(layout, slot, false), slot, viewport);
   const width = fittedWidths(layout, viewport)[slot];
   const direction = growthDirection(slot);
 
