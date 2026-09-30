@@ -1,4 +1,4 @@
-import { Heading, Link, List, Paragraph, Table } from '@digdir/designsystemet-react';
+import { Divider, Heading, Link, List, Paragraph, Table } from '@digdir/designsystemet-react';
 import { Children, useMemo, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -283,6 +283,11 @@ export function Markdown({
       tr: ({ children: content }) => <Table.Row>{content}</Table.Row>,
       th: ({ children: content }) => <Table.HeaderCell>{content}</Table.HeaderCell>,
       td: ({ children: content }) => <Table.Cell>{decorate(content)}</Table.Cell>,
+      // A thematic break. The changelog sets its dated entries apart with
+      // one; an answer has never used it. `Divider` is `aria-hidden`, which
+      // is right here — the heading above each entry is what carries the
+      // break for a screen reader, the line is for the eye.
+      hr: () => <Divider />,
       // Designsystemet styles none of these three. See global.css.
       pre: ({ children: content }) => <pre className="markdown__pre">{content}</pre>,
       code: ({ children: content }) => <code className="markdown__code">{content}</code>,

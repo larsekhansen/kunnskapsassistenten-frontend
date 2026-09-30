@@ -11,10 +11,10 @@ import {
 } from 'react';
 import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
-import { ColorSchemeToggle } from './ColorSchemeToggle';
 import { ComposerContext } from './composerContext';
 import { COMPOSER_ID } from './ids';
 import { PanelSeparator } from './PanelSeparator';
+import { SidebarFooter } from './SidebarFooter';
 import { OpenThreadContext } from './openThreadContext';
 import { PanelHeadContext } from './panelHeadContext';
 import { MainScrollContext } from './scrollContext';
@@ -78,6 +78,30 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
   // The main slot owns the scroll, so the element is handed to the views
   // rather than looked up from inside them. See scrollContext.ts.
   const mainScroll = useRef<HTMLElement | null>(null);
+
+  /*
+   * The answer column takes the keyboard when nothing inside it can (WCAG
+   * 2.1.1; axe's `scrollable-region-focusable`). Same rule and same hook as
+   * the sidebars, see `needsTabStop` in Sidebar below and useScrollTabStop.ts.
+   *
+   * It never came up while every page in here had a compose field or a link
+   * to tab to. `/om-prosjektet` is the first that has neither: six paragraphs
+   * of prose, 1073 px of them in a 900 px window at 1440, and no way to
+   * scroll it from the keyboard at all. Measured by #3 on Simens issue 85d.
+   *
+   * No `role` and no `aria-label`, unlike the sidebars: `main` is already a
+   * landmark and already named. The tab stop is the whole change.
+   */
+  const [mainNeedsTabStop, measureMainScroll] = useScrollTabStop();
+  const [mainHoldsFocus, setMainHoldsFocus] = useState(false);
+  const mainFocusable = mainNeedsTabStop || mainHoldsFocus;
+  const setMain = useCallback(
+    (node: HTMLElement | null) => {
+      mainScroll.current = node;
+      measureMainScroll(node);
+    },
+    [measureMainScroll],
+  );
 
   // No conversation on this page, so nothing will ever report sources. The
   // panel has to be told, or it draws the skeletons for an answer that is not
@@ -157,7 +181,38 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
           >
             <Sidebar slot="primary-sidebar" element="nav" drawer={drawer} />
 
-            <main id="main-content" className="main" ref={mainScroll}>
+            {/*
+              The focus pair below observes the landmark's own focus, to keep
+              the tab stop while it holds it. It is not an interaction: nothing
+              in here is clickable, which is what the rule is otherwise right
+              to ask about.
+            */}
+            {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+            <main
+              id="main-content"
+              className={mainFocusable ? 'main ds-focus--inset' : 'main'}
+              ref={setMain}
+              /*
+                The rule takes a tabIndex on a non-interactive element for a
+                mistake. Here it is the fix, and only while the region cannot
+                be scrolled any other way — same exception the scroll box
+                around a wide table makes, see src/components/Markdown.tsx.
+              */
+              // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+              tabIndex={mainFocusable ? 0 : undefined}
+              /*
+                Kept a stop while it holds the focus, even once it no longer
+                needs to be one: an element that stops being focusable with
+                the focus on it hands it to `<body>`, above the skip link
+                (WCAG 2.4.3). Same pairing as the sidebars'.
+              */
+              onFocus={(event) => {
+                if (event.target === event.currentTarget) setMainHoldsFocus(true);
+              }}
+              onBlur={(event) => {
+                if (event.target === event.currentTarget) setMainHoldsFocus(false);
+              }}
+            >
               {/*
               The reading width, inside the scrolling region rather than being
               it. `main` fills the whole field between the panels so the wheel
@@ -600,8 +655,9 @@ function Sidebar({
   );
 
   /*
-   * The foot of the navigation panel, for the app's own settings: today the
-   * colour scheme (Simens issue 85).
+   * The foot of the navigation panel: the pages about Kunnskapsassistenten
+   * and the app's own settings (Simens issue 85). What is in it is
+   * SidebarFooter's business.
    *
    * The slot's and not a view's, so it stays put when the panel switches
    * between «Tråder» and «Filtrering». The first slot and not the other,
@@ -612,12 +668,7 @@ function Sidebar({
    * Outside the scrolling region, like the head, so it is where it is however
    * long the thread list grows.
    */
-  const foot =
-    slot === 'primary-sidebar' ? (
-      <div className="sidebar-footer">
-        <ColorSchemeToggle />
-      </div>
-    ) : null;
+  const foot = slot === 'primary-sidebar' ? <SidebarFooter /> : null;
 
   const toggleButton = (
     <Button
