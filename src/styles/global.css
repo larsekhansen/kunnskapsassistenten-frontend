@@ -946,3 +946,36 @@ body {
 .markdown__citation {
   line-height: 0;
 }
+
+/*
+ * The page that stands where the app was after an error React could not
+ * recover from. See src/layout/AppErrorBoundary.tsx.
+ *
+ * The page's own ground and the answer column's air, so it reads as the app
+ * saying something and not as a browser error. Nothing here may depend on the
+ * shell, since the shell is what is gone.
+ */
+.app-crash {
+  box-sizing: border-box;
+  min-block-size: 100%;
+  padding: var(--ds-size-15) var(--ka-main-padding-inline);
+  background: var(--ds-color-neutral-background-tinted);
+}
+
+/*
+ * A reading measure, in characters because no token is a line length, and
+ * centred in the window. Everything in it starts at its edge, the button too.
+ */
+.app-crash__body {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--ds-size-4);
+  max-inline-size: 65ch;
+  margin-inline: auto;
+}
+
+/* The details box is drawn the width of its column, as Designsystemet draws it. */
+.app-crash__body > .ds-details {
+  align-self: stretch;
+}
