@@ -22,6 +22,13 @@ import { usePanelWidth } from './usePanelWidth';
 import { slotLabel, type SidebarSlot } from './viewModel';
 
 /**
+ * How far the pointer may travel between press and release and still count
+ * as a click. A hand on a trackpad moves a pixel or two without meaning to,
+ * and 4 px is where Windows starts a drag (`SM_CXDRAG`).
+ */
+const CLICK_SLOP = 4;
+
+/**
  * The edge between an open panel and the answer column, which the reader can
  * move.
  *
@@ -32,6 +39,13 @@ import { slotLabel, type SidebarSlot } from './viewModel';
  * follow-up. WCAG 2.5.7 asks that anything a pointer drags can be done
  * without dragging; WCAG 2.1.1 asks that it can be done from the keyboard at
  * all.
+ *
+ * The pointer path without a drag is a click on the edge itself: it moves the
+ * edge between the width the design draws and the widest the window has room
+ * for. It used to be two arrow buttons in the panel head, which Simen asked
+ * to have removed (Simens issue 81); a click here keeps 2.5.7 without them,
+ * and without a second control for the same edge. The conductor's option A,
+ * 30.09.
  *
  * `role="separator"` with a tab stop is the splitter role: a screen reader
  * announces it, reads `aria-valuenow` as the panel's width in pixels, and
@@ -47,12 +61,14 @@ import { slotLabel, type SidebarSlot } from './viewModel';
 export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
   const { layout, setCollapsed } = useLayout();
   const [dragging, setDragging] = useState(false);
-  /** Where the drag started, and the width it started from. */
-  const origin = useRef({ x: 0, width: 0 });
+  /**
+   * Where the press started, the width it started from, and whether the
+   * pointer has travelled far enough since for it to be a drag rather than a
+   * click.
+   */
+  const origin = useRef({ x: 0, width: 0, moved: false });
 
-  // The edge, and everything that can move it. The buttons in the panel head
-  // read the same hook, so the two controls cannot disagree about where the
-  // edge is or how far it may go. See usePanelWidth.ts.
+  // The edge, and everything that can move it. See usePanelWidth.ts.
   //
   // `width` is what the panel is DRAWN at, which is what the reader is
   // moving; the model may still be holding a wider number it asked for in a
@@ -73,13 +89,15 @@ export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
     event.currentTarget.focus();
     event.currentTarget.setPointerCapture(event.pointerId);
 
-    origin.current = { x: event.clientX, width };
+    origin.current = { x: event.clientX, width, moved: false };
     setDragging(true);
   }
 
   function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     if (!dragging) return;
-    const wanted = origin.current.width + direction * (event.clientX - origin.current.x);
+    const travel = event.clientX - origin.current.x;
+    if (Math.abs(travel) > CLICK_SLOP) origin.current.moved = true;
+    const wanted = origin.current.width + direction * travel;
 
     /*
      * Dragged past the middle of its own floor, the panel folds away instead
@@ -116,6 +134,25 @@ export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     setDragging(false);
+  }
+
+  /*
+   * A press that did not travel: the edge goes to the widest this window has
+   * room for, or back to the design's width if it is already there.
+   *
+   * Two widths and not a step, because a click is one decision and should
+   * land somewhere the reader can predict — «as wide as it goes», «as it
+   * was» — rather than 16 px along, which is the keyboard's job. `reset` is
+   * the design's width, and also forgets the stored one.
+   *
+   * On `click` rather than on `pointerup`, so a press that slides off and is
+   * cancelled does nothing. A drag ends in a click too, on the element with
+   * the capture, which is what `moved` is for.
+   */
+  function onClick() {
+    if (origin.current.moved) return;
+    if (width < range.max) resize(range.max);
+    else reset();
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -199,7 +236,7 @@ export function PanelSeparator({ slot }: { slot: SidebarSlot }) {
       className="panel-separator ds-focus"
       data-before-main={direction === 1 || undefined}
       data-dragging={dragging || undefined}
-      onDoubleClick={reset}
+      onClick={onClick}
       onKeyDown={onKeyDown}
       onLostPointerCapture={endDrag}
       onPointerCancel={endDrag}
