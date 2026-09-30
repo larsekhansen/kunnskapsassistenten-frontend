@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { accessToken } from './access.ts';
 import { createHandler } from './app.ts';
 import { readConfig, type ServerConfig } from './config.ts';
+import { currentYear } from '../shared/years.ts';
 import { MAX_FACET_VALUES, facetConfigFrom, parseCollections, shapeOptions } from './facets.ts';
 
 /**
@@ -127,9 +128,10 @@ describe('/api/facets', () => {
         {
           field: 'concerned_years',
           label: 'år',
-          // Nyeste først, og bare 1990–2035: «2436», «1989», «2036» og «0» er støy.
+          // Nyeste først, og bare fra 1990 til i år: «2436», «1989» og «0» er
+          // støy, og «2035» og «2036» er år som ikke har kommet (Simens
+          // issue 75: sluttåret i en plan eller et tildelingsbrev).
           options: [
-            { value: '2035', count: 7 },
             { value: '2024', count: 1883 },
             { value: '2023', count: 1851 },
             { value: '1990', count: 5 },
@@ -376,6 +378,33 @@ describe('policyen', () => {
         { value: '2001', count: 1 },
       ]),
     ).toEqual([{ value: '2001', count: 1 }]);
+  });
+
+  it('slutter i år, ikke på et år fram i tid', () => {
+    // Simens issue 75: filteret viste 2027–2035, fordi en plan eller et
+    // tildelingsbrev nevner sluttåret sitt. Det finnes ingen dokumenter FRA
+    // de årene ennå, så de er ikke noe å avgrense til.
+    expect(
+      shapeOptions(
+        'year',
+        [
+          { value: '2027', count: 12 },
+          { value: '2026', count: 40 },
+          { value: '2025', count: 900 },
+        ],
+        2026,
+      ),
+    ).toEqual([
+      { value: '2026', count: 40 },
+      { value: '2025', count: 900 },
+    ]);
+  });
+
+  it('regner året i Norge, ikke i UTC', () => {
+    // Containeren går i UTC. En time ut i det nye året i Oslo er det
+    // fortsatt det gamle der.
+    expect(currentYear(new Date('2026-12-31T23:30:00Z'))).toBe(2027);
+    expect(currentYear(new Date('2026-12-31T22:30:00Z'))).toBe(2026);
   });
 });
 

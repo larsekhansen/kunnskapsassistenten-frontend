@@ -84,6 +84,20 @@ describe('useUserDocuments', () => {
     vi.unstubAllEnvs();
   });
 
+  it('sier at den ikke går bak BFF-en heller', () => {
+    // BFF-en har ingen rute for opplasting (src/apps/server/src/server.ts i
+    // poden, 30.09). Fabrikken spurte bare om live, så bff fikk mocken: poden
+    // tok imot filer som ikke gikk noe sted, og den deaktiverte sona synes
+    // ikke. Funnet av #2.
+    vi.stubEnv('VITE_API_MODE', 'bff');
+    resetUploadClientForTest();
+
+    render(<Probe />);
+
+    expect(read('utilgjengelig')).toBe('unavailable');
+    vi.unstubAllEnvs();
+  });
+
   it('skiller det som er klart fra det som bare står i lista', async () => {
     // «Dine dokumenter» (#2) tegner alt, avviste filer inkludert, for en
     // avvist fil må si hvorfor. Det som kan knyttes til et spørsmål, er bare
