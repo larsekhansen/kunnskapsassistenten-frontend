@@ -13,12 +13,14 @@ const OPTIONS: { value: DisplayLevel; label: string; description: string }[] = [
   {
     value: 'standard',
     label: 'Standard',
-    description: 'Fremgangsmåte over svaret, med stegene assistenten gikk gjennom.',
+    description:
+      'Fremgangsmåte over svaret, med stegene assistenten gikk gjennom og søkeordene den brukte.',
   },
   {
     value: 'detaljert',
     label: 'Detaljert',
-    description: 'Alt det tekniske i tillegg: søkeordene, antall treff og tiden det tok.',
+    description:
+      'Alt det tekniske i tillegg: søkestrengene for hvert steg, antall treff og tiden det tok.',
   },
 ];
 
