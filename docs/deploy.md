@@ -743,7 +743,7 @@ formatet er det samme som BFF-en bruker. Den dagen backenden kan telle, byttes
 kilden bak ruta og klienten endres ikke. Koden er `server/facets.ts`.
 
 - **Feltene** er de i `VITE_KA_FILTER_FIELDS` for datasettet, og ingen andre.
-- **Policyen:** år bare mellom 1990 og 2035 og nyeste først, resten etter
+- **Policyen:** år bare fra 1990 til inneværende år i Norge, nyeste først, resten etter
   antall. Tomme verdier og felt uten verdier er ute. Typesense bes om opptil
   2000 verdier per felt, så det er policyen og ikke grensen som velger.
 - **Tallene** gjelder hele korpuset. Klienten viser dem ikke når en annen

@@ -6,6 +6,7 @@ import {
   type FilterDimension,
   type FilterFieldConfig,
 } from '../shared/filterFields.ts';
+import { currentYear } from '../shared/years.ts';
 
 /**
  * The filter panel's facets, counted by this server from Typesense.
@@ -113,11 +114,11 @@ const LABELS: Record<FilterDimension, string> = {
 };
 
 /**
- * The years a year facet keeps. Kudos's `concerned_years` holds parse noise
- * like «2436» (docs/arkitektur/0001), and has more than 500 distinct values
- * where a real span has a few dozen. The span is the one 0001 names.
+ * The first year a year facet keeps. Kudos's `concerned_years` holds parse
+ * noise like «2436» (docs/arkitektur/0001), and has more than 500 distinct
+ * values where a real span has a few dozen.
  */
-export const YEAR_SPAN = { from: 1990, to: 2035 } as const;
+export const FIRST_YEAR = 1990;
 
 /**
  * Values per field Typesense returns, the most frequent first.
@@ -134,18 +135,26 @@ export const MAX_FACET_VALUES = 2000;
 const TIMEOUT_MS = 10_000;
 
 /**
- * The minimal policy: no empty values; a year only if it is a whole number in
- * `YEAR_SPAN`, newest first; everything else by count, most first, and then
- * alphabetically so equal counts keep one order.
+ * The minimal policy: no empty values; a year only if it is a whole number
+ * from `FIRST_YEAR` up to this year, newest first; everything else by count,
+ * most first, and then alphabetically so equal counts keep one order.
+ *
+ * «This year» was a fixed 2035, the span 0001 named, and the filter offered
+ * 2027–2035. It is read on every load now, so it moves on New Year without a
+ * deploy. See shared/years.ts.
  */
-export function shapeOptions(dimension: FilterDimension, counts: FacetOption[]): FacetOption[] {
+export function shapeOptions(
+  dimension: FilterDimension,
+  counts: FacetOption[],
+  thisYear = currentYear(),
+): FacetOption[] {
   const kept = counts.filter((option) => option.value.trim() !== '');
 
   if (dimension === 'year') {
     return kept
       .filter((option) => {
         const year = Number(option.value);
-        return Number.isInteger(year) && year >= YEAR_SPAN.from && year <= YEAR_SPAN.to;
+        return Number.isInteger(year) && year >= FIRST_YEAR && year <= thisYear;
       })
       .sort((a, b) => Number(b.value) - Number(a.value));
   }
