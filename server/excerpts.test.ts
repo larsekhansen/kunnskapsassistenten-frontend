@@ -6,8 +6,8 @@ import { readConfig, type ServerConfig } from './config.ts';
 import { MAX_IDS, excerptConfigFrom, parseIds } from './excerpts.ts';
 
 /**
- * `/api/excerpts` målt gjennom serverens egen socket, mot en falsk Typesense
- * som svarer i samme form som et søk i bitsamlingen gjør.
+ * `/api/excerpts` measured through the server's own socket, against a fake
+ * Typesense that answers in the shape a search of a chunks collection does.
  */
 const KEY = 'ts_hemmelig_sokenokkel';
 
@@ -15,11 +15,11 @@ let server: Server | undefined;
 let typesense: Server | undefined;
 let backend: Server | undefined;
 let base: string;
-/** Hvert kall Typesense fikk. */
+/** Every request Typesense got. */
 let asked: { url: URL; key: string | undefined }[];
-/** Hvert kall backend fikk. Skal alltid være tomt her. */
+/** Every request the backend got. Always empty here. */
 let forwarded: string[];
-/** Hva Typesense svarer med neste gang. */
+/** What Typesense answers with next. */
 let answer: { status: number; body: string };
 
 const hits = (documents: Record<string, unknown>[]) =>

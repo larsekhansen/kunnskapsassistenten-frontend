@@ -167,7 +167,7 @@ type ToolCall = {
   'result-summary'?: string;
 };
 
-type McpChunk = {
+export type McpChunk = {
   chunk_id?: string;
   doc_num?: string;
   /**
@@ -294,8 +294,8 @@ export function toSourceDocuments(chunks: McpChunk[], dataset?: string): SourceD
     const excerpt: Excerpt = {
       id: chunk.chunk_id ?? `${documentId}-${index}`,
       // backend: mangler, se API-bestilling A1 — structuredContent.chunks
-      // carries id, title and length, never the passage itself. Only /v1
-      // has the text, and /v1 has no progress events.
+      // carries id, title and length, never the passage itself. The client
+      // looks the text up by id afterwards (excerpts.ts, docs/arkitektur/0005).
       text: '',
       heading: parseHeadingPath(chunk.metadata),
       relevance: relevanceFromRank(index, chunks.length),
