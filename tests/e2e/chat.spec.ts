@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { covers, expectNoAxeViolations, setColorScheme } from './a11y';
 import { MOCK_FAILURE_QUERY } from '../../src/api/mock';
 import {
@@ -150,6 +150,66 @@ test.describe('hovedkolonnen', () => {
 
     await expect(field).toHaveValue('Et halvskrevet spørsmål');
   });
+
+  /*
+   * The same menu, and the skip link, over a conversation started on the
+   * start page. Its address is written with `replaceState`, so the router
+   * first sees `/threads/<id>` when the hash moves, and the chat slot's key
+   * went from `new:N` to the id: the conversation was mounted again and read
+   * back from the backend, which keeps no chunks per message, so
+   * «Fremgangsmåte», the sources and the Kudos links went (6 to 0, measured
+   * by the conductor in the test environment 30.09).
+   *
+   * The mock reads a conversation back with everything in it, so an assertion
+   * about what is on screen would pass over the bug. What is held here is the
+   * remount itself: the answer card is the same element before and after, and
+   * a half-written follow-up is still in the field.
+   */
+  for (const [what, leave] of [
+    [
+      'å lukke menyen',
+      async (page: Page) => {
+        await page.goto(`${page.url()}#innstillinger`);
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await dialog.getByRole('button', { name: 'Lukk' }).click();
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+      },
+    ],
+    [
+      'hopplenka til skrivefeltet',
+      async (page: Page) => {
+        await page.getByRole('link', { name: /^Hopp til skrivefeltet/ }).focus();
+        await page.keyboard.press('Enter');
+        await expect(composer(page)).toBeFocused();
+      },
+    ],
+  ] as const) {
+    test(
+      `${what} i en samtale fra startsiden monterer den ikke på nytt`,
+      MOCK,
+      async ({ page }) => {
+        await ask(page, 'Hva sier dokumentene om romfart?');
+        await expect(page).toHaveURL(/\/threads\/[\w-]+$/);
+
+        // A mark on the element itself: a remounted card is a new element
+        // without it, however alike the two look.
+        await page
+          .locator('.ka-answer-card')
+          .first()
+          .evaluate((card) => {
+            card.setAttribute('data-e2e-mark', 'before');
+          });
+        const field = composer(page);
+        await field.fill('Et halvskrevet oppfølgingsspørsmål');
+
+        await leave(page);
+
+        await expect(page.locator('.ka-answer-card[data-e2e-mark="before"]')).toHaveCount(1);
+        await expect(field).toHaveValue('Et halvskrevet oppfølgingsspørsmål');
+      },
+    );
+  }
 
   test(
     'avbryt stopper genereringen og beholder teksten som kom',

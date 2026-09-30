@@ -77,6 +77,7 @@ slik de ble anmeldt.
 | Åpner en tråd-lenke som er blitt gammel                    | `shell.spec.ts`             |
 | Finner panelet og filteret slik hen forlot dem             | `shell.spec.ts`             |
 | Hopper til skrivefeltet med Ctrl+/                         | `chat.spec.ts`              |
+| Lukker menyen i en samtale uten at den monteres på nytt    | `chat.spec.ts`              |
 | Ser når hver tråd sist ble rørt                            | `primary-sidebar.spec.ts`   |
 | Ser hva korpuset dekker, i én linje                        | `primary-sidebar.spec.ts`   |
 | Ser en ny tråd dukke opp i lista mens den står åpen        | `traadliste.spec.ts`        |
