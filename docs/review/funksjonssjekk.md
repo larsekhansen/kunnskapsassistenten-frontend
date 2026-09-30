@@ -74,6 +74,7 @@ slik de ble anmeldt.
 | Får «Generer på nytt» etter et avbrudd, og et helt svar    | `samtale.spec.ts`           |
 | Starter en samtale på `/` og finner den igjen etter reload | `samtale.spec.ts`           |
 | Skriver en adresse som ikke finnes                         | `shell.spec.ts`             |
+| Får «Noe gikk galt», ikke hvit skjerm, ved oversettelse    | `feilgrense.spec.ts`        |
 | Åpner en tråd-lenke som er blitt gammel                    | `shell.spec.ts`             |
 | Finner panelet og filteret slik hen forlot dem             | `shell.spec.ts`             |
 | Hopper til skrivefeltet med Ctrl+/                         | `chat.spec.ts`              |
