@@ -179,7 +179,7 @@ test.describe('et søk når lista blir tom', () => {
       const last = 'NKOM måloppnåelse';
       await expect(panel.getByRole('link', { name: last })).toBeVisible();
 
-      // Alle andre tråder først, så NKOM står igjen alene.
+      // Every other thread first, so NKOM is left on its own.
       const titles = (
         await panel.locator('.threads-view__thread .threads-view__thread-title').allTextContents()
       ).map((title) => title.trim());
@@ -190,21 +190,21 @@ test.describe('et søk når lista blir tom', () => {
       await search.fill('Nkom');
       await deleteThread(page, last);
 
-      // Tomtilstanden står alene: ingen søkefelt over en tom liste.
+      // The empty state stands alone: no search field over an empty list.
       await expect(panel.getByText('Ingen tråder ennå')).toBeVisible();
       await expect(search).toHaveCount(0);
 
       await panel.getByRole('link', { name: /^Start din første tråd/ }).click();
-      // Uten «Nkom» i seg, med vilje: et spørsmål som traff det gamle søket,
-      // ville stått i lista også om søket hang igjen, og testen ville vært grønn
-      // uten rettelsen. Målt: det var den.
+      // No «Nkom» in it, on purpose: a question that matched the old query
+      // would stand in the list even if the query hung on, and the test would
+      // be green without the fix. Measured: it was.
       const question = 'Hva sier dokumentene om romfart?';
       await composer(page).click();
       await page.keyboard.type(question);
       await page.keyboard.press('Enter');
       await expect(page).toHaveURL(/\/threads\/[\w-]+$/);
 
-      // Lista har stått åpen hele tiden, som i testen øverst i fila.
+      // The list has been open the whole time, as in the first test in this file.
       await expect(panel.locator('.threads-view__thread')).toHaveCount(1, {
         timeout: ANSWER_TIMEOUT,
       });
