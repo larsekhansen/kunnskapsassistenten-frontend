@@ -1,4 +1,4 @@
-import { Button, Field, Label, Select, Skeleton } from '@digdir/designsystemet-react';
+import { Button, Divider, Field, Label, Select, Skeleton } from '@digdir/designsystemet-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createChatClient } from '../../api';
 import { BackIcon } from '../../components/icons';
@@ -545,7 +545,12 @@ export function FiltersView({
         Last, and it is the one thing here with no claim on the space above
         the fold: upload does not exist anywhere in the stack yet
         (API-bestilling A3), so nothing in it changes with the answer.
+
+        A line above it, because the facets end where the reader's own
+        documents begin, and the same gap as between two fields did not say so
+        (Simen, 30.09). See `.filters-view__divider`.
       */}
+      <Divider className="filters-view__divider" />
       <OwnDocuments />
     </div>
   );
