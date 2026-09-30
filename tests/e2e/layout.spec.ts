@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
-import { ask, citation, REAL_ANSWER } from './helpers';
+import { ask, citation, MOCK, REAL_ANSWER } from './helpers';
 
 /**
  * The layout at the widths the product is actually used at.
@@ -742,4 +742,86 @@ test.describe('layouten', () => {
       },
     );
   });
+});
+
+/**
+ * The compose field at the bottom of the window, on the five surfaces the
+ * brief on Simen's changes measures (design/_briefs/bygg/visuelt-simen-2026-09-30.md).
+ *
+ * It was wrong twice at once without a test noticing, both since the answer
+ * column was split in two on 21.09. On the start page the field stood under
+ * the suggestions, 253 px above the bottom at 1440 × 900, because the chat's
+ * `min-block-size: 100%` had no parent with a height left to resolve against.
+ * In a conversation taller than the window it was parked 32 px under the
+ * bottom on every surface, because the sticky pull-down was written for a
+ * scroller that had lost its end padding. Measured by KA CC on d78d063 and
+ * fixed in #193; holding it here was #5's suggestion.
+ *
+ * The bottom edge of `.ka-composer-area` and not of the box: the area is what
+ * is sticky, and its own padding is the air under the box, which differs by
+ * surface on purpose (3rem on a desktop, the shell's end padding on a phone).
+ * One pixel of slack, because the side padding is in `vw` and lands on half
+ * pixels at 768 and 440.
+ *
+ * The conversation is measured scrolled to the top as well as to the bottom.
+ * At the bottom a field that is not sticky at all would still pass; at the
+ * top it is the stickiness alone that holds it there.
+ */
+const SURFACES = [
+  { width: 1440, height: 900 },
+  { width: 1280, height: 720 },
+  { width: 768, height: 1024 },
+  { width: 390, height: 844 },
+  { width: 440, height: 956 },
+] as const;
+
+async function composerAreaBottom(page: Page): Promise<number> {
+  return page
+    .locator('.ka-composer-area')
+    .evaluate((area) => Math.round(area.getBoundingClientRect().bottom));
+}
+
+async function scrollAnswerColumn(page: Page, to: 'top' | 'bottom'): Promise<void> {
+  await page.locator('.main').evaluate((main, where) => {
+    main.scrollTop = where === 'top' ? 0 : main.scrollHeight;
+  }, to);
+}
+
+test.describe('skrivefeltet står i bunnen av vinduet', () => {
+  for (const surface of SURFACES) {
+    const size = `${surface.width} × ${surface.height}`;
+
+    test(`på startsiden, ${size}`, async ({ page }, testInfo) => {
+      covers(testInfo, 'skrivefeltet i bunnen av vinduet');
+      await page.setViewportSize(surface);
+      await page.goto('/');
+      await expect(page.locator('.ka-composer-area')).toBeVisible();
+
+      await expect
+        .poll(() => composerAreaBottom(page), { message: 'bunnkanten mot vinduets høyde' })
+        .toBeGreaterThanOrEqual(surface.height - 1);
+      expect(await composerAreaBottom(page)).toBeLessThanOrEqual(surface.height + 1);
+    });
+
+    test(
+      `i en samtale, rullet til toppen og til bunnen, ${size}`,
+      MOCK,
+      async ({ page }, testInfo) => {
+        covers(testInfo, 'skrivefeltet i bunnen av vinduet');
+        await page.setViewportSize(surface);
+        await page.goto('/threads/nkom-maaloppnaaelse');
+        await expect(page.locator('.ka-answer-card').first()).toBeVisible();
+
+        for (const where of ['top', 'bottom'] as const) {
+          await scrollAnswerColumn(page, where);
+          await expect
+            .poll(() => composerAreaBottom(page), {
+              message: `bunnkanten mot vinduets høyde, rullet til ${where === 'top' ? 'toppen' : 'bunnen'}`,
+            })
+            .toBeGreaterThanOrEqual(surface.height - 1);
+          expect(await composerAreaBottom(page)).toBeLessThanOrEqual(surface.height + 1);
+        }
+      },
+    );
+  }
 });
