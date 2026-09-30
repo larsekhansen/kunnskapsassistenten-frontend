@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { BrowserRouter, MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setActiveCorpusKey } from '../../api';
-import { resetMockThreads } from '../../api/mock/sessionThreads';
+import { recordMockTurn, resetMockThreads } from '../../api/mock/sessionThreads';
 import { emptyFilterSelection, type FilterSelection, type Thread } from '../../model';
 import { resetViewport, setViewportWidth } from '../../test/matchMedia';
 import { ThreadsView } from '../../views/threads';
@@ -328,6 +328,23 @@ describe('adressen denne sida skrev til seg selv', () => {
     stop();
     const address = window.location.pathname;
     expect(address).toMatch(/^\/threads\/.+/u);
+
+    /*
+     * Turen skrives ned, slik mocken gjør det når svaret er ferdig. Uten den
+     * har backenden ingenting å lese tilbake, og doblingen under kan ikke
+     * skje i det hele tatt — strømmen gjør seg ikke ferdig i jsdom, så en
+     * test som bare stoppet turen var grønn uansett.
+     */
+    recordMockTurn({
+      question: 'Hva står i årsrapporten?',
+      answerId: 'a1',
+      answer: {
+        content: 'Et svar.',
+        createdAt: new Date().toISOString(),
+        citations: [],
+        status: 'complete',
+      },
+    });
 
     // Et utkast er den reneste prøven: en remontering tar det med seg.
     fireEvent.change(field(), { target: { value: 'Halvskrevet' } });
