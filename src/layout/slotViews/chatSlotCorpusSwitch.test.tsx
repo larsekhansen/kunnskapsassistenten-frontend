@@ -33,12 +33,11 @@ function show() {
       <LayoutProvider>
         <Scroll>
           {/*
-            De to rutene skallet har (`App.tsx`). Denne testen holder seg på
-            `/` og ville stått grønn uten dem, fordi `threadId` er `undefined`
-            uansett — men `useParams` gir `{}` uten en matchet rute, og det
-            gjør den tause. Den dagen fila får en påstand om en tråd åpnet fra
-            lista, ville den målt ingenting. Se
-            `design/_briefs/bygg/maalt-tester-uten-ruter.md`.
+            The two routes the shell has (`App.tsx`). This file stays on `/`
+            and would be green without them, because `threadId` is `undefined`
+            either way — but `useParams` gives `{}` without a matched route and
+            says nothing about it. The day an assertion here opens a thread
+            from the list, it would measure nothing.
           */}
           <Routes>
             <Route index element={<ChatSlotView />} />
