@@ -165,16 +165,6 @@ export const CLARIFICATION_ANNOUNCEMENT = 'Kunnskapsassistenten trenger en avkla
  */
 export const READING_THREAD = 'Henter samtalen';
 
-/**
- * The only action on a clarification. Named after what it copies, like
- * «Kopier svaret» on a finished answer — the card holds a question, not an
- * answer, so the label says so.
- */
-export const CLARIFICATION_COPY = 'Kopier spørsmålet';
-
-/** The receipt after CLARIFICATION_COPY. */
-export const CLARIFICATION_COPIED = 'Spørsmålet er kopiert.';
-
 /*
  * The keyboard shortcut to the compose field (reise 7 and 15). The field is
  * tab stop 22 of 38 on a thread page, for the thing a reader does most often.

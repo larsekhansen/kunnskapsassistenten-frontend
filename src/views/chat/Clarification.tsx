@@ -1,24 +1,10 @@
-import { Button, Card, Tag } from '@digdir/designsystemet-react';
-import { ClipboardIcon } from '@navikt/aksel-icons';
+import { Card, Tag } from '@digdir/designsystemet-react';
 import { Markdown } from '../../components';
-import { AnswerTime } from './AnswerTime';
-import { answerAsPlainText } from './answerText';
-import { CLARIFICATION_COPIED, CLARIFICATION_COPY, CLARIFICATION_TAG } from './text';
-import { useCopy } from './useCopy';
+import { CLARIFICATION_TAG } from './text';
 
 type ClarificationProps = {
   /** The agent's question back, as markdown. */
   question: string;
-  /**
-   * When the agent asked back, ISO 8601.
-   *
-   * The same stamp an answer carries, and the same words: this is the moment
-   * the assistant replied, whether it replied with an answer or with a
-   * question. Without it a restored thread had a hole — every row in the list
-   * says when, and a conversation that ended in a clarification said nothing
-   * once it was opened.
-   */
-  createdAt: string;
 };
 
 /**
@@ -28,51 +14,41 @@ type ClarificationProps = {
  * It is a finished turn, not a failed one, so it is not an `Alert` and says
  * nothing about anything going wrong. What it needs is a frame that makes the
  * text read as a question to the reader rather than as a short answer, and
- * that is the `Tag`: «Trenger avklaring», neutral, above the question.
+ * that is the `Tag`: «Trenger avklaring», above the question.
+ *
+ * **`info` and not `neutral`** (Simens issue 112). A grey tag looks like a
+ * label on an answer, and this is not an answer — the conversation stops here
+ * until the reader says something. `info` is Designsystemet's «here is
+ * something you need to know», which is what this is; `warning` would say
+ * something had gone wrong, and nothing has. The colour is not carrying the
+ * meaning on its own either: the tag says «Trenger avklaring» in words, and
+ * the compose field below has already swapped its placeholder for «Svar på
+ * spørsmålet over …» (WCAG 1.4.1).
  *
  * Nothing was retrieved, so there is nothing to show from a search: no `[n]`
  * markers, no «Fremgangsmåte», no follow-up suggestions. `Markdown` is given
  * no citations, which leaves any bracketed number in the text as plain text —
  * the right outcome when there is no excerpt behind it.
  *
- * The action row is one button. «Kopier lenke til tråden» and «Bla til
- * nederst» belong to a finished answer; here the reader's next move is to
- * answer the question, and the compose field below is already waiting for it
- * with its own placeholder. See ChatView.
+ * **No action row at all** (Simens issue 112). It held «Kopier spørsmålet» and
+ * the time the assistant asked. Neither is what the reader is here to do: the
+ * one move from this card is to answer the question, and the field below is
+ * waiting for it with the caret already in it. The time goes with the button
+ * rather than standing alone in an otherwise empty row — the reader's own
+ * question above carries no time either, and the thread list says when the
+ * conversation last moved.
  */
-export function Clarification({ question, createdAt }: ClarificationProps) {
-  const { receipt, copy } = useCopy();
-
+export function Clarification({ question }: ClarificationProps) {
   return (
     <Card className="ka-answer-card" data-color="neutral">
       <Card.Block>
         <p className="ka-clarification__label">
-          <Tag data-color="neutral" data-size="sm">
+          <Tag data-color="info" data-size="sm">
             {CLARIFICATION_TAG}
           </Tag>
         </p>
 
         <Markdown startLevel={3}>{question}</Markdown>
-      </Card.Block>
-
-      <Card.Block>
-        <div className="ka-answer-actions">
-          <Button
-            data-color="neutral"
-            data-size="sm"
-            onClick={() => void copy(answerAsPlainText(question), CLARIFICATION_COPIED)}
-            variant="tertiary"
-          >
-            <ClipboardIcon aria-hidden />
-            {CLARIFICATION_COPY}
-          </Button>
-
-          <AnswerTime createdAt={createdAt} />
-
-          <p aria-live="polite" className="ka-answer-actions__receipt">
-            {receipt}
-          </p>
-        </div>
       </Card.Block>
     </Card>
   );
