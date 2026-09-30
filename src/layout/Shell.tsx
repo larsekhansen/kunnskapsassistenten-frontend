@@ -17,6 +17,7 @@ import {
 } from 'react';
 import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
+import { ColorSchemeToggle } from './ColorSchemeToggle';
 import { ComposerContext } from './composerContext';
 import { COMPOSER_ID } from './ids';
 import { PanelSeparator } from './PanelSeparator';
@@ -559,6 +560,26 @@ function Sidebar({
     </div>
   );
 
+  /*
+   * The foot of the navigation panel, for the app's own settings: today the
+   * colour scheme (Simens issue 85).
+   *
+   * The slot's and not a view's, so it stays put when the panel switches
+   * between «Tråder» and «Filtrering». The first slot and not the other,
+   * because it is the one open by default on a desktop, and the one a phone
+   * opens as a drawer to steer from. Not on a rail: three choices do not fit
+   * in 67 px, and a rail is one button (railWidth).
+   *
+   * Outside the scrolling region, like the head, so it is where it is however
+   * long the thread list grows.
+   */
+  const foot =
+    slot === 'primary-sidebar' ? (
+      <div className="sidebar-footer">
+        <ColorSchemeToggle />
+      </div>
+    ) : null;
+
   const toggleButton = (
     <Button
       ref={toggle}
@@ -729,6 +750,7 @@ function Sidebar({
         </div>
 
         {drawer ? null : panelContent}
+        {railed ? null : foot}
       </div>
 
       {/*
@@ -782,6 +804,7 @@ function Sidebar({
               <div className="panel-head-slot" ref={panelHeadRef} />
             </div>
             {panelContent}
+            {foot}
           </div>
         </Dialog>
       ) : null}
