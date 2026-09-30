@@ -1,5 +1,6 @@
 import {
   Button,
+  Card,
   EXPERIMENTAL_FileUpload as FileUpload,
   Field,
   Heading,
@@ -7,11 +8,11 @@ import {
   Paragraph,
   Tag,
 } from '@digdir/designsystemet-react';
-import { CloudUpIcon, TrashIcon } from '@navikt/aksel-icons';
+import { CloudUpIcon, InformationSquareIcon, TrashIcon } from '@navikt/aksel-icons';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useUserDocuments } from '../../layout/useUserDocuments';
 import { UPLOAD_ACCEPT, type UserDocument, type UserDocumentStatus } from '../../model';
-import { fileSize, MAX_UPLOAD_TEXT, uploadErrorText } from './uploadText';
+import { fileSize, MAX_UPLOAD_TEXT, UPLOAD_COMING_TEXT, uploadErrorText } from './uploadText';
 
 /** «PDF» and «DOCX», as a reader expects to see a file type written. */
 const TYPE_LABEL = { pdf: 'PDF', docx: 'DOCX' } as const;
@@ -83,6 +84,88 @@ export function OwnDocuments() {
     if (inputRef.current) inputRef.current.value = '';
   }
 
+  /*
+   * What is happening to a file, for a reader who cannot see the row
+   * change. Mounted whether or not it has anything to say: a live region
+   * that appears together with its text is never announced, which is why
+   * `ErrorState` keeps its container too.
+   *
+   * It says the transitions and not the percentages — «Laster opp», «er
+   * lastet opp», and the reason it failed. A number that moves twenty
+   * times would say the same thing twenty times, and drown the one line
+   * that matters.
+   */
+  const status = (
+    <>
+      <output className="ds-sr-only">{announcement}</output>
+
+      {documents.length > 0 && (
+        <ul className="own-documents__list" id={listId}>
+          {documents.map((document) => (
+            <DocumentRow
+              key={document.id}
+              document={document}
+              removeRef={(button) => {
+                if (button) removeRefs.current.set(document.id, button);
+                else removeRefs.current.delete(document.id);
+              }}
+              onRemove={() => removeDocument(document.id)}
+            />
+          ))}
+        </ul>
+      )}
+    </>
+  );
+
+  if (unavailable !== undefined) {
+    /*
+     * Nowhere to upload to yet, drawn the way Simen drew it (30.09): a box of
+     * its own with «Kommer snart» over the heading, and a zone that looks
+     * switched off — neutral, tinted, a thin grey dash, and no hover. A
+     * dashed box that lights up under the pointer says «drop here».
+     *
+     * No picker at all, and so no label either: there is no control for it
+     * to name. A control that cannot work is worse than none; it invites the
+     * one action the service cannot do, and the reader finds out by failing.
+     *
+     * The text keeps its full colour. What says «switched off» is the zone,
+     * the icon and the missing hover, not a faded sentence nobody can read
+     * (KA CC, 30.09: at least 4.5:1).
+     *
+     * The tag comes first, as it is drawn, and that is also the reading
+     * order: it is a note about the whole box. A reader who jumps straight to
+     * the heading still hears «snart» from the zone under it.
+     */
+    return (
+      <Card
+        asChild
+        data-color="neutral"
+        className="documents-list own-documents own-documents--unavailable"
+      >
+        <section>
+          <Tag data-color="info" data-size="sm" className="own-documents__soon">
+            <InformationSquareIcon aria-hidden="true" />
+            Kommer snart
+          </Tag>
+
+          <Heading level={4} data-size="2xs">
+            Dine dokumenter
+          </Heading>
+
+          <FileUpload
+            data-size="sm"
+            className="own-documents__zone own-documents__zone--unavailable"
+          >
+            <CloudUpIcon aria-hidden="true" fontSize="1.5rem" />
+            <Paragraph data-size="sm">{UPLOAD_COMING_TEXT}</Paragraph>
+          </FileUpload>
+
+          {status}
+        </section>
+      </Card>
+    );
+  }
+
   return (
     <section className="documents-list own-documents">
       <div className="own-documents__heading">
@@ -99,14 +182,11 @@ export function OwnDocuments() {
           The Tag came back with the thing it was about. It was taken out
           because it promised something new directly above a box saying
           upload did not work (brukerblikk, funn 13) — so it is drawn only
-          where upload actually works, which is the same test the zone below
-          makes.
+          where upload actually works, which is this branch.
         */}
-        {unavailable === undefined && (
-          <Tag data-color="info" data-size="sm">
-            Ny
-          </Tag>
-        )}
+        <Tag data-color="info" data-size="sm">
+          Ny
+        </Tag>
       </div>
 
       {/*
@@ -126,65 +206,27 @@ export function OwnDocuments() {
         <FileUpload data-size="sm" className="own-documents__zone">
           <CloudUpIcon aria-hidden="true" fontSize="1.5rem" />
 
-          {unavailable === undefined ? (
-            <>
-              <Field.Description>
-                Slipp filer her, eller velg dem selv. Kun PDF og .docx for øyeblikket, maks{' '}
-                {MAX_UPLOAD_TEXT}.
-              </Field.Description>
+          <Field.Description>
+            Slipp filer her, eller velg dem selv. Kun PDF og .docx for øyeblikket, maks{' '}
+            {MAX_UPLOAD_TEXT}.
+          </Field.Description>
 
-              <Button asChild variant="secondary" data-size="sm">
-                <span>Velg filer</span>
-              </Button>
+          <Button asChild variant="secondary" data-size="sm">
+            <span>Velg filer</span>
+          </Button>
 
-              <input
-                ref={inputRef}
-                type="file"
-                multiple
-                accept={UPLOAD_ACCEPT}
-                aria-describedby={listId}
-                onChange={(event) => void choose(event.currentTarget.files)}
-              />
-            </>
-          ) : (
-            /*
-              No picker at all when there is nowhere to send a file. A control
-              that cannot work is worse than none: it invites the one action
-              the service cannot do, and the reader finds out by failing.
-            */
-            <Field.Description>{uploadErrorText(unavailable)}</Field.Description>
-          )}
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            accept={UPLOAD_ACCEPT}
+            aria-describedby={listId}
+            onChange={(event) => void choose(event.currentTarget.files)}
+          />
         </FileUpload>
       </Field>
 
-      {/*
-        What is happening to a file, for a reader who cannot see the row
-        change. Mounted whether or not it has anything to say: a live region
-        that appears together with its text is never announced, which is why
-        `ErrorState` keeps its container too.
-
-        It says the transitions and not the percentages — «Laster opp», «er
-        lastet opp», and the reason it failed. A number that moves twenty
-        times would say the same thing twenty times, and drown the one line
-        that matters.
-      */}
-      <output className="ds-sr-only">{announcement}</output>
-
-      {documents.length > 0 && (
-        <ul className="own-documents__list" id={listId}>
-          {documents.map((document) => (
-            <DocumentRow
-              key={document.id}
-              document={document}
-              removeRef={(button) => {
-                if (button) removeRefs.current.set(document.id, button);
-                else removeRefs.current.delete(document.id);
-              }}
-              onRemove={() => removeDocument(document.id)}
-            />
-          ))}
-        </ul>
-      )}
+      {status}
     </section>
   );
 }
