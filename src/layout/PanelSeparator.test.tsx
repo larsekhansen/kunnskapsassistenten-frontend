@@ -1,11 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resetViewport, setViewportWidth } from '../test/matchMedia';
 import { LayoutProvider } from './LayoutProvider';
 import { PanelSeparator } from './PanelSeparator';
 import { LAYOUT_STORAGE_KEY } from './persistence';
 import { widthRange } from './resize';
+import { useLayout } from './useLayout';
 import { defaultLayout, withCollapsed, type Layout, type SidebarSlot } from './viewModel';
 
 /**
@@ -248,5 +249,99 @@ describe('a window with no room in it', () => {
     const separator = open('primary-sidebar', { restore: true, width: 1480 });
     expect(width(separator)).toBe(440);
     expect(separator.getAttribute('aria-valuemax')).toBe('440');
+  });
+});
+
+/**
+ * Simens issue 80: a panel dragged too narrow to read folds away.
+ *
+ * jsdom does no layout, so what is measured here is the arithmetic on
+ * `clientX` and what the drag leaves in the layout, not the pixels on
+ * screen. It has pointer events but no pointer capture, so the capture is
+ * stubbed for the length of these tests.
+ */
+describe('a drag past the middle of the floor', () => {
+  const capture = {
+    setPointerCapture: HTMLElement.prototype.setPointerCapture,
+    hasPointerCapture: HTMLElement.prototype.hasPointerCapture,
+    releasePointerCapture: HTMLElement.prototype.releasePointerCapture,
+  };
+
+  beforeEach(() => {
+    HTMLElement.prototype.setPointerCapture = () => {};
+    HTMLElement.prototype.hasPointerCapture = () => false;
+    HTMLElement.prototype.releasePointerCapture = () => {};
+  });
+
+  afterEach(() => {
+    Object.assign(HTMLElement.prototype, capture);
+  });
+
+  function Probe({ slot }: { slot: SidebarSlot }) {
+    const { layout } = useLayout();
+    const state = layout.slots[slot];
+    return (
+      <output data-testid="slot">
+        {state.collapsed ? 'lukket' : 'åpen'}{' '}
+        {state.sizing.mode === 'sized' ? state.sizing.width : ''}
+      </output>
+    );
+  }
+
+  function drawWithProbe(slot: SidebarSlot) {
+    setViewportWidth(1920);
+    render(
+      <LayoutProvider initialLayout={bothOpen}>
+        <PanelSeparator slot={slot} />
+        <Probe slot={slot} />
+      </LayoutProvider>,
+    );
+    return screen.getByRole('separator');
+  }
+
+  const slotState = () => screen.getByTestId('slot').textContent;
+
+  it('folds the navigation panel away instead of stopping at the floor', () => {
+    // 400 er gulvet. Pekeren går 211 px forbi det, altså under halve gulvet.
+    const separator = drawWithProbe('primary-sidebar');
+    fireEvent.pointerDown(separator, { button: 0, clientX: 400, pointerId: 1 });
+    fireEvent.pointerMove(separator, { clientX: 189, pointerId: 1 });
+
+    expect(slotState()).toBe('lukket 400');
+  });
+
+  it('stops at the floor when the drag only overshoots it', () => {
+    // 150 px forbi gulvet er ikke forbi midten: panelet blir stående på 400.
+    const separator = drawWithProbe('primary-sidebar');
+    fireEvent.pointerDown(separator, { button: 0, clientX: 400, pointerId: 1 });
+    fireEvent.pointerMove(separator, { clientX: 250, pointerId: 1 });
+
+    expect(slotState()).toBe('åpen 400');
+  });
+
+  it('opens again at the width it had before the drag, not at the floor', () => {
+    const separator = drawWithProbe('primary-sidebar');
+    fireEvent.keyDown(separator, { key: 'ArrowRight', shiftKey: true });
+    expect(width(separator)).toBe(464);
+
+    // På vei ned presses kanten mot gulvet og skrives som 400, før panelet
+    // lukkes. Bredden skal likevel være 464 når det åpnes igjen.
+    fireEvent.pointerDown(separator, { button: 0, clientX: 464, pointerId: 1 });
+    fireEvent.pointerMove(separator, { clientX: 300, pointerId: 1 });
+    expect(slotState()).toBe('åpen 400');
+    fireEvent.pointerMove(separator, { clientX: 150, pointerId: 1 });
+
+    expect(slotState()).toBe('lukket 464');
+  });
+
+  it('folds the sources panel when it is dragged the other way', () => {
+    // Kildepanelet står etter hovedkolonnen og blir smalere når pekeren går
+    // mot slutten av linja. 432 er standard, 336 gulvet og 168 halve gulvet:
+    // 432 − 265 = 167.
+    const separator = drawWithProbe('secondary-sidebar');
+    fireEvent.pointerDown(separator, { button: 0, clientX: 1488, pointerId: 1 });
+    fireEvent.pointerMove(separator, { clientX: 1753, pointerId: 1 });
+
+    expect(slotState()).toBe('lukket 432');
   });
 });
