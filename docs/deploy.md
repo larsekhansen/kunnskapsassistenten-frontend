@@ -720,7 +720,7 @@ Ett bilde, og modusen og korpuset er miljøvariabler.
 | `VITE_KA_DATASET_CONFIG_KEY` | Datasettnøkkel. `kudos` hostet, `default` lokalt.                                         | tom                     |
 | `VITE_KA_DATASETS`           | Korpusene velgeren tilbyr: `nøkkel=Navn\|beskrivelse;…`.                                  | tom                     |
 | `VITE_KA_FILTER_FIELDS`      | Feltnavn per datasett: `datasett=dimensjon:felt:type\|…`.                                 | tom                     |
-| `VITE_KA_DOCUMENT_URLS`      | Lenke til dokumentet per datasett: `datasett=https://…/{doc_num};…`.                      | tom                     |
+| `VITE_KA_DOCUMENT_URLS`      | Lenke til dokumentet per datasett: `datasett=mal for tall\|mal for UUID;…`.               | tom                     |
 | `TYPESENSE_URL`              | Typesense for fasettene, med skjema og port.                                              | tom                     |
 | `TYPESENSE_API_KEY`          | Nøkkelen til den. Container Apps-secret, aldri i repoet.                                  | tom                     |
 | `KA_FACET_COLLECTIONS`       | Dokumentsamlingen per datasett: `datasett=samling;…`.                                     | tom                     |
@@ -732,10 +732,13 @@ kaller filterdimensjonene».
 
 `VITE_KA_DOCUMENT_URLS` sier hvor et dokument kan leses. Bitene fra
 backenden har dokumentnummeret (`doc_num`), men ingen adresse, så klienten
-setter nummeret inn i malen for datasettet. For Kudos er det
-`kudos-full=https://kudos.dfo.no/documents/{doc_num}`. Uten oppføring viser
-kildepanelet at dokumentet ikke har noen offentlig lenke. Koden er
-`src/api/documentUrls.ts`.
+setter nummeret inn i malen for datasettet. Det er to maler, delt med `|`:
+først for et nummer med bare sifre, så for en UUID. Kudos har begge, på hver
+sin adresse, og API-et deres gir nå bare UUID:
+`kudos-full=https://kudos.dfo.no/documents/{doc_num}|https://kudos.dfo.no/dokument/{doc_num}`.
+Et nummer i en annen form, eller et datasett uten oppføring, gir ingen lenke,
+og da viser kildepanelet at dokumentet ikke har noen offentlig lenke. Koden
+er `src/api/documentUrls.ts`.
 
 `VITE_KA_TENANT` og `VITE_KA_DATASET_CONFIG_KEY` er **begge eller ingen**.
 Backenden bygger datasett-scopet bare når den har begge, så én alene blir

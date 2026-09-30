@@ -28,9 +28,9 @@ param datasetConfigKey = 'kudos-full'
 // Navnet panelet viser. Uten det står datasettnøkkelen «kudos-full» der.
 param datasets = 'kudos-full=Kudos|10 064 dokumenter fra kudos.dfo.no'
 param filterFields = 'kudos-full=documentType:type|organisation:orgs_long|year:concerned_years:integer'
-// Bitene har doc_num og ingen url. https://kudos.dfo.no/documents/372017
-// gir 301 til riktig dokument (målt av #4 30.09).
-param documentUrls = 'kudos-full=https://kudos.dfo.no/documents/{doc_num}'
+// Bitene har doc_num og ingen url. Et tall gir 301 til dokumentet under
+// /documents/, og en UUID finnes under /dokument/ (målt 30.09).
+param documentUrls = 'kudos-full=https://kudos.dfo.no/documents/{doc_num}|https://kudos.dfo.no/dokument/{doc_num}'
 
 param digdirApiKey = readEnvironmentVariable('DIGDIR_API_KEY', '')
 
