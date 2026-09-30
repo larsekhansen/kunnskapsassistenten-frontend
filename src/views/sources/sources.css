@@ -187,9 +187,9 @@
  * 768 and 440, and a second click on the same spot missed (KA CC on #199).
  * The clean way to keep the summary on the tag's line while the content spans
  * the row is to place `::details-content`, which Safari 16, iOS 16, Firefox
- * 140 and Chrome 109 do not have (stylelint, against `.browserslistrc`). The row of its own is what
- * 1440 already had for «Mest relevant» and «Minst relevant». Answer 38 is the
- * reason the toggle is `Details` at all.
+ * 140 and Chrome 109 do not have (stylelint, against `.browserslistrc`). The
+ * row of its own is what 1440 already had for «Mest relevant» and «Minst
+ * relevant». Answer 38 is the reason the toggle is `Details` at all.
  */
 .source-excerpt {
   display: flex;
