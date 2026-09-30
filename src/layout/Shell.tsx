@@ -11,10 +11,10 @@ import {
 } from 'react';
 import { Outlet } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
-import { ColorSchemeToggle } from './ColorSchemeToggle';
 import { ComposerContext } from './composerContext';
 import { COMPOSER_ID } from './ids';
 import { PanelSeparator } from './PanelSeparator';
+import { SidebarFooter } from './SidebarFooter';
 import { OpenThreadContext } from './openThreadContext';
 import { PanelHeadContext } from './panelHeadContext';
 import { MainScrollContext } from './scrollContext';
@@ -584,8 +584,9 @@ function Sidebar({
   );
 
   /*
-   * The foot of the navigation panel, for the app's own settings: today the
-   * colour scheme (Simens issue 85).
+   * The foot of the navigation panel: the pages about Kunnskapsassistenten
+   * and the app's own settings (Simens issue 85). What is in it is
+   * SidebarFooter's business.
    *
    * The slot's and not a view's, so it stays put when the panel switches
    * between «Tråder» and «Filtrering». The first slot and not the other,
@@ -596,12 +597,7 @@ function Sidebar({
    * Outside the scrolling region, like the head, so it is where it is however
    * long the thread list grows.
    */
-  const foot =
-    slot === 'primary-sidebar' ? (
-      <div className="sidebar-footer">
-        <ColorSchemeToggle />
-      </div>
-    ) : null;
+  const foot = slot === 'primary-sidebar' ? <SidebarFooter /> : null;
 
   const toggleButton = (
     <Button
