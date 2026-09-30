@@ -23,7 +23,10 @@ import { useColorScheme } from './useColorScheme';
 const choices: { value: ColorScheme; label: string; Icon: typeof SunIcon }[] = [
   { value: 'light', label: 'Lys', Icon: SunIcon },
   { value: 'dark', label: 'Mørk', Icon: MoonIcon },
-  { value: 'auto', label: 'Automatisk', Icon: MonitorIcon },
+  // «Auto» and not «Automatisk» (Simens issue 85a): three items share the
+  // width of the panel, and the longest word decided how narrow the other two
+  // got.
+  { value: 'auto', label: 'Auto', Icon: MonitorIcon },
 ];
 
 function isColorScheme(value: string): value is ColorScheme {

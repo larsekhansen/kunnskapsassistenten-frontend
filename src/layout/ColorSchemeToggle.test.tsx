@@ -28,12 +28,12 @@ beforeEach(() => {
 });
 
 describe('ColorSchemeToggle', () => {
-  it('er en gruppe på tre, med navn, og står på «Automatisk» til noen velger', () => {
+  it('er en gruppe på tre, med navn, og står på «Auto» til noen velger', () => {
     render(<ColorSchemeToggle />);
 
     const group = screen.getByRole('group', { name: 'Fargemodus' });
     expect(within(group).getAllByRole('radio')).toHaveLength(3);
-    expect((radio('Automatisk') as HTMLInputElement).checked).toBe(true);
+    expect((radio('Auto') as HTMLInputElement).checked).toBe(true);
   });
 
   it('bytter fargemodus, lagrer valget, og kan gå tilbake til systemet', () => {
@@ -44,9 +44,9 @@ describe('ColorSchemeToggle', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBe('dark');
     expect((radio('Mørk') as HTMLInputElement).checked).toBe(true);
 
-    // «Automatisk» er standarden og må kunne nås igjen etter at leseren har
+    // «Auto» er standarden og må kunne nås igjen etter at leseren har
     // prøvd de to andre. Det er derfor dette ikke er en Switch.
-    fireEvent.click(radio('Automatisk'));
+    fireEvent.click(radio('Auto'));
     expect(scheme()).toBe('auto');
     expect(localStorage.getItem(STORAGE_KEY)).toBe('auto');
   });
