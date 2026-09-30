@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { Message, ThinkingStep } from '../../model';
 import { AnswerMessage } from './AnswerMessage';
+import { setDisplayLevel } from './displayLevel';
 
 /**
  * Stegene rapporterer til sammen fire sekunder. Den målte ventetiden er to.
@@ -51,6 +52,15 @@ function show(message: Message) {
 }
 
 describe('«Tenkte i N sekunder» over et svar', () => {
+  /*
+   * Tenkepanelet er det detaljerte nivået etter Simens issue 88. Standard
+   * tegner «Fremgangsmåte» i stedet, uten tider — så disse påstandene, som
+   * handler om tallet, hører hjemme på nivået som viser det.
+   */
+  beforeEach(() => {
+    setDisplayLevel('detaljert');
+  });
+
   it('viser den målte tiden, ikke summen av det stegene rapporterte', () => {
     /*
      * Feilen dette dekker: svaret sendte aldri `thoughtMs` videre til panelet,

@@ -7,8 +7,10 @@ import { citationTargets, type Message } from '../../model';
 import { AnswerActions } from './AnswerActions';
 import { AnswerSearch } from './AnswerSearch';
 import { AnswerTime } from './AnswerTime';
+import { ProcedurePanel } from './ProcedurePanel';
 import { RetrievalPanel } from './RetrievalPanel';
 import { ThinkingPanel } from './ThinkingPanel';
+import { useDisplayLevel } from './displayLevel';
 import {
   ABORTED_BEFORE_ANSWER,
   ABORTED_NOTE,
@@ -145,6 +147,14 @@ export function AnswerMessage({
   // again (#4, funn A).
   const showCard = !empty || streaming || aborted || failedQuietly;
 
+  /*
+   * How much of the assistant's own work this answer shows. `standard` draws
+   * «Fremgangsmåte» over the answer and nothing technical; `detaljert` draws
+   * the thinking panel and the hit count, which is what everyone saw before
+   * the level existed. See displayLevel.ts and Simens issue 88.
+   */
+  const detailed = useDisplayLevel() === 'detaljert';
+
   const searching = searchOpen;
   const query = searchQuery;
   /*
@@ -248,17 +258,25 @@ export function AnswerMessage({
         of its own; it is the header of this one.
       */}
       {message.thinkingSteps?.length ? (
-        <ThinkingPanel
-          status={streaming && empty ? 'thinking' : 'done'}
-          steps={message.thinkingSteps}
-          // The measured wait, and not the sum of what the steps reported.
-          // The stream writes it down while it happens (`useChat`), and it
-          // has to be handed over or the panel falls back to the sum — which
-          // is «Tenkte i 2 sekunder» live and «Tenkte i 4 sekunder» after a
-          // reload, for a turn that has not changed. See `Message.thoughtMs`.
-          // The clarification path already passed it; this one did not.
-          thoughtMs={message.thoughtMs}
-        />
+        detailed ? (
+          <ThinkingPanel
+            status={streaming && empty ? 'thinking' : 'done'}
+            steps={message.thinkingSteps}
+            // The measured wait, and not the sum of what the steps reported.
+            // The stream writes it down while it happens (`useChat`), and it
+            // has to be handed over or the panel falls back to the sum — which
+            // is «Tenkte i 2 sekunder» live and «Tenkte i 4 sekunder» after a
+            // reload, for a turn that has not changed. See `Message.thoughtMs`.
+            // The clarification path already passed it; this one did not.
+            thoughtMs={message.thoughtMs}
+          />
+        ) : (
+          <ProcedurePanel
+            retrieval={message.retrieval}
+            status={streaming && empty ? 'thinking' : 'done'}
+            steps={message.thinkingSteps}
+          />
+        )
       ) : null}
 
       {/*
@@ -305,7 +323,13 @@ export function AnswerMessage({
               </p>
             ) : null}
 
-            {message.retrieval && !streaming ? (
+            {/*
+              The hit count and the search words, inside the card under the
+              answer. Detailed only: at standard the procedure above the
+              answer has already said what the answer was built on, in the
+              words a reader has seen before (Simens issue 88).
+            */}
+            {detailed && message.retrieval && !streaming ? (
               <RetrievalPanel retrieval={message.retrieval} />
             ) : null}
 
