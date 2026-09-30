@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resetViewport, setViewportWidth } from '../test/matchMedia';
@@ -93,6 +94,23 @@ describe('en draging som lukker panelet', () => {
     );
     expect(document.activeElement).toBe(
       screen.getByRole('button', { name: 'Vis tråder og filter' }),
+    );
+  });
+
+  it('glemmer dragingen når vinduet går over i skuffemodus, så det ikke står igjen et skille på skinnen', () => {
+    // The separator goes when the window crosses into drawer mode, and it
+    // never hears the pointer being let go. Back at 1920, the rail must not
+    // have one.
+    const separator = drawShell();
+    fireEvent.pointerDown(separator, { button: 0, clientX: 400, pointerId: 1 });
+    fireEvent.pointerMove(separator, { clientX: 189, pointerId: 1 });
+
+    act(() => setViewportWidth(1000));
+    act(() => setViewportWidth(1920));
+
+    expect(navigation()?.hasAttribute('data-collapsed')).toBe(true);
+    expect(screen.queryByRole('separator', { name: 'Endre bredde på tråder og filter' })).toBe(
+      null,
     );
   });
 });
