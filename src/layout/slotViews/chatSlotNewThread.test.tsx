@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useEffect, useRef } from 'react';
-import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router';
+import { BrowserRouter, MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setActiveCorpusKey } from '../../api';
 import { resetMockThreads } from '../../api/mock/sessionThreads';
@@ -282,5 +282,63 @@ describe('«Ny tråd» after a conversation started on this page', () => {
 
     expect(seen.selection).toEqual(emptyFilterSelection);
     expect(document.activeElement?.id).toBe(COMPOSER_ID);
+  });
+});
+
+/**
+ * The router noticing the address this page wrote for itself.
+ *
+ * `startThread` gives the conversation an address with `history.replaceState`,
+ * which the router never sees — so `useParams` keeps saying «no thread» while
+ * the URL says `/threads/<id>`. The next real navigation makes the router
+ * re-read `window.location`, and the id appears for the first time. Opening
+ * the hidden settings menu is such a navigation.
+ *
+ * That is not a navigation to a thread, and it must not remount the slot. It
+ * did: the key went from `new:N` to the id, the thread was read back from the
+ * backend, and in live mode the backend's copy has no thinking steps and no
+ * excerpts — «Fremgangsmåte» gone, the Kudos links from 6 to 0 (measured in
+ * Azure on dfbb869).
+ *
+ * `BrowserRouter` and not `MemoryRouter`, because that is the whole mechanism:
+ * a memory router has a history of its own and never reads `window.location`,
+ * so it cannot see an address written behind its back and cannot reproduce
+ * this at all. The `popstate` below is how the browser tells it to look again.
+ */
+describe('adressen denne sida skrev til seg selv', () => {
+  function showOnBrowserRouter() {
+    return render(
+      <BrowserRouter>
+        <LayoutProvider>
+          <Scroll>
+            <Routes>
+              <Route index element={<ChatSlotView />} />
+              <Route path="threads/:threadId" element={<ChatSlotView />} />
+            </Routes>
+          </Scroll>
+        </LayoutProvider>
+      </BrowserRouter>,
+    );
+  }
+
+  it('remonterer ikke samtalen når routeren oppdager den', () => {
+    showOnBrowserRouter();
+
+    ask('Hva står i årsrapporten?');
+    stop();
+    const address = window.location.pathname;
+    expect(address).toMatch(/^\/threads\/.+/u);
+
+    // Et utkast er den reneste prøven: en remontering tar det med seg.
+    fireEvent.change(field(), { target: { value: 'Halvskrevet' } });
+
+    // Routeren ser adressen for første gang, slik den gjør når menyen åpnes.
+    act(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    expect(window.location.pathname).toBe(address);
+    expect(field().value).toBe('Halvskrevet');
+    expect(screen.getAllByText('Hva står i årsrapporten?').length).toBeGreaterThan(0);
   });
 });
