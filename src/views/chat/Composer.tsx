@@ -190,6 +190,28 @@ export function Composer({
   return (
     <div className="ka-composer-area" ref={ref}>
       {/*
+        One line, and only the disclaimer on it.
+        «Kunnskapsassistenten kan gjøre feil» is what the design puts with the
+        field in all four chatInput variants. The shortcut used to share the
+        line and wrapped it onto two on both measured widths, which cost 24 px
+        of the sticky bottom on every screen to say something a reader needs
+        once (høydebudsjett 2026-09-21, H3).
+
+        It is not gone: it is on the field as a tooltip, on the field as a
+        description for screen readers, and in the skip link that does the
+        same jump.
+
+        Above the box rather than under it (Simens issue 89), and at the very
+        top of the sticky area rather than just above the frame: the
+        attachments come and go with every file, and a standing sentence that
+        moved a row each time is one nobody would read twice. Under the box is
+        where the follow-up questions are now.
+      */}
+      <Paragraph className="ka-composer__disclaimer" data-size="sm">
+        {DISCLAIMER}
+      </Paragraph>
+
+      {/*
         Both handlers put focus back in the field, because both take the
         control the reader is standing on out of the page: removing a chip
         unmounts its button, and retrying one takes «Prøv igjen» away the
@@ -242,65 +264,6 @@ export function Composer({
           attachments.add(event.dataTransfer.files);
         }}
       >
-        {/*
-          The picker, hidden but real: a styled `<label>` around a file input
-          is the other way to do this, and it loses the button semantics the
-          row needs — this control sits between a textarea and a send button
-          and has to behave like the third control, not like a label.
-
-          `multiple`, because a reader with three documents on the same
-          question should not have to pick them one at a time.
-        */}
-        <input
-          accept={UPLOAD_ACCEPT}
-          /*
-           * `display: none` and not `ds-sr-only`: the input is the mechanism,
-           * the button is the control. Screen-reader-only keeps it in the
-           * accessibility tree, where it is a second, nameless file control
-           * beside the named one — axe called it, and it was right.
-           * A hidden input still opens the picker when clicked.
-           */
-          className="ka-composer__file-input"
-          multiple
-          onChange={(event) => {
-            const picked = event.currentTarget.files;
-            if (picked?.length) {
-              setRefusal('');
-              attachments.add(picked);
-            }
-            // Cleared so picking the SAME file again fires `change` at all.
-            event.currentTarget.value = '';
-          }}
-          ref={fileInputRef}
-          tabIndex={-1}
-          type="file"
-        />
-
-        {/*
-          Where there is nothing to upload to, the reason is in the button's
-          own name — known before a file is picked rather than after one is
-          refused. `aria-disabled` and not `disabled`, so the control stays
-          reachable and can still say what it says; a control that is coming
-          is worth knowing about.
-        */}
-        <Button
-          aria-disabled={unavailable ? 'true' : undefined}
-          aria-label={unavailable ? ATTACH_UNAVAILABLE_LABEL : ATTACH_LABEL}
-          className="ka-composer__attach"
-          data-color="neutral"
-          icon
-          onClick={() => {
-            if (unavailable) {
-              setRefusal(uploadErrorText(unavailable));
-              return;
-            }
-            fileInputRef.current?.click();
-          }}
-          variant="tertiary"
-        >
-          <PaperclipIcon aria-hidden />
-        </Button>
-
         <Textfield
           aria-describedby={descriptionId}
           aria-label="Spørsmål til Kunnskapsassistenten"
@@ -320,39 +283,126 @@ export function Composer({
           value={value}
         />
 
-        {busy ? (
-          <Button
-            // The one control in the row while an answer is on its way, so
-            // this is where «busy» belongs: the send button does not exist
-            // during sending, it has become this one.
-            aria-busy="true"
-            aria-label="Avbryt genereringen"
-            className="ka-composer__send"
-            onClick={onCancel}
-            ref={sendRef}
-            variant="secondary"
-          >
-            <StopIcon aria-hidden />
-            Avbryt
-          </Button>
-        ) : (
-          <Button
-            aria-label="Send spørsmålet"
-            className="ka-composer__send"
-            disabled={value.trim().length === 0}
-            icon
+        {/*
+          The two controls on a row of their own, under the field.
+
+          They sat beside it, and the box had grown tall enough that the
+          placeholder stood indented at the top with a button pinned low on
+          either side (Simens issue 79). On a row of their own the field
+          takes the full width of the box, and the reader's text starts
+          where the paperclip starts and ends where the send button ends.
+        */}
+        <div className="ka-composer__controls">
+          {/*
+            The picker, hidden but real: a styled `<label>` around a file input
+            is the other way to do this, and it loses the button semantics the
+            row needs — this control shares a row with the send button and has
+            to behave like the other one, not like a label.
+
+            `multiple`, because a reader with three documents on the same
+            question should not have to pick them one at a time.
+          */}
+          <input
+            accept={UPLOAD_ACCEPT}
             /*
-             * Through `trySubmit`, like every other way of sending. The
-             * button used to be `disabled` while a file was uploading, which
-             * stopped the click and said nothing about why — and did not stop
-             * Enter at all.
+             * `display: none` and not `ds-sr-only`: the input is the mechanism,
+             * the button is the control. Screen-reader-only keeps it in the
+             * accessibility tree, where it is a second, nameless file control
+             * beside the named one — axe called it, and it was right.
+             * A hidden input still opens the picker when clicked.
              */
-            onClick={() => trySubmit(onSubmit)}
-            ref={sendRef}
+            className="ka-composer__file-input"
+            multiple
+            onChange={(event) => {
+              const picked = event.currentTarget.files;
+              if (picked?.length) {
+                setRefusal('');
+                attachments.add(picked);
+              }
+              // Cleared so picking the SAME file again fires `change` at all.
+              event.currentTarget.value = '';
+            }}
+            ref={fileInputRef}
+            tabIndex={-1}
+            type="file"
+          />
+
+          {/*
+            Where there is nothing to upload to, the reason is in the button's
+            own name — known before a file is picked rather than after one is
+            refused. `aria-disabled` and not `disabled`, so the control stays
+            reachable and can still say what it says; a control that is coming
+            is worth knowing about.
+
+            And it says it out loud there: the sentence is ON the button, the
+            way Simen drew it, so the row reads «paperclip, coming soon» at a
+            glance instead of hiding that behind a hover. No `aria-label` in
+            that state, so the accessible name is the sentence on screen
+            (WCAG 2.5.3). Where uploading does work, the paperclip is a
+            paperclip again and the name is the label.
+
+            The sentence is in a span of its own so a narrow column can take
+            it off the screen without taking it out of the name — it is 37
+            characters and wraps onto four lines on a phone, which is 83 px of
+            the sticky bottom to say something once (KA CC on #195). Hidden
+            that way it is still the button's accessible name, and WCAG 2.5.3
+            asks nothing of a control with no visible label.
+          */}
+          <Button
+            aria-disabled={unavailable ? 'true' : undefined}
+            aria-label={unavailable ? undefined : ATTACH_LABEL}
+            className="ka-composer__attach"
+            data-color="neutral"
+            icon={!unavailable}
+            onClick={() => {
+              if (unavailable) {
+                setRefusal(uploadErrorText(unavailable));
+                return;
+              }
+              fileInputRef.current?.click();
+            }}
+            variant="tertiary"
           >
-            <PaperplaneIcon aria-hidden />
+            <PaperclipIcon aria-hidden />
+            {unavailable ? (
+              <span className="ka-composer__attach-text">{ATTACH_UNAVAILABLE_LABEL}</span>
+            ) : null}
           </Button>
-        )}
+
+          {busy ? (
+            <Button
+              // The one control in the row while an answer is on its way, so
+              // this is where «busy» belongs: the send button does not exist
+              // during sending, it has become this one.
+              aria-busy="true"
+              aria-label="Avbryt genereringen"
+              className="ka-composer__send"
+              onClick={onCancel}
+              ref={sendRef}
+              variant="secondary"
+            >
+              <StopIcon aria-hidden />
+              Avbryt
+            </Button>
+          ) : (
+            <Button
+              aria-label="Send spørsmålet"
+              className="ka-composer__send"
+              disabled={value.trim().length === 0}
+              icon
+              /*
+               * Through `trySubmit`, like every other way of sending. The
+               * button used to be `disabled` while a file was uploading, which
+               * stopped the click and said nothing about why — and did not stop
+               * Enter at all.
+               */
+              onClick={() => trySubmit(onSubmit)}
+              ref={sendRef}
+            >
+              <PaperplaneIcon aria-hidden />
+            </Button>
+          )}
+        </div>
       </div>
 
       {dragDepth > 0 ? (
@@ -378,22 +428,6 @@ export function Composer({
       <p className="ds-sr-only" id={descriptionId}>
         {SHORTCUT_DESCRIPTION}
       </p>
-
-      {/*
-        One line, and only the disclaimer on it.
-        «Kunnskapsassistenten kan gjøre feil» is what the design puts under
-        the field in all four chatInput variants. The shortcut used to share
-        the line and wrapped it onto two on both measured widths, which cost
-        24 px of the sticky bottom on every screen to say something a reader
-        needs once (høydebudsjett 2026-09-21, H3).
-
-        It is not gone: it is on the field as a tooltip, on the field as a
-        description for screen readers, and in the skip link that does the
-        same jump.
-      */}
-      <Paragraph className="ka-composer__disclaimer" data-size="sm">
-        {DISCLAIMER}
-      </Paragraph>
     </div>
   );
 }

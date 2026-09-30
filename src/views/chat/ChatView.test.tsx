@@ -1040,12 +1040,19 @@ describe('ChatView', () => {
     expect(document.getElementById(described!)?.textContent).toBe(SHORTCUT_DESCRIPTION);
   });
 
-  it('har ingen egen knapperad under feltet', () => {
+  it('har feltet over knappene, med binders først og send sist', () => {
     /*
-     * Bindersen og send sto på en rad for seg under feltet, 48 px av den
-     * klebrige bunnen på hver eneste skjerm for to knapper som får plass ved
-     * siden av det (høydebudsjett 2026-09-21, H1). Nå står de i feltraden:
-     * binders først, send sist.
+     * Knappene sto i feltraden, fordi en rad for seg kostet 48 px av den
+     * klebrige bunnen på hver skjerm (høydebudsjett 2026-09-21, H1). Simen så
+     * hva det kostet i stedet: boksen er høy nok til å skrive i, så
+     * plassholderen sto innrykket øverst med en knapp lavt på hver side og
+     * ingenting på linje (Simens issue 79). Nå tar feltet hele bredden av
+     * boksen, og de to knappene står på raden under, en i hver ende.
+     *
+     * Kantene teksten skal møte er CSS og måles i nettleseren, ikke her: på
+     * 1440 × 900 starter både teksten og bindersikonet på 560, og både teksten
+     * og sendeknappen slutter på 1258. Det denne testen holder fast, er
+     * rekkefølgen de kantene følger av.
      */
     const { container } = render(
       <Shell>
@@ -1053,18 +1060,45 @@ describe('ChatView', () => {
       </Shell>,
     );
 
-    expect(container.querySelector('.ka-composer__buttons')).toBeNull();
+    const box = container.querySelector('.ka-composer')!;
+    const rows = [...box.children].filter((child) => child.tagName !== 'INPUT');
+    const field = box.querySelector('.ka-composer__field')!;
+    const controls = box.querySelector('.ka-composer__controls')!;
+    // To rader i boksen: feltet øverst, knappene under.
+    expect(rows).toEqual([field, controls]);
 
-    const row = container.querySelector('.ka-composer')!;
-    const inRow = [...row.children];
-    const attach = row.querySelector('.ka-composer__attach')!;
-    const send = row.querySelector('.ka-composer__send')!;
-    // Begge er barn av feltraden, ikke av en rad under den.
-    expect(inRow).toContain(attach);
-    expect(inRow).toContain(send);
-    // Og rekkefølgen er binders, felt, send.
-    expect(inRow.indexOf(attach)).toBeLessThan(inRow.indexOf(send));
-    expect(row.querySelector('.ka-composer__field')).toBeTruthy();
+    // Og i knapperaden: binders først, send sist.
+    const inControls = [...controls.children];
+    const attach = controls.querySelector('.ka-composer__attach')!;
+    const send = controls.querySelector('.ka-composer__send')!;
+    expect(inControls).toContain(attach);
+    expect(inControls).toContain(send);
+    expect(inControls.indexOf(attach)).toBeLessThan(inControls.indexOf(send));
+  });
+
+  it('har ansvarsteksten over boksen og oppfølgingsspørsmålene under', async () => {
+    /*
+     * Oppfølgingsspørsmålene lå under boksen og ansvarsteksten under dem
+     * igjen. Simen ville ha ansvarsteksten over boksen og spørsmålene
+     * midtstilt under den (Simens issue 89). Midtstillingen er CSS; det denne
+     * testen holder fast, er hvilken side av boksen de to står på.
+     */
+    const { container } = render(
+      <Shell>
+        <ChatView client={clientYielding(answer)} />
+      </Shell>,
+    );
+
+    ask('Hva sier dokumentene om romfart?');
+    await screen.findByRole('button', { name: FOLLOW_UP_QUESTIONS[0] });
+
+    const area = container.querySelector('.ka-composer-area')!;
+    const at = (selector: string) =>
+      [...area.children].findIndex((child) => child.matches(selector));
+
+    expect(at('.ka-composer__disclaimer')).toBeGreaterThanOrEqual(0);
+    expect(at('.ka-composer__disclaimer')).toBeLessThan(at('.ka-composer'));
+    expect(at('.ka-follow-ups')).toBeGreaterThan(at('.ka-composer'));
   });
 
   it('lar bunnteksten være forbeholdet alene', () => {

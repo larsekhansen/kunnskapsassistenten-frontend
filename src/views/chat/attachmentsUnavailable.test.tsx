@@ -69,12 +69,16 @@ function Shell({ children }: { children: ReactNode }) {
 }
 
 describe('vedlegg der tjenesten ikke har opplasting', () => {
-  it('sier hvorfor i knappens eget navn, før noen velger en fil', () => {
+  it('sier hvorfor på knappen, før noen velger en fil', () => {
     /*
      * Grunnen står i navnet, ikke bak et klikk: en kontroll som tar imot en
      * fil og deretter sier at den ikke kan, har fått leseren til å gjøre
      * arbeid for ingenting (KA CC på #125). `aria-disabled` og ikke
      * `disabled`, så kontrollen er fortsatt nåbar og kan si det den sier.
+     *
+     * Setningen står nå PÅ knappen, slik Simen tegnet den (issue 79), og ikke
+     * i et `aria-label`. Da er navnet det samme som teksten på skjermen, som
+     * er det WCAG 2.5.3 ber om av en kontroll noen kan si høyt.
      */
     render(
       <Shell>
@@ -84,7 +88,26 @@ describe('vedlegg der tjenesten ikke har opplasting', () => {
 
     const paperclip = screen.getByRole('button', { name: ATTACH_UNAVAILABLE_LABEL });
     expect(paperclip.getAttribute('aria-disabled')).toBe('true');
-    expect(ATTACH_UNAVAILABLE_LABEL).toContain(uploadErrorText('unavailable'));
+    expect(paperclip.getAttribute('aria-label')).toBeNull();
+    expect(paperclip.textContent).toBe(ATTACH_UNAVAILABLE_LABEL);
+  });
+
+  it('holder setningen i en egen span, så en smal kolonne kan ta den av skjermen', () => {
+    /*
+     * Setningen er 334 px bred og brøt over tre–fire linjer på telefon, altså
+     * 83 px av den klebrige bunnen på de skjermene som har minst av den (KA CC
+     * på #195). Under 480 px boks tar CSS-en den av skjermen — og da må den
+     * ligge i noe som kan skjules, mens navnet på knappen blir stående.
+     */
+    render(
+      <Shell>
+        <ChatView client={idleClient} />
+      </Shell>,
+    );
+
+    const paperclip = screen.getByRole('button', { name: ATTACH_UNAVAILABLE_LABEL });
+    const text = paperclip.querySelector('.ka-composer__attach-text');
+    expect(text?.textContent).toBe(ATTACH_UNAVAILABLE_LABEL);
   });
 
   it('åpner ingen filvelger, og lager ingen chip', () => {

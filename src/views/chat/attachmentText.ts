@@ -50,8 +50,16 @@ export const ATTACH_LABEL = 'Legg ved dokument (PDF eller .docx)';
  * The reason is IN the name, so it is known before a file is picked rather
  * than after one is refused. A control that takes a file and then says it
  * cannot have made the reader do work for nothing (KA CC on #125).
+ *
+ * Written on the button rather than hidden in an `aria-label`, which is how
+ * Simen drew it (issue 79): a paperclip alone says «attach», and the one
+ * thing worth knowing here is that attaching is coming rather than broken.
+ * Visible text and no label means the accessible name IS the sentence on
+ * screen, which is what WCAG 2.5.3 asks of a control someone can say out
+ * loud. `uploadErrorText('unavailable')` still says the same thing the longer
+ * way, under the field, for anyone who presses it anyway.
  */
-export const ATTACH_UNAVAILABLE_LABEL = `Legg ved dokument. ${UPLOAD_ERROR_TEXT.unavailable}`;
+export const ATTACH_UNAVAILABLE_LABEL = 'Snart kan du laste opp dokumenter her';
 
 /**
  * Why a question did not go while a file was still on its way.
