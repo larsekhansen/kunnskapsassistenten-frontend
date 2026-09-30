@@ -141,3 +141,75 @@ test.describe('trådlista mens en samtale pågår', () => {
     },
   );
 });
+
+/**
+ * A search that stands when the list empties.
+ *
+ * The search field is not drawn over a list known to be empty (#209, the same
+ * thought as Simens issue 82). A query that stood when the last thread went —
+ * deleted mid-search — then went with the field out of sight, but not out of
+ * the state, and came back invisibly with the next thread and filtered it
+ * away: an empty field, no rows, and «Ingen treff». Measured by #2 with a fake
+ * BFF and by KA CC in mock; jsdom cannot hold it, because `Search.Input`
+ * delivers no `onInput` there.
+ *
+ * Every thread is deleted through the row menu, as a reader would, rather than
+ * by writing the mock's store: a test that knows the store's shape would pass
+ * over a change to it.
+ */
+test.describe('et søk når lista blir tom', () => {
+  async function deleteThread(page: Page, title: string): Promise<void> {
+    await threadPanel(page)
+      .getByRole('button', { name: `Flere valg for ${title}` })
+      .click();
+    await page.getByRole('button', { name: 'Slett', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Slett tråden' }).click();
+    await expect(threadPanel(page).getByRole('link', { name: title, exact: true })).toHaveCount(0);
+  }
+
+  test(
+    'et søk som sto da den siste tråden ble slettet, skjuler ikke den neste',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'et søk henger ikke igjen etter en tom liste');
+      await page.goto('/');
+      await showThreads(page);
+
+      const panel = threadPanel(page);
+      const last = 'NKOM måloppnåelse';
+      await expect(panel.getByRole('link', { name: last })).toBeVisible();
+
+      // Alle andre tråder først, så NKOM står igjen alene.
+      const titles = (
+        await panel.locator('.threads-view__thread .threads-view__thread-title').allTextContents()
+      ).map((title) => title.trim());
+      for (const title of titles) if (title !== last) await deleteThread(page, title);
+      await expect(panel.locator('.threads-view__thread')).toHaveCount(1);
+
+      const search = panel.getByRole('searchbox', { name: 'Søk i tråder' });
+      await search.fill('Nkom');
+      await deleteThread(page, last);
+
+      // Tomtilstanden står alene: ingen søkefelt over en tom liste.
+      await expect(panel.getByText('Ingen tråder ennå')).toBeVisible();
+      await expect(search).toHaveCount(0);
+
+      await panel.getByRole('link', { name: /^Start din første tråd/ }).click();
+      // Uten «Nkom» i seg, med vilje: et spørsmål som traff det gamle søket,
+      // ville stått i lista også om søket hang igjen, og testen ville vært grønn
+      // uten rettelsen. Målt: det var den.
+      const question = 'Hva sier dokumentene om romfart?';
+      await composer(page).click();
+      await page.keyboard.type(question);
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(/\/threads\/[\w-]+$/);
+
+      // Lista har stått åpen hele tiden, som i testen øverst i fila.
+      await expect(panel.locator('.threads-view__thread')).toHaveCount(1, {
+        timeout: ANSWER_TIMEOUT,
+      });
+      await expect(search).toHaveValue('');
+      await expect(panel.getByText('Ingen treff')).toHaveCount(0);
+    },
+  );
+});
