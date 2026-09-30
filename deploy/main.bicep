@@ -55,8 +55,8 @@ param datasets string = ''
 @description('Hva hvert korpus kaller filterdimensjonene: "datasett=dimensjon:felt|dimensjon:felt:verditype;…". En dimensjon uten oppføring filtreres det ikke på.')
 param filterFields string = 'kudos=documentType:type|organisation:orgs_long|year:concerned_years:integer'
 
-@description('Hvor hvert korpus sine dokumenter kan leses: "datasett=https://…/{doc_num};…". Et datasett uten oppføring får ingen lenke.')
-param documentUrls string = 'kudos=https://kudos.dfo.no/documents/{doc_num}'
+@description('Hvor hvert korpus sine dokumenter kan leses: "datasett=mal for tall|mal for UUID;…", med {doc_num} der nummeret står. Et datasett uten oppføring får ingen lenke.')
+param documentUrls string = 'kudos=https://kudos.dfo.no/documents/{doc_num}|https://kudos.dfo.no/dokument/{doc_num}'
 
 @description('Tom i mock. Da får appen verken secret eller variabel.')
 @secure()

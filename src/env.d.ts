@@ -33,9 +33,9 @@ interface ImportMetaEnv {
   readonly VITE_KA_FILTER_FIELDS?: string;
   /**
    * Where each corpus's documents can be read, with `{doc_num}` where the
-   * document's number goes:
-   * `"kudos-full=https://kudos.dfo.no/documents/{doc_num}"`. A dataset with no
-   * entry gets no link. See src/api/documentUrls.ts.
+   * document's number goes: a template for a number, then after `|` one for
+   * a UUID, `"kudos-full=https://kudos.dfo.no/documents/{doc_num}|https://kudos.dfo.no/dokument/{doc_num}"`.
+   * A dataset with no entry gets no link. See src/api/documentUrls.ts.
    */
   readonly VITE_KA_DOCUMENT_URLS?: string;
   /**

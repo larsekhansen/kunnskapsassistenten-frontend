@@ -514,7 +514,10 @@ function endOf(events: StreamEvent[]): Extract<StreamEvent, { type: 'done' | 'er
 }
 
 describe('korpuset svaret ble hentet fra', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
 
   it('står på done-ramma, lik nøkkelen kallet bar', async () => {
     const events = await askForCorpus({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' }, () =>
@@ -546,6 +549,30 @@ describe('korpuset svaret ble hentet fra', () => {
 
     expect(endOf(events).corpusKey).toBeUndefined();
     vi.restoreAllMocks();
+  });
+
+  it('lenker kildene med malen til korpuset turen spurte, ikke reserven', async () => {
+    // To korpus med hver sin mal. Reserven er det andre, så en klient som
+    // glemte turens datasett, ville gitt en lenke til feil sted.
+    vi.stubEnv('VITE_KA_DATASET_CONFIG_KEY', 'norquad-docs');
+    vi.stubEnv(
+      'VITE_KA_DOCUMENT_URLS',
+      'kudos-pilot=https://kudos.test/documents/{doc_num};norquad-docs=https://wiki.test/{doc_num}',
+    );
+    const events = await askForCorpus({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' }, () =>
+      frameWith({
+        result: {
+          content: [{ type: 'text', text: 'Svar [1].' }],
+          structuredContent: { chunks: [{ chunk_id: 'c1', doc_num: '7', title: 'Årsrapport' }] },
+          _meta: {},
+        },
+      }),
+    );
+
+    const sources = events.find((event) => event.type === 'sources');
+    expect(sources?.type === 'sources' && sources.documents[0]?.url).toBe(
+      'https://kudos.test/documents/7',
+    );
   });
 });
 

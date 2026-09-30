@@ -1,59 +1,92 @@
 import { kaEnv } from './runtimeConfig';
 
 /**
- * Where a corpus's documents can be read, as a template per dataset.
+ * Where a corpus's documents can be read, as templates per dataset.
  *
  * The chunks the backend returns carry the document's number (`doc_num`) and,
  * for Kudos, no address: measured in the test environment 30.09, every source
  * said «Dokumentet har ingen offentlig lenke» (Simens issue 92). The address
- * is knowledge about a corpus — Kudos puts a document at
- * `https://kudos.dfo.no/documents/<doc_num>`, and the next corpus somewhere
- * else, or nowhere — so it is configuration and not code, like the filter
- * fields (docs/arkitektur/0001-fasetter-og-korpuskunnskap.md). Nikolai's BFF
- * reads it the same way, from `KUDOS_BASE`.
+ * is knowledge about a corpus, so it is configuration and not code, like the
+ * filter fields (docs/arkitektur/0001-fasetter-og-korpuskunnskap.md).
+ * Nikolai's BFF reads it the same way, from `KUDOS_BASE`.
  *
  * `VITE_KA_DOCUMENT_URLS`, in the grammar of `VITE_KA_DATASETS`: semicolons
  * between datasets, the first `=` after the key, and `{doc_num}` where the
- * number goes:
+ * number goes. Two templates, split by `|`: the first for a number that is
+ * all digits, the second for one that is a UUID.
  *
- *   kudos-full=https://kudos.dfo.no/documents/{doc_num}
+ *   kudos-full=https://kudos.dfo.no/documents/{doc_num}|https://kudos.dfo.no/dokument/{doc_num}
  *
- * A template and not a base, so no path is written into `src/`. A dataset
- * with no entry gets no link, which the sources panel already draws honestly.
- * An entry that is not an http(s) address with `{doc_num}` in it is dropped
- * with one warning: a link built from it would go nowhere, or somewhere a
- * link from here must never go.
+ * Two, because one corpus can hand out both. Kudos's own API now gives only
+ * a UUID (headless-rag issue #25), so a corpus loaded again after that fix has
+ * UUIDs where it had numbers, and Kudos answers them at different addresses:
+ * `/documents/<number>` is a 301 to the document and `/documents/<uuid>` is a
+ * 404, while `/dokument/<uuid>` is the document (measured by #4 and by #5,
+ * 30.09). Which address goes with which shape is the corpus's business and
+ * stays out of `src/`; the shape itself is not about any corpus.
+ *
+ * Either template may be left empty, and a dataset with no entry gets no
+ * link, which the sources panel already draws honestly. A template that is
+ * not an http(s) address with `{doc_num}` in it drops the entry with one
+ * warning: a link built from it would go nowhere, or somewhere a link from
+ * here must never go.
  */
 
 export const DOC_NUM = '{doc_num}';
 
-export function parseDocumentUrls(raw: string | undefined): ReadonlyMap<string, string> {
-  const templates = new Map<string, string>();
+/** The two shapes a document number comes in. */
+export type DocumentTemplates = { number?: string; uuid?: string };
+
+const NUMBER = /^\d+$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isTemplate(template: string): boolean {
+  return /^https?:\/\//i.test(template) && template.includes(DOC_NUM);
+}
+
+export function parseDocumentUrls(raw: string | undefined): ReadonlyMap<string, DocumentTemplates> {
+  const templates = new Map<string, DocumentTemplates>();
   const dropped: string[] = [];
 
   for (const entry of (raw ?? '').split(';')) {
     if (!entry.trim()) continue;
     const split = entry.indexOf('=');
     const key = split === -1 ? '' : entry.slice(0, split).trim();
-    const template = split === -1 ? '' : entry.slice(split + 1).trim();
-    if (!key || !/^https?:\/\//i.test(template) || !template.includes(DOC_NUM)) {
+    const [number = '', uuid = '', ...extra] =
+      split === -1
+        ? []
+        : entry
+            .slice(split + 1)
+            .split('|')
+            .map((part) => part.trim());
+    const valid =
+      key !== '' &&
+      extra.length === 0 &&
+      (number !== '' || uuid !== '') &&
+      (number === '' || isTemplate(number)) &&
+      (uuid === '' || isTemplate(uuid));
+    if (!valid) {
       dropped.push(entry.trim());
       continue;
     }
     // First wins, as in the other dataset settings.
-    if (!templates.has(key)) templates.set(key, template);
+    if (!templates.has(key)) {
+      templates.set(key, { ...(number ? { number } : {}), ...(uuid ? { uuid } : {}) });
+    }
   }
 
   if (dropped.length > 0) {
     console.warn(
       `KA: hopper over ${dropped.length} ugyldig(e) oppføring(er) i VITE_KA_DOCUMENT_URLS. ` +
-        `Formatet er "datasett=https://…/${DOC_NUM};…". Hoppet over: ${dropped.join(', ')}`,
+        `Formatet er "datasett=https://…/${DOC_NUM}|https://…/${DOC_NUM};…", med malen for ` +
+        `tall først og for UUID etter. Hoppet over: ${dropped.join(', ')}`,
     );
   }
   return templates;
 }
 
-let parsed: { raw: string | undefined; templates: ReadonlyMap<string, string> } | undefined;
+let parsed:
+  { raw: string | undefined; templates: ReadonlyMap<string, DocumentTemplates> } | undefined;
 
 /**
  * `kaEnv()` and not `import.meta.env`, so one container image can be pointed
@@ -61,7 +94,7 @@ let parsed: { raw: string | undefined; templates: ReadonlyMap<string, string> } 
  * Parsed once per value, so a bad entry is warned about once and not per
  * chunk.
  */
-function configured(): ReadonlyMap<string, string> {
+function configured(): ReadonlyMap<string, DocumentTemplates> {
   const raw = kaEnv().VITE_KA_DOCUMENT_URLS;
   if (parsed === undefined || parsed.raw !== raw) {
     parsed = { raw, templates: parseDocumentUrls(raw) };
@@ -77,17 +110,23 @@ function configured(): ReadonlyMap<string, string> {
  * the dataset live asks when nothing is chosen, which is what those were
  * asked of.
  *
- * The number is encoded, because it comes from the backend and is put into a
- * path: a `doc_num` with a slash in it must not reach another page.
+ * A number in neither shape gets no link rather than a guess. That is also
+ * what keeps whatever the backend sends from reaching the path as anything
+ * but digits or a UUID: nothing else is ever put in.
  */
 export function documentUrl(
   dataset: string | undefined,
   docNum: string | number | null | undefined,
-  templates: ReadonlyMap<string, string> = configured(),
+  templates: ReadonlyMap<string, DocumentTemplates> = configured(),
 ): string | undefined {
   const number = docNum === null || docNum === undefined ? '' : String(docNum).trim();
   if (!number) return undefined;
   const key = dataset ?? kaEnv().VITE_KA_DATASET_CONFIG_KEY;
-  const template = key === undefined ? undefined : templates.get(key);
-  return template?.replaceAll(DOC_NUM, encodeURIComponent(number));
+  const forCorpus = key === undefined ? undefined : templates.get(key);
+  const template = NUMBER.test(number)
+    ? forCorpus?.number
+    : UUID.test(number)
+      ? forCorpus?.uuid
+      : undefined;
+  return template?.replaceAll(DOC_NUM, number);
 }

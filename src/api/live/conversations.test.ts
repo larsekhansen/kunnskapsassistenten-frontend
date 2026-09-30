@@ -301,6 +301,34 @@ describe('sourcesFromChunks', () => {
   });
 });
 
+describe('lenkene i en lagret tråd', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('bruker malen til trådens korpus, ikke reserven', () => {
+    // To korpus med hver sin mal, og reserven er det andre. Uten trådens
+    // korpus ville lenka gått til feil sted.
+    vi.stubEnv('VITE_KA_DATASET_CONFIG_KEY', 'norquad-docs');
+    vi.stubEnv(
+      'VITE_KA_DOCUMENT_URLS',
+      'kudos-pilot=https://kudos.test/documents/{doc_num};norquad-docs=https://wiki.test/{doc_num}',
+    );
+    const [, answer] = messagesFromApi(
+      [
+        { id: 'm1', role: 'user', text: 'Hva rapporterer Nkom?' },
+        {
+          id: 'm2',
+          role: 'assistant',
+          text: 'Svar [1].',
+          chunks: [{ chunkId: 'c1', docNum: 7, docTitle: 'Årsrapport', contentMarkdown: 'Utdrag' }],
+        },
+      ],
+      'kudos-pilot',
+    );
+
+    expect(answer?.sources?.[0]?.url).toBe('https://kudos.test/documents/7');
+  });
+});
+
 describe('threadDetailFrom', () => {
   it('lar siste tur si når tråden sist var i bruk', () => {
     // Bedre enn `created` når det finnes en tur. Lista kan ikke gjøre dette:
