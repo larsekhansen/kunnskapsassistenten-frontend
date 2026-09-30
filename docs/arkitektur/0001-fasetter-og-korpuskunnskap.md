@@ -62,7 +62,7 @@ per datasett:
 
 - hvilke felt som er filtre, og i hvilken rekkefølge
 - etiketten på norsk
-- opprydding — `concerned_years` mellom 1990 og 2035, skjul felt som er tomme
+- opprydding — `concerned_years` fra 1990 til inneværende år, skjul felt som er tomme
 - sortering — år synkende, virksomheter etter antall
 
 **Agenten, som forslagsstiller.** Å skrive profilen for et nytt korpus kan en

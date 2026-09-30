@@ -113,11 +113,29 @@ const LABELS: Record<FilterDimension, string> = {
 };
 
 /**
- * The years a year facet keeps. Kudos's `concerned_years` holds parse noise
- * like «2436» (docs/arkitektur/0001), and has more than 500 distinct values
- * where a real span has a few dozen. The span is the one 0001 names.
+ * The first year a year facet keeps. Kudos's `concerned_years` holds parse
+ * noise like «2436» (docs/arkitektur/0001), and has more than 500 distinct
+ * values where a real span has a few dozen.
  */
-export const YEAR_SPAN = { from: 1990, to: 2035 } as const;
+export const FIRST_YEAR = 1990;
+
+/**
+ * The year it is in Norway, which is the last a year facet keeps.
+ *
+ * Not a fixed year. It was 2035, the span 0001 named, and the filter offered
+ * 2027–2035: a plan or an allocation letter names the year it runs to, so the
+ * field holds years no document is FROM yet (Simens issue 75, 30.09). Read on
+ * every load, so it moves on New Year without a deploy.
+ *
+ * Oslo and not the server's clock, because the container runs in UTC and the
+ * reader does not: an hour into the new year in Norway it is still the old
+ * one there.
+ */
+export function currentYear(now = new Date()): number {
+  return Number(
+    new Intl.DateTimeFormat('en', { timeZone: 'Europe/Oslo', year: 'numeric' }).format(now),
+  );
+}
 
 /**
  * Values per field Typesense returns, the most frequent first.
@@ -134,18 +152,22 @@ export const MAX_FACET_VALUES = 2000;
 const TIMEOUT_MS = 10_000;
 
 /**
- * The minimal policy: no empty values; a year only if it is a whole number in
- * `YEAR_SPAN`, newest first; everything else by count, most first, and then
- * alphabetically so equal counts keep one order.
+ * The minimal policy: no empty values; a year only if it is a whole number
+ * from `FIRST_YEAR` up to this year, newest first; everything else by count,
+ * most first, and then alphabetically so equal counts keep one order.
  */
-export function shapeOptions(dimension: FilterDimension, counts: FacetOption[]): FacetOption[] {
+export function shapeOptions(
+  dimension: FilterDimension,
+  counts: FacetOption[],
+  thisYear = currentYear(),
+): FacetOption[] {
   const kept = counts.filter((option) => option.value.trim() !== '');
 
   if (dimension === 'year') {
     return kept
       .filter((option) => {
         const year = Number(option.value);
-        return Number.isInteger(year) && year >= YEAR_SPAN.from && year <= YEAR_SPAN.to;
+        return Number.isInteger(year) && year >= FIRST_YEAR && year <= thisYear;
       })
       .sort((a, b) => Number(b.value) - Number(a.value));
   }
