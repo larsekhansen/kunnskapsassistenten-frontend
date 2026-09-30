@@ -44,6 +44,9 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  // Here and not at the end of a test: a test that fails before its last
+  // line would leave the mode stubbed for the next one (KA CC on #194).
+  vi.unstubAllEnvs();
 });
 
 describe('useUserDocuments', () => {
@@ -81,7 +84,6 @@ describe('useUserDocuments', () => {
     render(<Probe />);
 
     expect(read('utilgjengelig')).toBe('unavailable');
-    vi.unstubAllEnvs();
   });
 
   it('sier at den ikke går bak BFF-en heller', () => {
@@ -95,7 +97,6 @@ describe('useUserDocuments', () => {
     render(<Probe />);
 
     expect(read('utilgjengelig')).toBe('unavailable');
-    vi.unstubAllEnvs();
   });
 
   it('skiller det som er klart fra det som bare står i lista', async () => {

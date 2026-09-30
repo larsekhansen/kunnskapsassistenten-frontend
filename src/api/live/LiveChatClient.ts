@@ -547,7 +547,7 @@ function* readFrame(
   const chunks = (result.structuredContent?.chunks ?? []) as Parameters<
     typeof toSourceDocuments
   >[0];
-  const documents = toSourceDocuments(chunks);
+  const documents = toSourceDocuments(chunks, askedOf.corpusKey);
 
   // Anything still held back was answer text after all: nothing followed it
   // to prove it was the agent's plan.

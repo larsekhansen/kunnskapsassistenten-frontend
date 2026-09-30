@@ -32,6 +32,13 @@ interface ImportMetaEnv {
    */
   readonly VITE_KA_FILTER_FIELDS?: string;
   /**
+   * Where each corpus's documents can be read, with `{doc_num}` where the
+   * document's number goes:
+   * `"kudos-full=https://kudos.dfo.no/documents/{doc_num}"`. A dataset with no
+   * entry gets no link. See src/api/documentUrls.ts.
+   */
+  readonly VITE_KA_DOCUMENT_URLS?: string;
+  /**
    * How fast mock mode answers: `fast`, `realistic` (default) or `slow`.
    * See `mockSpeeds` in src/api/mock/MockChatClient.ts.
    */

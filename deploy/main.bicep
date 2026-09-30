@@ -55,6 +55,9 @@ param datasets string = ''
 @description('Hva hvert korpus kaller filterdimensjonene: "datasett=dimensjon:felt|dimensjon:felt:verditype;…". En dimensjon uten oppføring filtreres det ikke på.')
 param filterFields string = 'kudos=documentType:type|organisation:orgs_long|year:concerned_years:integer'
 
+@description('Hvor hvert korpus sine dokumenter kan leses: "datasett=https://…/{doc_num};…". Et datasett uten oppføring får ingen lenke.')
+param documentUrls string = 'kudos=https://kudos.dfo.no/documents/{doc_num}'
+
 @description('Tom i mock. Da får appen verken secret eller variabel.')
 @secure()
 param digdirApiKey string = ''
@@ -173,6 +176,7 @@ var plainEnv = filter(
     { name: 'VITE_KA_DATASET_CONFIG_KEY', value: datasetConfigKey }
     { name: 'VITE_KA_DATASETS', value: datasets }
     { name: 'VITE_KA_FILTER_FIELDS', value: filterFields }
+    { name: 'VITE_KA_DOCUMENT_URLS', value: documentUrls }
     // Bare bak innloggingen. Uten den kan nettleseren sende plattformens
     // hode selv, og da er det ikke en identitet. Se server/identity.ts.
     { name: 'KA_USER_ID_FROM', value: hasLogin ? 'platform' : '' }

@@ -98,6 +98,8 @@ describe('relevanceFromRank', () => {
 });
 
 describe('toSourceDocuments', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
   const chunks = [
     { chunk_id: 'c1', doc_num: 'd1', title: 'Årsrapport 2022', url: null, metadata: '{"H" "Mål"}' },
     { chunk_id: 'c2', doc_num: 'd2', title: 'Årsrapport 2023', url: 'https://kudos/2023' },
@@ -151,6 +153,27 @@ describe('toSourceDocuments', () => {
 
   it('reads the heading out of the metadata string', () => {
     expect(toSourceDocuments(chunks)[0].excerpts[0].heading).toBe('Mål');
+  });
+
+  it('bygger lenka fra doc_num når bitene ikke har url (Simens issue 92)', () => {
+    vi.stubEnv('VITE_KA_DOCUMENT_URLS', 'kudos-full=https://kudos.dfo.no/documents/{doc_num}');
+    const [document] = toSourceDocuments(
+      [{ chunk_id: 'c1', doc_num: '372017', title: 'Årsrapport', url: null }],
+      'kudos-full',
+    );
+
+    expect(document.url).toBe('https://kudos.dfo.no/documents/372017');
+    expect(document.excerpts[0].kudosUrl).toBe('https://kudos.dfo.no/documents/372017');
+  });
+
+  it('lar en url på biten vinne over malen', () => {
+    vi.stubEnv('VITE_KA_DOCUMENT_URLS', 'kudos-full=https://kudos.dfo.no/documents/{doc_num}');
+    const [document] = toSourceDocuments(
+      [{ chunk_id: 'c1', doc_num: '1', url: 'https://kudos/egen' }],
+      'kudos-full',
+    );
+
+    expect(document.url).toBe('https://kudos/egen');
   });
 
   it('leaves the link out when the corpus has no URL', () => {

@@ -9,6 +9,7 @@ import type {
   StreamEvent,
   ThinkingStep,
 } from '../../model';
+import { documentUrl } from '../documentUrls';
 import type { DatasetFilterFields } from '../filterFields';
 
 /**
@@ -281,11 +282,15 @@ export function relevanceFromRank(index: number, total: number): RelevanceLevel 
  * coarser grouping of the same thing, so the number has to survive the
  * grouping. Excerpts are grouped per document (answer 57).
  */
-export function toSourceDocuments(chunks: McpChunk[]): SourceDocument[] {
+export function toSourceDocuments(chunks: McpChunk[], dataset?: string): SourceDocument[] {
   const documents = new Map<string, SourceDocument>();
 
   chunks.forEach((chunk, index) => {
     const documentId = chunk.doc_num ?? chunk.chunk_id ?? `doc-${index}`;
+    // The chunk's own address when it has one, and otherwise the corpus's
+    // template with the document's number: Kudos chunks carry `doc_num` and
+    // no `url` (Simens issue 92). See documentUrls.ts.
+    const url = chunk.url ?? documentUrl(dataset, chunk.doc_num);
     const excerpt: Excerpt = {
       id: chunk.chunk_id ?? `${documentId}-${index}`,
       // backend: mangler, se API-bestilling A1 — structuredContent.chunks
@@ -294,7 +299,7 @@ export function toSourceDocuments(chunks: McpChunk[]): SourceDocument[] {
       text: '',
       heading: parseHeadingPath(chunk.metadata),
       relevance: relevanceFromRank(index, chunks.length),
-      kudosUrl: chunk.url ?? undefined,
+      kudosUrl: url,
       citationNumber: index + 1,
     };
 
@@ -307,7 +312,7 @@ export function toSourceDocuments(chunks: McpChunk[]): SourceDocument[] {
     documents.set(documentId, {
       id: documentId,
       title: chunkTitle(chunk),
-      url: chunk.url ?? undefined,
+      url,
       excerpts: [excerpt],
     });
   });
