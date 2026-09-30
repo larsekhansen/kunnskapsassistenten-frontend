@@ -57,7 +57,8 @@
  *
  * This was 60 px on a desktop window (Simen, 30.09, about 4rem), from before
  * the greeting was centred. Kept, it put 48 px more over «Hei» than under the
- * suggestions, and on 1280 × 720 it was what made the page scroll by 35.
+ * suggestions, and with the Kudos suggestions on 1280 × 720 it was what made
+ * the page scroll by 35.
  */
 .ka-chat-greeting {
   display: flex;
