@@ -123,6 +123,13 @@ export function ThreadsView({
   }, [switchedByUser]);
 
   const loading = !failed && !threads;
+  /*
+   * Known to be empty, as opposed to not known yet. Only then does «Ny tråd»
+   * move into the empty state; while the list loads, or when it could not be
+   * fetched, the way to a new thread stays where it always is, since a new
+   * thread works whether or not the list does.
+   */
+  const empty = threads?.length === 0;
   const trimmed = query.trim().toLocaleLowerCase('nb-NO');
   const matches = useMemo(
     () =>
@@ -179,8 +186,8 @@ export function ThreadsView({
    * backend says no.
    *
    * Focus goes to the next row's menu — where a reader clearing out old
-   * threads is heading — then the one before, and to «Ny tråd» when the list
-   * is empty. The row is put back by id, and the list sorts itself by
+   * threads is heading — then the one before, and to «Start din første tråd»
+   * in the empty state when the list is empty. The row is put back by id, and the list sorts itself by
    * `updatedAt`, so it lands where it was.
    *
    * The thread on screen is left for a new one, since there is nothing to
@@ -240,13 +247,21 @@ export function ThreadsView({
         told a screen reader user that the button they are about to press is
         the page they are already on. The thread rows are places, and they are
         marked (answer 7).
+
+        Not drawn above an empty list (Simen, 30.09). There it is the empty
+        state's own action, «Start din første tråd», and the same link twice
+        on a panel with nothing else in it is one too many. The ref follows
+        whichever of the two is drawn, so focus still has somewhere to go
+        when the last thread is deleted.
       */}
-      <Button asChild>
-        <RouterLink to="/" ref={newThreadRef}>
-          Ny tråd
-          <NewThreadIcon aria-hidden="true" />
-        </RouterLink>
-      </Button>
+      {!empty && (
+        <Button asChild>
+          <RouterLink to="/" ref={newThreadRef}>
+            Ny tråd
+            <NewThreadIcon aria-hidden="true" />
+          </RouterLink>
+        </Button>
+      )}
 
       {/*
         «Tidligere tråder» is gone from the screen (Lars, 23.09): the panel is
@@ -320,11 +335,18 @@ export function ThreadsView({
         </div>
       )}
 
-      {threads?.length === 0 && (
+      {empty && (
         <EmptyState
           title="Ingen tråder ennå"
           description="Still et spørsmål, så havner samtalen her."
-        />
+        >
+          <Button asChild>
+            <RouterLink to="/" ref={newThreadRef}>
+              Start din første tråd
+              <NewThreadIcon aria-hidden="true" />
+            </RouterLink>
+          </Button>
+        </EmptyState>
       )}
 
       {threads && threads.length > 0 && matches.length === 0 && (

@@ -94,3 +94,33 @@ describe('ThreadsView', () => {
     expect(screen.getByRole('link', { name: /Ny tråd/ }).getAttribute('aria-current')).toBeNull();
   });
 });
+
+/*
+ * «Ny tråd» moves into the empty state as «Start din første tråd», and is
+ * taken away from above it (Simen, 30.09). Only for a list known to be empty:
+ * loading or not, the reader can always start a thread.
+ */
+describe('the way to a new thread', () => {
+  it('is the empty state’s own action when there are no threads', () => {
+    renderView([]);
+
+    const start = screen.getByRole('link', { name: /Start din første tråd/ });
+    expect(start.getAttribute('href')).toBe('/');
+    expect(start.closest('.empty-state')).not.toBeNull();
+    expect(screen.queryByRole('link', { name: /Ny tråd/ })).toBeNull();
+  });
+
+  it('stays above the list while it loads', () => {
+    renderView(undefined);
+
+    expect(screen.getByRole('link', { name: /Ny tråd/ })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Start din første tråd/ })).toBeNull();
+  });
+
+  it('stays above the list when there are threads', () => {
+    renderView(threads);
+
+    expect(screen.getByRole('link', { name: /Ny tråd/ })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Start din første tråd/ })).toBeNull();
+  });
+});
