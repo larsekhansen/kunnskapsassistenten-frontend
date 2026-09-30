@@ -60,4 +60,30 @@ describe('FiltersView', () => {
     ).toBeNull();
     expect(screen.getByLabelText('Dokumenttype')).toBeTruthy();
   });
+
+  /*
+   * The line is what tells the corpus's part of the panel from the reader's
+   * own (Simen, 30.09), so it has to stand directly above «Dine dokumenter»
+   * and after the last field. It is decoration, and says nothing to a screen
+   * reader; the heading under it does that.
+   */
+  it('draws a line between the facets and «Dine dokumenter»', () => {
+    renderView([
+      {
+        dimension: 'documentType',
+        label: 'Dokumenttype',
+        values: [{ value: 'arsrapport', label: 'Årsrapport', count: 3 }],
+      },
+    ]);
+
+    const own = screen.getByRole('heading', { name: 'Dine dokumenter' }).closest('section');
+    const line = own?.previousElementSibling;
+
+    expect(line?.tagName).toBe('HR');
+    expect(line?.getAttribute('aria-hidden')).toBe('true');
+    expect(
+      screen.getByLabelText('Dokumenttype').compareDocumentPosition(line as Node) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });

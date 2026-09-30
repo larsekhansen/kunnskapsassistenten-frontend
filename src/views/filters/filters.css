@@ -17,7 +17,24 @@
   display: flex;
   flex-direction: column;
   align-items: start;
-  gap: var(--ds-size-6);
+  /*
+   * The air between the panel's blocks: the documents, each facet field, the
+   * line and «Dine dokumenter». Everything was 24 px apart, inside a block
+   * and between blocks alike, and the panel read as one tight column with
+   * nothing to say where one part ended (Simen, 30.09).
+   *
+   * 32 px on a desktop, and less on a short screen. The panel is about as
+   * wide on a phone as on a Mac — 389 to 399 px measured on all five
+   * surfaces — so what varies is the height, and every pixel of air here is
+   * a pixel more to scroll. `dvh` follows the window's height, and 3.6 of it
+   * reaches 32 at 900 px; the tokens on each side keep it on the scale, and
+   * 24 px is what it was before.
+   *
+   * Inside a block the gap stays small (`.documents-list`, the field's own
+   * label and description), so the two distances are what tell the reader
+   * which things belong together.
+   */
+  gap: clamp(var(--ds-size-6), 3.6dvh, var(--ds-size-8));
   /* The slot lays its children out with align-items: start, so the view has
      to claim the width itself. */
   inline-size: 100%;
@@ -35,6 +52,20 @@
 .filters-view > ds-field,
 .filters-view > section {
   inline-size: 100%;
+}
+
+/*
+ * The line between the corpus's documents and the reader's own (Simen,
+ * 30.09). The facets above it narrow the corpus, so everything over the line
+ * is about Kudos and everything under it is about files the reader brought.
+ *
+ * Designsystemet's own margin is taken off: the view's gap puts the same air
+ * on each side of the line, and the line with its two gaps is what makes this
+ * break larger than the one between two fields. The meaning is in the
+ * «Dine dokumenter» heading under it; the line is `aria-hidden`.
+ */
+.filters-view__divider {
+  margin-block: 0;
 }
 
 /*
