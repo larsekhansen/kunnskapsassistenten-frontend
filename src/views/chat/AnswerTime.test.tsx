@@ -208,12 +208,16 @@ describe('AnswerTime', () => {
 
     expect(container.querySelectorAll('time')).toHaveLength(1);
   });
-  it('stempler også en tur som spurte tilbake, med de samme ordene', () => {
+  it('stempler ikke en tur som spurte tilbake', () => {
     /*
-     * En avklaring er ikke et svar, men den er det assistenten svarte med, og
-     * den kom på et tidspunkt leseren kan vise tilbake til. Uten stempel fikk
-     * en gjenopprettet samtale som endte i en avklaring et hull, når hver
-     * eneste rad i trådlista sier når (dirigenten, 2026-09-16).
+     * En avklaring fikk stempel fra 2026-09-16, fordi en gjenopprettet samtale
+     * som endte i en avklaring ellers hadde et hull. Simen snudde det i issue
+     * 112: klokkeslettet sto i en knapperad som ikke lenger er der, og det er
+     * ikke det leseren er her for. Det ene trekket fra kortet er å svare.
+     *
+     * Hullet er ikke et hull i praksis: leserens eget spørsmål over kortet har
+     * heller ikke noe klokkeslett, og raden i trådlista sier når samtalen sist
+     * beveget seg.
      */
     const spurte: Message = {
       id: 'a1',
@@ -234,18 +238,12 @@ describe('AnswerTime', () => {
       />,
     );
 
-    const times = container.querySelectorAll('time');
-    expect(times).toHaveLength(1);
-    expect(times[0].getAttribute('datetime')).toBe(spurte.createdAt);
-    expect(times[0].querySelector('.ds-sr-only')?.textContent).toBe(
-      'Svaret kom 11. september 2026 kl. 09:05',
-    );
-    expect(times[0].closest('button')).toBeNull();
+    expect(container.querySelectorAll('time')).toHaveLength(0);
   });
 
-  it('gir en gjenopprettet samtale ett stempel per tur assistenten tok', () => {
-    // Spørsmål, svar, oppfølging, avklaring: to turer fra assistenten, to
-    // stempler. Leserens egne spørsmål teller ikke med.
+  it('gir en gjenopprettet samtale ett stempel per svar, og ingen på avklaringen', () => {
+    // Spørsmål, svar, oppfølging, avklaring: to turer fra assistenten, men
+    // bare den som svarte får stempel. Leserens egne spørsmål teller ikke med.
     const messages: Message[] = [
       {
         id: 'q1',
@@ -293,7 +291,6 @@ describe('AnswerTime', () => {
 
     expect([...container.querySelectorAll('time')].map((t) => t.getAttribute('datetime'))).toEqual([
       at(2026, 8, 11, 9, 5),
-      at(2026, 8, 11, 9, 12),
     ]);
   });
   it('stempler ikke et svar som fortsatt strømmer', () => {
