@@ -53,13 +53,15 @@ const NAV_OPENS_AT = 216;
 /**
  * The navigation panel drawn narrower than it is stored, which is what «the
  * ceiling is the window's» needs to be able to fail. With 1181 stored (End at
- * 1920, the sources panel a rail) and the sources panel then opened, the
- * sources panel gives way down to its floor first, and the navigation panel
- * takes what is left beside the answer column's floor. Measured on #224.
+ * 1920, the sources panel a rail) and the sources panel then opened, a panel
+ * first gives up what it was made wider by, and a widening takes room from the
+ * answer column, never from the other panel. So the sources panel keeps its
+ * 432, and the navigation panel takes what is left beside the answer column's
+ * floor. Measured on #224 (6bb2e24).
  */
-const NAV_AT_1920_BESIDE_SOURCES = 880; // 1920 − 336 − 32 − 640 − 32
-const NAV_AT_1480 = 440; // 1480 − 336 − 32 − 640 − 32
-const NAV_AT_1680 = 640; // 1680 − 336 − 32 − 640 − 32
+const NAV_AT_1920_BESIDE_SOURCES = 784; // 1920 − 432 − 32 − 640 − 32
+const NAV_AT_1600 = 464; // 1600 − 432 − 32 − 640 − 32
+const NAV_AT_1680 = 544; // 1680 − 432 − 32 − 640 − 32
 
 /** Arrow keys move the edge this far; Shift makes it a stride. */
 const STEP = 16;
@@ -492,11 +494,11 @@ test.describe('panelbredder', () => {
     );
 
     // Opening the sources panel takes room the stored width counted on. The
-    // sources panel gives way to its floor, the navigation panel is drawn
-    // narrower than it is stored, and aria-valuenow says the drawn width: it
-    // is the only thing that tells a reader who cannot see the edge where it
-    // is, and the stored 1181 over a panel drawn at 880 would be a lie told to
-    // exactly that reader.
+    // sources panel keeps its width, the navigation panel is drawn narrower
+    // than it is stored, and aria-valuenow says the drawn width: it is the
+    // only thing that tells a reader who cannot see the edge where it is, and
+    // the stored 1181 over a panel drawn at 784 would be a lie told to exactly
+    // that reader.
     await showSources(page);
     await expectPanelWidth(
       page,
@@ -514,11 +516,18 @@ test.describe('panelbredder', () => {
     await expectPanelWidth(page, '.secondary-sidebar', SOURCES_FLOOR, 'kildepanelet ved 1440');
     await expect(separator(page, 'tråder og filter')).toHaveCount(0);
 
+    // At 1480 the navigation panel stands at 400, which is its floor and,
+    // beside the sources panel, all the room there is, so it has no edge to
+    // move.
+    await page.setViewportSize({ width: 1480, height: HEIGHT });
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, 'navigasjonspanelet ved 1480');
+    await expect(separator(page, 'tråder og filter')).toHaveCount(0);
+
     // And as the window grows, the edge comes back and the drawn width follows
     // the window, with the stored one never gone. Measured by KA CC on #93 by
     // setting aria-valuenow to the stored width: red wherever the two differ.
     for (const [width, drawn] of [
-      [1480, NAV_AT_1480],
+      [1600, NAV_AT_1600],
       [1680, NAV_AT_1680],
     ] as const) {
       await page.setViewportSize({ width, height: HEIGHT });
