@@ -403,8 +403,19 @@ describe('policyen', () => {
   it('regner året i Norge, ikke i UTC', () => {
     // Containeren går i UTC. En time ut i det nye året i Oslo er det
     // fortsatt det gamle der.
-    expect(currentYear(new Date('2026-12-31T23:30:00Z'))).toBe(2027);
-    expect(currentYear(new Date('2026-12-31T22:30:00Z'))).toBe(2026);
+    //
+    // Maskinens sone settes til UTC mens testen går, som i containeren. Uten
+    // det består en Mac i Norge testen med eller uten Oslo i currentYear
+    // (KA CC på #196).
+    const zone = process.env.TZ;
+    process.env.TZ = 'UTC';
+    try {
+      expect(currentYear(new Date('2026-12-31T23:30:00Z'))).toBe(2027);
+      expect(currentYear(new Date('2026-12-31T22:30:00Z'))).toBe(2026);
+    } finally {
+      if (zone === undefined) delete process.env.TZ;
+      else process.env.TZ = zone;
+    }
   });
 });
 
