@@ -111,6 +111,25 @@ describe('facetsFor', () => {
       'Nkom',
     ]);
   });
+
+  it('tilbyr ikke år som ikke har kommet ennå', () => {
+    // Simens issue 75, som i tynnserveren og BFF-en. Mock-korpuset har to
+    // budsjettforslag «for 2027», og de er fortsatt søkbare. Men 2027 er ikke
+    // noe å avgrense til i 2026.
+    const withPlan = [...documents, { ...documents[0]!, id: '6', year: 2027 }];
+    const years = facetsFor(emptyFilterSelection, withPlan, 2026)
+      .find((f) => f.dimension === 'year')!
+      .values.map((v) => v.value);
+    expect(years).toEqual(['2024', '2023', '2022']);
+  });
+
+  it('beholder et framtidig år som alt er valgt, så valget kan angres', () => {
+    const withPlan = [...documents, { ...documents[0]!, id: '6', year: 2027 }];
+    const years = facetsFor(select({ year: ['2027'] }), withPlan, 2026).find(
+      (f) => f.dimension === 'year',
+    )!.values;
+    expect(years.find((v) => v.value === '2027')?.count).toBe(1);
+  });
 });
 
 describe('documentsMatching', () => {

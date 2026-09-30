@@ -1,3 +1,4 @@
+import { currentYear } from '../../../../shared/years.ts';
 import type { FilterDimension, FilterFacet, FilterSelection } from '../../../model';
 import { corpusDocuments, type CorpusDocument } from './index';
 
@@ -77,6 +78,7 @@ function sortValues(dimension: FilterDimension, counted: [string, number][]): [s
 export function facetsFor(
   selection: FilterSelection,
   documents: CorpusDocument[] = corpusDocuments,
+  thisYear = currentYear(),
 ): FilterFacet[] {
   return DIMENSIONS.map(({ dimension, label }) => {
     const counts = new Map<string, number>();
@@ -84,6 +86,13 @@ export function facetsFor(
     for (const document of documents) {
       if (!matches(document, selection, dimension)) continue;
       const value = valueOf(document, dimension);
+      // No year that has not come yet, as the server's policy: two budget
+      // proposals «for 2027» are in this corpus, and 2027 is nothing to narrow
+      // to in 2026 (Simens issue 75). The documents stay searchable, and a
+      // year already ticked is still counted, so it can be seen and undone.
+      if (dimension === 'year' && document.year > thisYear && !selection.year.includes(value)) {
+        continue;
+      }
       counts.set(value, (counts.get(value) ?? 0) + 1);
     }
 
