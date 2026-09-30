@@ -34,9 +34,9 @@ export type AnswerSourcesContextValue = {
   /**
    * The newest answer's documents, flat.
    *
-   * Two callers still want exactly this and not the per-answer list: the
+   * One caller still wants exactly this and not the per-answer list: the
    * filter panel's «Fra Kudos», which is about the thread rather than about
-   * one answer, and the collapsed sources rail's badge count.
+   * one answer.
    *
    * Derived from `answers` once anything is recorded there, so it follows the
    * newest answer without a second thing to keep in step.

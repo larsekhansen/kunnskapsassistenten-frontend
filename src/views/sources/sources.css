@@ -161,18 +161,102 @@
 
 /* Excerpts */
 
+/*
+ * One excerpt is one box: the card block. Nothing inside it draws a box of
+ * its own, so what the toggle opens and what stands there while it is closed
+ * are in the same place (Simen's issue 86).
+ *
+ * `Details` draws a box by default — a surface, a rule above and below, and a
+ * 20 px indent for what it holds. That box held only the summary while the
+ * excerpt was closed, and the preview stood under it, outside: «1. Contents»
+ * on the block's own ground, under a white box saying «Åpne». Opened, the
+ * same line was inside the box, 20 px further in. Measured on 2026-09-30 in
+ * every view of 320 px and up, which was five of the six surfaces tried:
+ * 1280 × 720, 768 × 1024, 390 × 844, 440 × 956 and 1512 × 982, the 14" Mac's
+ * default. Only 1440 × 900 had no box, because its view is 295 px and the
+ * query below already took it off. This is that layout at every width, and
+ * Figma's `chunk` has no box inside the excerpt either.
+ *
+ * The number and the tag on the first row, the toggle on its own row under
+ * them, then the preview or the quote: the same rows open and closed, so the
+ * toggle stays where the pointer left it and the text it opens starts where
+ * the preview started. Figma draws the toggle on the tag's line, and closed it
+ * fitted there in the wider panels, but open it could not stay: `Details`
+ * puts the summary and the content in one element, and the content needs the
+ * whole width. «Lukk» then stood a row under where «Åpne» had been, 48 px at
+ * 768 and 440, and a second click on the same spot missed (KA CC on #199).
+ * The clean way to keep the summary on the tag's line while the content spans
+ * the row is to place `::details-content`, which Safari 16, iOS 16, Firefox
+ * 140 and Chrome 109 do not have (stylelint, against `.browserslistrc`). The row of its own is what
+ * 1440 already had for «Mest relevant» and «Minst relevant». Answer 38 is the
+ * reason the toggle is `Details` at all.
+ */
 .source-excerpt {
   display: flex;
   flex-direction: column;
-  gap: var(--ds-size-2);
+  /*
+   * 20 px between the rows, which is what they had. The gap is all of it:
+   * Card gives every child after the first 12 px above it, which is what made
+   * 8 px of gap into 20 before, and a margin on some rows and not on others is
+   * two rules for one rhythm.
+   */
+  gap: var(--ds-size-5);
   background: var(--ds-color-neutral-background-tinted);
+}
+
+/* Designsystemet writes that margin in `:where()`, so a class wins. */
+.source-excerpt > * {
+  margin-block: 0;
 }
 
 .source-excerpt__head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--ds-size-2);
+}
+
+.source-excerpt__details {
+  /* 40 px rather than 56: a summary that is mostly empty space is a row
+     this panel cannot afford. Still well past the 24 px WCAG 2.5.8 asks. */
+  --dsc-details-size: var(--ds-size-10);
+  --dsc-details-padding: var(--ds-size-2);
+  /*
+   * No surface of its own, so it takes the block's: the neutral one, and the
+   * accent one when a marker in the answer points here. A neutral surface
+   * drew a grey box inside the blue block of the active excerpt. The hover
+   * surface stays, because the summary is still a control.
+   */
+  --dsc-details-background: transparent;
+  --dsc-details-summary-background: transparent;
+  --dsc-details-summary-background--open: transparent;
+  --dsc-details-summary-background--hover: var(--ds-color-neutral-surface-hover);
+  border-block-width: 0;
+}
+
+/* At the block's end edge, open and closed. */
+.source-excerpt__details > summary {
+  justify-content: end;
+}
+
+/*
+ * Designsystemet indents everything under a summary by 20 px on each side and
+ * spaces it by 20 above and below. Without the box around it the indent is
+ * only a jump: the preview stands at the block's edge, and the same line
+ * would move 20 px in when the excerpt opens. Designsystemet writes these in
+ * `:where()`, so a plain class selector is enough to replace them.
+ */
+.source-excerpt__details > :not(summary):not(u-summary) {
+  margin-inline: 0;
+}
+
+/* The same 20 px the closed preview has under the toggle, so the quote's
+   first line is where the preview's was. */
+.source-excerpt__details > :not(summary):not(u-summary):nth-child(2) {
+  margin-block-start: var(--ds-size-5);
+}
+
+.source-excerpt__details > :not(summary):not(u-summary):last-child {
+  margin-block-end: var(--ds-size-2);
 }
 
 /* The quote's own section heading and page, the first line of the body in
@@ -235,24 +319,20 @@
 }
 
 /*
- * ── Compact: a panel too narrow to nest boxes in ──────────────────────────
+ * ── Compact: less air in a narrow panel ───────────────────────────────────
  *
  * At 1440 the slot is 336 px, the panel keeps 36 px of padding on each side,
- * and what is left goes into a card, a card block and Designsystemet's own
- * indent under a `summary`. Measured before this rule: 336 → 264 → 262 → 214
- * → 174 px of quote, thirty lines of two or three words
- * (docs/review/brukerblikk-2026-09-15.md, funn 1). The width is right; it was
- * the boxes inside it that did not fit.
- *
- * So the layers come off rather than the panel growing: the card keeps its
- * border and its blocks, but the padding drops to the small step, the indent
- * under the summary goes, and the summary itself shrinks from a 56 px row to a
- * 40 px control at the block's own edge. 174 → 246 px of quote, 30 lines → 20.
+ * and what is left goes into a card and a card block. Measured before the
+ * boxes came off: 336 → 264 → 262 → 214 → 174 px of quote, thirty lines of
+ * two or three words (docs/review/brukerblikk-2026-09-15.md, funn 1). The
+ * width is right; it was the layers inside it that did not fit, and the
+ * excerpt above has none left. What is left to give is the card's padding,
+ * which drops to the small step here: 174 → 246 px of quote, 30 lines → 20.
  *
  * 320 px is the view's own width, which is the slot minus its padding — a
  * panel of about 392. It sits between the two widths this slot actually has,
- * 264 and 360, so the roomy layout is what a 432 px panel gets and this is
- * what a 336 px one gets.
+ * 264 and 360, so a 432 px panel keeps the card's own padding and a 336 px
+ * one gets this.
  */
 @container sources (inline-size < 320px) {
   /*
@@ -262,90 +342,6 @@
    */
   .source-document {
     --dsc-card-padding: var(--ds-size-3) var(--ds-size-2);
-  }
-
-  /*
-   * The head becomes a row that wraps: the number and the tag first, then the
-   * toggle beside them if it fits and under them if it does not.
-   *
-   * A closed `Details` is nothing but its summary, so it CAN sit on the head's
-   * line — that is the one line of Figma's excerpt answer 38 could not draw,
-   * since `Details.Summary` is a full-width row. At 336 px it does not fit,
-   * and that is measured rather than guessed: the line needs 258 px for
-   * «Relevant», 291 for «Mest relevant» and 295 for «Minst relevant», against
-   * the 246 px the block has. So the toggle takes the line below, at the same
-   * edge. `flex-wrap` is what makes that the same rule as fitting it in: give
-   * the panel more width and the three close up onto one line by themselves.
-   *
-   * Open, the toggle takes a full row whatever the width, because the quote
-   * below it is what the width is for.
-   */
-  .source-excerpt {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    column-gap: var(--ds-size-2);
-  }
-
-  .source-excerpt__head {
-    /* The tag follows the number instead of sitting at the far edge; the
-       toggle is what holds that edge now. */
-    flex: 0 1 auto;
-    justify-content: start;
-  }
-
-  .source-excerpt__details {
-    flex: 0 0 auto;
-    margin-inline-start: auto;
-    /* 40 px rather than 56: a summary that is mostly empty space is a row
-       this panel cannot afford. Still well past the 24 px WCAG 2.5.8 asks. */
-    --dsc-details-size: var(--ds-size-10);
-    --dsc-details-padding: var(--ds-size-2);
-    /*
-     * The white box on the tinted block was the card-in-card the eye actually
-     * saw. Same surface as the block it sits in, and no rules of its own; the
-     * hover surface stays, because the summary is still a control.
-     */
-    --dsc-details-background: var(--ds-color-neutral-background-tinted);
-    --dsc-details-summary-background: var(--ds-color-neutral-background-tinted);
-    --dsc-details-summary-background--open: var(--ds-color-neutral-background-tinted);
-    --dsc-details-summary-background--hover: var(--ds-color-neutral-surface-hover);
-    border-block-width: 0;
-  }
-
-  .source-excerpt__details[open] {
-    flex-basis: 100%;
-  }
-
-  /* The toggle keeps the same edge open and closed, so pressing it twice does
-     not move it out from under the pointer. */
-  .source-excerpt__details > summary {
-    justify-content: end;
-  }
-
-  /*
-   * Designsystemet indents everything under a summary by 20 px on each side
-   * and spaces it by 20 above and below. Both are the second half of the
-   * card-in-card: the panel's own 36 px gutter is the gutter, and this one
-   * only takes width off the quote. Designsystemet writes these in `:where()`,
-   * so a plain class selector is enough to replace them.
-   */
-  .source-excerpt__details > :not(summary, u-summary) {
-    margin-inline: 0;
-  }
-
-  .source-excerpt__details > :not(summary, u-summary):nth-child(2) {
-    margin-block-start: var(--ds-size-2);
-  }
-
-  .source-excerpt__details > :not(summary, u-summary):last-child {
-    margin-block-end: var(--ds-size-2);
-  }
-
-  /* Both sit under the head line, across the whole block. */
-  .source-excerpt__preview,
-  .source-excerpt__uncited {
-    flex-basis: 100%;
   }
 }
 

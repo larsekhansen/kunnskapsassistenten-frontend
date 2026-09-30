@@ -315,4 +315,87 @@ test.describe('kildepanelet', () => {
       await expectNoAxeViolations(page, `kildepanelet i ${mode}`);
     }
   });
+
+  /*
+   * The toggle in an excerpt stays where the pointer left it. On #199 it sat
+   * on the number's line while closed and went a row down when opened, 48 px
+   * at 768 and 440, so a second click on the same spot missed (KA CC). The
+   * five surfaces of the brief, because whether the toggle fits on the
+   * number's line depends on the width.
+   */
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 1280, height: 720 },
+    { width: 768, height: 1024 },
+    { width: 390, height: 844 },
+    { width: 440, height: 956 },
+  ]) {
+    test.describe(`på ${viewport.width} × ${viewport.height}`, () => {
+      test.use({ viewport });
+
+      test(
+        'knappen i et utdrag står på samme sted lukket og åpnet',
+        REAL_ANSWER,
+        async ({ page }, testInfo) => {
+          covers(testInfo, 'knappen i et utdrag står stille');
+          await citation(page, 1).click();
+
+          // The excerpt the marker opened, closed again: closed is how a
+          // reader meets every other excerpt, and where the measuring starts.
+          const excerpt = page.locator('#excerpt-1');
+          const details = excerpt.locator('details');
+          const summary = excerpt.locator('summary');
+          /*
+           * Where the toggle comes to rest. `Details` animates its height for
+           * 0.4 s, and right after closing, the row layout of bf847a7 drew
+           * the summary 918 px wide at 1440, so a box read at once can say
+           * where it passes through rather than where it stays.
+           */
+          const resting = async () => {
+            let last = await summary.boundingBox();
+            let since = Date.now();
+            await expect
+              .poll(
+                async () => {
+                  const now = await summary.boundingBox();
+                  if (JSON.stringify(now) !== JSON.stringify(last)) {
+                    last = now;
+                    since = Date.now();
+                  }
+                  return Date.now() - since;
+                },
+                { intervals: [100] },
+              )
+              .toBeGreaterThanOrEqual(500);
+            expect(last).not.toBeNull();
+            return last!;
+          };
+
+          await expect(details).toHaveAttribute('open', '');
+          await summary.click();
+          await expect(details).not.toHaveAttribute('open');
+          await summary.scrollIntoViewIfNeeded();
+
+          const closed = await resting();
+          // On the word, which the summary draws at its end edge.
+          const x = closed.x + closed.width - 16;
+          const y = closed.y + closed.height / 2;
+
+          await page.mouse.click(x, y);
+          await expect(details).toHaveAttribute('open', '');
+
+          const open = await resting();
+          expect(Math.abs(open.y - closed.y), 'samme høyde').toBeLessThanOrEqual(1);
+          expect(
+            Math.abs(open.x + open.width - (closed.x + closed.width)),
+            'samme kant',
+          ).toBeLessThanOrEqual(1);
+
+          // And the same spot closes it again, which is what a reader does.
+          await page.mouse.click(x, y);
+          await expect(details).not.toHaveAttribute('open');
+        },
+      );
+    });
+  }
 });
