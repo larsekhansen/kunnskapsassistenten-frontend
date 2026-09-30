@@ -50,8 +50,11 @@ param allowedIps = map(
 param entraClientId = readEnvironmentVariable('KA_ENTRA_CLIENT_ID', '')
 param entraClientSecret = readEnvironmentVariable('KA_ENTRA_CLIENT_SECRET', '')
 
-// Fasettene i filterpanelet: «Fasettene i filterpanelet» i docs/deploy.md.
-// Tomme = panelet sier at filtrering ikke er tilgjengelig.
+// Fasettene i filterpanelet og teksten i utdragene: «Fasettene i
+// filterpanelet» og «Teksten i utdragene» i docs/deploy.md. Tomme = panelet
+// sier at filtrering ikke er tilgjengelig, og utdragene at teksten ikke
+// kunne hentes.
 param typesenseUrl = readEnvironmentVariable('TYPESENSE_URL', '')
 param typesenseApiKey = readEnvironmentVariable('TYPESENSE_API_KEY', '')
 param facetCollections = readEnvironmentVariable('KA_FACET_COLLECTIONS', '')
+param chunkCollections = readEnvironmentVariable('KA_CHUNK_COLLECTIONS', '')

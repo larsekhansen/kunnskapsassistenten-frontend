@@ -1,6 +1,6 @@
 # 0005 — Teksten i utdragene, og kildene etter ny innlasting, i live
 
-**Status:** foreslått · **Dato:** 2026-09-30
+**Status:** valgt · **Dato:** 2026-09-30
 
 ## Kontekst
 

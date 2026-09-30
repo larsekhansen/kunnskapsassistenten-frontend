@@ -12,4 +12,4 @@ ble målt, og hva det koster.
 | [0002](0002-klienten-bak-bff.md)                        | Klienten vår som `apps/web`, bak Nikolais BFF               | retning valgt |
 | [0003](0003-felt-og-korpus-fra-bff.md)                  | Filterfelt og korpusnavn fra BFF-en                         | valgt         |
 | [0004](0004-visningsnivaa.md)                           | Visningsnivå, og en skjult meny å velge det i               | valgt         |
-| [0005](0005-utdragstekst-og-kilder-etter-innlasting.md) | Teksten i utdragene, og kildene etter ny innlasting, i live | foreslått     |
+| [0005](0005-utdragstekst-og-kilder-etter-innlasting.md) | Teksten i utdragene, og kildene etter ny innlasting, i live | valgt         |
