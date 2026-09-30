@@ -56,11 +56,9 @@ function Skall() {
     <>
       <p data-testid="valgt">{valgt ?? 'ingen'}</p>
       <MessageList
-        canScrollToBottom={false}
         foundNothing={() => false}
         messages={[answer]}
         onRegenerate={() => {}}
-        onScrollToBottom={() => {}}
         onSelectSource={(number) => setValgt(number)}
       />
     </>

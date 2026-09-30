@@ -31,13 +31,7 @@ const question = (id: string, content: string): Message => ({
 
 function show(messages: Message[]) {
   return render(
-    <MessageList
-      canScrollToBottom={false}
-      messages={messages}
-      onRegenerate={() => {}}
-      onScrollToBottom={() => {}}
-      onSelectSource={() => {}}
-    />,
+    <MessageList messages={messages} onRegenerate={() => {}} onSelectSource={() => {}} />,
   );
 }
 

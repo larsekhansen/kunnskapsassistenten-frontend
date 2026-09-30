@@ -41,10 +41,8 @@ function show(message: Message) {
     <ol>
       <AnswerMessage
         {...utenSok}
-        canScrollToBottom={false}
         message={message}
         onRegenerate={() => {}}
-        onScrollToBottom={() => {}}
         onSelectSource={() => {}}
       />
     </ol>,

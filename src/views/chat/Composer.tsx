@@ -5,6 +5,7 @@ import {
   useState,
   type DragEvent,
   type KeyboardEvent,
+  type ReactNode,
   type Ref,
   type RefObject,
 } from 'react';
@@ -32,10 +33,15 @@ import type { ChatStatus } from './useChat';
 type ComposerProps = {
   /**
    * The sticky area around the field. The chat view measures it, to keep that
-   * much of the scroll container free at the bottom, and asks it where focus
-   * is before moving the caret into the field.
+   * much of the conversation clear of it, and asks it where focus is before
+   * moving the caret into the field.
    */
   ref?: Ref<HTMLDivElement>;
+  /**
+   * What stands over the area, above the field, and moves with it:
+   * «Bla til nederst». First in the tab order of the area, before the field.
+   */
+  above?: ReactNode;
   /** So a kickstarter can put the caret in the field after filling it. */
   fieldRef?: RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   value: string;
@@ -102,6 +108,7 @@ type ComposerProps = {
  */
 export function Composer({
   ref,
+  above,
   sendRef,
   fieldRef,
   value,
@@ -189,6 +196,8 @@ export function Composer({
 
   return (
     <div className="ka-composer-area" ref={ref}>
+      {above}
+
       {/*
         Both handlers put focus back in the field, because both take the
         control the reader is standing on out of the page: removing a chip

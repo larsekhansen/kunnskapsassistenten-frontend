@@ -132,11 +132,9 @@ describe('kortet på en feilet tur', () => {
   function show(liveErrorId?: string) {
     return render(
       <MessageList
-        canScrollToBottom={false}
         liveErrorId={liveErrorId}
         messages={[failed]}
         onRegenerate={() => {}}
-        onScrollToBottom={() => {}}
         onSelectSource={() => {}}
       />,
     );
@@ -185,10 +183,8 @@ describe('kortet på en feilet tur', () => {
     const kall: number[] = [];
     render(
       <MessageList
-        canScrollToBottom={false}
         messages={[failed]}
         onRegenerate={() => kall.push(1)}
-        onScrollToBottom={() => {}}
         onSelectSource={() => {}}
       />,
     );
