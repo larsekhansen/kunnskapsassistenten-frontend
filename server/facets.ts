@@ -6,6 +6,7 @@ import {
   type FilterDimension,
   type FilterFieldConfig,
 } from '../shared/filterFields.ts';
+import { currentYear } from '../shared/years.ts';
 
 /**
  * The filter panel's facets, counted by this server from Typesense.
@@ -120,24 +121,6 @@ const LABELS: Record<FilterDimension, string> = {
 export const FIRST_YEAR = 1990;
 
 /**
- * The year it is in Norway, which is the last a year facet keeps.
- *
- * Not a fixed year. It was 2035, the span 0001 named, and the filter offered
- * 2027–2035: a plan or an allocation letter names the year it runs to, so the
- * field holds years no document is FROM yet (Simens issue 75, 30.09). Read on
- * every load, so it moves on New Year without a deploy.
- *
- * Oslo and not the server's clock, because the container runs in UTC and the
- * reader does not: an hour into the new year in Norway it is still the old
- * one there.
- */
-export function currentYear(now = new Date()): number {
-  return Number(
-    new Intl.DateTimeFormat('en', { timeZone: 'Europe/Oslo', year: 'numeric' }).format(now),
-  );
-}
-
-/**
  * Values per field Typesense returns, the most frequent first.
  *
  * High enough for the whole field, so that the policy and not the cut-off
@@ -155,6 +138,10 @@ const TIMEOUT_MS = 10_000;
  * The minimal policy: no empty values; a year only if it is a whole number
  * from `FIRST_YEAR` up to this year, newest first; everything else by count,
  * most first, and then alphabetically so equal counts keep one order.
+ *
+ * «This year» was a fixed 2035, the span 0001 named, and the filter offered
+ * 2027–2035. It is read on every load now, so it moves on New Year without a
+ * deploy. See shared/years.ts.
  */
 export function shapeOptions(
   dimension: FilterDimension,

@@ -5,13 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { accessToken } from './access.ts';
 import { createHandler } from './app.ts';
 import { readConfig, type ServerConfig } from './config.ts';
-import {
-  MAX_FACET_VALUES,
-  currentYear,
-  facetConfigFrom,
-  parseCollections,
-  shapeOptions,
-} from './facets.ts';
+import { currentYear } from '../shared/years.ts';
+import { MAX_FACET_VALUES, facetConfigFrom, parseCollections, shapeOptions } from './facets.ts';
 
 /**
  * `/api/facets` målt gjennom serverens egen socket, mot en Typesense som
