@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router';
 import { LayoutProvider } from './layout/LayoutProvider';
 import { Shell } from './layout/Shell';
+import { infoPageElement, infoPages } from './routes/info/infoPages';
 import { NewConversation } from './routes/NewConversation';
 import { NotFound } from './routes/NotFound';
 import { Thread } from './routes/Thread';
@@ -11,13 +12,20 @@ import { Thread } from './routes/Thread';
  *
  *   /                   new conversation, empty state
  *   /threads/:threadId  one conversation
- *   anything else       «Siden finnes ikke»
+ *   /onboarding         ┐
+ *   /endringslogg       ├ a page about Kunnskapsassistenten itself
+ *   /om-prosjektet      ┘
+ *   anything else       «siden finnes ikke»
  *
  * Two layout routes and not one, because the shell is mounted differently for
- * the two kinds of page. The catch-all draws its own main slot
- * (`routeOwnsMain`); the real routes let the view in the slot draw it. A
- * single layout route could not say that, and `/tull` would get the front
- * page's welcome screen under the words «siden finnes ikke».
+ * the two kinds of page. The conversation routes let the view in the slot draw
+ * the main column; every other page draws its own (`routeOwnsMain`). A single
+ * layout route could not say that, and `/tull` would get the front page's
+ * welcome screen under the words «siden finnes ikke» — as would the changelog.
+ *
+ * The three information pages are Norwegian addresses among English routes,
+ * and on purpose: they are the addresses the old Kunnskapsassistenten uses.
+ * They come from one list, see src/routes/info/infoPages.tsx.
  *
  * Switching between the two remounts the shell. The layout lives above it, in
  * `LayoutProvider`, so nothing a reader has set up is lost — and navigating
@@ -32,6 +40,9 @@ export function App() {
           <Route path="threads/:threadId" element={<Thread />} />
         </Route>
         <Route element={<Shell routeOwnsMain />}>
+          {infoPages.map((page) => (
+            <Route key={page.path} path={page.path} element={infoPageElement(page)} />
+          ))}
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
