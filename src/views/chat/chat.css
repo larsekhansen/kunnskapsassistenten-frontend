@@ -655,6 +655,12 @@
   inset-block-end: calc(100% + var(--ds-size-2));
   inset-inline-start: 50%;
   translate: -50% 0;
+  /*
+   * On one line. A box that starts halfway across shrinks to fit the half
+   * that is left, and on a phone that broke «Bla til nederst» over two lines
+   * (117 × 58 px at 390 wide).
+   */
+  inline-size: max-content;
   box-shadow: var(--ds-shadow-sm);
 }
 
