@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useRef } from 'react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { setActiveCorpusKey } from '../../api';
 import { resetMockThreads } from '../../api/mock/sessionThreads';
@@ -32,7 +32,17 @@ function show() {
     <MemoryRouter>
       <LayoutProvider>
         <Scroll>
-          <ChatSlotView />
+          {/*
+            The two routes the shell has (`App.tsx`). This file stays on `/`
+            and would be green without them, because `threadId` is `undefined`
+            either way — but `useParams` gives `{}` without a matched route and
+            says nothing about it. The day an assertion here opens a thread
+            from the list, it would measure nothing.
+          */}
+          <Routes>
+            <Route index element={<ChatSlotView />} />
+            <Route path="threads/:threadId" element={<ChatSlotView />} />
+          </Routes>
         </Scroll>
       </LayoutProvider>
     </MemoryRouter>,

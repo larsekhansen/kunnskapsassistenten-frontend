@@ -23,8 +23,15 @@ export type CorpusDocument = {
   year: number;
   /** Kudos's own summary. This is what excerpts are quoted from. */
   summary: string;
-  /** The document's page on Kudos, for «Les dokumentet på Kudos». */
-  url: string;
+  /**
+   * The document's page on Kudos, for «Les dokumentet på Kudos». Absent for
+   * a document whose page Kudos no longer has; `urlMissing` says why, and the
+   * sources panel says «ingen offentlig lenke» rather than send the reader to
+   * a 404.
+   */
+  url?: string;
+  /** Why there is no `url`, written by the fetch script from `DEAD_LINKS`. */
+  urlMissing?: string;
 };
 
 type Corpus = {

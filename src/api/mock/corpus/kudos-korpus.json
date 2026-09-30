@@ -3901,7 +3901,7 @@
    "organisation": "Nasjonal kommunikasjonsmyndighet",
    "year": 2025,
    "summary": "Årsrapporten oppsummerer Nkoms virksomhet og hovedtall for 2025, inkludert resultater, tilsynsaktivitet og ressursbruk. Rapporten beskriver sentrale prioriteringer som sikkerhet og beredskap, markedsregulering, frekvens- og nummerforvaltning, samt arbeid med digital bærekraft. Den omtaler viktige hendelser og oppdrag i 2025, som stormen Amy, utpeking som koordinerende tilsynsmyndighet for kunstig intelligens og nasjonal koordinator for DSA, og ansvar for datasentertil syne. Rapporten beskriver også etablering av nytt kontor og fremtidige satsinger som nytt nødnett.",
-   "url": "https://kudos.dfo.no/dokument/a1c6feb9-3a47-4889-b049-92adae575b9f"
+   "urlMissing": "Kudos svarer 404 på denne adressen og på dokumentet i API-et (målt 30.09). Se DEAD_LINKS i scripts/fetch-mock-corpus.mjs."
   },
   {
    "id": "a1b389a9-20d8-4344-9929-21a7623759a0",
