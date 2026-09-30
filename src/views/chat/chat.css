@@ -802,21 +802,33 @@
  * Narrow enough that the sentence would wrap: take it off the screen and
  * leave the paperclip, which still carries it as its accessible name.
  *
- * Measured at the `md` size mode: the sentence sets 334 px wide, and the row
- * needs 472 px of box to hold it beside the send button. Under that it wrapped
- * onto three or four lines and the box grew from 162 px to 226 at 440 and 245
- * at 390 — 83 px of the sticky bottom, on the screens with the least of it
- * (KA CC on #195).
+ * Measured at the `md` size mode with a 16 px root: the sentence sets 334 px
+ * wide, and the row needs 472 px of box to hold it beside the send button.
+ * Under that it wrapped onto three or four lines and the box grew from 162 px
+ * to 226 at 440 and 245 at 390 — 83 px of the sticky bottom, on the screens
+ * with the least of it (KA CC on #195).
  *
  * A container query and not a media query: the box is as wide as the answer
  * column, and the column is as wide as the panels leave it. The same window
  * gives the row 690 px with both panels shut and 405 px with them open.
+ *
+ * **`rem` and not `px`, because the sentence is set in `rem` too.** A reader
+ * who turns the text up to a 20 px root gets a sentence 25 % wider, and a
+ * threshold written in pixels stays where it was — so the row wrapped again at
+ * 768, on a box the pixel rule called wide enough (KA CC on #195, kan 1).
+ * 30rem is 480 px at a 16 px root, which is the measured 472 with room to
+ * spare, and it grows with the text: 600 px at 20 px, against the 590 the
+ * sentence then needs.
+ *
+ * A container query's lengths resolve against the ROOT font size, not the
+ * container's own — that is what makes this work, and it is also why
+ * `container-type: inline-size` on the box does not make the unit circular.
  */
 .ka-composer {
   container: ka-composer / inline-size;
 }
 
-@container ka-composer (max-width: 480px) {
+@container ka-composer (max-width: 30rem) {
   /*
    * Designsystemet's own `.ds-sr-only` in one place: off the screen, no line
    * box, still in the accessibility tree. `position: absolute` is safe here
