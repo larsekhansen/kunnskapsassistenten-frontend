@@ -54,6 +54,7 @@ export function useNewThread(): (event: MouseEvent<HTMLAnchorElement>) => void {
       }
 
       composerFocusRequested = true;
+      askedForNewThread();
     },
     [drawer, filter, layout],
   );
@@ -68,6 +69,11 @@ const sidebars: Slot[] = ['primary-sidebar', 'secondary-sidebar'];
  * which survives a reload, and the next page load would take the focus away
  * from the skip link. Nothing here outlives the page, which is right: the
  * request is about the navigation that is happening now.
+ *
+ * **Once** is the whole contract. Every conversation asks on mount, and only
+ * the one the link navigated to is allowed a yes — a thread opened from the
+ * list a moment later would otherwise pull the keyboard out of the row the
+ * reader was standing in.
  */
 let composerFocusRequested = false;
 
@@ -75,4 +81,41 @@ export function takeComposerFocusRequest(): boolean {
   const requested = composerFocusRequested;
   composerFocusRequested = false;
   return requested;
+}
+
+/**
+ * How many times «Ny tråd» has been clicked in this page load.
+ *
+ * The chat slot keys `/` on this number, so a click gives a new conversation
+ * and nothing else does. It used to key on `location.key`, which is a fair
+ * reading of «a navigation to `/` is a new front page» — but it counts
+ * navigations nobody asked a new conversation of. Closing the settings menu
+ * is one: it is `navigate({ hash: '' }, { replace: true })`, which mints a new
+ * `location.key`, so a half-written question on `/` was wiped by opening and
+ * shutting a dialog (KA CC on #208, with #203 in).
+ *
+ * A counter and not a boolean, because two «Ny tråd» clicks in a row are two
+ * new conversations and a boolean would make the second one a no-op.
+ *
+ * Subscribable rather than read bare: a module variable changing is not
+ * something React can see, and the click that bumps it has to re-render the
+ * slot that reads it. Same shape as `subscribeToCorpus` in src/api/corpus.ts.
+ */
+let newThreads = 0;
+const listeners = new Set<() => void>();
+
+function askedForNewThread(): void {
+  newThreads += 1;
+  for (const listener of [...listeners]) listener();
+}
+
+export function newThreadCount(): number {
+  return newThreads;
+}
+
+export function subscribeToNewThread(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }

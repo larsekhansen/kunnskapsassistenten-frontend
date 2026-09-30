@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { useLocation, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { activeCorpusKey, createChatClient, subscribeToCorpus } from '../../api';
 // Rett fra modulen og ikke via src/api/index.ts, som er #5 sin barrel.
 import { renamedThreads, subscribeToThreadRenames } from '../../api/threadActions';
@@ -10,7 +10,7 @@ import { COMPOSER_ID } from '../ids';
 import { ThreadContext } from '../threadContext';
 import { useAnswerSources } from '../useAnswerSources';
 import { useComposerPresence } from '../useComposerPresence';
-import { takeComposerFocusRequest } from '../useNewThread';
+import { newThreadCount, subscribeToNewThread, takeComposerFocusRequest } from '../useNewThread';
 import { useNoAnswers } from '../useNoAnswers';
 import { useReportOpenThread } from '../useOpenThread';
 import { useThreadFilterLock } from '../useThreadFilterLock';
@@ -43,24 +43,31 @@ import { useThreadFilterLock } from '../useThreadFilterLock';
  */
 export function ChatSlotView() {
   const { threadId } = useParams();
-  const { key } = useLocation();
+  const newThreads = useSyncExternalStore(subscribeToNewThread, newThreadCount);
 
   // Keyed on the address, so moving between threads starts from nothing
   // rather than showing the previous thread until the next one has loaded.
   // It is also what lets the state below start at null without an effect
   // writing it back on every navigation.
   //
-  // `/` is keyed on the navigation as well, because «/» is not one place. A
+  // `/` is keyed on «Ny tråd» instead, because «/» is not one place. A
   // conversation started there gets its address from `replaceState`, which
   // the router never sees (see `startThread`), so to the router the page is
   // still `/` — and «Ny tråd», a link to `/`, changed neither the route nor
   // the key. Nothing remounted, and the old conversation, its sources and its
   // filter stayed on screen under an address that said `/` (Simen's issue
-  // 114; measured in mock, bff and live). Every navigation has its own
-  // `location.key`, including one to the same path, so every «Ny tråd» is a
-  // new conversation. The address written by `replaceState` does not change
-  // the key, which is what keeps a streaming answer alive while it moves.
-  return <ChatSlot key={threadId ?? `new:${key}`} threadId={threadId} />;
+  // 114; measured in mock, bff and live).
+  //
+  // It was `location.key` for a while, which every navigation mints a new one
+  // of — including one to the same path, which made «Ny tråd» work. But it
+  // counts navigations nobody asked a new conversation of: closing the hidden
+  // settings menu is `navigate({ hash: '' }, { replace: true })`, and a
+  // half-written question on `/` was wiped by opening and shutting a dialog
+  // (KA CC on #208). The count says what the key is actually about — the
+  // reader asked for a new conversation — and nothing else changes it. The
+  // address written by `replaceState` does not either, which is what keeps a
+  // streaming answer alive while it moves.
+  return <ChatSlot key={threadId ?? `new:${newThreads}`} threadId={threadId} />;
 }
 
 function ChatSlot({ threadId }: { threadId?: string }) {

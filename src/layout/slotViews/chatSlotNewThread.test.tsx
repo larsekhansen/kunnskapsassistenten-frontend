@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useEffect, useRef } from 'react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setActiveCorpusKey } from '../../api';
 import { resetMockThreads } from '../../api/mock/sessionThreads';
@@ -53,6 +53,21 @@ function Probe() {
   return null;
 }
 
+/** Navigering uten «Ny tråd», slik menyen og en vanlig lenke gjør det. */
+const go: { navigate?: ReturnType<typeof useNavigate>; sti?: string } = {};
+
+function Nav() {
+  // I en effekt, som `Probe` over: å skrive til en modulvariabel under
+  // rendring er en endring React ikke ser, og oxlint sier fra om det.
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    go.navigate = navigate;
+    go.sti = location.pathname + location.hash;
+  });
+  return null;
+}
+
 const now = new Date().toISOString();
 const listed: Thread[] = [{ id: 'eldre', title: 'Eldre tråd', createdAt: now, updatedAt: now }];
 
@@ -61,16 +76,29 @@ function show(threads: Thread[] = listed) {
     <MemoryRouter>
       <LayoutProvider>
         <Probe />
+        <Nav />
         <ThreadsView siblingViews={['threads']} onShowView={() => {}} threads={threads} />
         <Scroll>
-          <ChatSlotView />
+          {/*
+            De to rutene skallet har for samtaler (App.tsx), fordi nøkkelen
+            `/` tegnes fra er en annen enn den en tråd tegnes fra. Uten
+            rutene ser `useParams` aldri en `threadId`, og en test som åpner
+            en tråd fra lista måler ingenting.
+          */}
+          <Routes>
+            <Route index element={<ChatSlotView />} />
+            <Route path="threads/:threadId" element={<ChatSlotView />} />
+          </Routes>
         </Scroll>
       </LayoutProvider>
     </MemoryRouter>,
   );
 }
 
-const field = () => screen.getByRole('textbox', { name: 'Spørsmål til Kunnskapsassistenten' });
+const field = () =>
+  screen.getByRole('textbox', {
+    name: 'Spørsmål til Kunnskapsassistenten',
+  }) as HTMLTextAreaElement;
 const newThread = () => screen.getByRole('link', { name: /Ny tråd/ });
 
 function ask(question: string) {
@@ -137,7 +165,7 @@ describe('«Ny tråd» after a conversation started on this page', () => {
     act(() => fireEvent.click(newThread()));
 
     expect(document.activeElement?.id).toBe(COMPOSER_ID);
-    expect(field().textContent).toBe('');
+    expect(field().value).toBe('');
   });
 
   it('closes the drawer it stood in, below the drawer breakpoint', () => {
@@ -167,6 +195,76 @@ describe('«Ny tråd» after a conversation started on this page', () => {
     act(() => fireEvent.click(newThread(), { ctrlKey: true }));
 
     expect(seen.selection?.documentType).toEqual(['Årsrapport']);
+  });
+
+  it('gives a new conversation on every click, not only the first', () => {
+    /*
+     * Two clicks in a row are two new conversations. The key `/` is drawn
+     * from has to CHANGE on each one — a boolean «someone asked for a new
+     * thread» would have made the second click a no-op, and the half-written
+     * question from between them would have stayed on screen.
+     */
+    show();
+
+    act(() => fireEvent.click(newThread()));
+    fireEvent.change(field(), { target: { value: 'Halvskrevet' } });
+    expect(field().value).toBe('Halvskrevet');
+
+    act(() => fireEvent.click(newThread()));
+
+    expect(field().value).toBe('');
+  });
+
+  it('keeps the conversation when the navigation was not «Ny tråd»', () => {
+    /*
+     * The bug this key was written around: `/` was keyed on `location.key`,
+     * and every navigation mints a new one — including the one that closes
+     * the hidden settings menu, which is `navigate({ hash: '' }, { replace:
+     * true })`. Writing half a question on `/`, opening `#innstillinger` and
+     * pressing «Lukk» left the field empty and the conversation remounted
+     * (KA CC on #208, with #203 in).
+     *
+     * Driven through the menu itself rather than through a bare `navigate`,
+     * because it is the closing that has to be safe, not a navigation in the
+     * abstract.
+     */
+    show();
+    fireEvent.change(field(), { target: { value: 'Halvskrevet' } });
+
+    act(() => void go.navigate?.({ hash: '#innstillinger' }));
+    expect(screen.getByText('Innstillinger')).toBeTruthy();
+
+    act(() => fireEvent.click(screen.getByRole('button', { name: 'Lukk' })));
+
+    expect(screen.queryByText('Innstillinger')).toBeNull();
+    expect(field().value).toBe('Halvskrevet');
+  });
+
+  it('uses the focus request once, so the next thread keeps the keyboard', () => {
+    /*
+     * `takeComposerFocusRequest` clears the flag as it answers, and nothing
+     * was red without that line: every conversation asks on mount, so a
+     * request left standing would be answered again by the NEXT one. Opening a
+     * thread from the list a moment after «Ny tråd» would then pull the
+     * keyboard out of the row the reader was standing in.
+     *
+     * The row is focused before it is clicked, because that is where a real
+     * click leaves the keyboard and `fireEvent.click` does not move it — the
+     * assertion would otherwise pass on the focus «Ny tråd» had already put
+     * in the field.
+     */
+    show();
+
+    act(() => fireEvent.click(newThread()));
+    expect(document.activeElement?.id).toBe(COMPOSER_ID);
+
+    const row = screen.getByRole('link', { name: /Eldre tråd/ });
+    act(() => row.focus());
+    act(() => fireEvent.click(row));
+
+    expect(go.sti).toBe('/threads/eldre');
+    expect(document.activeElement?.id).not.toBe(COMPOSER_ID);
+    expect(document.activeElement?.tagName).toBe('A');
   });
 
   /*
