@@ -340,6 +340,13 @@ export function Composer({
             that state, so the accessible name is the sentence on screen
             (WCAG 2.5.3). Where uploading does work, the paperclip is a
             paperclip again and the name is the label.
+
+            The sentence is in a span of its own so a narrow column can take
+            it off the screen without taking it out of the name — it is 37
+            characters and wraps onto four lines on a phone, which is 83 px of
+            the sticky bottom to say something once (KA CC on #195). Hidden
+            that way it is still the button's accessible name, and WCAG 2.5.3
+            asks nothing of a control with no visible label.
           */}
           <Button
             aria-disabled={unavailable ? 'true' : undefined}
@@ -357,7 +364,9 @@ export function Composer({
             variant="tertiary"
           >
             <PaperclipIcon aria-hidden />
-            {unavailable ? ATTACH_UNAVAILABLE_LABEL : null}
+            {unavailable ? (
+              <span className="ka-composer__attach-text">{ATTACH_UNAVAILABLE_LABEL}</span>
+            ) : null}
           </Button>
 
           {busy ? (

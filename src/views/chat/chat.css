@@ -20,8 +20,6 @@
 .ka-chat {
   --ka-chat-content-max-width: 728px; /* content in Figma 1530:44994 */
   --ka-composer-max-height: 274px; /* chatInput LongText, answer 54 */
-  /* Matches the padding the shell puts on the main slot, see global.css. */
-  --ka-main-padding-block: var(--ds-size-8);
 
   display: flex;
   flex-direction: column;
@@ -499,10 +497,29 @@
    * answer show through underneath. The pull-down and the matching padding
    * take the box all the way to the edge; the negative margin keeps it from
    * adding that height to the scroll length twice.
+   *
+   * `--ka-main-padding-block-end` is the shell's own, declared in global.css
+   * and set on `.main`, which is the scroller both of these are measured
+   * against. It used to be a copy of the value here, and a copy is a promise
+   * that two files will be edited together — which is exactly what did not
+   * happen when the padding moved off the scroller on 21.09 (#193).
    */
-  inset-block-end: calc(var(--ka-main-padding-block) * -1);
-  margin-block-end: calc(var(--ka-main-padding-block) * -1);
-  padding-block: var(--ds-size-3) var(--ka-main-padding-block);
+  inset-block-end: calc(var(--ka-main-padding-block-end) * -1);
+  margin-block-end: calc(var(--ka-main-padding-block-end) * -1);
+  /*
+   * At least 3rem of air under the box on a desktop window (Simen, 30.09),
+   * giving way to the shell's own end padding on a phone. `--ds-size-12` is
+   * 48 px at the `md` size mode, which is the 3rem exactly, and the `vw` in
+   * the middle reaches it at 1200.
+   *
+   * `max()` and not a plain clamp, because this padding has a second job: it
+   * is what fills the pull-down above. Anything less than the shell's end
+   * padding would leave a band of answer showing under the field. The floor
+   * carries `env(safe-area-inset-bottom)` with it, so a phone drawn edge to
+   * edge keeps the send button off the home indicator.
+   */
+  padding-block: var(--ds-size-3)
+    max(var(--ka-main-padding-block-end), clamp(var(--ds-size-6), 4vw, var(--ds-size-12)));
   /* Same ground as the shell, so the field looks fixed rather than boxed. */
   background: var(--ds-color-neutral-background-tinted);
 }
@@ -629,9 +646,10 @@
    * field still grows with the text from here up to
    * `--ka-composer-max-height`.
    */
-  /* stylelint-disable-next-line plugin/browser-compat -- samme `dvh` som på
-     `.ka-chat`. Faller den bort, står feltet på Designsystemets egen
-     minstehøyde, altså slik det sto før. */
+  /* stylelint-disable-next-line plugin/browser-compat -- `dvh` landed in
+     Safari 15.4 and Chrome 108. Where it is missing the declaration is
+     dropped and the field falls back on Designsystemet's own minimum, which
+     is exactly where it stood before. */
   min-block-size: clamp(var(--ds-size-12), 10dvh, var(--ds-size-22));
 }
 
@@ -735,15 +753,84 @@
 }
 
 /*
- * The sentence on the inert paperclip wraps rather than pushing the send
- * button off the row: «Snart kan du laste opp dokumenter her» is wider than
- * the 306 px the column has on a phone.
+ * The paperclip when it carries the sentence rather than standing alone.
+ *
+ * It wraps rather than pushing the send button off the row, and it starts
+ * where the glyph of an icon button starts. Designsystemet gives a button
+ * with text 16 px of inline padding and an icon-only one enough to centre the
+ * glyph in 48, which is 12 — so without this the icon sat 5 px to the right
+ * of the text above it, which is the one edge Simens issue 79 is about
+ * (measured by KA CC in bff mode: 565 against 560 at 1440).
+ *
+ * `:not([data-icon])` because the icon-only button must keep its own padding:
+ * it is 48 px wide with the glyph centred, and a start padding of our own
+ * would push that glyph off centre.
  */
 .ka-composer__attach {
   min-inline-size: 0;
   flex-shrink: 1;
   text-align: start;
   white-space: normal;
+}
+
+.ka-composer__attach:not([data-icon]) {
+  /*
+   * Less the border, which is transparent on a tertiary button but still one
+   * pixel of box: padding is measured from inside it, and the inset is
+   * measured from the button's outer edge. Without the subtraction the glyph
+   * landed on 561 against the text's 560.
+   */
+  padding-inline-start: calc(var(--ka-composer-glyph-inset) - var(--ds-border-width-default));
+}
+
+/*
+ * A control that is coming, in a colour a reader can actually read.
+ *
+ * Designsystemet draws `aria-disabled` with `opacity: 0.3`, which takes the
+ * subtle text colour to about 1.6 : 1 against the white box. WCAG 1.4.3
+ * exempts an inactive control, so it is not a failure — but this sentence is
+ * the only place anyone is told that uploading is on its way, and a sentence
+ * at 1.6 : 1 is one nobody reads. The subtle text token says the same thing
+ * («this is not the thing to press») at 7 : 1.
+ */
+.ka-composer__attach[aria-disabled='true'] {
+  opacity: 1;
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+/*
+ * Narrow enough that the sentence would wrap: take it off the screen and
+ * leave the paperclip, which still carries it as its accessible name.
+ *
+ * Measured at the `md` size mode: the sentence sets 334 px wide, and the row
+ * needs 472 px of box to hold it beside the send button. Under that it wrapped
+ * onto three or four lines and the box grew from 162 px to 226 at 440 and 245
+ * at 390 — 83 px of the sticky bottom, on the screens with the least of it
+ * (KA CC on #195).
+ *
+ * A container query and not a media query: the box is as wide as the answer
+ * column, and the column is as wide as the panels leave it. The same window
+ * gives the row 690 px with both panels shut and 405 px with them open.
+ */
+.ka-composer {
+  container: ka-composer / inline-size;
+}
+
+@container ka-composer (max-width: 480px) {
+  /*
+   * Designsystemet's own `.ds-sr-only` in one place: off the screen, no line
+   * box, still in the accessibility tree. `position: absolute` is safe here
+   * because the box around it is a container, and a container is a containing
+   * block — see the rule in CONTRIBUTING about positioned scroll regions.
+   */
+  .ka-composer__attach-text {
+    position: absolute;
+    clip-path: inset(50%);
+    overflow: hidden;
+    inline-size: 1px;
+    block-size: 1px;
+    white-space: nowrap;
+  }
 }
 
 /*

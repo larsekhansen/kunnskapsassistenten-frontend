@@ -92,6 +92,24 @@ describe('vedlegg der tjenesten ikke har opplasting', () => {
     expect(paperclip.textContent).toBe(ATTACH_UNAVAILABLE_LABEL);
   });
 
+  it('holder setningen i en egen span, så en smal kolonne kan ta den av skjermen', () => {
+    /*
+     * Setningen er 334 px bred og brøt over tre–fire linjer på telefon, altså
+     * 83 px av den klebrige bunnen på de skjermene som har minst av den (KA CC
+     * på #195). Under 480 px boks tar CSS-en den av skjermen — og da må den
+     * ligge i noe som kan skjules, mens navnet på knappen blir stående.
+     */
+    render(
+      <Shell>
+        <ChatView client={idleClient} />
+      </Shell>,
+    );
+
+    const paperclip = screen.getByRole('button', { name: ATTACH_UNAVAILABLE_LABEL });
+    const text = paperclip.querySelector('.ka-composer__attach-text');
+    expect(text?.textContent).toBe(ATTACH_UNAVAILABLE_LABEL);
+  });
+
   it('åpner ingen filvelger, og lager ingen chip', () => {
     upload.calls = 0;
     render(
