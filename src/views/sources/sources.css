@@ -175,33 +175,32 @@
  * 1280 × 720, 768 × 1024, 390 × 844, 440 × 956 and 1512 × 982, the 14" Mac's
  * default. Only 1440 × 900 had no box, because its view is 295 px and the
  * query below already took it off. This is that layout at every width, and
- * the one `chunk` draws in Figma.
+ * Figma's `chunk` has no box inside the excerpt either.
  *
- * A row that wraps: the number and the tag first, then the toggle beside
- * them if it fits and under them if it does not — Figma's one line, which
- * `Details.Summary` as a full-width row could not draw (answer 38). Measured
- * in the mock: the line needs 242 px for «Relevant», 279 for «Minst
- * relevant» and up to 291 for «Mest relevant». The block has 277 at 1440,
- * 299 at 390 and 341 in the drawer, so at 1440 only «Relevant» closes up,
- * and the other two put the toggle on the line below, at the same edge. An
- * excerpt the answer did not cite has «Ikke vist til i svaret» on the line
- * under the number, and its toggle comes after that.
- *
- * Open, the toggle takes a full row whatever the width, because the quote
- * below it is what the width is for.
+ * The number and the tag on the first row, the toggle on its own row under
+ * them, then the preview or the quote: the same rows open and closed, so the
+ * toggle stays where the pointer left it and the text it opens starts where
+ * the preview started. Figma draws the toggle on the tag's line, and closed it
+ * fitted there in the wider panels, but open it could not stay: `Details`
+ * puts the summary and the content in one element, and the content needs the
+ * whole width. «Lukk» then stood a row under where «Åpne» had been, 48 px at
+ * 768 and 440, and a second click on the same spot missed (KA CC on #199).
+ * The clean way to keep the summary on the tag's line while the content spans
+ * the row is to place `::details-content`, which Safari 16, iOS 16, Firefox
+ * 140 and Chrome 109 do not have (stylelint, against `.browserslistrc`). The row of its own is what
+ * 1440 already had for «Mest relevant» and «Minst relevant». Answer 38 is the
+ * reason the toggle is `Details` at all.
  */
 .source-excerpt {
   display: flex;
-  flex-flow: row wrap;
-  align-items: center;
+  flex-direction: column;
   /*
-   * 20 px between the rows, which is what they had, and 8 px between the
-   * items on one. The gap is all of it: Card gives every child after the
-   * first 12 px above it, and in a row that is 12 px under the head for the
-   * toggle and none for the head, so the two could not be centred on one
-   * line. Measured 2026-09-30: «Åpne» sat 6 px under «Utdrag 2».
+   * 20 px between the rows, which is what they had. The gap is all of it:
+   * Card gives every child after the first 12 px above it, which is what made
+   * 8 px of gap into 20 before, and a margin on some rows and not on others is
+   * two rules for one rhythm.
    */
-  gap: var(--ds-size-5) var(--ds-size-2);
+  gap: var(--ds-size-5);
   background: var(--ds-color-neutral-background-tinted);
 }
 
@@ -212,16 +211,11 @@
 
 .source-excerpt__head {
   display: flex;
-  /* The tag follows the number instead of sitting at the far edge; the
-     toggle is what holds that edge. */
-  flex: 0 1 auto;
   align-items: center;
   gap: var(--ds-size-2);
 }
 
 .source-excerpt__details {
-  flex: 0 0 auto;
-  margin-inline-start: auto;
   /* 40 px rather than 56: a summary that is mostly empty space is a row
      this panel cannot afford. Still well past the 24 px WCAG 2.5.8 asks. */
   --dsc-details-size: var(--ds-size-10);
@@ -239,12 +233,7 @@
   border-block-width: 0;
 }
 
-.source-excerpt__details[open] {
-  flex-basis: 100%;
-}
-
-/* The toggle keeps the same edge open and closed, so pressing it twice does
-   not move it out from under the pointer. */
+/* At the block's end edge, open and closed. */
 .source-excerpt__details > summary {
   justify-content: end;
 }
@@ -260,18 +249,14 @@
   margin-inline: 0;
 }
 
+/* The same 20 px the closed preview has under the toggle, so the quote's
+   first line is where the preview's was. */
 .source-excerpt__details > :not(summary):not(u-summary):nth-child(2) {
-  margin-block-start: var(--ds-size-2);
+  margin-block-start: var(--ds-size-5);
 }
 
 .source-excerpt__details > :not(summary):not(u-summary):last-child {
   margin-block-end: var(--ds-size-2);
-}
-
-/* Both sit under the head line, across the whole block. */
-.source-excerpt__preview,
-.source-excerpt__uncited {
-  flex-basis: 100%;
 }
 
 /* The quote's own section heading and page, the first line of the body in
