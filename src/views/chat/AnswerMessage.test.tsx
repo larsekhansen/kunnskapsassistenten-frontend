@@ -37,11 +37,9 @@ const answer: Message = {
 function show(message: Message = answer, foundNothing?: boolean) {
   return render(
     <MessageList
-      canScrollToBottom={false}
       foundNothing={() => foundNothing ?? false}
       messages={[message]}
       onRegenerate={() => {}}
-      onScrollToBottom={() => {}}
       onSelectSource={() => {}}
     />,
   );

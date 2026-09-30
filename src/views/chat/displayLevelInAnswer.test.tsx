@@ -60,10 +60,8 @@ function showAnswer() {
     <ol>
       <AnswerMessage
         {...utenSok}
-        canScrollToBottom={false}
         message={answer}
         onRegenerate={() => {}}
-        onScrollToBottom={() => {}}
         onSelectSource={() => {}}
       />
     </ol>,
@@ -176,7 +174,6 @@ describe('visningsnivået i svaret', () => {
     render(
       <ol>
         <MessageList
-          canScrollToBottom={false}
           messages={[
             {
               id: 'q1',
@@ -197,7 +194,6 @@ describe('visningsnivået i svaret', () => {
             },
           ]}
           onRegenerate={() => {}}
-          onScrollToBottom={() => {}}
           onSelectSource={() => {}}
         />
       </ol>,

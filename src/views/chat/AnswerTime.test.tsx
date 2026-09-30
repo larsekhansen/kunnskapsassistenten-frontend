@@ -87,10 +87,8 @@ describe('AnswerTime', () => {
       <ol>
         <AnswerMessage
           {...utenSok}
-          canScrollToBottom={false}
           message={answer}
           onRegenerate={() => {}}
-          onScrollToBottom={() => {}}
           onSelectSource={() => {}}
         />
       </ol>,
@@ -119,10 +117,8 @@ describe('AnswerTime', () => {
       <ol>
         <AnswerMessage
           {...utenSok}
-          canScrollToBottom={true}
           message={answer}
           onRegenerate={() => {}}
-          onScrollToBottom={() => {}}
           onSelectSource={() => {}}
         />
       </ol>,
@@ -153,10 +149,8 @@ describe('AnswerTime', () => {
       <ol>
         <AnswerMessage
           {...utenSok}
-          canScrollToBottom={false}
           message={answer}
           onRegenerate={() => {}}
-          onScrollToBottom={() => {}}
           onSelectSource={() => {}}
         />
       </ol>,
@@ -194,11 +188,9 @@ describe('AnswerTime', () => {
           ) : (
             <AnswerMessage
               {...utenSok}
-              canScrollToBottom={false}
               key={message.id}
               message={message}
               onRegenerate={() => {}}
-              onScrollToBottom={() => {}}
               onSelectSource={() => {}}
             />
           ),
@@ -229,13 +221,7 @@ describe('AnswerTime', () => {
     };
 
     const { container } = render(
-      <MessageList
-        canScrollToBottom={false}
-        messages={[spurte]}
-        onRegenerate={() => {}}
-        onScrollToBottom={() => {}}
-        onSelectSource={() => {}}
-      />,
+      <MessageList messages={[spurte]} onRegenerate={() => {}} onSelectSource={() => {}} />,
     );
 
     expect(container.querySelectorAll('time')).toHaveLength(0);
@@ -280,13 +266,7 @@ describe('AnswerTime', () => {
     ];
 
     const { container } = render(
-      <MessageList
-        canScrollToBottom={false}
-        messages={messages}
-        onRegenerate={() => {}}
-        onScrollToBottom={() => {}}
-        onSelectSource={() => {}}
-      />,
+      <MessageList messages={messages} onRegenerate={() => {}} onSelectSource={() => {}} />,
     );
 
     expect([...container.querySelectorAll('time')].map((t) => t.getAttribute('datetime'))).toEqual([
@@ -312,10 +292,8 @@ describe('AnswerTime', () => {
       <ol>
         <AnswerMessage
           {...utenSok}
-          canScrollToBottom={false}
           message={underveis}
           onRegenerate={() => {}}
-          onScrollToBottom={() => {}}
           onSelectSource={() => {}}
         />
       </ol>,
@@ -339,10 +317,8 @@ describe('AnswerTime', () => {
       <ol>
         <AnswerMessage
           {...utenSok}
-          canScrollToBottom={false}
           message={tomt}
           onRegenerate={() => {}}
-          onScrollToBottom={() => {}}
           onSelectSource={() => {}}
         />
       </ol>,

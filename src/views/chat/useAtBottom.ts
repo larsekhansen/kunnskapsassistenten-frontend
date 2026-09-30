@@ -1,14 +1,19 @@
 import { useEffect, useState, type RefObject } from 'react';
 
-/** How close to the end still counts as «at the bottom», in CSS pixels. */
-const SLACK = 24;
+/**
+ * How close to the end still counts as «at the bottom», in CSS pixels. The
+ * same for the button and for following an answer (useFollowAnswer), so the
+ * button is never on screen while the column is following.
+ */
+export const AT_BOTTOM_SLACK = 24;
 
 /**
  * Is the given scroll container at its bottom?
  *
  * «Bla til nederst» (answer 17) only means something when there is something
  * below the fold, so the button is hidden when there is not: a control that
- * does nothing is worse than no control.
+ * does nothing is worse than no control. One button for the whole column,
+ * over the compose field (Simens runde 3, ekstra 5).
  *
  * `content` is watched rather than the container, because the container keeps
  * its size while an answer grows inside it.
@@ -26,7 +31,7 @@ export function useAtBottom(
 
     const update = () => {
       const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
-      setAtBottom(distance <= SLACK);
+      setAtBottom(distance <= AT_BOTTOM_SLACK);
     };
 
     update();

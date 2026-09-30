@@ -24,8 +24,6 @@ type AnswerMessageProps = {
   message: Message;
   /** A `[n]` marker was activated, with the answer it sits in. */
   onSelectSource: (citationNumber: number, messageId: string) => void;
-  onScrollToBottom: () => void;
-  canScrollToBottom: boolean;
   /** Ask the stopped question again, in place of the answer that was cut off. */
   onRegenerate: () => void;
   /**
@@ -128,8 +126,6 @@ export function AnswerSkeleton() {
 export function AnswerMessage({
   message,
   onSelectSource,
-  onScrollToBottom,
-  canScrollToBottom,
   onRegenerate,
   searchOpen,
   searchQuery,
@@ -366,10 +362,8 @@ export function AnswerMessage({
           {complete && !empty ? (
             <Card.Block>
               <AnswerActions
-                canScrollToBottom={canScrollToBottom}
                 content={message.content}
                 createdAt={message.createdAt}
-                onScrollToBottom={onScrollToBottom}
                 onToggleSearch={() => {
                   if (searching) {
                     closeSearch();
