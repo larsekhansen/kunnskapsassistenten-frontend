@@ -207,6 +207,17 @@ test.describe('hovedkolonnen', () => {
 
         await expect(page.locator('.ka-answer-card[data-e2e-mark="before"]')).toHaveCount(1);
         await expect(field).toHaveValue('Et halvskrevet oppfølgingsspørsmål');
+        // And the turn once, not twice: a slot that stays mounted but reads
+        // the thread back on top of what it has shows the question and the
+        // answer twice, and the marked card is then still there. Measured on
+        // #218. Held for a moment rather than read once, because the read-back
+        // is asynchronous: a count taken at once is 1 before the second copy
+        // lands, which is how the skip-link case passed the first version.
+        for (let look = 0; look < 10; look += 1) {
+          expect(await page.locator('.ka-message--user').count(), 'spørsmål').toBe(1);
+          expect(await page.locator('.ka-answer-card').count(), 'svarkort').toBe(1);
+          await page.waitForTimeout(150);
+        }
       },
     );
   }
