@@ -44,9 +44,9 @@ type ProcedurePanelProps = {
  * «Fremgangsmåte»: what the assistant set out to do, in its own words.
  *
  * The standard half of the display level (Simens issue 88), drawn after his
- * sketch in issue 113: one panel over the answer card, open, with the steps
- * under «Tenker» and the search words under «Nøkkelord som ble brukt i
- * søket».
+ * sketch in issue 113: one panel over the answer card with the steps under
+ * «Tenker …», which becomes «Tenkte» when the answer starts, and the search
+ * words under «Nøkkelord som ble brukt i søket».
  *
  * It draws the same steps the detailed panel draws, and nothing else from
  * them: no per-step detail, no per-step search strings, no times. What a step

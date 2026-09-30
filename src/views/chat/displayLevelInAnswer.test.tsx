@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useRef, type ReactNode } from 'react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ChatClient } from '../../api';
 import { AnswerSourcesContext, inertAnswerSources } from '../../layout/answerSourcesContext';
@@ -79,6 +79,12 @@ const idleClient: ChatClient = {
   listFacets: async () => [],
 };
 
+/** Skriver adressen ut, så en test kan lese hva lukkingen gjorde med den. */
+function Address() {
+  const { pathname, hash } = useLocation();
+  return <p data-testid="adresse">{pathname + hash}</p>;
+}
+
 function Shell({ children, at }: { children: ReactNode; at: string }) {
   const scrollRef = useRef<HTMLElement | null>(null);
   return (
@@ -89,6 +95,7 @@ function Shell({ children, at }: { children: ReactNode; at: string }) {
             <ThreadContext value={{ startThread: (question) => threadFromQuestion(question) }}>
               <FilterContext value={{ selection: emptyFilterSelection, setSelection: () => {} }}>
                 {children}
+                <Address />
               </FilterContext>
             </ThreadContext>
           </AnswerSourcesContext>
@@ -198,5 +205,25 @@ describe('den skjulte innstillingsmenyen', () => {
 
     expect(getDisplayLevel()).toBe('detaljert');
     expect((detailed as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('tar bare hashen ut når den lukkes, og lar tråden stå', () => {
+    /*
+     * Lukkingen navigerer, og en navigering som glemte stien ville sendt en
+     * leser ut av tråden sin for å lukke en meny. `navigate({ hash: '' })`
+     * løses mot der man står, så stien blir stående.
+     */
+    render(
+      <Shell at="/threads/abc123#innstillinger">
+        <ChatView client={idleClient} />
+      </Shell>,
+    );
+
+    expect(screen.getByTestId('adresse').textContent).toBe('/threads/abc123#innstillinger');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lukk' }));
+
+    expect(screen.getByTestId('adresse').textContent).toBe('/threads/abc123');
+    expect(screen.queryByText('Innstillinger')).toBeNull();
   });
 });
