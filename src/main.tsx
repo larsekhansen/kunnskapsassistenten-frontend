@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { App } from './App';
+import { AppErrorBoundary } from './layout/AppErrorBoundary';
 import { initColorScheme } from './layout/colorScheme';
 import './styles/global.css';
 
@@ -15,10 +16,15 @@ if (import.meta.env.PROD) {
 // this installs the console API rather than preventing a flash.
 initColorScheme();
 
+// The boundary is outermost, outside the router, so the page it draws on a
+// crash depends on nothing that may have been what failed. See
+// src/layout/AppErrorBoundary.tsx.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <AppErrorBoundary>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </AppErrorBoundary>
   </StrictMode>,
 );
