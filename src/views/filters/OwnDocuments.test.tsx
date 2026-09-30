@@ -127,13 +127,15 @@ describe('Dine dokumenter', () => {
 
     // Seksjonen skjules ikke — leseren skal vite at dette finnes.
     expect(screen.getByRole('heading', { name: 'Dine dokumenter' })).toBeTruthy();
-    expect(
-      screen.getByText('Opplasting er ikke tilgjengelig i denne tjenesten ennå.'),
-    ).toBeTruthy();
+    // Simens ordlyd, og samme setning som binderset i skrivefeltet (#3).
+    expect(screen.getByText('Snart kan du laste opp dokumenter her')).toBeTruthy();
+    expect(screen.getByText('Kommer snart')).toBeTruthy();
 
-    // Men ingen kontroll som ikke kan virke, og ingen «Ny» over den.
+    // Men ingen kontroll som ikke kan virke, ingen etikett uten noe å navngi,
+    // og ingen «Ny» over den.
     expect(screen.queryByText('Velg filer')).toBeNull();
     expect(document.querySelector('input[type="file"]')).toBeNull();
+    expect(screen.queryByText('Last opp egne dokumenter')).toBeNull();
     expect(screen.queryByText('Ny')).toBeNull();
   });
   it('sier fra i en live-region når en fil kommer inn, blir klar og feiler', () => {
