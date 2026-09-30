@@ -31,8 +31,9 @@ bestilt som Simens issue 85.
 
 Svaret har to visningsnivåer, `standard` og `detaljert`, lagret per nettleser
 under `ka.display-level`. Standard tegner ett panel over svaret,
-«Fremgangsmåte», med stegenes egne setninger og én linje om hva svaret bygger
-på; detaljert tegner nøyaktig det som ble vist før. Nivået velges i en modal
+«Fremgangsmåte», etter Simens skisse i issue 113: stegenes egne setninger under
+«Tenkte», en linje, og søkeordene under «Nøkkelord som ble brukt i søket».
+Detaljert tegner nøyaktig det som ble vist før. Nivået velges i en modal
 Designsystemet-dialog som bare finnes i siden mens adressen slutter med
 `#innstillinger`.
 
@@ -43,6 +44,14 @@ for tre paneler er tre spørsmål om det samme.
 Grunnen til at det er en meny og ikke en konsollkommando, er at menyen skal
 kunne bli synlig senere uten å bygges om. Mørk modus skal inn i den samme
 menyen når #85 kommer, og da er det plasseringen som endres, ikke innholdet.
+
+Grunnen til at panelet åpner seg selv over 774 px og ikke under, er målt.
+Åpent med fire steg og fem nøkkelord er det 450 px av et vindu på 900 ved 1440,
+487 av 1024 ved 768, 783 av 956 ved 440 og 965 av 844 ved 390. 774 er der
+kolonnen slutter å være en lesebredde mellom to skinner og blir hele vinduet
+(67 + 640 + 67, samme sum som `drawerMaxViewport`). Over den står svarets
+første overskrift på skjermen under panelet; under den ER fremgangsmåten
+skjermen. Simen tegnet det åpent, på desktop, og der er det åpent.
 
 Grunnen til hash og ikke spørring:
 
@@ -55,14 +64,17 @@ Grunnen til hash og ikke spørring:
 
 ## Konsekvenser
 
-- **Standard sier mindre enn før.** Søkestrengene, treffene og tidene er borte
-  for den som ikke har valgt detaljert. Det ene tallet som blir igjen, er hvor
-  mange dokumenter svaret bygger på, fordi de samme dokumentene står i
-  kildepanelet. En «bit» er ikke noe en leser har sett.
-- **Det som gjorde svaret etterprøvbart, flyttet seg.** Nøkkelordene i
-  «Fremgangsmåte» var argumentet for at panelet sto åpent (`RetrievalPanel`).
-  Nå er kildepanelet det som bærer etterprøvbarheten på standard, og
-  søkeordene er ett valg unna.
+- **Standard sier mindre enn før.** Tidene, det hvert steg målte,
+  søkestrengene per steg og «10 treff i 3 dokumenter» er borte for den som ikke
+  har valgt detaljert. Treffene teller biter, og en «bit» er ikke noe en leser
+  har sett.
+- **Det som gjorde svaret etterprøvbart, ble stående.** Nøkkelordene var
+  argumentet for at «Fremgangsmåte» sto åpent inne i kortet (`RetrievalPanel`,
+  svar 11), og de følger med opp. Derfor åpner panelet seg selv der det er
+  plass: det som gjør et svar etterprøvbart skal ikke ligge bak et klikk.
+- **På telefon ligger det likevel bak ett klikk.** Det er prisen for at svaret
+  skal være det første på skjermen der skjermen er liten. Navnet står, og ett
+  trykk åpner det.
 - **E2E-suiten må si hvilket nivå den måler.** Fjorten påstander i
   `tests/e2e/` leser «Tenkte i N sekunder», «Fremgangsmåte» med treff, eller
   `.ka-thinking__*`. De måler det detaljerte nivået og må be om det.
@@ -82,3 +94,6 @@ Grunnen til hash og ikke spørring:
 - **Det kommer et tredje nivå**, for eksempel et som viser tenkestegene men
   ikke tidene. Radioknappene tar det uten å endre form; det er derfor de er
   radioknapper og ikke en bryter.
+- **Simen vil ha panelet åpent på telefon også.** Da er `ROOM_TO_STAND_OPEN` i
+  `ProcedurePanel.tsx` én linje å fjerne, og målingene over er det som må veies
+  mot ønsket.
