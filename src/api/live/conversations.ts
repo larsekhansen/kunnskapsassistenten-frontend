@@ -1,5 +1,6 @@
 import type { Citation, Message, SourceDocument, Thread, ThreadDetail } from '../../model';
 import { corpusKeyFromTags } from '../corpus';
+import { documentUrl } from '../documentUrls';
 
 /**
  * The conversation store behind `/api/conversations`.
@@ -137,11 +138,14 @@ export function threadFromConversation(conversation: ApiConversation): Thread {
  * panel — «nothing is known» against «nothing was found» — and this is the
  * first.
  *
- * No `kudosUrl` on the excerpts and no `url` on the documents: the stored
- * chunk has neither. The panel already draws an excerpt with nowhere to go.
+ * The stored chunk has no address, only the document's number, so the link
+ * is built from the corpus's template the way the live stream builds it
+ * (Simens issue 92, documentUrls.ts). A corpus with no template gets no
+ * link, and the panel draws that honestly.
  */
 export function sourcesFromChunks(
   chunks: ApiChunk[] | null | undefined,
+  corpusKey?: string,
 ): SourceDocument[] | undefined {
   if (!chunks || chunks.length === 0) return undefined;
 
@@ -149,6 +153,7 @@ export function sourcesFromChunks(
 
   chunks.forEach((chunk, index) => {
     const documentId = String(chunk.docNum ?? chunk.chunkId ?? `doc-${index}`);
+    const url = documentUrl(corpusKey, chunk.docNum);
     const excerpt = {
       id: chunk.chunkId ?? `${documentId}-${index}`,
       text: chunk.contentMarkdown ?? '',
@@ -156,6 +161,7 @@ export function sourcesFromChunks(
       // the answer is 1-indexed into it. Same convention as the live stream.
       relevance: 'medium' as const,
       citationNumber: index + 1,
+      ...(url ? { kudosUrl: url } : {}),
     };
 
     const existing = documents.get(documentId);
@@ -167,6 +173,7 @@ export function sourcesFromChunks(
     documents.set(documentId, {
       id: documentId,
       title: chunk.docTitle?.trim() || 'Uten tittel',
+      ...(url ? { url } : {}),
       excerpts: [excerpt],
     });
   });
@@ -249,7 +256,7 @@ export function messagesFromApi(
     .filter((message) => message.role === 'user' || message.role === 'assistant')
     .filter((message) => (message.text ?? '').trim() !== '')
     .map((message) => {
-      const sources = sourcesFromChunks(message.chunks);
+      const sources = sourcesFromChunks(message.chunks, corpusKey);
       const role = message.role === 'user' ? ('user' as const) : ('assistant' as const);
       // A turn the backend recorded as failed, drawn as failed rather than
       // answered. The text goes, because it is English, technical, and was

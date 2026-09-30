@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   agentIdFromToolName,
   citationCountIn,
@@ -283,6 +283,20 @@ describe('sourcesFromChunks', () => {
     // Ingen adresse å sende leseren til. Panelet tegner utdraget uten lenke.
     expect(documents?.[0]?.url).toBeUndefined();
     expect(documents?.[0]?.excerpts[0]?.kudosUrl).toBeUndefined();
+  });
+
+  it('bygger lenka fra docNum for trådens korpus (Simens issue 92)', () => {
+    // En lagret bit har heller ingen adresse, bare nummeret. Malen for
+    // datasettet tråden ble spurt mot, gir lenka, som i strømmen.
+    vi.stubEnv('VITE_KA_DOCUMENT_URLS', 'kudos-full=https://kudos.dfo.no/documents/{doc_num}');
+    const documents = sourcesFromChunks(
+      [{ chunkId: 'c1', docNum: 372017, docTitle: 'Årsrapport', contentMarkdown: 'Utdrag' }],
+      'kudos-full',
+    );
+
+    expect(documents?.[0]?.url).toBe('https://kudos.dfo.no/documents/372017');
+    expect(documents?.[0]?.excerpts[0]?.kudosUrl).toBe('https://kudos.dfo.no/documents/372017');
+    vi.unstubAllEnvs();
   });
 });
 

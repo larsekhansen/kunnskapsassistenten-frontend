@@ -34,6 +34,7 @@ export type ClientConfig = {
   VITE_KA_DATASET_CONFIG_KEY?: string;
   VITE_KA_DATASETS?: string;
   VITE_KA_FILTER_FIELDS?: string;
+  VITE_KA_DOCUMENT_URLS?: string;
   VITE_MOCK_SPEED?: string;
 };
 
@@ -107,6 +108,7 @@ export function readConfig(
       VITE_KA_DATASET_CONFIG_KEY: value(env.VITE_KA_DATASET_CONFIG_KEY),
       VITE_KA_DATASETS: value(env.VITE_KA_DATASETS),
       VITE_KA_FILTER_FIELDS: value(env.VITE_KA_FILTER_FIELDS),
+      VITE_KA_DOCUMENT_URLS: value(env.VITE_KA_DOCUMENT_URLS),
       VITE_MOCK_SPEED: value(env.VITE_MOCK_SPEED),
     },
     facets: facetConfigFrom(env),
