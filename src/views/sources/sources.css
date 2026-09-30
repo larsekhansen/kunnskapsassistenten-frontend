@@ -170,18 +170,22 @@
  * 20 px indent for what it holds. That box held only the summary while the
  * excerpt was closed, and the preview stood under it, outside: «1. Contents»
  * on the block's own ground, under a white box saying «Åpne». Opened, the
- * same line was inside the box, 20 px further in. Measured in a 432 px panel
- * on 2026-09-30, which is every panel of 392 px and up: 1512 wide, the 14"
- * Mac's default, is enough. A narrower panel already had no box, so this is
- * the layout it had, now at every width, and the one `chunk` draws in Figma.
+ * same line was inside the box, 20 px further in. Measured on 2026-09-30 in
+ * every view of 320 px and up, which was five of the six surfaces tried:
+ * 1280 × 720, 768 × 1024, 390 × 844, 440 × 956 and 1512 × 982, the 14" Mac's
+ * default. Only 1440 × 900 had no box, because its view is 295 px and the
+ * query below already took it off. This is that layout at every width, and
+ * the one `chunk` draws in Figma.
  *
  * A row that wraps: the number and the tag first, then the toggle beside
  * them if it fits and under them if it does not — Figma's one line, which
- * `Details.Summary` as a full-width row could not draw (answer 38). Measured,
- * not guessed: the line needs 258 px for «Relevant», 291 for «Mest relevant»
- * and 295 for «Minst relevant». A 336 px panel gives the block 246, so there
- * the toggle takes the line below at the same edge, and a wider panel closes
- * the three up onto one line by itself.
+ * `Details.Summary` as a full-width row could not draw (answer 38). Measured
+ * in the mock: the line needs 242 px for «Relevant», 279 for «Minst
+ * relevant» and up to 291 for «Mest relevant». The block has 277 at 1440,
+ * 299 at 390 and 341 in the drawer, so at 1440 only «Relevant» closes up,
+ * and the other two put the toggle on the line below, at the same edge. An
+ * excerpt the answer did not cite has «Ikke vist til i svaret» on the line
+ * under the number, and its toggle comes after that.
  *
  * Open, the toggle takes a full row whatever the width, because the quote
  * below it is what the width is for.
@@ -190,8 +194,20 @@
   display: flex;
   flex-flow: row wrap;
   align-items: center;
-  gap: var(--ds-size-2);
+  /*
+   * 20 px between the rows, which is what they had, and 8 px between the
+   * items on one. The gap is all of it: Card gives every child after the
+   * first 12 px above it, and in a row that is 12 px under the head for the
+   * toggle and none for the head, so the two could not be centred on one
+   * line. Measured 2026-09-30: «Åpne» sat 6 px under «Utdrag 2».
+   */
+  gap: var(--ds-size-5) var(--ds-size-2);
   background: var(--ds-color-neutral-background-tinted);
+}
+
+/* Designsystemet writes that margin in `:where()`, so a class wins. */
+.source-excerpt > * {
+  margin-block: 0;
 }
 
 .source-excerpt__head {
