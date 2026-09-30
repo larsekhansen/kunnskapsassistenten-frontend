@@ -546,9 +546,9 @@ export function FiltersView({
           This reverses brukerblikk runde 2, funn 4, and on purpose: that put
           the list above the facets so its first row was visible in a 900 px
           window with nothing scrolled. Simen's sketch (30.09) puts the
-          filters first, and the list now starts below the fold at every
-          height we measure (723 px down the panel at 1440 × 900, in mock
-          with the corpus chooser) until the reader scrolls.
+          filters first, and after an answer the first row now starts at
+          y = 919 in a 1440 × 900 window (mock, with the corpus chooser), so
+          the reader scrolls to it.
 
           Answer 2 still holds: the facets keep their full size, since this
           panel is the only place filtering lives.

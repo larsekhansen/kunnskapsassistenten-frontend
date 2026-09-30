@@ -191,7 +191,7 @@ test.describe('et søk når lista blir tom', () => {
       await deleteThread(page, last);
 
       // The empty state stands alone: no search field over an empty list.
-      await expect(panel.getByText('Ingen tråder ennå')).toBeVisible();
+      await expect(panel.getByRole('link', { name: /^Start din første tråd/ })).toBeVisible();
       await expect(search).toHaveCount(0);
 
       await panel.getByRole('link', { name: /^Start din første tråd/ }).click();
