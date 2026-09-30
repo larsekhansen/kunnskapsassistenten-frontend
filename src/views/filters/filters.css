@@ -430,8 +430,9 @@
 }
 
 /*
- * Across the whole box, as drawn: Designsystemet sizes a tag to its words
- * (`max-content`), and the flex column would otherwise have stretched it.
+ * Across the whole box, as drawn. Designsystemet gives a tag `width:
+ * max-content`, and a width is what keeps a flex item from being stretched;
+ * `auto` hands it back to the column, which stretches it to the box.
  */
 .own-documents__soon {
   inline-size: auto;

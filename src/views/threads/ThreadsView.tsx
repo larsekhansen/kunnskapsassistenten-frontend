@@ -133,6 +133,14 @@ export function ThreadsView({
    * thread works whether or not the list does.
    */
   const empty = threads?.length === 0;
+  /*
+   * The search goes with the field. A list that empties while a query stands
+   * — the last thread deleted mid-search — hides the field, and the query
+   * would otherwise come back invisibly with the next thread and filter it
+   * away. Adjusted during render, as React has it for state that follows a
+   * change in what was handed in.
+   */
+  if (empty && query !== '') setQuery('');
   const trimmed = query.trim().toLocaleLowerCase('nb-NO');
   const matches = useMemo(
     () =>
@@ -190,8 +198,8 @@ export function ThreadsView({
    *
    * Focus goes to the next row's menu — where a reader clearing out old
    * threads is heading — then the one before, and to «Start din første tråd»
-   * in the empty state when the list is empty. The row is put back by id, and the list sorts itself by
-   * `updatedAt`, so it lands where it was.
+   * when the list is empty. The row is put back by id, and the list sorts
+   * itself by `updatedAt`, so it lands where it was.
    *
    * The thread on screen is left for a new one, since there is nothing to
    * show for it any more. If the delete then fails, the row is back in the
@@ -283,20 +291,27 @@ export function ThreadsView({
         <search> is the landmark; the <form> inside it is what makes
         Search.Clear work, since that button is type="reset". Submitting
         does nothing because the list filters as the user types.
+
+        Not drawn over a list known to be empty (KA CC on #197, the same
+        thought as Simen's issue 82): there is nothing to search, and the
+        empty state should stand alone. While the list loads, or could not be
+        fetched, it stays, as «Ny tråd» does.
       */}
-      <search className="threads-view__search">
-        <form onSubmit={(event) => event.preventDefault()} onReset={() => setQuery('')}>
-          <Search>
-            <Search.Input
-              aria-label="Søk i tråder"
-              aria-describedby={searchStatusId}
-              placeholder="Søk i tråder"
-              onInput={(event) => setQuery(event.currentTarget.value)}
-            />
-            <Search.Clear />
-          </Search>
-        </form>
-      </search>
+      {!empty && (
+        <search className="threads-view__search">
+          <form onSubmit={(event) => event.preventDefault()} onReset={() => setQuery('')}>
+            <Search>
+              <Search.Input
+                aria-label="Søk i tråder"
+                aria-describedby={searchStatusId}
+                placeholder="Søk i tråder"
+                onInput={(event) => setQuery(event.currentTarget.value)}
+              />
+              <Search.Clear />
+            </Search>
+          </form>
+        </search>
+      )}
 
       {/*
         The hit count, and the loading message under it, are both rendered
