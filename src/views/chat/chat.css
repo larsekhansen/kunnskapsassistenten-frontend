@@ -892,9 +892,12 @@
  * spare, and it grows with the text: 600 px at 20 px, against the 590 the
  * sentence then needs.
  *
- * A container query's lengths resolve against the ROOT font size, not the
+ * `rem` in a container query resolves against the ROOT font size, not the
  * container's own — that is what makes this work, and it is also why
  * `container-type: inline-size` on the box does not make the unit circular.
+ * That is true of `rem`, not of container queries in general: `em` in the
+ * condition resolves against the CONTAINER's font size, which would be
+ * circular, and is why the unit here is the one it is (KA CC on #210).
  */
 .ka-composer {
   container: ka-composer / inline-size;

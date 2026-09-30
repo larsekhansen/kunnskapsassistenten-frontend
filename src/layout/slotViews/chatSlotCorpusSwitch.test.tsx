@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useRef } from 'react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { setActiveCorpusKey } from '../../api';
 import { resetMockThreads } from '../../api/mock/sessionThreads';
@@ -32,7 +32,18 @@ function show() {
     <MemoryRouter>
       <LayoutProvider>
         <Scroll>
-          <ChatSlotView />
+          {/*
+            De to rutene skallet har (`App.tsx`). Denne testen holder seg på
+            `/` og ville stått grønn uten dem, fordi `threadId` er `undefined`
+            uansett — men `useParams` gir `{}` uten en matchet rute, og det
+            gjør den tause. Den dagen fila får en påstand om en tråd åpnet fra
+            lista, ville den målt ingenting. Se
+            `design/_briefs/bygg/maalt-tester-uten-ruter.md`.
+          */}
+          <Routes>
+            <Route index element={<ChatSlotView />} />
+            <Route path="threads/:threadId" element={<ChatSlotView />} />
+          </Routes>
         </Scroll>
       </LayoutProvider>
     </MemoryRouter>,
