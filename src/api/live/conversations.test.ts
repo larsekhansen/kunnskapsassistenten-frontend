@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   agentIdFromToolName,
   citationCountIn,
@@ -253,6 +253,8 @@ describe('citationCountIn', () => {
 });
 
 describe('sourcesFromChunks', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
   it('sier «ingenting er kjent» når backenden ikke lagret noe', () => {
     /*
      * Dette er tilstanden backenden faktisk er i: svaret over hadde hentet
@@ -296,7 +298,6 @@ describe('sourcesFromChunks', () => {
 
     expect(documents?.[0]?.url).toBe('https://kudos.dfo.no/documents/372017');
     expect(documents?.[0]?.excerpts[0]?.kudosUrl).toBe('https://kudos.dfo.no/documents/372017');
-    vi.unstubAllEnvs();
   });
 });
 

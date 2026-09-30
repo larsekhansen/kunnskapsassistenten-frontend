@@ -98,6 +98,8 @@ describe('relevanceFromRank', () => {
 });
 
 describe('toSourceDocuments', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
   const chunks = [
     { chunk_id: 'c1', doc_num: 'd1', title: 'Årsrapport 2022', url: null, metadata: '{"H" "Mål"}' },
     { chunk_id: 'c2', doc_num: 'd2', title: 'Årsrapport 2023', url: 'https://kudos/2023' },
@@ -162,7 +164,6 @@ describe('toSourceDocuments', () => {
 
     expect(document.url).toBe('https://kudos.dfo.no/documents/372017');
     expect(document.excerpts[0].kudosUrl).toBe('https://kudos.dfo.no/documents/372017');
-    vi.unstubAllEnvs();
   });
 
   it('lar en url på biten vinne over malen', () => {
@@ -173,7 +174,6 @@ describe('toSourceDocuments', () => {
     );
 
     expect(document.url).toBe('https://kudos/egen');
-    vi.unstubAllEnvs();
   });
 
   it('leaves the link out when the corpus has no URL', () => {
