@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { useParams } from 'react-router';
+import { useLocation, useParams } from 'react-router';
 import { activeCorpusKey, createChatClient, subscribeToCorpus } from '../../api';
 // Rett fra modulen og ikke via src/api/index.ts, som er #5 sin barrel.
 import { renamedThreads, subscribeToThreadRenames } from '../../api/threadActions';
 import { NotFoundState } from '../../components';
 import { threadFromQuestion, type Thread, type ThreadDetail } from '../../model';
 import { ChatView } from '../../views/chat';
+import { COMPOSER_ID } from '../ids';
 import { ThreadContext } from '../threadContext';
 import { useAnswerSources } from '../useAnswerSources';
 import { useComposerPresence } from '../useComposerPresence';
+import { takeComposerFocusRequest } from '../useNewThread';
 import { useNoAnswers } from '../useNoAnswers';
 import { useReportOpenThread } from '../useOpenThread';
 import { useThreadFilterLock } from '../useThreadFilterLock';
@@ -41,12 +43,24 @@ import { useThreadFilterLock } from '../useThreadFilterLock';
  */
 export function ChatSlotView() {
   const { threadId } = useParams();
+  const { key } = useLocation();
 
   // Keyed on the address, so moving between threads starts from nothing
   // rather than showing the previous thread until the next one has loaded.
   // It is also what lets the state below start at null without an effect
   // writing it back on every navigation.
-  return <ChatSlot key={threadId ?? 'new'} threadId={threadId} />;
+  //
+  // `/` is keyed on the navigation as well, because «/» is not one place. A
+  // conversation started there gets its address from `replaceState`, which
+  // the router never sees (see `startThread`), so to the router the page is
+  // still `/` — and «Ny tråd», a link to `/`, changed neither the route nor
+  // the key. Nothing remounted, and the old conversation, its sources and its
+  // filter stayed on screen under an address that said `/` (Simen's issue
+  // 114; measured in mock, bff and live). Every navigation has its own
+  // `location.key`, including one to the same path, so every «Ny tråd» is a
+  // new conversation. The address written by `replaceState` does not change
+  // the key, which is what keeps a streaming answer alive while it moves.
+  return <ChatSlot key={threadId ?? `new:${key}`} threadId={threadId} />;
 }
 
 function ChatSlot({ threadId }: { threadId?: string }) {
@@ -90,6 +104,13 @@ function ChatSlot({ threadId }: { threadId?: string }) {
    * observable. `useChat` empties the conversation on the same change; this
    * is the other half, and without it the empty screen would still mint its
    * next question into the old thread.
+   *
+   * The navigation is no longer a no-op since `/` is keyed on it (see
+   * `ChatSlotView`), so a switch from the selector remounts this anyway. This
+   * stays for a corpus that changes without one: in bff mode the BFF names
+   * its dataset in every `/capabilities` answer, and it is asked again for as
+   * long as its probe has not settled — minutes, with a question already
+   * asked (`adoptServerCorpus`).
    *
    * The state goes while rendering, the ref in the effect beside it: a ref
    * written during render is a change React cannot see. Nothing reads this
@@ -191,6 +212,20 @@ function ChatSlot({ threadId }: { threadId?: string }) {
   // The sources on screen belong to the answer on screen. Leaving a thread
   // has to clear them, or the sources panel keeps citing the previous answer.
   useEffect(() => () => setDocuments(undefined), [setDocuments]);
+
+  /*
+   * The keyboard in the compose field, when «Ny tråd» asked for it (Simen's
+   * issue 114). See useNewThread.ts.
+   *
+   * On mount, because this is the new conversation the link navigated to,
+   * and the field is the old one's until it has mounted. By now the drawer
+   * the link stood in has closed: that was a separate update on the click,
+   * committed before the navigation, and closing it handed the focus back to
+   * the rail button — which is the focus this takes over.
+   */
+  useEffect(() => {
+    if (takeComposerFocusRequest()) document.getElementById(COMPOSER_ID)?.focus();
+  }, []);
 
   /**
    * «Fant ikke tråden» has no compose field, so «Hopp til skrivefeltet» must

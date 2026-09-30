@@ -6,6 +6,7 @@ import { createThreadActions, type ThreadActions } from '../../api/threadActions
 import { FilterIcon, NewThreadIcon } from '../../components/icons';
 import { EmptyState, ErrorState } from '../../components';
 import { useCorpus } from '../../layout/useCorpus';
+import { useNewThread } from '../../layout/useNewThread';
 import { useOpenThread } from '../../layout/useOpenThread';
 import type { SlotViewProps } from '../../layout/viewModel';
 import type { Thread } from '../../model';
@@ -74,6 +75,8 @@ export function ThreadsView({
   const searchStatusId = useId();
   const filterRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
+  /** «Ny tråd» as the whole action: empty filter, drawer shut, focus in the field. */
+  const startNewThread = useNewThread();
 
   /*
    * Rename and delete, when this deployment has them (bff and mock, not
@@ -256,7 +259,7 @@ export function ThreadsView({
       */}
       {!empty && (
         <Button asChild>
-          <RouterLink to="/" ref={newThreadRef}>
+          <RouterLink to="/" ref={newThreadRef} onClick={startNewThread}>
             Ny tråd
             <NewThreadIcon aria-hidden="true" />
           </RouterLink>
@@ -341,7 +344,7 @@ export function ThreadsView({
           description="Still et spørsmål, så havner samtalen her."
         >
           <Button asChild>
-            <RouterLink to="/" ref={newThreadRef}>
+            <RouterLink to="/" ref={newThreadRef} onClick={startNewThread}>
               Start din første tråd
               <NewThreadIcon aria-hidden="true" />
             </RouterLink>
