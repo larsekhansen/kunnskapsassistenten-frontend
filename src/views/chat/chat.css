@@ -224,17 +224,54 @@
 
 /*
  * «Fremgangsmåte» over the answer at the standard display level (Simens issue
- * 88). It draws the same shape as the detailed panel — the rules below name
- * both — so switching level changes what the steps SAY and never where they
- * sit.
+ * 88, drawn in his issue 113). It draws the same steps as the detailed panel
+ * — the rules below name both — so switching level changes what a step SAYS
+ * and never where it sits.
  */
 .ka-procedure {
   inline-size: 100%;
 }
 
-.ka-procedure__built-on {
-  margin-block-start: var(--ds-size-3);
+/* The robot in the summary. Same size as Details' own chevron, from the same
+   token, so the two ends of the bar line up. */
+.ka-procedure__icon {
+  font-size: var(--ds-icon-size);
+}
+
+.ka-procedure__block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+}
+
+/*
+ * The rule Simen draws between the steps and the keywords. A border and not a
+ * `<hr>`: it separates two blocks that are already two blocks, and an element
+ * of its own would be one more thing for a screen reader to walk past.
+ */
+.ka-procedure__block--ruled {
+  margin-block-start: var(--ds-size-4);
+  padding-block-start: var(--ds-size-4);
+  border-block-start: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+}
+
+/* «Tenker …», «Nøkkelord som ble brukt i søket». Subtle, because each one
+   names what is under it rather than saying something of its own. */
+.ka-procedure__label {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-2);
+  margin: 0;
   color: var(--ds-color-neutral-text-subtle);
+}
+
+.ka-procedure__keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-size-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* --------------------------------------------------------------- thinking */
@@ -925,6 +962,9 @@
 .ka-streaming-status[hidden],
 .ka-procedure[hidden],
 .ka-procedure__summary[hidden],
+.ka-procedure__block[hidden],
+.ka-procedure__keywords[hidden],
+.ka-procedure__label[hidden],
 .ka-procedure__steps[hidden],
 .ka-procedure__step[hidden],
 .ka-thinking[hidden],

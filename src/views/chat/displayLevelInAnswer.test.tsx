@@ -12,6 +12,7 @@ import { emptyFilterSelection, threadFromQuestion, type Message } from '../../mo
 import { AnswerMessage } from './AnswerMessage';
 import { ChatView } from './ChatView';
 import { getDisplayLevel, resetDisplayLevel, setDisplayLevel } from './displayLevel';
+import { resetViewport, setViewportWidth } from '../../test/matchMedia';
 
 /*
  * Designsystemets Skeleton spør etter document.getAnimations, som jsdom ikke
@@ -103,23 +104,53 @@ describe('visningsnivået i svaret', () => {
     resetDisplayLevel();
   });
 
-  it('viser «Fremgangsmåte» og stegene, uten det tekniske, på standard', () => {
+  it('viser «Fremgangsmåte», stegene og nøkkelordene, uten det tekniske, på standard', () => {
     /*
-     * Simens issue 88: stegene sier hva assistenten prøver å gjøre, og det er
-     * det som blir stående. Søkestrengen, treffene og tiden er maskineri, og
-     * en «bit» er ikke noe en leser har sett.
+     * Simens issue 88, tegnet i issue 113: ett panel over svarkortet, med
+     * stegene under «Tenkte» og søkeordene under «Nøkkelord som ble brukt i
+     * søket». Stegene sier hva assistenten prøver å gjøre, og nøkkelordene er
+     * det svaret kan etterprøves mot. Tiden, treffene og det hvert steg målte
+     * er maskineri — en «bit» er ikke noe en leser har sett.
      */
     showAnswer();
 
     expect(screen.getByText('Fremgangsmåte')).toBeTruthy();
     expect(screen.getByText('Jeg søker i årsrapportene.')).toBeTruthy();
-    // Det ene tallet som blir igjen: dokumentene, som også står i kildepanelet.
-    expect(screen.getByText('Svaret bygger på 3 dokumenter.')).toBeTruthy();
+    expect(screen.getByText('Nøkkelord som ble brukt i søket')).toBeTruthy();
+    expect(screen.getByText('måloppnåelse')).toBeTruthy();
 
     expect(screen.queryByText('Tenkte i 4 sekunder')).toBeNull();
     expect(screen.queryByText('10 treff i 3 dokumenter')).toBeNull();
     expect(screen.queryByText('Nkom måloppnåelse 2025')).toBeNull();
     expect(screen.queryByText('Fant 10 biter i 3 dokumenter.')).toBeNull();
+  });
+
+  it('står åpent der det er plass, fordi det svaret etterprøves mot ikke skal ligge bak et klikk', () => {
+    const { container } = showAnswer();
+
+    const panel = container.querySelector('.ka-procedure');
+    expect((panel as HTMLDetailsElement).open).toBe(true);
+  });
+
+  it('står lukket der kolonnen er hele vinduet', () => {
+    /*
+     * Åpent med fire steg og fem nøkkelord er 450 px av 900 på 1440, men 965
+     * av 844 på 390 — da ER fremgangsmåten skjermen, og den som spurte om noe
+     * må rulle forbi alt sammen for å komme til svaret. 774 px er der
+     * kolonnen slutter å være en lesebredde mellom to skinner og blir hele
+     * vinduet.
+     */
+    setViewportWidth(390);
+    try {
+      const { container } = showAnswer();
+
+      const panel = container.querySelector('.ka-procedure');
+      expect((panel as HTMLDetailsElement).open).toBe(false);
+      // Men den er der, med navnet sitt, ett klikk unna.
+      expect(screen.getByText('Fremgangsmåte')).toBeTruthy();
+    } finally {
+      resetViewport();
+    }
   });
 
   it('viser tenkepanelet og treffene på detaljert', () => {

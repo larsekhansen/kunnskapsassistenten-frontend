@@ -7,6 +7,7 @@ import {
   citation,
   composer,
   expectEveryStepReachable,
+  showDetailedAnswers,
   walkWithTab,
   MOCK,
   REAL_ANSWER,
@@ -84,13 +85,52 @@ test.describe('hovedkolonnen', () => {
       expect(await markers.count()).toBeGreaterThan(0);
       await expect(markers.first()).toHaveAttribute('aria-label', /^Kilde \d+: /);
 
-      // «Fremgangsmåte» arrives with the answer, open, with the hit count. One
-      // document is «1 dokument», which a real corpus often gives.
-      await expect(page.getByText(/\d+ treff i \d+ dokument(er)?/)).toBeVisible();
+      // «Fremgangsmåte» arrives with the answer, open, with the steps and the
+      // words the search ran on. The hit count is on the detailed level since
+      // Simens issue 88; there is a test of its own for that below.
+      await expect(page.getByText('Fremgangsmåte')).toBeVisible();
+      await expect(page.getByText('Nøkkelord som ble brukt i søket')).toBeVisible();
+
+      // Og ingenting av maskineriet: ingen tenketid, ingen telling av biter.
+      // Det er hele poenget med standardnivået (Simens issue 88).
+      await expect(page.getByText(/\d+ treff i \d+ dokument(er)?/)).toHaveCount(0);
+      await expect(page.getByText(/Tenkte i \d+ sekunder?/)).toHaveCount(0);
 
       await expectNoAxeViolations(page, 'et ferdig svar');
     },
   );
+
+  /**
+   * Den skjulte innstillingsmenyen (Lars, 30.09).
+   *
+   * «Standard er standard. Uten adressen ser ingen at menyen finnes.» Den er
+   * ikke i sida i det hele tatt før hashen ber om den, og valget står i
+   * nettleseren etterpå — ellers måtte den som vil ha det detaljerte nivået
+   * skrive adressen på nytt for hver tur.
+   *
+   * Uten svar i denne, med vilje: hva nivåene TEGNER er dekket over og i
+   * enhetstestene, og et svar til koster sju sekunder av suiten.
+   */
+  test('#innstillinger åpner menyen, og valget står etter en reload', MOCK, async ({ page }) => {
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    await page.goto('/#innstillinger');
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('radio', { name: /Standard/ })).toBeChecked();
+
+    await dialog.getByRole('radio', { name: /Detaljert/ }).check();
+    await expectNoAxeViolations(page, 'innstillingsmenyen');
+
+    // Lukkingen tar hashen ut av adressen, så menyen ikke åpner seg igjen.
+    await dialog.getByRole('button', { name: 'Lukk' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/$/);
+
+    await page.reload();
+    await page.goto('/#innstillinger');
+    await expect(page.getByRole('dialog').getByRole('radio', { name: /Detaljert/ })).toBeChecked();
+  });
 
   test(
     'avbryt stopper genereringen og beholder teksten som kom',
@@ -269,6 +309,8 @@ test.describe('hovedkolonnen', () => {
     REAL_ANSWER,
     async ({ page }, testInfo) => {
       covers(testInfo, 'tenketiden er målt, ikke summert');
+      // Tallet står bare på det detaljerte nivået (Simens issue 88).
+      await showDetailedAnswers(page);
       await page.goto('/');
 
       await composer(page).click();

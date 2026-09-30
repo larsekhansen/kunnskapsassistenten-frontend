@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { ANSWER_TIMEOUT } from './paths';
+import { DISPLAY_LEVEL_STORAGE_KEY } from '../../src/views/chat/displayLevel';
 
 /**
  * How long to wait for a finished answer. It lives in paths.ts, beside the
@@ -28,6 +29,35 @@ export const MOCK = { tag: '@mock' };
  * `--grep @ekte-svar --workers 1`.
  */
 export const REAL_ANSWER = { tag: '@ekte-svar' };
+
+/**
+ * Asks for the detailed display level before the page loads.
+ *
+ * `standard` is what everyone gets since Simens issue 88: «Fremgangsmåte»
+ * over the answer with the steps in plain language, and none of the machinery
+ * — no thought time, no hit count, no search strings. The assertions that read
+ * exactly those things are still right; they are just about the other level,
+ * so they have to say so.
+ *
+ * `addInitScript` and not a click through the menu: it runs before the page's
+ * own scripts on EVERY navigation in the context, which is what the tests
+ * that reload need. The key is imported rather than written out, so renaming
+ * it in the app fails the type-check here rather than the suite at three in
+ * the morning.
+ *
+ * #3 has the conductor's exception for this, 2026-09-30: the specs below ask
+ * for the level, and nothing else in `tests/` changes.
+ */
+export async function showDetailedAnswers(page: Page): Promise<void> {
+  await page.addInitScript((key: string) => {
+    try {
+      localStorage.setItem(key, 'detaljert');
+    } catch {
+      // Ignored: a browser with site data blocked gets the standard level,
+      // and the assertion that follows will say so.
+    }
+  }, DISPLAY_LEVEL_STORAGE_KEY);
+}
 
 /** Asks a question from the compose field and waits for the finished answer. */
 export async function ask(page: Page, question: string): Promise<void> {

@@ -633,12 +633,13 @@ ikke noe frontenden kan fikse.
 
 ## Det appen husker
 
-Fire nøkler, og ingenting annet. Tre i `localStorage`, som varer til
+Fem nøkler, og ingenting annet. Fire i `localStorage`, som varer til
 nettleseren tømmes, og én i `sessionStorage`, som varer så lenge fana lever.
 
 | Nøkkel               | Lager          | Hva                                                                                               |
 | -------------------- | -------------- | ------------------------------------------------------------------------------------------------- |
 | `ka.color-scheme`    | localStorage   | lys, mørk eller auto. Se «Mørk modus»                                                             |
+| `ka.display-level`   | localStorage   | hvor mye svaret viser om hvordan det ble til. Se «Visningsnivå»                                   |
 | `ka.layout.v1`       | localStorage   | hvilke sidekolonner som er lagt sammen, hvor brede de er, og om brukeren selv lukket kildepanelet |
 | `ka.filter.v1`       | localStorage   | filtervalget                                                                                      |
 | `ka.mock.threads.v1` | sessionStorage | samtalene denne fana har hatt. **Bare i mock-modus**                                              |
@@ -678,6 +679,26 @@ faktisk produserte tekst skrives ned; et svar som feilet før første token
 tegner ikke noe kort, og et lagret tomt svar ville tegnet et kort som aldri
 fantes. En tur i en fixture-tråd legges etter fixture-meldingene fra koden,
 så det samme svaret aldri skrives ned to ganger.
+
+## Visningsnivå
+
+Hvor mye et svar viser om hvordan det ble til. To nivåer, lagret per nettleser
+under `ka.display-level`, og `standard` er det alle får uten å velge noe.
+
+| Nivå        | Over svaret                                                            | I kortet                               |
+| ----------- | ---------------------------------------------------------------------- | -------------------------------------- |
+| `standard`  | «Fremgangsmåte», åpen: stegene i klartekst og søkeordene               | ingenting ekstra                       |
+| `detaljert` | tenkepanelet: «Tenkte i N sekunder», stegenes detaljer og søkestrenger | «Fremgangsmåte» med treff og nøkkelord |
+
+Nivået velges i en skjult meny. **Legg `#innstillinger` til i adressen**, for
+eksempel `http://localhost:5173/#innstillinger`, så åpner den seg; å lukke den
+tar hashen ut igjen. Ingen knapp peker på den, med vilje: standard er standard,
+og den som vil ha det tekniske, er en utvikler som har fått adressen.
+
+Hash og ikke spørring, fordi en hash aldri når serveren, ikke bytter rute, og
+ikke følger med en lenke til en tråd noen limer inn et annet sted. Bakgrunnen
+står i `docs/arkitektur/0004-visningsnivaa.md`; koden ligger i
+`src/views/chat/displayLevel.ts`, `ProcedurePanel.tsx` og `SettingsDialog.tsx`.
 
 ## Mock-modus: spørsmål som gjør noe spesielt
 
