@@ -16,8 +16,8 @@ import type { SlotViewProps } from '../viewModel';
  *
  *   documents                the flat list, the newest answer's. Kept because
  *                            the view normalises it to a one-entry `answers`
- *                            and because the filter view and the rail badge
- *                            read the same value.
+ *                            and because the filter view reads the same
+ *                            value.
  *   answers                  every answer in the thread, oldest first.
  *                            `undefined` until something is recorded, which
  *                            the view reads as «nothing is known».

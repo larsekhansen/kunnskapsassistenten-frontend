@@ -1,11 +1,4 @@
-import {
-  Badge,
-  BadgePosition,
-  Button,
-  Dialog,
-  SkipLink,
-  Tooltip,
-} from '@digdir/designsystemet-react';
+import { Button, Dialog, SkipLink, Tooltip } from '@digdir/designsystemet-react';
 import {
   useEffect,
   useId,
@@ -25,7 +18,6 @@ import { OpenThreadContext } from './openThreadContext';
 import { PanelHeadContext } from './panelHeadContext';
 import { MainScrollContext } from './scrollContext';
 import { shortcutModifier } from './shortcutModifier';
-import { useAnswerSources } from './useAnswerSources';
 import { useNoAnswers } from './useNoAnswers';
 import { useOpenThreadRegistry } from './useOpenThread';
 import { useCitation } from './useCitation';
@@ -445,9 +437,22 @@ function Sidebar({
     toggle.current?.focus();
   }, [hasFocus, state.collapsed]);
 
-  // «Vis kilder» / «Skjul kilder», «Vis tråder og filter» / «Skjul tråder og
-  // filter». Derived from the slot's own name so a moved view takes its
-  // wording with it, rather than from a hardcoded string per slot.
+  /*
+   * «Vis kilder» / «Skjul kilder», «Vis tråder og filter» / «Skjul tråder og
+   * filter». Derived from the slot's own name so a moved view takes its
+   * wording with it, rather than from a hardcoded string per slot.
+   *
+   * No count of what the panel holds, on the rail or in the name. The badge
+   * that said how many documents stood behind a collapsed sources panel came
+   * off on Simen's issue 87: a number on the button reads as a notification,
+   * and nothing behind it is waiting to be dealt with. The retrieval step in
+   * the answer still says «N treff i M dokumenter».
+   *
+   * One string for both the accessible name and the tooltip, which is not
+   * tidiness: @digdir/designsystemet-web writes `data-tooltip` into
+   * `aria-label` on an element with no text of its own, so a tooltip saying
+   * something shorter would quietly replace the name a moment after render.
+   */
   const toggleLabel = `${state.collapsed ? 'Vis' : 'Skjul'} ${(label ?? views[state.activeView].label).toLocaleLowerCase('nb-NO')}`;
 
   /**
@@ -470,34 +475,6 @@ function Sidebar({
    * horizontal scrollbar from the very rule that was meant to remove one.
    */
   const railed = state.collapsed || drawer;
-
-  /**
-   * How many documents the folded-away view is holding, for the badge.
-   *
-   * Keyed on the VIEW and not on the slot: the count belongs to the sources,
-   * so it follows them if they are ever moved to the other sidebar. A slot
-   * does not have sources; whatever sits in it might.
-   */
-  const { documents } = useAnswerSources();
-  const sourceCount = state.activeView === 'sources' ? (documents?.length ?? 0) : 0;
-  const showBadge = railed && sourceCount > 0;
-
-  /**
-   * «Vis kilder, 3 dokumenter».
-   *
-   * The number has to be in the text, because the badge cannot carry it:
-   * Designsystemet draws it as `content: attr(data-count)` on a pseudo
-   * element, which screen readers read unreliably or not at all. See
-   * design/designsystemet/komponenter/badge.md.
-   *
-   * One string for both the accessible name and the tooltip, which is not
-   * tidiness: @digdir/designsystemet-web writes `data-tooltip` into
-   * `aria-label` on an element with no text of its own, so a tooltip saying
-   * something shorter would quietly replace the name a moment after render.
-   */
-  const toggleName = showBadge
-    ? `${toggleLabel}, ${sourceCount} ${sourceCount === 1 ? 'dokument' : 'dokumenter'}`
-    : toggleLabel;
 
   /*
    * Collapsed, the slot is a rail barely wider than this button, so the label
@@ -587,7 +564,7 @@ function Sidebar({
         designs for one thing.
       */
       icon
-      aria-label={toggleName}
+      aria-label={toggleLabel}
       aria-expanded={!state.collapsed}
       aria-controls={contentId}
       onClick={() => toggleCollapsed(slot)}
@@ -670,49 +647,30 @@ function Sidebar({
       */}
       <div className="panel">
         <div className="sidebar-header">
-          {railed ? (
-            /*
-            BadgePosition is rendered whether or not there is a badge, on
-            purpose. It is a `<span>` wrapper, and a wrapper appearing around
-            the button is a different element to React — the button would be
-            unmounted and replaced the moment an answer brought sources, with
-            the user's focus possibly on it. Rendering the wrapper always means
-            only the badge comes and goes, and the button beside it stays put.
+          {/*
+            One tooltip for the rail and the open panel, with the string the
+            button's `aria-label` has. @digdir/designsystemet-web writes
+            `data-tooltip` into `aria-label` on an element with no text of its
+            own, so the two have to agree — and they do, both `toggleLabel`.
 
-            Tooltip has to sit INSIDE it, directly around the button: Tooltip
-            sets `data-tooltip` on its own child, and on the wrapper that would
-            put the tooltip and the accessible name on a span instead of on the
-            control.
-          */
-            <BadgePosition placement="top-right" overlap="rectangle">
-              {showBadge ? (
-                <Badge count={sourceCount} maxCount={99} data-size="sm" aria-hidden />
-              ) : null}
-              <Tooltip content={toggleName}>{toggleButton}</Tooltip>
-            </BadgePosition>
-          ) : (
-            /*
-              The same tooltip the rail has. @digdir/designsystemet-web writes
-              `data-tooltip` into `aria-label` on an element with no text of
-              its own, so this string and the explicit `aria-label` above have
-              to agree — and they do, both `toggleName`.
+            One element, not one per state, so the button is the same element
+            to React when the panel collapses under the user's focus.
 
-              Placement, measured 2026-09-28 at 1440 and 1920: there is no room
-              above the button, so `top` flips below it, over whatever the view
-              starts with. In the sources panel that was the label «Søk i
-              kildene». Further along the row there is nothing, and a box
-              placed there covers nothing. The navigation panel has no free
-              side: below is «Filtrering», further along the row is «Tråder»,
-              and before the button is the edge of the window. It keeps `top`
-              until its row has room.
-            */
-            <Tooltip
-              content={toggleName}
-              placement={slot === 'secondary-sidebar' ? 'right' : 'top'}
-            >
-              {toggleButton}
-            </Tooltip>
-          )}
+            Placement, measured 2026-09-28 at 1440 and 1920: there is no room
+            above the button in an open panel, so `top` flips below it, over
+            whatever the view starts with. In the sources panel that was the
+            label «Søk i kildene». Further along the row there is nothing, and
+            a box placed there covers nothing. The navigation panel has no free
+            side: below is «Filtrering», further along the row is «Tråder»,
+            and before the button is the edge of the window. It keeps `top`
+            until its row has room, and so does a rail.
+          */}
+          <Tooltip
+            content={toggleLabel}
+            placement={!railed && slot === 'secondary-sidebar' ? 'right' : 'top'}
+          >
+            {toggleButton}
+          </Tooltip>
           {/*
             What the view wants on the panel's own row, beside the collapse
             button. Empty until a view fills it, and an empty slot draws
