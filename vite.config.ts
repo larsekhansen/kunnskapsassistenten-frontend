@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { EXCERPTS_PATH, excerptConfigFrom, excerptRoute } from './server/excerpts.ts';
 import { FACETS_PATH, facetConfigFrom, facetRoute } from './server/facets.ts';
 
 /**
@@ -42,8 +43,8 @@ function colorSchemeScript(): Plugin {
 }
 
 /**
- * `/api/facets` in development too, answered the way the container's server
- * answers it (server/facets.ts).
+ * `/api/facets` and `/api/excerpts` in development too, answered the way the
+ * container's server answers them (server/facets.ts, server/excerpts.ts).
  *
  * The route is ours and not the backend's, so the proxy below would send it
  * to a backend that answers 404, and the filter panel would show an error
@@ -51,16 +52,20 @@ function colorSchemeScript(): Plugin {
  * plugin's middleware before its own, so this comes ahead of the proxy.
  *
  * Not in bff mode: the BFF has its own `/api/facets`, and that is the one
- * the panel should get there.
+ * the panel should get there. It has no `/api/excerpts`, and needs none: its
+ * sources carry their text.
  */
 function facetsInDevelopment(env: Record<string, string>): Plugin {
   return {
     name: 'ka-facets',
     configureServer(server) {
       const facets = facetRoute(facetConfigFrom(env));
+      const excerpts = excerptRoute(excerptConfigFrom(env));
       server.middlewares.use((request, response, next) => {
-        if ((request.url ?? '').split('?')[0] !== FACETS_PATH) return next();
-        facets(request, response).catch(next);
+        const path = (request.url ?? '').split('?')[0];
+        if (path === FACETS_PATH) facets(request, response).catch(next);
+        else if (path === EXCERPTS_PATH) excerpts(request, response).catch(next);
+        else next();
       });
     },
   };
