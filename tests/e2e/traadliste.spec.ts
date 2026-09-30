@@ -156,6 +156,12 @@ test.describe('trådlista mens en samtale pågår', () => {
  * Every thread is deleted through the row menu, as a reader would, rather than
  * by writing the mock's store: a test that knows the store's shape would pass
  * over a change to it.
+ *
+ * The next question is asked straight from the field on `/`, and not through
+ * «Start din første tråd». Since the follow-up to Simens issue 75 that link
+ * turns the panel to the filters, which unmounts the list and drops the query
+ * by itself, so going through it could not show the bug. Asking from the
+ * field, with the list still open, is the way a reader still meets it.
  */
 test.describe('et søk når lista blir tom', () => {
   async function deleteThread(page: Page, title: string): Promise<void> {
@@ -191,10 +197,11 @@ test.describe('et søk når lista blir tom', () => {
       await deleteThread(page, last);
 
       // The empty state stands alone: no search field over an empty list.
-      await expect(panel.getByText('Ingen tråder ennå')).toBeVisible();
+      await expect(panel.getByRole('link', { name: /^Start din første tråd/ })).toBeVisible();
+      // Alone: the heading and the line under it went with Simens issue 82.
+      await expect(panel.getByText('Ingen tråder ennå')).toHaveCount(0);
       await expect(search).toHaveCount(0);
 
-      await panel.getByRole('link', { name: /^Start din første tråd/ }).click();
       // No «Nkom» in it, on purpose: a question that matched the old query
       // would stand in the list even if the query hung on, and the test would
       // be green without the fix. Measured: it was.

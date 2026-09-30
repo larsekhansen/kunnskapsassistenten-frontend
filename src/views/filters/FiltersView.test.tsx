@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { AnswerSourcesContext, inertAnswerSources } from '../../layout/answerSourcesContext';
 import { FilterContext } from '../../layout/filterContext';
+import { PanelHeadContext } from '../../layout/panelHeadContext';
 import { emptyFilterSelection, type FilterFacet } from '../../model';
 import { FiltersView } from './FiltersView';
 
@@ -62,13 +63,13 @@ describe('FiltersView', () => {
   });
 
   /*
-   * The line is what tells the corpus's part of the panel from the reader's
-   * own (Simen, 30.09), so it has to stand directly above «Dine dokumenter»
-   * and after the last field. It is decoration, and says nothing to a screen
-   * reader; the heading under it does that.
+   * The filters first and the documents under the line (Simens issue 76,
+   * 30.09): the corpus line, then «Dokumenter» and «Fra Kudos», then «Dine
+   * dokumenter». The line is decoration and says nothing to a screen reader;
+   * the headings under it do that.
    */
-  it('draws a line between the facets and «Dine dokumenter»', () => {
-    renderView([
+  it('draws the filters above a line and the documents under it', () => {
+    const { container } = renderView([
       {
         dimension: 'documentType',
         label: 'Dokumenttype',
@@ -76,14 +77,80 @@ describe('FiltersView', () => {
       },
     ]);
 
-    const own = screen.getByRole('heading', { name: 'Dine dokumenter' }).closest('section');
-    const line = own?.previousElementSibling;
+    const line = container.querySelector('hr');
+    const corpus = container.querySelector('.filters-view__corpus');
+    const documents = screen.getByRole('heading', { name: 'Dokumenter' });
+    const own = screen.getByRole('heading', { name: 'Dine dokumenter' });
 
-    expect(line?.tagName).toBe('HR');
     expect(line?.getAttribute('aria-hidden')).toBe('true');
-    expect(
-      screen.getByLabelText('Dokumenttype').compareDocumentPosition(line as Node) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    // Top to bottom, in the order the reader tabs and reads.
+    const order = [screen.getByLabelText('Dokumenttype'), line, corpus, documents, own];
+    for (let index = 1; index < order.length; index += 1) {
+      expect(
+        order[index - 1]!.compareDocumentPosition(order[index] as Node) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+    // No second line: the one line is the break (the brief).
+    expect(container.querySelectorAll('hr')).toHaveLength(1);
+  });
+
+  it('keeps the corpus line out of the pinned head', () => {
+    const { container } = renderView([]);
+
+    expect(container.querySelector('.view-head .filters-view__corpus')).toBeNull();
+    expect(container.querySelector('.view-head')?.textContent).toContain('Filtrering');
+  });
+});
+
+/*
+ * A switch here from the thread list takes focus back to «Tråder», because
+ * the button that was pressed went away with its view. «Ny tråd» switches
+ * here too (Simens issue 75, round 2), and then the focus belongs to the
+ * compose field the click asked for.
+ */
+describe('focus on a switch from the thread list', () => {
+  // «Tråder» is drawn on the panel's row, which only a shell has; this is
+  // that row, without the rest of the shell.
+  const row = document.createElement('div');
+
+  function renderSwitched() {
+    document.body.append(row);
+    return render(
+      <MemoryRouter>
+        <PanelHeadContext value={{ element: row }}>
+          <FilterContext value={{ selection: emptyFilterSelection, setSelection: () => {} }}>
+            <AnswerSourcesContext value={inertAnswerSources}>
+              <FiltersView
+                siblingViews={['threads']}
+                onShowView={() => {}}
+                switchedByUser
+                facets={[]}
+              />
+            </AnswerSourcesContext>
+          </FilterContext>
+        </PanelHeadContext>
+      </MemoryRouter>,
+    );
+  }
+
+  afterEach(() => row.remove());
+
+  it('goes to «Tråder» when it was dropped', () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    renderSwitched();
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Tråder' }));
+  });
+
+  it('stays where it is when something already has it', () => {
+    const field = document.createElement('textarea');
+    document.body.append(field);
+    field.focus();
+
+    renderSwitched();
+
+    expect(document.activeElement).toBe(field);
+    field.remove();
   });
 });

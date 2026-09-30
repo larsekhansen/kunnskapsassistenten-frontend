@@ -215,8 +215,16 @@ export function FiltersView({
   // The flag is settled before this view mounts and does not flip while it is
   // mounted: the button that switches away from a view is the only one that
   // sets it, and it is in the OTHER view. So this runs on mount and no later.
+  //
+  // Only when focus really was dropped. «Ny tråd» in the thread list switches
+  // here too (Simen's issue 75, round 2), and the focus that click asked for
+  // is the compose field's, which the chat slot takes in an effect of its
+  // own in the same commit. Whichever of the two effects runs first, the
+  // field keeps it: taken first, it is not on the body when this runs; taken
+  // second, it simply moves on from here.
   useEffect(() => {
-    if (switchedByUser) backRef.current?.focus();
+    const dropped = document.activeElement === null || document.activeElement === document.body;
+    if (switchedByUser && dropped) backRef.current?.focus();
   }, [switchedByUser]);
 
   /*
@@ -328,11 +336,11 @@ export function FiltersView({
   return (
     <div className="filters-view" aria-busy={loading || undefined}>
       {/*
-        The top of the panel, pinned while the documents and the facets scroll
-        under it.
+        The top of the panel, pinned while the facets and the documents scroll
+        under it: «Filtrering», and the corpus chooser when there is one.
 
-        All three of these are in the head and not just the corpus line, and
-        that is the lesson from #55 rather than a preference. The «Tråder»
+        Anything the reader can reach up here goes IN the head, and that is
+        the lesson from #55 rather than a preference. The «Tråder»
         button is the first thing in the tab order here; left below a pinned
         head it keeps that place, the browser scrolls it to the top of the
         region when it takes focus, and it arrives underneath — clicks land on
@@ -383,31 +391,22 @@ export function FiltersView({
         <PanelHeader title="Filtrering" size="sm" />
 
         {/*
-          What the answers are actually built on. «Kudos» used to appear nowhere
-          the first-time user could see it, and nothing said how much there is or
-          which years it covers (brukerreiser, punkt 11).
+          More than one corpus to search, and the choice between them stays at
+          the top: it decides what every field below is counted from, so it is
+          the first filter rather than a fact about documents. `Select` and not
+          `Suggestion`: one value, a handful of options, and the native
+          dropdown is the one control a reader already knows on every
+          platform (select.md).
 
-          Read off the UNCONDITIONAL facets — see `corpus` above — so it follows
-          the corpus rather than the user's own narrowing, and it says
-          «Dokumenter fra Kudos» on its own while they load and in live mode,
-          where there is no facet aggregation to read.
+          Its description used to be the corpus line. The line has moved
+          under the divider (Simens issue 76), and the options already say
+          what each corpus is — «Kudos, 938 dokumenter» — so the field stands
+          without one.
 
-          Pinned, because it is the sentence that says what the facets below
-          are narrowing: scrolled away, «3 av 6 valgt» is three of six of
-          nothing in particular (brukerblikk runde 2, funn 4).
+          Only locally and in mock: a deployment with one corpus, as the test
+          environment has in bff mode, draws no chooser at all (corpus.ts).
         */}
-        {choosable ? (
-          /*
-            More than one corpus to search, so the line becomes the control
-            that picks between them. `Select` and not `Suggestion`: one value,
-            a handful of options, and the native dropdown is the one control a
-            reader already knows on every platform (select.md).
-
-            `Field` wires the label to the control and the description to
-            `aria-describedby` on its own, which is why the description keeps
-            the same class and text as the line it replaces — it IS the line,
-            now saying what the chosen corpus holds.
-          */
+        {choosable && (
           <Field>
             <Label>Korpus</Label>
             <Select value={active} onChange={(event) => chooseCorpus(event.currentTarget.value)}>
@@ -417,38 +416,9 @@ export function FiltersView({
                 </Select.Option>
               ))}
             </Select>
-            <Field.Description>
-              <CorpusLine facets={corpus} corpus={option} />
-            </Field.Description>
           </Field>
-        ) : (
-          <CorpusLine facets={corpus} corpus={option} />
         )}
       </ViewHead>
-
-      {/*
-        The documents the answer builds on, directly under the corpus line and
-        ABOVE the facets.
- 
-        Drawn last in Figma, and that is where it was: measured at 1440 × 900
-        with an answer on screen, the first row started at y = 818 in a 900 px
-        window, under three facet fields nobody had touched (brukerblikk runde
-        2, funn 4). What changes with every answer was sitting below what
-        changes rarely.
-
-        Answer 1 is not touched by this. It settles which VIEW a first-time
-        user meets — filtering rather than the thread list — and they still
-        land here, on a panel headed «Filtrering» with the corpus line under
-        it. It says nothing about the order inside the view.
-
-        Answer 2 is the reason the facets keep their full size just under it:
-        the horizontal filter in the main column was dropped, so this panel is
-        the only place filtering lives and it may not be folded away. That is
-        also why the facets are not collapsed into `Details` instead — a
-        disclosure that starts closed would hide «Ingen avgrensning» and «3 av
-        6 valgt», which is the very text brukerblikk funn 3 existed to expose.
-      */}
-      <KudosDocuments documents={documents} />
 
       {/*
         While the thread is locked the fields are not drawn, so a failure to
@@ -542,15 +512,54 @@ export function FiltersView({
         ))}
 
       {/*
-        Last, and it is the one thing here with no claim on the space above
-        the fold: upload does not exist anywhere in the stack yet
-        (API-bestilling A3), so nothing in it changes with the answer.
-
-        A line above it, because the facets end where the reader's own
-        documents begin, and the same gap as between two fields did not say so
-        (Simen, 30.09). See `.filters-view__divider`.
+        The line, and everything under it is about documents: which corpus,
+        the ones behind the answer, and the reader's own. Everything over it
+        narrows the search. The filters come first, as Simen drew it (Simens
+        issue 76, 30.09), and the line is the break between the two — the
+        one place in the panel with more air than between two fields. See
+        `.filters-view__divider`.
       */}
       <Divider className="filters-view__divider" />
+
+      {/*
+        What the answers are built on. «Kudos» used to appear nowhere the
+        first-time user could see it, and nothing said how much there is or
+        which years it covers (brukerreiser, punkt 11).
+
+        Read off the UNCONDITIONAL facets — see `corpus` above — so it follows
+        the corpus rather than the user's own narrowing, and it says
+        «Dokumenter fra Kudos» on its own while they load and in live mode,
+        where there is no facet aggregation to read.
+
+        No longer pinned in the head. It was, so that «3 av 6 valgt» said
+        three of six of what (brukerblikk runde 2, funn 4); Simen moved it
+        down with the documents, and the fields still say what they narrow
+        in their own labels.
+      */}
+      <div className="filters-view__documents">
+        <CorpusLine facets={corpus} corpus={option} />
+
+        {/*
+          The documents the answer builds on, under the corpus they come
+          from and over the reader's own.
+
+          This reverses brukerblikk runde 2, funn 4, and on purpose: that put
+          the list above the facets so its first row was visible in a 900 px
+          window with nothing scrolled. Simen's sketch (30.09) puts the
+          filters first, and after an answer the first row now starts at
+          y = 919 in a 1440 × 900 window (mock, with the corpus chooser), so
+          the reader scrolls to it.
+
+          Answer 2 still holds: the facets keep their full size, since this
+          panel is the only place filtering lives.
+        */}
+        <KudosDocuments documents={documents} />
+      </div>
+
+      {/*
+        Last: upload does not exist anywhere in the stack yet (API-bestilling
+        A3), so nothing in it changes with the answer.
+      */}
       <OwnDocuments />
     </div>
   );

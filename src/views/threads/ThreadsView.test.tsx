@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import type { Thread } from '../../model';
@@ -101,13 +101,18 @@ describe('ThreadsView', () => {
  * loading or not, the reader can always start a thread.
  */
 describe('the way to a new thread', () => {
-  it('is the empty state’s own action when there are no threads', () => {
+  it('is the empty list’s only content when there are no threads', () => {
     renderView([]);
 
     const start = screen.getByRole('link', { name: /Start din første tråd/ });
     expect(start.getAttribute('href')).toBe('/');
-    expect(start.closest('.empty-state')).not.toBeNull();
     expect(screen.queryByRole('link', { name: /Ny tråd/ })).toBeNull();
+    // Alone (Simens issue 82, round 2): no heading and no sentence over it.
+    expect(screen.queryByText('Ingen tråder ennå')).toBeNull();
+    expect(screen.queryByText('Still et spørsmål, så havner samtalen her.')).toBeNull();
+    expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual([
+      'Tidligere tråder',
+    ]);
   });
 
   it('stays above the list while it loads', () => {
@@ -147,5 +152,63 @@ describe('the search field', () => {
     renderView(threads);
 
     expect(screen.getByRole('searchbox', { name: 'Søk i tråder' })).toBeTruthy();
+  });
+});
+
+/*
+ * A new thread takes the panel to the filters (Simens issue 75, round 2):
+ * the reader narrows the corpus there before the first question, and the list
+ * has nothing new to show until it is asked.
+ */
+describe('a new thread and the filter view', () => {
+  function renderWithFilters(given: Thread[]) {
+    const onShowView = vi.fn();
+    render(
+      <MemoryRouter>
+        <ThreadsView siblingViews={['filters']} onShowView={onShowView} threads={given} />
+      </MemoryRouter>,
+    );
+    return onShowView;
+  }
+
+  it('goes to the filters on «Ny tråd»', () => {
+    const onShowView = renderWithFilters(threads);
+
+    fireEvent.click(screen.getByRole('link', { name: /Ny tråd/ }));
+
+    expect(onShowView).toHaveBeenCalledExactlyOnceWith('filters');
+  });
+
+  it('goes to the filters on «Start din første tråd»', () => {
+    const onShowView = renderWithFilters([]);
+
+    fireEvent.click(screen.getByRole('link', { name: /Start din første tråd/ }));
+
+    expect(onShowView).toHaveBeenCalledExactlyOnceWith('filters');
+  });
+
+  it('leaves the panel as it is on a click that opens another tab', () => {
+    const onShowView = renderWithFilters(threads);
+    const link = screen.getByRole('link', { name: /Ny tråd/ });
+
+    fireEvent.click(link, { metaKey: true });
+    fireEvent.click(link, { ctrlKey: true });
+    fireEvent.click(link, { shiftKey: true });
+    fireEvent.click(link, { button: 1 });
+
+    expect(onShowView).not.toHaveBeenCalled();
+  });
+
+  it('stays in the list when the slot has no filter view to go to', () => {
+    const onShowView = vi.fn();
+    render(
+      <MemoryRouter>
+        <ThreadsView siblingViews={[]} onShowView={onShowView} threads={threads} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: /Ny tråd/ }));
+
+    expect(onShowView).not.toHaveBeenCalled();
   });
 });

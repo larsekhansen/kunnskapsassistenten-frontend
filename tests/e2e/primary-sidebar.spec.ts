@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { contrastAgainstBackdrop, covers, expectNoAxeViolations, setColorScheme } from './a11y';
 import {
   ask,
@@ -106,37 +106,44 @@ test.describe('navigasjonspanelet', () => {
     },
   );
 
+  /*
+   * The filters first, and the corpus's documents under the line (Simens
+   * issue 76b, round 2). This test used to hold the opposite: that the list
+   * of documents from Kudos stood above the fold in a 900 px window
+   * (brukerblikk runde 2, funn 4). Simen has moved the corpus line and the
+   * list under the line before «Dine dokumenter», so the fields the reader
+   * narrows with are what the panel opens on, and the list is what the answer
+   * found. No new line of its own: the one line in the panel is the one that
+   * was there.
+   */
   test(
-    'dokumentlista fra Kudos er synlig uten å rulle i et 900 px vindu',
+    'filtrene står over skillelinja, og dokumentene fra Kudos under den',
     REAL_ANSWER,
     async ({ page }, testInfo) => {
-      covers(testInfo, 'brukerblikk runde 2, funn 4: dokumentlista over skjermkanten');
+      covers(testInfo, 'Simens issue 76b: filtrene øverst, dokumentene under skillelinja');
       await page.goto('/');
       await ask(page, 'Hvordan jobber Nkom med måloppnåelse?');
 
       const panel = page.getByRole('navigation', { name: 'Tråder og filter' });
-      const scroller = panel.locator('.sidebar-content');
-      const firstRow = panel.locator('.documents-list__list li').first();
-      await expect(firstRow).toBeVisible();
+      const documents = panel.locator('.filters-view__documents');
+      await expect(documents.locator('.documents-list__list li').first()).toBeVisible();
 
-      // Nothing has scrolled to get here. Without this the test would pass on a
-      // panel that Playwright scrolled into view for us, which is the bug.
-      expect(await scroller.evaluate((element) => element.scrollTop), 'panelet er urullet').toBe(0);
+      const box = async (locator: Locator) => (await locator.boundingBox())!;
+      const lastField = await box(facetField(page, 'År'));
+      const line = await box(panel.locator('.filters-view__divider'));
+      const block = await box(documents);
+      const own = await box(panel.getByRole('heading', { name: 'Dine dokumenter' }));
 
-      const box = (await firstRow.boundingBox())!;
-      const windowHeight = page.viewportSize()!.height;
-      // The measurement in the review: the first row started at y = 818 in a
-      // 900 px window, under the corpus line and three untouched facet fields.
-      expect(
-        box.y + box.height,
-        `første dokumentrad slutter på ${Math.round(box.y + box.height)} i et ${windowHeight} px vindu`,
-      ).toBeLessThan(windowHeight);
+      // Top to bottom: the fields, the line, the corpus's documents, and the
+      // reader's own.
+      expect(lastField.y + lastField.height, 'feltene står over linja').toBeLessThanOrEqual(line.y);
+      expect(line.y, 'dokumentene står under linja').toBeLessThan(block.y);
+      expect(block.y + block.height, 'og over «Dine dokumenter»').toBeLessThanOrEqual(own.y);
 
-      // And the facets are still right there, full size: answer 2 put all
-      // filtering in this one panel, so moving the list up may not fold them.
-      for (const dimension of ['Dokumenttyper', 'Virksomheter', 'År']) {
-        await expect(facetField(page, dimension)).toBeVisible();
-      }
+      // The corpus line went down with the list.
+      await expect(documents.getByText(/^Dokumenter fra /)).toBeVisible();
+
+      await expect(panel.locator('.filters-view hr')).toHaveCount(1);
     },
   );
 
