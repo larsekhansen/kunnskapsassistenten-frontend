@@ -36,19 +36,39 @@
 
 /* ---------------------------------------------------------------- greeting */
 
+/*
+ * Air above the greeting: 60 px on a desktop window, 24 px on a phone.
+ *
+ * Simen asked for about 4rem on a Mac at 1440 (30.09). `--ds-size-15` is
+ * 60 px at the `md` size mode and the nearest step on the scale — `--ds-size-18`
+ * is 72 and overshoots by more than 15 sets short.
+ *
+ * The principle is «room above the greeting, in proportion to the screen», so
+ * the middle term is measured in `vw`: a phone is short of width long before
+ * it is short of height, and it is the width that makes the suggestions below
+ * wrap onto three lines each. 5vw reaches the ceiling at 1200 and the floor at
+ * 480.
+ */
 .ka-chat-greeting {
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-1);
-  margin-block-start: var(--ds-size-10);
+  padding-block-start: clamp(var(--ds-size-6), 5vw, var(--ds-size-15));
 }
 
 /* ------------------------------------------------------------ kickstarters */
 
+/*
+ * A little air over «Forslag», on top of the 32 px gap the column already
+ * puts between it and the greeting. About 1rem on a desktop window (Simen,
+ * 30.09), which is `--ds-size-4` exactly, and half of it on a phone — same
+ * `vw` reasoning as the greeting above.
+ */
 .ka-kickstarters {
   display: flex;
   flex-direction: column;
   gap: var(--ds-size-1);
+  padding-block-start: clamp(var(--ds-size-2), 1.2vw, var(--ds-size-4));
 }
 
 .ka-kickstarters__list {
@@ -510,16 +530,28 @@
 }
 
 /*
- * One row: paperclip, field, send. The buttons used to sit on a row of their
- * own under the field — 48 px of the sticky bottom on every screen, for two
- * controls that fit beside it (høydebudsjett 2026-09-21, H1).
+ * Two rows: the field across the top, the paperclip and the send button under
+ * it, one at each end.
  *
- * `flex-end` so they stay level with the last line as the field grows, rather
- * than drifting to the middle of a four-line question.
+ * The three were on one row, which cost less height (høydebudsjett
+ * 2026-09-21, H1) and read badly once the box was tall enough to write in:
+ * the placeholder stood indented at the top and a button hung low on either
+ * side, with nothing lining up (Simens issue 79). Two rows cost the 48 px
+ * back and buy an edge the eye can follow — the field runs the full width of
+ * the box, its text starts over the paperclip and ends over the send button.
  */
 .ka-composer {
+  /*
+   * How far a tertiary icon button holds its glyph in from its own box: half
+   * of what the icon leaves inside a medium control. The field is set in by
+   * the same amount, so the first letter of the question starts exactly where
+   * the paperclip under it starts (Simens issue 79). A raw 12px would stop
+   * following the size mode the moment anything set `data-size`.
+   */
+  --ka-composer-glyph-inset: calc((var(--ds-size-12) - var(--ds-icon-size)) / 2);
+
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   gap: var(--ds-size-2);
   padding: var(--ds-size-2);
   /* White box on the tinted ground, like the answer card. */
@@ -577,7 +609,30 @@
   resize: none; /* the height follows the text; a drag handle would fight it */
   border: 0;
   background: transparent;
-  padding: var(--ds-size-1) var(--ds-size-2);
+  /*
+   * Set in at the start by exactly what the paperclip below is set in by, and
+   * flush at the end, where the send button's own edge is. That is the line
+   * Simen asked for in issue 79: the text lines up with what you can see on
+   * each side, the glyph on one and the filled button on the other.
+   */
+  padding-block: var(--ds-size-1);
+  padding-inline: var(--ka-composer-glyph-inset) 0;
+  /*
+   * About three lines to write in, 90 px on a Mac at 1440 × 900 (Simen,
+   * 30.09). `--ds-size-22` is 88 px at the `md` size mode and the nearest step
+   * on the scale.
+   *
+   * The principle is «room for a real question, never at the cost of a short
+   * screen», so the middle term is `dvh` and the floor is two lines: a laptop
+   * at 720 gets 72 px, a 480 px window gets the 48 px floor, and a phone gets
+   * what its address bar leaves rather than what the page thinks it has. The
+   * field still grows with the text from here up to
+   * `--ka-composer-max-height`.
+   */
+  /* stylelint-disable-next-line plugin/browser-compat -- samme `dvh` som på
+     `.ka-chat`. Faller den bort, står feltet på Designsystemets egen
+     minstehøyde, altså slik det sto før. */
+  min-block-size: clamp(var(--ds-size-12), 10dvh, var(--ds-size-22));
 }
 
 .ka-composer__field textarea:focus-visible {
@@ -669,14 +724,61 @@
   flex: 0 0 auto;
 }
 
+/*
+ * Round, the way Simen drew it (issue 79). `--ds-border-radius-full` and not
+ * a radius of our own, so the stop button — which is wide, because it carries
+ * the word «Avbryt» — becomes a pill rather than a circle with the text
+ * hanging out of it.
+ */
+.ka-composer__send {
+  border-radius: var(--ds-border-radius-full);
+}
+
+/*
+ * The sentence on the inert paperclip wraps rather than pushing the send
+ * button off the row: «Snart kan du laste opp dokumenter her» is wider than
+ * the 306 px the column has on a phone.
+ */
+.ka-composer__attach {
+  min-inline-size: 0;
+  flex-shrink: 1;
+  text-align: start;
+  white-space: normal;
+}
+
+/*
+ * The row under the field: what you attach with at one end, what you send
+ * with at the other.
+ *
+ * `space-between` and not a spacer, because the row holds exactly two
+ * controls and the space is what separates them. The stop button is wider
+ * than the send button it replaces — it carries the word «Avbryt» — and grows
+ * to its own end without moving the paperclip.
+ */
+.ka-composer__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-size-2);
+}
+
 .ka-composer__disclaimer {
   color: var(--ds-color-neutral-text-subtle);
   text-align: center;
 }
 
+/*
+ * The follow-up questions, centred under the box (Simens issue 89).
+ *
+ * They were flush with the start of the column, under a field whose own text
+ * is set in — two edges a row apart that nearly agreed. Centred they belong
+ * to the box above them instead of arguing with it, and a row of two chips
+ * and a row of three then sit the same way.
+ */
 .ka-follow-ups {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: var(--ds-size-3);
   margin: 0;
   padding: 0;
@@ -710,6 +812,7 @@
 .ka-attachments[hidden],
 .ka-attachments__item[hidden],
 .ka-composer[hidden],
+.ka-composer__controls[hidden],
 .ka-follow-ups[hidden] {
   display: none;
 }
