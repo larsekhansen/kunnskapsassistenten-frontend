@@ -77,11 +77,22 @@ export function ChatSlotView() {
   // in mock here — there the re-read puts everything back, so only a
   // half-written question is lost). It is the same conversation, and
   // `startedHere` is how this side says so.
+  //
+  // The slot is told «no thread» as well as keyed as one, and it has to be
+  // both. Keeping the key alone left the instance standing but handed it a
+  // `threadId` for the first time, and the effect on `[client, threadId]`
+  // read the thread back IN ON TOP of the conversation already on screen:
+  // question, answer card and «Fremgangsmåte» each drawn twice (KA CC on
+  // #218, measured in mock; it needs a FINISHED turn, because that is when
+  // the mock writes the conversation down). This page started the
+  // conversation, so «no thread in the address» is the truth it has been
+  // working from all along — the address is a link for later, and this says
+  // so twice instead of once.
   const discovered = threadId !== undefined && startedHere(threadId);
   return (
     <ChatSlot
       key={discovered || threadId === undefined ? `new:${newThreads}` : threadId}
-      threadId={threadId}
+      threadId={discovered ? undefined : threadId}
     />
   );
 }

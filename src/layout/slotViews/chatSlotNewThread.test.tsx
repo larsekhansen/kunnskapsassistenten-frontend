@@ -339,6 +339,9 @@ describe('adressen denne sida skrev til seg selv', () => {
 
     expect(window.location.pathname).toBe(address);
     expect(field().value).toBe('Halvskrevet');
-    expect(screen.getAllByText('Hva står i årsrapporten?').length).toBeGreaterThan(0);
+    // Én gang, ikke to. Å beholde nøkkelen alene lot instansen stå, men ga
+    // den en `threadId` for første gang, og effekten på den leste tråden inn
+    // IGJEN oppå samtalen som alt sto der (KA CC på #218).
+    expect(document.querySelectorAll('.ka-message--user')).toHaveLength(1);
   });
 });
