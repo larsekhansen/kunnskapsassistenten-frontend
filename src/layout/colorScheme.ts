@@ -3,8 +3,8 @@
  * Digdir theme's tokens — the theme carries 147 light/dark variables, so the
  * cost is verifying screens, not building anything.
  *
- * There is a switch, but no visible control, because no button has been
- * drawn. It is a console command:
+ * The visible control is `ColorSchemeToggle`, at the foot of the navigation
+ * panel (Simens issue 85). The console command it was until then still works:
  *
  *   window.ka.colorScheme.set('dark' | 'light' | 'auto')
  *   window.ka.colorScheme.get()
@@ -14,9 +14,6 @@
  * colorSchemeBoot.js, so the page never flashes the wrong scheme. That
  * script and this module must agree on STORAGE_KEY and ATTRIBUTE; they are
  * the only two strings duplicated between them.
- *
- * A visible toggle, when the designer draws one, calls `set()` and nothing
- * else changes.
  */
 
 export type ColorScheme = 'light' | 'dark' | 'auto';
@@ -55,13 +52,44 @@ export function getColorScheme(): ColorScheme {
   return readStored() ?? DEFAULT_SCHEME;
 }
 
+/** Whoever draws the choice, told when it changes. See useColorScheme.ts. */
+const listeners = new Set<() => void>();
+
+function apply(scheme: ColorScheme): void {
+  document.documentElement.setAttribute(ATTRIBUTE, scheme);
+  for (const listener of listeners) listener();
+}
+
 export function setColorScheme(scheme: ColorScheme): ColorScheme {
   if (!isColorScheme(scheme)) {
     throw new Error(`Ukjent fargemodus: ${String(scheme)}. Bruk 'light', 'dark' eller 'auto'.`);
   }
   writeStored(scheme);
-  document.documentElement.setAttribute(ATTRIBUTE, scheme);
+  apply(scheme);
   return scheme;
+}
+
+/**
+ * Called when the choice changes: from the control, from the console, or in
+ * another tab of the same app.
+ *
+ * The other tab is the `storage` event, which fires only in the tabs that did
+ * NOT write. Without it a reader with two tabs open would switch one to dark
+ * and find the other still light, with its control saying so — two answers
+ * to one setting.
+ */
+export function subscribeToColorScheme(listener: () => void): () => void {
+  if (listeners.size === 0) window.addEventListener('storage', onStorage);
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) window.removeEventListener('storage', onStorage);
+  };
+}
+
+/** One for all listeners, so a change in another tab is applied once. */
+function onStorage(event: StorageEvent): void {
+  if (event.key === STORAGE_KEY) apply(getColorScheme());
 }
 
 declare global {

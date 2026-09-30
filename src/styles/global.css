@@ -627,6 +627,36 @@ body {
 }
 
 /*
+ * The panel's foot: the app's own settings, under the scrolling region and
+ * outside it. Only the navigation panel has one; see `foot` in Shell.tsx.
+ *
+ * The line over it is the one the view head draws under itself, so the
+ * region that scrolls is framed the same way at both ends.
+ */
+.sidebar-footer {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  inline-size: 100%;
+  padding-inline: var(--ka-sidebar-padding-inline);
+  padding-block-start: var(--ds-size-4);
+  border-block-start: var(--ka-panel-border);
+}
+
+/*
+ * With a foot, the 32 px the region keeps under its last item and the 32 px
+ * the panel keeps under itself would be 64 px of air around one row of
+ * buttons, taken from the list that scrolls. The line already ends the
+ * region, so 16 px (`--ds-size-4`, the panel's own gap) on each side of it.
+ */
+.panel:has(> .sidebar-footer) {
+  padding-block-end: var(--ds-size-4);
+}
+
+.panel:has(> .sidebar-footer) > .sidebar-content {
+  padding-block-end: 0;
+}
+
+/*
  * The view head: what stays put while the rest of the region scrolls.
  *
  * One rule for all three regions, because they asked for the same thing

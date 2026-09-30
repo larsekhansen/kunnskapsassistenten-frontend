@@ -210,6 +210,9 @@ export async function walkWithTab(page: Page, limit = 80): Promise<FocusStep[]> 
               ? ''
               : (document.querySelector(`label[for="${element.id}"]`)?.textContent ?? ''),
           ) ||
+          // A `<label>` around the field names it too, which is how
+          // Designsystemet's ToggleGroup draws each choice (#205).
+          clean(element.closest('label')?.textContent ?? '') ||
           clean(element.textContent).slice(0, 60) ||
           clean(element.getAttribute('title')),
         outline: styles.outlineStyle === 'none' ? 'none' : styles.outline,
