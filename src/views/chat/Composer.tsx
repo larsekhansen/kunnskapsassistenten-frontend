@@ -190,28 +190,6 @@ export function Composer({
   return (
     <div className="ka-composer-area" ref={ref}>
       {/*
-        One line, and only the disclaimer on it.
-        «Kunnskapsassistenten kan gjøre feil» is what the design puts with the
-        field in all four chatInput variants. The shortcut used to share the
-        line and wrapped it onto two on both measured widths, which cost 24 px
-        of the sticky bottom on every screen to say something a reader needs
-        once (høydebudsjett 2026-09-21, H3).
-
-        It is not gone: it is on the field as a tooltip, on the field as a
-        description for screen readers, and in the skip link that does the
-        same jump.
-
-        Above the box rather than under it (Simens issue 89), and at the very
-        top of the sticky area rather than just above the frame: the
-        attachments come and go with every file, and a standing sentence that
-        moved a row each time is one nobody would read twice. Under the box is
-        where the follow-up questions are now.
-      */}
-      <Paragraph className="ka-composer__disclaimer" data-size="sm">
-        {DISCLAIMER}
-      </Paragraph>
-
-      {/*
         Both handlers put focus back in the field, because both take the
         control the reader is standing on out of the page: removing a chip
         unmounts its button, and retrying one takes «Prøv igjen» away the
@@ -347,12 +325,18 @@ export function Composer({
             the sticky bottom to say something once (KA CC on #195). Hidden
             that way it is still the button's accessible name, and WCAG 2.5.3
             asks nothing of a control with no visible label.
+
+            In the accent colour while it is coming, the way Simen draws it in
+            issue 79: pale blue, like the send button beside it before there
+            is anything to send. That is Designsystemet's own disabled
+            tertiary button, lightened less than it lightens it — see
+            chat.css for why. A working paperclip stays neutral.
           */}
           <Button
             aria-disabled={unavailable ? 'true' : undefined}
             aria-label={unavailable ? undefined : ATTACH_LABEL}
             className="ka-composer__attach"
-            data-color="neutral"
+            data-color={unavailable ? 'accent' : 'neutral'}
             icon={!unavailable}
             onClick={() => {
               if (unavailable) {
@@ -424,6 +408,31 @@ export function Composer({
           ))}
         </ul>
       ) : null}
+
+      {/*
+        One line, and only the disclaimer on it.
+        «Kunnskapsassistenten kan gjøre feil» is what the design puts with the
+        field in all four chatInput variants. The shortcut used to share the
+        line and wrapped it onto two on both measured widths, which cost 24 px
+        of the sticky bottom on every screen to say something a reader needs
+        once (høydebudsjett 2026-09-21, H3).
+
+        It is not gone: it is on the field as a tooltip, on the field as a
+        description for screen readers, and in the skip link that does the
+        same jump.
+
+        Under the box, where Simen draws it in issue 79, which turns round
+        the «above» from issue 89. Last in the sticky area rather than just
+        under the frame, with the follow-up questions between the two, which
+        is the order of issue-89a: the area is pinned to the bottom and grows
+        upwards, so the last line is the one that never moves. Follow-ups
+        come with every answer and attachments with every file, and a
+        standing sentence that moved a row each time is one nobody would
+        read twice.
+      */}
+      <Paragraph className="ka-composer__disclaimer" data-size="sm">
+        {DISCLAIMER}
+      </Paragraph>
 
       <p className="ds-sr-only" id={descriptionId}>
         {SHORTCUT_DESCRIPTION}

@@ -1076,12 +1076,13 @@ describe('ChatView', () => {
     expect(inControls.indexOf(attach)).toBeLessThan(inControls.indexOf(send));
   });
 
-  it('har ansvarsteksten over boksen og oppfølgingsspørsmålene under', async () => {
+  it('har oppfølgingsspørsmålene rett under boksen og ansvarsteksten sist', async () => {
     /*
-     * Oppfølgingsspørsmålene lå under boksen og ansvarsteksten under dem
-     * igjen. Simen ville ha ansvarsteksten over boksen og spørsmålene
-     * midtstilt under den (Simens issue 89). Midtstillingen er CSS; det denne
-     * testen holder fast, er hvilken side av boksen de to står på.
+     * Simen flyttet ansvarsteksten over boksen i issue 89 og tilbake under
+     * den i issue 79. Oppfølgingsspørsmålene står rett under boksen, som i
+     * issue-89a, og ansvarsteksten sist: området er festet i bunnen og vokser
+     * oppover, så den siste linja er den som aldri flytter seg. Luften er
+     * CSS; det denne testen holder fast, er rekkefølgen.
      */
     const { container } = render(
       <Shell>
@@ -1096,9 +1097,13 @@ describe('ChatView', () => {
     const at = (selector: string) =>
       [...area.children].findIndex((child) => child.matches(selector));
 
-    expect(at('.ka-composer__disclaimer')).toBeGreaterThanOrEqual(0);
-    expect(at('.ka-composer__disclaimer')).toBeLessThan(at('.ka-composer'));
+    expect(at('.ka-composer')).toBeGreaterThanOrEqual(0);
     expect(at('.ka-follow-ups')).toBeGreaterThan(at('.ka-composer'));
+    expect(at('.ka-composer__disclaimer')).toBeGreaterThan(at('.ka-follow-ups'));
+    // Last of what is on screen: only the screen-reader description, which
+    // is out of flow, comes after it.
+    const shown = [...area.children].filter((child) => !child.matches('.ds-sr-only'));
+    expect(shown.at(-1)?.matches('.ka-composer__disclaimer')).toBe(true);
   });
 
   it('lar bunnteksten være forbeholdet alene', () => {
