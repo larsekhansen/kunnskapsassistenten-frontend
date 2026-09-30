@@ -413,6 +413,19 @@ function Sidebar({
   const [hasFocus, setHasFocus] = useState(false);
 
   /**
+   * Whether the pointer is holding this slot's separator. A drag that folds
+   * the panel goes on until it is let go (Simens issue 80, round 2), so the
+   * separator is drawn over the rail for as long as this is true. See
+   * PanelSeparator.tsx.
+   *
+   * Dropped when the window crosses into drawer mode: the separator goes then
+   * whatever the pointer is doing, and a drag that never hears its own end
+   * would leave one standing on the rail when the window grows back.
+   */
+  const [resizing, setResizing] = useState(false);
+  if (resizing && drawer) setResizing(false);
+
+  /**
    * Changing this slot must not drop the keyboard focus on the floor.
    *
    * Two different ways it happens, and one repair for both:
@@ -430,6 +443,9 @@ function Sidebar({
    *      is unmounted and a new one mounted. The user pressed that button and
    *      the DOM node they were standing on stops existing. Measured
    *      2026-09-15, when the rail wrapped it for the first time.
+   *   3. A drag folds the panel and is let go over the rail. The separator
+   *      held the focus through the drag and goes when the pointer is let
+   *      go, which is a change to `resizing` and not to `collapsed`.
    *
    * Either way the next Tab would start again at the skip link, a whole page
    * away from what the user was doing. WCAG 2.4.3.
@@ -473,7 +489,7 @@ function Sidebar({
     if (!lost) return;
 
     toggle.current?.focus();
-  }, [hasFocus, state.collapsed]);
+  }, [hasFocus, state.collapsed, resizing]);
 
   /*
    * «Vis kilder» / «Skjul kilder», «Vis tråder og filter» / «Skjul tråder og
@@ -829,8 +845,11 @@ function Sidebar({
         resizes is this slot, so this is where it belongs — and it is also
         what the `region` rule asks: a control outside every landmark is
         content nobody can navigate to by landmark.
+
+        And over the rail while a drag that folded the panel is still held,
+        so the drag can open it again (Simens issue 80, round 2).
       */}
-      {railed ? null : <PanelSeparator slot={slot} />}
+      {railed && !resizing ? null : <PanelSeparator slot={slot} onDraggingChange={setResizing} />}
     </Element>
   );
 }

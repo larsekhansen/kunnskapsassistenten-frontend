@@ -225,15 +225,19 @@ export const defaultLayout: Layout = {
       // The bounds are the drag handle's, added 2026-09-15 (rolle-5i). 400 is
       // the floor as well as the default: the panel may be widened and never
       // narrowed, because 328 inner is what the filter controls were drawn
-      // for. 480 is the ceiling Lars set — 408 inner, room for a longer
-      // document title on one line, and still short of the answer column's
-      // own 640 floor at 1280 with the sources panel railed
-      // (480 + 32 + 640 + 67 = 1219).
+      // for.
+      //
+      // No ceiling of its own. It was 480 until Simens issue 80 asked for
+      // panels that can take at least half the window, since readers work in
+      // different ways. The window is the ceiling now, and `widthRange` in
+      // resize.ts works it out: what is left once the other panel and the
+      // answer column's 640 floor have had theirs. With the sources panel
+      // railed that is 541 at 1280, 701 at 1440 and 1181 at 1920.
       sizing: {
         mode: 'sized',
         width: 400,
         minWidth: 400,
-        maxWidth: 480,
+        maxWidth: Number.POSITIVE_INFINITY,
         collapsedWidth: railWidth,
       },
     },
@@ -290,15 +294,18 @@ export const defaultLayout: Layout = {
       // `right-sidebar` organism it instantiates, and it sums to 1471 inside
       // its own 1440 px frame.
       //
-      // 560 is the ceiling, and it is the top of the `kilder` organism frame
-      // quoted above — the widest this column is drawn anywhere in the
-      // design. The floor stays 336, which is both the drag's floor and the
-      // width the window may squeeze it to.
+      // The floor stays 336, which is both the drag's floor and the width the
+      // window may squeeze it to.
+      //
+      // No ceiling of its own, for the same reason as the navigation panel's
+      // and for this panel above all (Simens issue 80): a reader reading the
+      // documents behind an answer wants room for them. It was 560, the top
+      // of the `kilder` organism frame, until then.
       sizing: {
         mode: 'sized',
         width: 432,
         minWidth: 336,
-        maxWidth: 560,
+        maxWidth: Number.POSITIVE_INFINITY,
         collapsedWidth: railWidth,
       },
     },
@@ -539,9 +546,10 @@ export function withWidth(layout: Layout, slot: Slot, width: number): Layout {
 
   // The model's own bounds, and they are a backstop rather than the rule the
   // drag follows: what fits in THIS window is narrower, and `widthRange` in
-  // resize.ts works it out. This is what stops a stored number nobody can
-  // produce any more — an old `ka.layout.v1`, a hand-edited one — from
-  // reaching the layout.
+  // resize.ts works it out. The floor is what stops a stored number nobody
+  // can produce — an old `ka.layout.v1`, a hand-edited one — from reaching
+  // the layout. The sidebars have no ceiling, so a stored 5000 is kept, and
+  // `fittedWidths` draws it at what the window holds.
   const clamped = Math.min(
     Math.max(Math.round(width), state.sizing.minWidth),
     state.sizing.maxWidth,
