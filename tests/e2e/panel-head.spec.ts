@@ -87,9 +87,10 @@ test.describe('panelraden', () => {
 
       const controls = await headControls(page);
 
-      // Fire: «Skjul tråder og filter», «Tråder», smalere, bredere. Uten
-      // denne står påstanden under igjen og er sann om en tom liste.
-      expect(controls.map((control) => control.navn)).toHaveLength(4);
+      // To: «Skjul tråder og filter» og «Tråder». Pilene for smalere og
+      // bredere gikk med Simens issue 81 (#202). Uten denne står påstanden
+      // under igjen og er sann om en tom liste.
+      expect(controls.map((control) => control.navn)).toHaveLength(2);
 
       const unreachable = controls.filter((control) => !control.naabar);
       expect(
