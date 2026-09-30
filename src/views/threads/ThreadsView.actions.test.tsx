@@ -215,21 +215,22 @@ describe('deleting a thread', () => {
   });
 
   /*
-   * The last row takes «Ny tråd» away with it — above an empty list the way
-   * to a new thread is the empty state's — so focus has to find the one that
-   * is drawn now, not the one that was.
+   * Over an empty list «Ny tråd» says «Start din første tråd» instead, and
+   * it is the same link in the same place (Simens issue 82, round 2) — so
+   * that is where focus goes when the last row does.
    */
   it('puts focus on «Start din første tråd» when the last one is deleted', () => {
     renderView(actionsThat('succeed'));
+    const newThread = screen.getByRole('link', { name: /Ny tråd/ });
 
     choose('Måloppnåelse i Nkom', 'Slett');
     fireEvent.click(screen.getByRole('button', { name: 'Slett tråden' }));
     choose('Årsrapport for Digdir', 'Slett');
     fireEvent.click(screen.getByRole('button', { name: 'Slett tråden' }));
 
-    expect(document.activeElement).toBe(
-      screen.getByRole('link', { name: /Start din første tråd/ }),
-    );
+    const start = screen.getByRole('link', { name: /Start din første tråd/ });
+    expect(start).toBe(newThread);
+    expect(document.activeElement).toBe(start);
   });
 
   it('puts the row back, and says so, when the backend says no', async () => {

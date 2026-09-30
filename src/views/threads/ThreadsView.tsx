@@ -151,9 +151,9 @@ export function ThreadsView({
   const loading = !failed && !threads;
   /*
    * Known to be empty, as opposed to not known yet. Only then does «Ny tråd»
-   * move into the empty state; while the list loads, or when it could not be
-   * fetched, the way to a new thread stays where it always is, since a new
-   * thread works whether or not the list does.
+   * become «Start din første tråd»; while the list loads, or when it could
+   * not be fetched, it stays «Ny tråd», since a new thread works whether or
+   * not the list does.
    */
   const empty = threads?.length === 0;
   /*
@@ -282,20 +282,25 @@ export function ThreadsView({
         the page they are already on. The thread rows are places, and they are
         marked (answer 7).
 
-        Not drawn above an empty list (Simen, 30.09). There it is the empty
-        state's own action, «Start din første tråd», and the same link twice
-        on a panel with nothing else in it is one too many. The ref follows
-        whichever of the two is drawn, so focus still has somewhere to go
-        when the last thread is deleted.
+        Over an empty list it is «Start din første tråd», and it is alone
+        there (Simens issue 82, round 2): «Ingen tråder ennå» and the sentence
+        under it said twice what the button says once. The same link with
+        other words rather than a second link further down, so it stands
+        exactly where «Ny tråd» stands — lower down, it had the hit count's
+        empty region and one more gap over it, 48 px under «Filtrer
+        dokumenter» against 24. And focus has one element to go to when the
+        last thread is deleted.
+
+        A screen reader loses nothing it needs without the heading. The
+        panel's level 2, «Tidligere tråder», still follows, and «første» says
+        the list is empty.
       */}
-      {!empty && (
-        <Button asChild>
-          <RouterLink to="/" ref={newThreadRef} onClick={newThread}>
-            Ny tråd
-            <NewThreadIcon aria-hidden="true" />
-          </RouterLink>
-        </Button>
-      )}
+      <Button asChild>
+        <RouterLink to="/" ref={newThreadRef} onClick={newThread}>
+          {empty ? 'Start din første tråd' : 'Ny tråd'}
+          <NewThreadIcon aria-hidden="true" />
+        </RouterLink>
+      </Button>
 
       {/*
         «Tidligere tråder» is gone from the screen (Lars, 23.09): the panel is
@@ -316,9 +321,9 @@ export function ThreadsView({
         does nothing because the list filters as the user types.
 
         Not drawn over a list known to be empty (KA CC on #197, the same
-        thought as Simen's issue 82): there is nothing to search, and the
-        empty state should stand alone. While the list loads, or could not be
-        fetched, it stays, as «Ny tråd» does.
+        thought as Simen's issue 82): there is nothing to search, and «Start
+        din første tråd» should stand alone. While the list loads, or could
+        not be fetched, it stays, as «Ny tråd» does.
       */}
       {!empty && (
         <search className="threads-view__search">
@@ -374,26 +379,6 @@ export function ThreadsView({
             <Skeleton key={characters} variant="text" width={characters} />
           ))}
         </div>
-      )}
-
-      {/*
-        The empty list is the button alone (Simens issue 82, round 2):
-        «Ingen tråder ennå» and the sentence under it said twice what «Start
-        din første tråd» says once. Not `EmptyState`, which is a heading with
-        an action under it; here there is no heading to draw. So the button
-        stands where «Ny tråd» stands over a list, at the same width.
-
-        A screen reader loses nothing it needs. The panel's level 2,
-        «Tidligere tråder», still leads here, and «første» says the list is
-        empty.
-      */}
-      {empty && (
-        <Button asChild>
-          <RouterLink to="/" ref={newThreadRef} onClick={newThread}>
-            Start din første tråd
-            <NewThreadIcon aria-hidden="true" />
-          </RouterLink>
-        </Button>
       )}
 
       {threads && threads.length > 0 && matches.length === 0 && (
