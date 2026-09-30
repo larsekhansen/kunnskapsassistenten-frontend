@@ -174,12 +174,12 @@ test.describe('panelbredder', () => {
     await page.goto('/');
     const handle = separator(page, 'tråder og filter');
 
-    // `click()` er trykk og slipp på samme punkt: ingen bevegelse mellom dem,
-    // som er nettopp det 2.5.7 krever at skal holde. Ingen mouse.down/move
-    // her med vilje.
+    // `click()` is press and release on the same spot, with no movement in
+    // between, which is exactly what 2.5.7 asks to be enough. No
+    // mouse.down/move here, on purpose.
     await handle.click();
     await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter ett klikk');
-    // Og separatoren melder det samme tallet som panelet tegnes i.
+    // And the separator reports the same number the panel is drawn at.
     await expect(handle).toHaveAttribute('aria-valuenow', String(NAV_MAX));
 
     await handle.click();
@@ -193,9 +193,9 @@ test.describe('panelbredder', () => {
     await page.goto('/');
     const handle = separator(page, 'tråder og filter');
 
-    // Tre piksler mellom trykk og slipp er en hånd som ikke holdt helt stille,
-    // og det er fortsatt et klikk. `CLICK_SLOP` er 4, der Windows begynner en
-    // draging.
+    // Three pixels between press and release is a hand that did not keep
+    // quite still, and it is still a click. `CLICK_SLOP` is 4, where Windows
+    // starts a drag.
     await drag(page, handle, 3);
     await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter et klikk med skjelving');
 
@@ -203,8 +203,8 @@ test.describe('panelbredder', () => {
     await page.keyboard.press('Enter');
     await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, 'etter Enter');
 
-    // Førti er en draging. Nettleseren sender `click` etter den også, og det
-    // skal ikke vekse panelet til taket på toppen av dragingen.
+    // Forty is a drag. The browser sends `click` after it too, and that must
+    // not take the panel to its ceiling on top of the drag.
     await drag(page, handle, 40);
     await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT + 40, 'etter en draging på 40');
   });
@@ -270,8 +270,8 @@ test.describe('panelbredder', () => {
       await expect(separator(page, panel)).toHaveAttribute('tabindex', '0');
     }
 
-    // Og de virker: et skille som er tegnet skal kunne gjøre noe, også med
-    // et klikk.
+    // And they work: an edge that is drawn has to be able to do something,
+    // with a click too.
     await separator(page, 'tråder og filter').click();
     await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter ett klikk ved 1680');
   });
