@@ -231,26 +231,25 @@ describe('a window with no room in it', () => {
   });
 
   it('reports the width on screen, not the one the reader asked for elsewhere', () => {
-    // Widened in a window with room, then met at 1480. `aria-valuenow` is the
-    // only thing that tells a screen reader user where the edge is; a value
-    // that says 480 over a panel drawn at 400 is a lie told to the one reader
-    // who cannot see the difference.
+    // Widened with the sources panel on its rail, then met with it open.
+    // `aria-valuenow` is the only thing that tells a screen reader user where
+    // the edge is; a value that says 1181 over a panel drawn at 784 is a lie
+    // told to the one reader who cannot see the difference.
     localStorage.setItem(
       LAYOUT_STORAGE_KEY,
       JSON.stringify({
         collapsed: { 'secondary-sidebar': false },
-        widths: { 'primary-sidebar': 480 },
+        widths: { 'primary-sidebar': 1181 },
         sourcesDismissed: false,
       }),
     );
 
-    // 1480 and not 1440: at 1440 there is nothing to drag and no separator to
-    // read. 480 + 32 + 640 + 32 + 432 is 1616 and the window is 1480, so the
-    // sources panel gives 96 and this panel the last 40 — drawn at 440, which
-    // is neither the stored 480 nor the default 400.
-    const separator = open('primary-sidebar', { restore: true, width: 1480 });
-    expect(width(separator)).toBe(440);
-    expect(separator.getAttribute('aria-valuemax')).toBe('440');
+    // 1181 + 32 + 640 + 32 + 432 is 2317 and the window is 1920. The widening
+    // gives the 397 back and the sources panel keeps its 432, so the panel is
+    // drawn at 784, which is also where End stops. See `fittedWidths`.
+    const separator = open('primary-sidebar', { restore: true, width: 1920 });
+    expect(width(separator)).toBe(784);
+    expect(separator.getAttribute('aria-valuemax')).toBe('784');
   });
 });
 

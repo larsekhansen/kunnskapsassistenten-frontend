@@ -624,12 +624,21 @@ export function slotGapFor(state: SlotState): number {
  *   1. the answer column, down to its 640 px floor. That is CSS, not here:
  *      it grows from a zero basis and never shrinks, so it simply takes what
  *      is left. This function reserves the floor and no more.
- *   2. the sources panel, down to 336. It is the panel a reader opens to
+ *   2. what the reader widened a panel by, past the width the design draws
+ *      it at, the sources panel first. A widening is room the answer column
+ *      was not using, and it never costs the other panel its own width: the
+ *      same rule a drag follows in resize.ts. Without this step the two gave
+ *      different answers to «how wide can it be» (KA CC on #224): at 1920
+ *      with both panels open, End on the navigation panel stopped at 784
+ *      beside a sources panel at 432, while a stored 1181 was drawn at 880
+ *      and pressed the sources panel to 336.
+ *   3. the sources panel, down to 336. It is the panel a reader opens to
  *      check a citation, while the navigation panel is where the
  *      conversation is steered from.
- *   3. the navigation panel, down to 400 — the width it had before anybody
- *      dragged it. Nothing gives below its floor, and a window narrower than
- *      the floors is the undesigned range under 1280.
+ *   4. the navigation panel, down to 400 — the width it had before anybody
+ *      dragged it, so step 2 has already taken all it has to give. Nothing
+ *      gives below the floors, and a window narrower than the floors is the
+ *      undesigned range under 1280.
  *
  * It is pure, and it is what `aria-valuenow` on the separator reports: a
  * value that says 480 while the panel is drawn at 400 is a lie told to the
@@ -647,17 +656,25 @@ export function fittedWidths(layout: Layout, viewport: number): Record<SidebarSl
     slotFloor(layout.slots.main.sizing) -
     viewport;
 
-  // `yieldingSidebar` first and the other after it, which is the rule above
-  // read off the model rather than written out again.
-  for (const slot of [yieldingSidebar, otherSidebar(yieldingSidebar)]) {
-    if (over <= 0) break;
-    const state = layout.slots[slot];
-    if (state.collapsed || state.sizing.mode === 'flexible') continue;
+  // Two rounds, steps 2 and then 3 and 4 above: down to the design's width,
+  // then down to the floor. `yieldingSidebar` first in each, which is the
+  // rule above read off the model rather than written out again.
+  const order = [yieldingSidebar, otherSidebar(yieldingSidebar)];
+  const designWidth = (slot: SidebarSlot) => {
+    const sizing = defaultLayout.slots[slot].sizing;
+    return sizing.mode === 'flexible' ? sizing.minWidth : sizing.width;
+  };
+  for (const floor of [designWidth, (slot: SidebarSlot) => layout.slots[slot].sizing.minWidth]) {
+    for (const slot of order) {
+      if (over <= 0) break;
+      const state = layout.slots[slot];
+      if (state.collapsed || state.sizing.mode === 'flexible') continue;
 
-    const give = Math.min(over, fitted[slot] - state.sizing.minWidth);
-    if (give <= 0) continue;
-    fitted[slot] -= give;
-    over -= give;
+      const give = Math.min(over, fitted[slot] - Math.max(floor(slot), state.sizing.minWidth));
+      if (give <= 0) continue;
+      fitted[slot] -= give;
+      over -= give;
+    }
   }
 
   return fitted;
