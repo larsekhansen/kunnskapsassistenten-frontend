@@ -64,10 +64,63 @@ export function ChatSlotView() {
   // settings menu is `navigate({ hash: '' }, { replace: true })`, and a
   // half-written question on `/` was wiped by opening and shutting a dialog
   // (KA CC on #208). The count says what the key is actually about — the
-  // reader asked for a new conversation — and nothing else changes it. The
-  // address written by `replaceState` does not either, which is what keeps a
-  // streaming answer alive while it moves.
-  return <ChatSlot key={threadId ?? `new:${newThreads}`} threadId={threadId} />;
+  // reader asked for a new conversation — and nothing else changes it.
+  //
+  // And a `threadId` the ROUTER has only just noticed is not a navigation
+  // either. `replaceState` writes the address without telling the router, so
+  // `useParams` keeps saying «no thread» — until the next real navigation, on
+  // which the router re-reads `window.location` and sees `/threads/<id>` for
+  // the first time. Opening `#innstillinger` is such a navigation. The key
+  // then went from `new:N` to the id, the slot remounted, and the thread was
+  // read back from the backend: «Fremgangsmåte» gone, the Kudos links from 6
+  // to 0, the excerpts gone (measured in Azure on dfbb869 in live mode, and
+  // in mock here — there the re-read puts everything back, so only a
+  // half-written question is lost). It is the same conversation, and
+  // `startedHere` is how this side says so.
+  //
+  // The slot is told «no thread» as well as keyed as one, and it has to be
+  // both. Keeping the key alone left the instance standing but handed it a
+  // `threadId` for the first time, and the effect on `[client, threadId]`
+  // read the thread back IN ON TOP of the conversation already on screen:
+  // question, answer card and «Fremgangsmåte» each drawn twice (KA CC on
+  // #218, measured in mock; it needs a FINISHED turn, because that is when
+  // the mock writes the conversation down). This page started the
+  // conversation, so «no thread in the address» is the truth it has been
+  // working from all along — the address is a link for later, and this says
+  // so twice instead of once.
+  const discovered = threadId !== undefined && startedHere(threadId);
+  return (
+    <ChatSlot
+      key={discovered || threadId === undefined ? `new:${newThreads}` : threadId}
+      threadId={discovered ? undefined : threadId}
+    />
+  );
+}
+
+/**
+ * The thread ids this page has minted for the conversation on screen.
+ *
+ * A module Set and not state, because the one that has to read it is the
+ * component ABOVE the one that fills it: `startThread` runs inside `ChatSlot`,
+ * and `ChatSlotView` is where the key is decided. Two, not one, because
+ * adoption renames the conversation while the answer streams — the stand-in id
+ * and the one the backend gave it are both addresses this page wrote, and the
+ * router can notice either.
+ *
+ * Read during render rather than through `useSyncExternalStore`, and that is
+ * safe for a narrow reason: the only render that consults it is one where
+ * `threadId` has just appeared, which is a router change, which has already
+ * re-rendered this component. Nothing else asks.
+ *
+ * Emptied when `ChatSlot` unmounts, which is what keeps it from outliving the
+ * conversation it belongs to. A slot that has gone is a conversation that is
+ * no longer on screen, so its address is an ordinary thread again: going back
+ * to it later reads it from the backend, the way any thread does.
+ */
+const addressesWrittenHere = new Set<string>();
+
+function startedHere(threadId: string): boolean {
+  return addressesWrittenHere.has(threadId);
 }
 
 function ChatSlot({ threadId }: { threadId?: string }) {
@@ -221,6 +274,14 @@ function ChatSlot({ threadId }: { threadId?: string }) {
   useEffect(() => () => setDocuments(undefined), [setDocuments]);
 
   /*
+   * The addresses this page wrote go with the conversation that wrote them.
+   * See `addressesWrittenHere`: while this slot stands, its own address is
+   * «the conversation on screen» and must not remount it; once it is gone,
+   * that address is an ordinary thread to be read from the backend.
+   */
+  useEffect(() => () => addressesWrittenHere.clear(), []);
+
+  /*
    * The keyboard in the compose field, when «Ny tråd» asked for it (Simen's
    * issue 114). See useNewThread.ts.
    *
@@ -316,6 +377,7 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       client.openThread?.(real);
       startedRef.current = real;
       setStarted(real);
+      addressesWrittenHere.add(real.id);
       window.history.replaceState(window.history.state, '', `/threads/${real.id}`);
       lockNewThread(real.id, () => startedRef.current?.id === real.id);
     },
@@ -378,6 +440,7 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       const created: Thread = { ...threadFromQuestion(question), corpusKey: activeCorpusKey() };
       startedRef.current = created;
       setStarted(created);
+      addressesWrittenHere.add(created.id);
       window.history.replaceState(window.history.state, '', `/threads/${created.id}`);
 
       /*
