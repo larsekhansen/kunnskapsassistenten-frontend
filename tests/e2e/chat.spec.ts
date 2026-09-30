@@ -132,6 +132,25 @@ test.describe('hovedkolonnen', () => {
     await expect(page.getByRole('dialog').getByRole('radio', { name: /Detaljert/ })).toBeChecked();
   });
 
+  /*
+   * Closing the menu is a navigation, and the start page was keyed on every
+   * navigation for a while (#203): «Lukk» mounted the chat again and a
+   * half-written question was gone. Measured by KA CC on #208, round 1; the
+   * start page is keyed on «Ny tråd» since round 2.
+   */
+  test('å lukke menyen på startsiden beholder et halvskrevet spørsmål', MOCK, async ({ page }) => {
+    const field = composer(page);
+    await field.fill('Et halvskrevet spørsmål');
+
+    await page.goto('/#innstillinger');
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Lukk' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    await expect(field).toHaveValue('Et halvskrevet spørsmål');
+  });
+
   test(
     'avbryt stopper genereringen og beholder teksten som kom',
     MOCK,
