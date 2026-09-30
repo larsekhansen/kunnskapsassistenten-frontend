@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { clampWidth, growthDirection, widthRange, widthStep, type WidthRange } from './resize';
+import { clampWidth, growthDirection, widthRange, type WidthRange } from './resize';
 import { useLayout } from './useLayout';
 import { useViewportWidth } from './useViewportWidth';
 import { defaultLayout, fittedWidths, type SidebarSlot } from './viewModel';
@@ -18,8 +18,6 @@ export type PanelWidth = {
   fixed: boolean;
   /** Set an absolute width, clamped to `range`. */
   setWidth: (next: number) => void;
-  /** Widen (`+1`) or narrow (`-1`) by one step of `widthStep`. */
-  step: (towards: 1 | -1) => void;
   /** Back to the width the design draws, which also forgets the stored one. */
   reset: () => void;
 };
@@ -27,17 +25,17 @@ export type PanelWidth = {
 /**
  * One panel's width, and everything that can change it.
  *
- * Two controls move the same edge — the separator between the panel and the
- * answer column, and the pair of buttons in the panel head — and they have to
- * agree about where the edge is and how far it may go. So the arithmetic is
- * here rather than in either of them.
+ * The separator between the panel and the answer column is the one control
+ * that moves the edge: by drag, by click and by key. The arithmetic is here
+ * and not in it, so what it reports and what it can do are read from one
+ * place, and the separator stays about input.
  *
- * The buttons exist because the separator is not enough on its own: WCAG 2.5.7
- * Dragging Movements (AA) asks that anything operated by a drag can also be
- * operated with a single pointer WITHOUT dragging, and a keyboard does not
- * answer that — that is 2.1.1's question. The people 2.5.7 is for use a
- * pointer and can click; a head pointer, a tremor, a joystick. Found by KA CC
- * reviewing PR #50.
+ * WCAG 2.5.7 Dragging Movements (AA) asks that anything operated by a drag
+ * can also be operated with a single pointer WITHOUT dragging, and a keyboard
+ * does not answer that — that is 2.1.1's question. The people 2.5.7 is for
+ * use a pointer and can click; a head pointer, a tremor, a joystick. Found by
+ * KA CC reviewing PR #50. It was two buttons in the panel head until Simens
+ * issue 81; it is a click on the edge now. See PanelSeparator.tsx.
  */
 export function usePanelWidth(slot: SidebarSlot): PanelWidth {
   const { layout, setWidth: write } = useLayout();
@@ -59,7 +57,6 @@ export function usePanelWidth(slot: SidebarSlot): PanelWidth {
       direction,
       fixed: range.min === range.max,
       setWidth,
-      step: (towards: 1 | -1) => setWidth(width + towards * widthStep),
       reset: () => {
         const sizing = defaultLayout.slots[slot].sizing;
         if (sizing.mode !== 'flexible') write(slot, sizing.width);

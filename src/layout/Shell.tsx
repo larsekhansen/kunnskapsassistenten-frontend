@@ -14,7 +14,6 @@ import { ColorSchemeToggle } from './ColorSchemeToggle';
 import { ComposerContext } from './composerContext';
 import { COMPOSER_ID } from './ids';
 import { PanelSeparator } from './PanelSeparator';
-import { PanelWidthButtons } from './PanelWidthButtons';
 import { OpenThreadContext } from './openThreadContext';
 import { PanelHeadContext } from './panelHeadContext';
 import { MainScrollContext } from './scrollContext';
@@ -464,7 +463,7 @@ function Sidebar({
    * leaves a rail behind.
    *
    * This is the question every DRAWN thing beside the panel turns on: the
-   * width buttons, the separator, and how the toggle button itself is drawn.
+   * separator, and how the toggle button itself is drawn.
    * `state.collapsed` is a different question — whether the panel is OPEN —
    * and it is the one `aria-expanded` and the «Vis»/«Skjul» wording answer.
    * The two were the same thing until drawer mode, and telling them apart is
@@ -704,7 +703,6 @@ function Sidebar({
             time, which is why one ref serves both. See panelHeadContext.ts.
           */}
           {railed ? null : <div className="panel-head-slot" ref={panelHeadRef} />}
-          {railed ? null : <PanelWidthButtons slot={slot} />}
         </div>
 
         {drawer ? null : panelContent}
@@ -775,8 +773,7 @@ function Sidebar({
         An open panel is not on its own enough — the separator drops itself
         when the WINDOW has no room to give either, which is the state at
         1440 with both sidebars open. That test needs the width range, so it
-        lives in the component rather than here. Same for the width buttons
-        above. See PanelSeparator.tsx.
+        lives in the component rather than here. See PanelSeparator.tsx.
 
         A drawer has no edge to share: it lies over the answer column rather
         than beside it, and there is nothing between them to move.

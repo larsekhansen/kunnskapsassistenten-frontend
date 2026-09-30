@@ -58,11 +58,6 @@ function separator(page: Page, panel: Panel): Locator {
   return page.getByRole('separator', { name: `Endre bredde på ${panel}` });
 }
 
-const wider = (page: Page, panel: Panel) =>
-  page.getByRole('button', { name: `Gjør ${panel} bredere` });
-const narrower = (page: Page, panel: Panel) =>
-  page.getByRole('button', { name: `Gjør ${panel} smalere` });
-
 function panelWidth(page: Page, selector: string): Promise<number> {
   return page.evaluate(
     (css) => Math.round(document.querySelector(css)!.getBoundingClientRect().width),
@@ -165,77 +160,64 @@ test.describe('panelbredder', () => {
     expect(await panelWidth(page, '.secondary-sidebar')).toBe(SOURCES_DEFAULT - 40);
   });
 
-  test('ett klikk gjør panelet bredere og smalere, uten en eneste draging', async ({
+  /*
+   * The pointer path without a drag (WCAG 2.5.7). It was two arrow buttons in
+   * the panel head until Simens issue 81 took them away; now a click on the
+   * edge itself does it. One click takes the panel as wide as it can be, the
+   * next one back to the default. #202.
+   */
+  test('ett klikk på kanten gjør panelet så bredt det kan bli, og ett til setter det tilbake', async ({
     page,
   }, testInfo) => {
     covers(testInfo, 'panelbredde: pekervei uten draging (WCAG 2.5.7)');
     await page.setViewportSize({ width: 1920, height: HEIGHT });
     await page.goto('/');
+    const handle = separator(page, 'tråder og filter');
 
     // `click()` er trykk og slipp på samme punkt: ingen bevegelse mellom dem,
     // som er nettopp det 2.5.7 krever at skal holde. Ingen mouse.down/move
     // her med vilje.
-    await wider(page, 'tråder og filter').click();
-    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT + STEP, 'etter ett klikk');
+    await handle.click();
+    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter ett klikk');
+    // Og separatoren melder det samme tallet som panelet tegnes i.
+    await expect(handle).toHaveAttribute('aria-valuenow', String(NAV_MAX));
 
-    await wider(page, 'tråder og filter').click();
-    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT + 2 * STEP, 'etter to klikk');
-
-    await narrower(page, 'tråder og filter').click();
-    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT + STEP, 'etter ett klikk tilbake');
-
-    // Og separatoren melder det samme tallet: de to kontrollene flytter den
-    // samme kanten.
-    await expect(separator(page, 'tråder og filter')).toHaveAttribute(
-      'aria-valuenow',
-      String(NAV_DEFAULT + STEP),
-    );
+    await handle.click();
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, 'etter ett klikk til');
+    await expect(handle).toHaveAttribute('aria-valuenow', String(NAV_DEFAULT));
   });
 
-  test('knappene når helt opp til taket, og sier fra når de er der', async ({ page }, testInfo) => {
+  test('en skjelvende hånd klikker, en draging drar', async ({ page }, testInfo) => {
     covers(testInfo, 'panelbredde: pekervei uten draging (WCAG 2.5.7)');
     await page.setViewportSize({ width: 1920, height: HEIGHT });
     await page.goto('/');
+    const handle = separator(page, 'tråder og filter');
 
-    // Gulvet er der panelet står, så «smalere» er av fra første render — men
-    // den blir stående i tab-rekkefølgen, for ett trykk på «bredere» gjør
-    // den nyttig igjen.
-    await expect(narrower(page, 'tråder og filter')).toHaveAttribute('aria-disabled', 'true');
-    // Ingen `tabindex` i det hele tatt, som er sterkere enn `tabindex="0"`:
-    // en `<button>` er et tabbstopp av seg selv, og attributtet sto der før
-    // bare for å kunne settes til -1 når vinduet var fullt. Den tilstanden
-    // finnes ikke lenger — da tegnes knappen ikke. Så måles det som betyr
-    // noe: at tastaturet faktisk når den.
-    await expect(narrower(page, 'tråder og filter')).not.toHaveAttribute('tabindex');
-    await narrower(page, 'tråder og filter').focus();
-    await expect(narrower(page, 'tråder og filter')).toBeFocused();
+    // Tre piksler mellom trykk og slipp er en hånd som ikke holdt helt stille,
+    // og det er fortsatt et klikk. `CLICK_SLOP` er 4, der Windows begynner en
+    // draging.
+    await drag(page, handle, 3);
+    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter et klikk med skjelving');
 
-    for (let press = 0; press < 5; press += 1) await wider(page, 'tråder og filter').click();
-    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter fem klikk');
+    await handle.focus();
+    await page.keyboard.press('Enter');
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT, 'etter Enter');
 
-    // `aria-disabled`, ikke `disabled`: knappen blir stående i tab-rekkefølgen
-    // så fokus ikke faller til body midt i en serie klikk på den.
-    const atTop = wider(page, 'tråder og filter');
-    await expect(atTop).toHaveAttribute('aria-disabled', 'true');
-    expect(await atTop.evaluate((element) => element.hasAttribute('disabled'))).toBe(false);
-
-    // `force`, fordi Playwright regner `aria-disabled` som av og ellers venter
-    // på at knappen skal bli aktiv igjen. Poenget med paret er nettopp at
-    // nettleseren fortsatt leverer klikket, og at håndtereren er det som gjør
-    // knappen inert — så det er det klikket som skal måles.
-    await atTop.click({ force: true });
-    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter et klikk på grensa');
+    // Førti er en draging. Nettleseren sender `click` etter den også, og det
+    // skal ikke vekse panelet til taket på toppen av dragingen.
+    await drag(page, handle, 40);
+    await expectPanelWidth(page, '.primary-sidebar', NAV_DEFAULT + 40, 'etter en draging på 40');
   });
 
-  test('en kollapset sidekolonne har ingen breddeknapper', async ({ page }, testInfo) => {
+  test('en kollapset sidekolonne har ingen kant å dra i', async ({ page }, testInfo) => {
     covers(testInfo, 'panelbredde: ett skille per åpen sidekolonne');
     await page.goto('/');
 
-    await expect(wider(page, 'kilder')).toHaveCount(0);
-    await expect(wider(page, 'tråder og filter')).toHaveCount(1);
+    await expect(separator(page, 'kilder')).toHaveCount(0);
+    await expect(separator(page, 'tråder og filter')).toHaveCount(1);
 
     await page.getByRole('button', { name: 'Skjul tråder og filter' }).click();
-    await expect(wider(page, 'tråder og filter')).toHaveCount(0);
+    await expect(separator(page, 'tråder og filter')).toHaveCount(0);
   });
 
   test('på 1440 finnes ingen breddekontroller i det hele tatt', async ({ page }, testInfo) => {
@@ -254,8 +236,6 @@ test.describe('panelbredder', () => {
     // 17.09, beslutning 9 alternativ (c).
     for (const panel of ['tråder og filter', 'kilder'] as const) {
       await expect(separator(page, panel)).toHaveCount(0);
-      await expect(wider(page, panel)).toHaveCount(0);
-      await expect(narrower(page, panel)).toHaveCount(0);
     }
 
     // Og ingen av dem dukker opp i en Tab-vandring, som er den andre måten å
@@ -276,10 +256,10 @@ test.describe('panelbredder', () => {
     expect(border, 'panelets egen ramme tegner kanten').not.toBe('0px');
   });
 
-  test('på 1680 er alle fire knappene og begge skillene tilbake', async ({ page }, testInfo) => {
+  test('på 1680 er begge skillene tilbake', async ({ page }, testInfo) => {
     covers(testInfo, 'panelbredde: ingen tomme tabbstopp');
     // 1680: 400 + 32 + 640 + 32 + 432 = 1536, så det er 144 px å fordele og
-    // begge kantene kan flyttes. Kontrollene kommer tilbake av seg selv når
+    // begge kantene kan flyttes. Skillene kommer tilbake av seg selv når
     // vinduet vokser — det er den samme `fixed` som tok dem bort.
     await page.setViewportSize({ width: 1680, height: HEIGHT });
     await page.goto('/');
@@ -288,33 +268,25 @@ test.describe('panelbredder', () => {
     for (const panel of ['tråder og filter', 'kilder'] as const) {
       await expect(separator(page, panel)).toHaveCount(1);
       await expect(separator(page, panel)).toHaveAttribute('tabindex', '0');
-      await expect(wider(page, panel)).toHaveCount(1);
-      await expect(narrower(page, panel)).toHaveCount(1);
     }
 
-    // Og de virker: en knapp som er tegnet skal kunne gjøre noe.
-    await wider(page, 'tråder og filter').click();
-    await expectPanelWidth(
-      page,
-      '.primary-sidebar',
-      NAV_DEFAULT + STEP,
-      'etter ett klikk ved 1680',
-    );
+    // Og de virker: et skille som er tegnet skal kunne gjøre noe, også med
+    // et klikk.
+    await separator(page, 'tråder og filter').click();
+    await expectPanelWidth(page, '.primary-sidebar', NAV_MAX, 'etter ett klikk ved 1680');
   });
 
-  test('kontrollene forsvinner og kommer tilbake med vinduet', async ({ page }, testInfo) => {
+  test('skillene forsvinner og kommer tilbake med vinduet', async ({ page }, testInfo) => {
     covers(testInfo, 'panelbredde: ingen tomme tabbstopp');
     await page.setViewportSize({ width: 1680, height: HEIGHT });
     await page.goto('/');
     await showSources(page);
-    await expect(wider(page, 'kilder')).toHaveCount(1);
+    await expect(separator(page, 'kilder')).toHaveCount(1);
 
     await page.setViewportSize({ width: 1440, height: HEIGHT });
-    await expect(wider(page, 'kilder')).toHaveCount(0);
     await expect(separator(page, 'kilder')).toHaveCount(0);
 
     await page.setViewportSize({ width: 1680, height: HEIGHT });
-    await expect(wider(page, 'kilder')).toHaveCount(1);
     await expect(separator(page, 'kilder')).toHaveCount(1);
   });
 
@@ -358,7 +330,12 @@ test.describe('panelbredder', () => {
     expect(Number(await handle.getAttribute('aria-valuenow'))).toBeLessThanOrEqual(SOURCES_MAX);
   });
 
-  test('Enter og dobbeltklikk setter bredden tilbake til standard', async ({ page }, testInfo) => {
+  /*
+   * The double-click that reset the width went with #202: two clicks are
+   * there and back now, so a double-click from the default ends at the
+   * default. Enter is the reset, as before.
+   */
+  test('Enter setter bredden tilbake til standard', async ({ page }, testInfo) => {
     covers(testInfo, 'panelbredde: tilbakestilling');
     await page.goto('/');
 
@@ -373,7 +350,8 @@ test.describe('panelbredder', () => {
     await drag(page, handle, 50);
     expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT + 50);
 
-    await handle.dblclick();
+    await handle.focus();
+    await page.keyboard.press('Enter');
     expect(await panelWidth(page, '.primary-sidebar')).toBe(NAV_DEFAULT);
   });
 

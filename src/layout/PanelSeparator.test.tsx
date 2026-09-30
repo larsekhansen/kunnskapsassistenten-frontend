@@ -253,14 +253,15 @@ describe('a window with no room in it', () => {
 });
 
 /**
- * Simens issue 80: a panel dragged too narrow to read folds away.
+ * The pointer on the edge. Simens issue 80: a panel dragged too narrow to
+ * read folds away. Simens issue 81: a click is the path without a drag.
  *
  * jsdom does no layout, so what is measured here is the arithmetic on
  * `clientX` and what the drag leaves in the layout, not the pixels on
  * screen. It has pointer events but no pointer capture, so the capture is
  * stubbed for the length of these tests.
  */
-describe('a drag past the middle of the floor', () => {
+describe('the pointer on the edge', () => {
   const capture = {
     setPointerCapture: HTMLElement.prototype.setPointerCapture,
     hasPointerCapture: HTMLElement.prototype.hasPointerCapture,
@@ -343,5 +344,60 @@ describe('a drag past the middle of the floor', () => {
     fireEvent.pointerMove(separator, { clientX: 1753, pointerId: 1 });
 
     expect(slotState()).toBe('lukket 432');
+  });
+
+  /*
+   * Simens issue 81 took the arrow buttons out of the panel head, and they
+   * were the pointer path without a drag that WCAG 2.5.7 asks for. A click on
+   * the edge is that path now: it goes between the design's width and the
+   * widest the window has room for (the conductor's option A, 30.09).
+   */
+  it('klikk uten å dra gjør panelet så bredt det får plass til, og neste klikk tilbake', () => {
+    // 1920 har plass til taket, 480.
+    const separator = drawWithProbe('primary-sidebar');
+
+    fireEvent.pointerDown(separator, { button: 0, clientX: 400, pointerId: 1 });
+    fireEvent.pointerUp(separator, { clientX: 400, pointerId: 1 });
+    fireEvent.click(separator);
+    expect(slotState()).toBe('åpen 480');
+
+    fireEvent.pointerDown(separator, { button: 0, clientX: 480, pointerId: 1 });
+    fireEvent.pointerUp(separator, { clientX: 480, pointerId: 1 });
+    fireEvent.click(separator);
+    expect(slotState()).toBe('åpen 400');
+  });
+
+  it('regner et klikk med litt skjelving som et klikk', () => {
+    const separator = drawWithProbe('primary-sidebar');
+
+    fireEvent.pointerDown(separator, { button: 0, clientX: 400, pointerId: 1 });
+    fireEvent.pointerMove(separator, { clientX: 403, pointerId: 1 });
+    fireEvent.pointerUp(separator, { clientX: 403, pointerId: 1 });
+    fireEvent.click(separator);
+
+    expect(slotState()).toBe('åpen 480');
+  });
+
+  it('lar en draging være en draging, også når den ender i et klikk', () => {
+    // Nettleseren sender `click` etter en draging på elementet som har
+    // pekeren. Den skal ikke hoppe til taket etter at leseren har valgt 440.
+    const separator = drawWithProbe('primary-sidebar');
+
+    fireEvent.pointerDown(separator, { button: 0, clientX: 400, pointerId: 1 });
+    fireEvent.pointerMove(separator, { clientX: 440, pointerId: 1 });
+    fireEvent.pointerUp(separator, { clientX: 440, pointerId: 1 });
+    fireEvent.click(separator);
+
+    expect(slotState()).toBe('åpen 440');
+  });
+
+  it('har ikke lenger dobbeltklikk: to klikk er fram og tilbake', () => {
+    const separator = drawWithProbe('primary-sidebar');
+
+    fireEvent.click(separator);
+    fireEvent.click(separator);
+    fireEvent.doubleClick(separator);
+
+    expect(slotState()).toBe('åpen 400');
   });
 });
