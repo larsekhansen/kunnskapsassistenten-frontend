@@ -413,6 +413,9 @@ describe('the pointer on the edge', () => {
     expect(separator.getAttribute('aria-valuetext')).toBe('Skjult');
     expect(width(separator)).toBe(400);
     expect(separator.getAttribute('aria-valuemin')).toBe('400');
+    // The room the panel has OPEN: 1920 − 432 − 32 − 32 − 640. Read off the
+    // folded layout it would be 816, with no gap beside this slot.
+    expect(separator.getAttribute('aria-valuemax')).toBe('784');
   });
 
   /*
