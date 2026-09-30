@@ -1,5 +1,5 @@
 import { Button, Heading, Paragraph, Search, Skeleton } from '@digdir/designsystemet-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router';
 import type { Session } from '../../api/session';
 import { createThreadActions, type ThreadActions } from '../../api/threadActions';
@@ -77,6 +77,29 @@ export function ThreadsView({
   const navigate = useNavigate();
   /** «Ny tråd» as the whole action: empty filter, drawer shut, focus in the field. */
   const startNewThread = useNewThread();
+
+  /*
+   * And the panel goes to the filters (Simens issue 75, round 2). A new
+   * thread starts from the whole corpus, and the filter view is where the
+   * reader narrows it before the first question; the thread list has nothing
+   * new to show until that question is asked.
+   *
+   * The same plain click `useNewThread` acts on, and only that: a click that
+   * opens a new tab leaves this page as it was, the panel included. Only
+   * when the slot holds the filters as well, since `onShowView` switches
+   * between the views of one slot.
+   *
+   * Focus stays with the compose field, which is what the click asked for.
+   * The filter view takes focus on a switch only when it was dropped; see
+   * FiltersView.
+   */
+  function newThread(event: MouseEvent<HTMLAnchorElement>) {
+    startNewThread(event);
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    if (siblingViews.includes('filters')) onShowView('filters');
+  }
 
   /*
    * Rename and delete, when this deployment has them (bff and mock, not
@@ -267,7 +290,7 @@ export function ThreadsView({
       */}
       {!empty && (
         <Button asChild>
-          <RouterLink to="/" ref={newThreadRef} onClick={startNewThread}>
+          <RouterLink to="/" ref={newThreadRef} onClick={newThread}>
             Ny tråd
             <NewThreadIcon aria-hidden="true" />
           </RouterLink>
@@ -353,18 +376,24 @@ export function ThreadsView({
         </div>
       )}
 
+      {/*
+        The empty list is the button alone (Simens issue 82, round 2):
+        «Ingen tråder ennå» and the sentence under it said twice what «Start
+        din første tråd» says once. Not `EmptyState`, which is a heading with
+        an action under it; here there is no heading to draw. So the button
+        stands where «Ny tråd» stands over a list, at the same width.
+
+        A screen reader loses nothing it needs. The panel's level 2,
+        «Tidligere tråder», still leads here, and «første» says the list is
+        empty.
+      */}
       {empty && (
-        <EmptyState
-          title="Ingen tråder ennå"
-          description="Still et spørsmål, så havner samtalen her."
-        >
-          <Button asChild>
-            <RouterLink to="/" ref={newThreadRef} onClick={startNewThread}>
-              Start din første tråd
-              <NewThreadIcon aria-hidden="true" />
-            </RouterLink>
-          </Button>
-        </EmptyState>
+        <Button asChild>
+          <RouterLink to="/" ref={newThreadRef} onClick={newThread}>
+            Start din første tråd
+            <NewThreadIcon aria-hidden="true" />
+          </RouterLink>
+        </Button>
       )}
 
       {threads && threads.length > 0 && matches.length === 0 && (
