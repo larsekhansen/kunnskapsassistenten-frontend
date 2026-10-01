@@ -46,19 +46,22 @@ navn. De to nakne linjene `url` og `key` nederst er ColBERT-reranker-en
    leser den uten å vise den og uten å legge den i historikken. `npm ci` tok
    7,2 s og `npm run build` 16,5 s.
 
-   Fasettene i filterpanelet teller serveren selv fra Typesense
-   (`docs/deploy.md`, «Fasettene i filterpanelet»). Uten blokka under sier
-   panelet at filtrering ikke er tilgjengelig. Verdiene står i `.env.benjamin`:
-   `services.typesense.api-host` med `https://` foran når `api-tls` er `true`,
-   `api-key-admin` og `pipeline.storage.docs-collection`. Adminnøkkelen er for
+   Fasettene i filterpanelet og teksten i utdragene henter serveren selv fra
+   Typesense (`docs/deploy.md`, «Fasettene i filterpanelet» og «Teksten i
+   utdragene»). Uten blokka under sier panelet at filtrering ikke er
+   tilgjengelig, og utdragene at teksten ikke kunne hentes. Verdiene står i
+   `.env.benjamin`: `services.typesense.api-host` med `https://` foran når
+   `api-tls` er `true`, `api-key-admin`, `pipeline.storage.docs-collection` og
+   `pipeline.storage.chunks-collection`. Adminnøkkelen er for
    kjøring på maskinen og skal ikke til Azure; der trengs en nøkkel som bare
    kan søke (`docs/deploy.md`, «Fasettene i filterpanelet»).
 
 ```sh
 read -rs TYPESENSE_API_KEY
 TYPESENSE_URL="lim-inn-typesense-adressen-her"
-KA_FACET_COLLECTIONS="kudos-full=lim-inn-samlingsnavnet-her"
-export TYPESENSE_URL TYPESENSE_API_KEY KA_FACET_COLLECTIONS
+KA_FACET_COLLECTIONS="kudos-full=lim-inn-dokumentsamlingen-her"
+KA_CHUNK_COLLECTIONS="kudos-full=lim-inn-bitsamlingen-her"
+export TYPESENSE_URL TYPESENSE_API_KEY KA_FACET_COLLECTIONS KA_CHUNK_COLLECTIONS
 ```
 
 ```sh

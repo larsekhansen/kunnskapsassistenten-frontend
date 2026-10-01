@@ -8,11 +8,13 @@
  * when it forwards a call, and never written into anything the client can
  * fetch. `clientConfig` below is the list of what the client DOES get, by
  * name, so adding a secret to it has to be a deliberate act. The Typesense
- * key for the facets (`facets`, read in facets.ts) and the shared secret in
- * front of everything (`accessSecret`, access.ts) are kept the same way.
+ * key for the facets and the excerpts (`facets` and `excerpts`, read in
+ * facets.ts and excerpts.ts) and the shared secret in front of everything
+ * (`accessSecret`, access.ts) are kept the same way.
  */
 
 import { accessSecretFrom } from './access.ts';
+import { excerptConfigFrom, type ExcerptConfig } from './excerpts.ts';
 import { facetConfigFrom, type FacetConfig } from './facets.ts';
 import { userIdSourceFrom, type UserIdSource } from './identity.ts';
 
@@ -64,6 +66,8 @@ export type ServerConfig = {
   clientConfig: ClientConfig;
   /** Typesense and the collections, for `/api/facets`. See facets.ts. */
   facets: FacetConfig;
+  /** Typesense and the chunks collections, for `/api/excerpts`. See excerpts.ts. */
+  excerpts: ExcerptConfig;
 };
 
 /** Blank is missing. An empty variable is a variable somebody forgot to fill. */
@@ -112,6 +116,7 @@ export function readConfig(
       VITE_MOCK_SPEED: value(env.VITE_MOCK_SPEED),
     },
     facets: facetConfigFrom(env),
+    excerpts: excerptConfigFrom(env),
   };
 }
 

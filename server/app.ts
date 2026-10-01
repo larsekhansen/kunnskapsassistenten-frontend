@@ -1,13 +1,15 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { passesGate } from './access.ts';
 import { configScript, type ServerConfig } from './config.ts';
+import { EXCERPTS_PATH, excerptRoute } from './excerpts.ts';
 import { FACETS_PATH, facetRoute } from './facets.ts';
 import { proxy } from './proxy.ts';
 import { serveStatic } from './static.ts';
 
 /**
  * Everything under this goes to the backend, and nothing else does — except
- * `/api/facets`, which this server answers itself (facets.ts).
+ * `/api/facets` and `/api/excerpts`, which this server answers itself
+ * (facets.ts, excerpts.ts).
  */
 const API_PREFIX = '/api/';
 
@@ -60,7 +62,7 @@ function settle(work: Promise<void>, response: ServerResponse): void {
 }
 
 /**
- * The one request handler: the API forwarded, the client served, and two
+ * The one request handler: the API forwarded, the client served, and a few
  * small routes of the server's own.
  *
  * Exported apart from the listening socket so a test can mount it on a port
@@ -69,6 +71,7 @@ function settle(work: Promise<void>, response: ServerResponse): void {
  */
 export function createHandler(config: ServerConfig) {
   const facets = facetRoute(config.facets);
+  const excerpts = excerptRoute(config.excerpts);
 
   return function handle(request: IncomingMessage, response: ServerResponse): void {
     const path = (request.url ?? '/').split('?')[0] ?? '/';
@@ -104,11 +107,11 @@ export function createHandler(config: ServerConfig) {
     }
 
     // Before the proxy, or it would be forwarded to a backend that has no
-    // such route. The exact path only: `/api/facets/x` is the backend's. In
+    // such route. The exact paths only: `/api/facets/x` is the backend's. In
     // mock it is shut as the rest of /api/ is (proxy.ts): the client in mock
     // never asks, and Typesense should not be asked on its behalf (KA CC on
     // #173).
-    if (path === FACETS_PATH) {
+    if (path === FACETS_PATH || path === EXCERPTS_PATH) {
       if (config.mode === 'mock') {
         response.writeHead(404, {
           'Content-Type': 'application/json; charset=utf-8',
@@ -117,7 +120,7 @@ export function createHandler(config: ServerConfig) {
         response.end(JSON.stringify({ error: 'Ingen backend i mock-modus.' }));
         return;
       }
-      settle(facets(request, response), response);
+      settle((path === FACETS_PATH ? facets : excerpts)(request, response), response);
       return;
     }
 

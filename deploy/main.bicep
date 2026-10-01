@@ -89,12 +89,15 @@ param allowedIps array = []
 @description('Typesense for fasettene i filterpanelet, med skjema og port. Tom = ingen fasetter; se «Fasettene i filterpanelet» i docs/deploy.md.')
 param typesenseUrl string = ''
 
-@description('Nøkkelen til Typesense. En søkenøkkel for samlingene holder. Blir Container Apps-secret.')
+@description('Nøkkelen til Typesense. En søkenøkkel for dokument- og bitsamlingene holder. Blir Container Apps-secret.')
 @secure()
 param typesenseApiKey string = ''
 
 @description('Dokumentsamlingen per datasett: "datasett=samling;…".')
 param facetCollections string = ''
+
+@description('Bitsamlingen per datasett, for teksten i utdragene: "datasett=samling;…". Tom = utdragene sier at teksten ikke kunne hentes; se «Teksten i utdragene» i docs/deploy.md.')
+param chunkCollections string = ''
 
 // Uten nøkkel står både secret og variabel utenfor. Det er ikke målt om
 // Container Apps godtar en secret med tom verdi, og en app i mock har ingen
@@ -180,9 +183,11 @@ var plainEnv = filter(
     // Bare bak innloggingen. Uten den kan nettleseren sende plattformens
     // hode selv, og da er det ikke en identitet. Se server/identity.ts.
     { name: 'KA_USER_ID_FROM', value: hasLogin ? 'platform' : '' }
-    // Fasettene fra Typesense (server/facets.ts). Nøkkelen er i secretene.
+    // Fasettene og utdragene fra Typesense (server/facets.ts og
+    // server/excerpts.ts). Nøkkelen er i secretene.
     { name: 'TYPESENSE_URL', value: typesenseUrl }
     { name: 'KA_FACET_COLLECTIONS', value: facetCollections }
+    { name: 'KA_CHUNK_COLLECTIONS', value: chunkCollections }
   ],
   entry => !empty(entry.value)
 )
