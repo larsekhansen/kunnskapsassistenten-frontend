@@ -39,8 +39,8 @@ Navnene på serveren og lagringskontoen har det samme suffikset som registeret,
 fordi alle tre er avledet av ressursgruppa. Delingen heter `ka-rag-db` fordi
 databasen lå der først; se [Hvorfor Postgres](#hvorfor-postgres).
 
-Utenfor Azure, som lokalt: Benjamins Typesense, Azure OpenAI (`gpt-5.6-terra`)
-og ColBERT.
+Utenfor Azure, som lokalt: Typesense med hele Kudos, Azure OpenAI
+(`gpt-5.6-terra`) og ColBERT.
 
 ## Før du begynner
 
@@ -337,7 +337,7 @@ stopper ikke oppstarten.
 Oppstartsproben venter i inntil 130 sekunder på `/up`. Lokalt, mot Postgres og
 med 2 CPU og 4 GiB som her, svarte den etter 43 sekunder. I Azure tok
 utrullingen 2 min 49 s, og appen sto som `Running` med bare intern ingress.
-Med `1c65865` startet Jetty 79 s etter JVM-en (05.10).
+Med `1c65865` startet Jetty 78 s etter JVM-en (05.10).
 
 ## Steg 7: frontenden peker på backenden
 
@@ -497,18 +497,19 @@ Sjekk så at den gamle ikke rakk databasen. Loggen fra en revisjon som er
 stoppet, kan ikke leses med `logs show`, men den står i Log Analytics, i
 tabellen `ContainerAppConsoleLogs_CL`. Kommandoen slår opp arbeidsområdet
 selv, og viser JVM-starten, `init-db` og Jetty for alle revisjonene den siste
-timen, i UTC:
+timen. Tiden er containerens egen (`time_t`), i UTC, den samme som
+`logs show` viser. `TimeGenerated` kommer opp mot et sekund senere:
 
 ```sh
-az monitor log-analytics query --subscription Altinn-AI-Assistant -w "$(az containerapp env show --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-test-env --query properties.appLogsConfiguration.logAnalyticsConfiguration.customerId -o tsv)" --analytics-query "ContainerAppConsoleLogs_CL | where TimeGenerated > ago(1h) | where ContainerAppName_s == 'ka-rag-test' | where Log_s has_any ('JAVA_TOOL_OPTIONS', 'init-db', 'Started oejs.Server') | project T = format_datetime(TimeGenerated, 'HH:mm:ss'), Rev = RevisionName_s, L = substring(Log_s, 0, 60) | order by T asc" --query "[].[T, Rev, L]" -o tsv
+az monitor log-analytics query --subscription Altinn-AI-Assistant -w "$(az containerapp env show --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-frontend-test-env --query properties.appLogsConfiguration.logAnalyticsConfiguration.customerId -o tsv)" --analytics-query "ContainerAppConsoleLogs_CL | where TimeGenerated > ago(1h) | where ContainerAppName_s == 'ka-rag-test' | where Log_s has_any ('JAVA_TOOL_OPTIONS', 'init-db', 'Started oejs.Server') | project T = format_datetime(time_t, 'HH:mm:ss'), Rev = RevisionName_s, L = substring(Log_s, 0, 60) | order by T asc" --query "[].[T, Rev, L]" -o tsv
 ```
 
 **Har den gamle revisjonen en `init-db` etter sin siste JVM-start, rakk den
 databasen mens den nye startet.** Målt 05.10: malen satte den gamle
-tilbake kl. 14:56:13 UTC, og JVM-en startet 14:56:20. Steg 6 var ferdig etter
+tilbake kl. 14:56:13 UTC, og JVM-en startet 14:56:19. Steg 6 var ferdig etter
 3 min 21 s, og den gamle ble deaktivert igjen 14:57:08, uten noe etter
-JVM-starten i loggen. Den nye startet JVM-en 14:56:25 og nådde `init-db`
-14:57:39, 74 s senere. Det er ikke en garanti, og derfor sjekken.
+JVM-starten i loggen. Den nye startet JVM-en 14:56:24 og nådde `init-db`
+14:57:38, 74 s senere. Det er ikke en garanti, og derfor sjekken.
 
 Til slutt loggsjekken fra steg 6, og et spørsmål med og uten filter gjennom
 frontenden, også etter ny innlasting.
@@ -713,16 +714,19 @@ Målt av dirigenten i `rg-ka-test`.
 
 ## Målt i Azure 05.10
 
-Byttet fra `a836b91` til `1c65865`, i `rg-ka-test`. Tidene er UTC.
+Byttet fra `a836b91` til `1c65865`, i `rg-ka-test`. Tidene er UTC. JVM-start,
+`init-db` og Jetty er fra containerens egen logg (`logs show`, og `time_t` i
+Log Analytics for den stoppede revisjonen), og sekundene mellom dem er regnet
+med desimalene.
 
 | Hva                                            | Målt                                                                                                                                                                                                                                                       |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Bildet `ka-rag-test:1c65865`                   | bygget med `az acr build` fra en `git archive` på 6 min 45 s                                                                                                                                                                                               |
 | Malen                                          | uendret siden 28.09, så utrullingen endret bare bildet til appen og jobben                                                                                                                                                                                 |
-| Bruddet                                        | fra den gamle revisjonen ble deaktivert 14:53, til Jetty i den nye startet 14:57:44                                                                                                                                                                        |
+| Bruddet                                        | fra den gamle revisjonen ble deaktivert 14:53, til Jetty i den nye startet 14:57:43                                                                                                                                                                        |
 | Steg 6                                         | `Succeeded` på 3 min 21 s. Den nye revisjonen `ka-rag-test--0000001` var `Healthy` med 100 % trafikk.                                                                                                                                                      |
-| Den deaktiverte revisjonen                     | satt tilbake til 100 % av malen 14:56:13, JVM-start 14:56:20, deaktivert igjen 14:57:08, og ingenting etter JVM-starten i loggen                                                                                                                           |
-| Oppstarten av den nye                          | JVM-start 14:56:25, `init-db env=:remote backend=:jdbc` 14:57:39, Jetty 14:57:44                                                                                                                                                                           |
+| Den deaktiverte revisjonen                     | satt tilbake til 100 % av malen 14:56:13, JVM-start 14:56:19, deaktivert igjen 14:57:08, og ingenting etter JVM-starten i loggen                                                                                                                           |
+| Oppstarten av den nye                          | JVM-start 14:56:24, `init-db env=:remote backend=:jdbc` 14:57:38, Jetty 14:57:43                                                                                                                                                                           |
 | Sjekkene i loggen                              | `Placeholder-secret check` med 12 sjekket og 0 brudd, `Required boot environment` med 6 og 0, `e2e/seeded` med 8 agenter før og etter og nøkkelen fra før, og `Provider switch check` med `:violations []`, `:credential-violations []` og `:unreadable 1` |
 | Spørsmål uten filter, gjennom ka-frontend-test | 19 s, 1 529 tegn og 1 kilde. Før byttet: 21 s og 1 kilde.                                                                                                                                                                                                  |
 | Spørsmål med filteret Årsrapport               | 13 s, 975 tegn, låst, og 3 kilder som alle er årsrapporter. Før byttet: 19 s og 2 kilder.                                                                                                                                                                  |
