@@ -98,7 +98,7 @@ describe('SourcesSummary', () => {
   });
 
   it('gir to dokumenter med samme tittel hvert sitt nummer, som kortene i panelet', () => {
-    // Målt 05.10: Kudos har «Årsrapport Datatilsynet 2023» som 90777 og
+    // Målt 05.10: indeksen har «Årsrapport Datatilsynet 2023» som 90777 og
     // 88640, og lista under svaret fikk to lenker med samme navn.
     render(
       <SourcesSummary

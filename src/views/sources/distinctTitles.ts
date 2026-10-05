@@ -11,12 +11,15 @@ function titleKey(title: string): string {
  * its title, and its number when another document in the same answer has the
  * same title.
  *
- * Kudos can hold the same report twice. Measured 05.10: «Årsrapport
- * Datatilsynet 2023» is document 90777 and document 88640, 150 and 152
- * chunks of the same text, published 1.1.2024 and 2.5.2024. One answer took
- * chunks from both, and the panel drew two cards with the same heading and two
- * Kudos links with the same name and different addresses, and «Kilder brukt i
- * svaret» two links with the same name and different targets.
+ * Two documents can arrive with the same title. Measured 05.10: documents
+ * 90777 and 88640 are both «Årsrapport Datatilsynet 2023» in the index the
+ * search reads, with 150 and 152 chunks. In Kudos they are two documents with
+ * a PDF each, and 90777 is «Årsrapport Datatilsynet 2023 (DFD)», published
+ * 1.1.2024; 88640 was published 2.5.2024. The index lost the «(DFD)» that
+ * tells them apart. One answer took chunks from both, and the panel drew two
+ * cards with the same heading and two Kudos links with the same name and
+ * different addresses, and «Kilder brukt i svaret» two links with the same
+ * name and different targets.
  *
  * The number and not «1 av 2»: «1 av 2» reads as part one of a report, and
  * the order can change from answer to answer, so the same document would go

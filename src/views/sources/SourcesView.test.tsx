@@ -671,7 +671,7 @@ describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
   });
 
   it('skiller to dokumenter med samme tittel med nummeret, på kortet og i lenka', () => {
-    // Målt 05.10: Kudos har «Årsrapport Datatilsynet 2023» som dokument 90777
+    // Målt 05.10: indeksen har «Årsrapport Datatilsynet 2023» som dokument 90777
     // og 88640, og ett svar tok biter fra begge. Da sto to kort med samme
     // overskrift og to lenker med samme navn til hver sin adresse.
     const url = (id: string) => `https://kudos.dfo.no/documents/${id}`;

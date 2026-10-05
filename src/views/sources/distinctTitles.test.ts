@@ -15,7 +15,8 @@ describe('distinctTitles', () => {
   });
 
   it('gir to dokumenter med samme tittel hvert sitt nummer, som i Kudos-adressen', () => {
-    // Målt 05.10: Kudos har «Årsrapport Datatilsynet 2023» to ganger.
+    // Målt 05.10: indeksen har «Årsrapport Datatilsynet 2023» som 90777 og
+    // 88640. Kudos kaller 90777 «… (DFD)», men det står ikke i indeksen.
     const names = distinctTitles([
       doc('90777', 'Årsrapport Datatilsynet 2023'),
       doc('12', 'Tildelingsbrev 2026'),
