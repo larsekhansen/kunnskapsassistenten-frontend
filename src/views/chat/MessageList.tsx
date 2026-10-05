@@ -14,8 +14,6 @@ type MessageListProps = {
    * which excerpt (#4, brukerreiser punkt 5).
    */
   onSelectSource: (citationNumber: number, messageId: string) => void;
-  onScrollToBottom: () => void;
-  canScrollToBottom: boolean;
   /** Ask the stopped question again, in place of the answer that was cut off. */
   onRegenerate: () => void;
   /**
@@ -71,8 +69,6 @@ type MessageListProps = {
 export function MessageList({
   messages,
   onSelectSource,
-  onScrollToBottom,
-  canScrollToBottom,
   onRegenerate,
   filterSummary,
   foundNothing,
@@ -157,7 +153,6 @@ export function MessageList({
 
         return (
           <AnswerMessage
-            canScrollToBottom={canScrollToBottom}
             foundNothing={foundNothing?.(message.id)}
             key={message.id}
             liveErrorId={liveErrorId}
@@ -170,7 +165,6 @@ export function MessageList({
             question={questionBefore(messages, index)}
             onCloseSearch={closeSearch}
             onRegenerate={onRegenerate}
-            onScrollToBottom={onScrollToBottom}
             onSearchQueryChange={setSearchQuery}
             onSelectSource={onSelectSource}
             onToggleSearch={() => openSearch(message.id)}

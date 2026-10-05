@@ -1,10 +1,5 @@
 import { Button } from '@digdir/designsystemet-react';
-import {
-  ArrowDownIcon,
-  ClipboardIcon,
-  ClipboardLinkIcon,
-  MagnifyingGlassIcon,
-} from '@navikt/aksel-icons';
+import { ClipboardIcon, ClipboardLinkIcon, MagnifyingGlassIcon } from '@navikt/aksel-icons';
 import type { RefObject } from 'react';
 import type { SourceDocument } from '../../model';
 import { AnswerTime } from './AnswerTime';
@@ -21,9 +16,6 @@ type AnswerActionsProps = {
    * copied text, and the `[n]` markers are kept so they point at something.
    */
   sources?: SourceDocument[];
-  /** Shown only when there is something below the fold (answer 17). */
-  onScrollToBottom?: () => void;
-  canScrollToBottom?: boolean;
   /** Opens or closes the search inside this answer (brukerreiser punkt 13). */
   onToggleSearch?: () => void;
   searchOpen?: boolean;
@@ -33,7 +25,9 @@ type AnswerActionsProps = {
 
 /**
  * What a reader can do with a finished answer: copy it (answer 15), copy a
- * link to the thread (answer 16), jump to the newest message (answer 17).
+ * link to the thread (answer 16), and search in it. «Bla til nederst»
+ * (answer 17) used to be here too, once per answer; it is one control for the
+ * whole column now, over the compose field (Simens issue, runde 3, ekstra 5).
  *
  * Copying takes the sources with it. An answer pasted into a submission
  * without its provenance is the one thing KA is not for (reise 13, 14 and 20
@@ -53,8 +47,6 @@ export function AnswerActions({
   content,
   createdAt,
   sources,
-  onScrollToBottom,
-  canScrollToBottom,
   onToggleSearch,
   searchOpen,
   searchToggleRef,
@@ -106,13 +98,6 @@ export function AnswerActions({
         >
           <MagnifyingGlassIcon aria-hidden />
           Søk i svaret
-        </Button>
-      ) : null}
-
-      {canScrollToBottom ? (
-        <Button data-color="neutral" data-size="sm" onClick={onScrollToBottom} variant="tertiary">
-          <ArrowDownIcon aria-hidden />
-          Bla til nederst
         </Button>
       ) : null}
 

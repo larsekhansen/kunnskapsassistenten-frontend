@@ -613,6 +613,58 @@
 }
 
 /*
+ * What the compose field may not hide (WCAG 2.4.11). A link in the answer
+ * reached by Tab, a marker, a hit the answer search scrolls to: each stops
+ * the field's height short of the bottom, so it lands above the field and not
+ * behind it. `--ka-composer-block-size` is measured by the chat view.
+ *
+ * The field and what is in it are left out, and that is the point of doing
+ * it here rather than with `scroll-padding` on the scroller. The padding held
+ * for the field as well, the field sits in the band it keeps clear, and every
+ * keystroke scrolled the column 49 px further down to bring the caret out
+ * from behind itself (Simens runde 3, ekstra 1).
+ */
+.ka-chat * {
+  scroll-margin-block-end: var(--ka-composer-block-size, 0);
+}
+
+.ka-composer-area,
+.ka-composer-area * {
+  scroll-margin-block-end: 0;
+}
+
+/*
+ * «Bla til nederst», over the field and in the middle of it (Simens runde 3,
+ * ekstra 5). In the sticky area, so it moves with the field and stays in one
+ * place wherever the reader is in the conversation.
+ *
+ * Out of the flow, so it costs the area no height and nothing under it moves
+ * when it comes and goes. Over the fade above the field, with the air of a
+ * small step between them.
+ *
+ * Designsystemet's secondary button with the page's own ground behind it:
+ * the variant is transparent, and here it lies over the answer's text. Round
+ * and with the smallest shadow, so it reads as floating over the text rather
+ * than as a part of it.
+ */
+.ka-scroll-to-bottom {
+  --dsc-button-background: var(--ds-color-neutral-background-default);
+  --dsc-button-border-radius: var(--ds-border-radius-full);
+
+  position: absolute;
+  inset-block-end: calc(100% + var(--ds-size-2));
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  /*
+   * On one line. A box that starts halfway across shrinks to fit the half
+   * that is left, and on a phone that broke «Bla til nederst» over two lines
+   * (117 × 58 px at 390 wide).
+   */
+  inline-size: max-content;
+  box-shadow: var(--ds-shadow-sm);
+}
+
+/*
  * The seam between the answer and the field.
  *
  * Without it the card's white surface stops dead where the field begins,

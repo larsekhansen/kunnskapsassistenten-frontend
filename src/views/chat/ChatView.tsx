@@ -12,12 +12,13 @@ import { useThread } from '../../layout/useThread';
 import { emptyFilterSelection, type ThreadDetail } from '../../model';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
+import { ScrollToBottom } from './ScrollToBottom';
 import { chatErrorText } from './errorText';
 import { answerScopeText } from './filterSummary';
 import { CLARIFICATION_PLACEHOLDER, READING_THREAD, kickstartersFor } from './text';
 import { threadHeading } from './threadHeading';
-import { useAtBottom } from './useAtBottom';
 import { useComposerShortcut } from './useComposerShortcut';
+import { useFollowAnswer } from './useFollowAnswer';
 import { useAttachments } from './useAttachments';
 import { useChat } from './useChat';
 import { ThreadLoading } from './ThreadLoading';
@@ -211,36 +212,48 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   // not go looking for it: the day chat is moved to another slot, a search up
   // the DOM finds the wrong element or nothing.
   const { ref: scrollRef, scrollToBottom } = useMainScroll();
-  const atBottom = useAtBottom(scrollRef, rootRef);
 
   /*
    * The compose field is sticky and opaque, so anything the browser scrolls
    * to can land underneath it — a citation link or an action button reached
-   * by Tab ends up behind the field, which is WCAG 2.4.11. `scroll-padding`
-   * tells the scroll container to stop that much short of the bottom.
+   * by Tab ends up behind the field, which is WCAG 2.4.11. Everything in the
+   * conversation gets a `scroll-margin` of the field's height, so the browser
+   * stops that much short of the bottom; see `--ka-composer-block-size` in
+   * chat.css.
+   *
+   * A margin on the conversation and not `scroll-padding` on the scroller,
+   * which is what this was. The padding applied to the field too, and the
+   * field is inside the band the padding keeps clear: every keystroke asked
+   * the browser to bring the caret out from behind the field, and the column
+   * moved 49 px per key towards the bottom (Simens runde 3, ekstra 1). The
+   * margin is on what the field can hide, and not on the field.
    *
    * Measured rather than written down: the field grows with the question
    * (`field-sizing: content`) and the follow-up chips come and go, so the
-   * height is not a number this view knows. The property is set on the
-   * container the shell owns, and cleared again when the chat leaves it.
+   * height is not a number this view knows.
    */
   useEffect(() => {
     const area = composerRef.current;
-    const scroller = scrollRef.current;
-    // jsdom has no ResizeObserver; the padding is a scroll affordance, so a
+    const root = rootRef.current;
+    // jsdom has no ResizeObserver; the margin is a scroll affordance, so a
     // test environment without one loses nothing.
-    if (!area || !scroller || typeof ResizeObserver === 'undefined') return;
+    if (!area || !root || typeof ResizeObserver === 'undefined') return;
 
     const observer = new ResizeObserver(() => {
-      scroller.style.scrollPaddingBlockEnd = `${Math.round(area.offsetHeight)}px`;
+      root.style.setProperty('--ka-composer-block-size', `${Math.round(area.offsetHeight)}px`);
     });
     observer.observe(area);
 
-    return () => {
-      observer.disconnect();
-      scroller.style.scrollPaddingBlockEnd = '';
-    };
-  }, [scrollRef]);
+    return () => observer.disconnect();
+  }, []);
+
+  // An answer on its way is followed down, if the reader is at the bottom,
+  // and «Bla til nederst» is drawn from the same measurement.
+  const atBottom = useFollowAnswer(
+    scrollRef,
+    rootRef,
+    status === 'pending' || status === 'streaming',
+  );
 
   // Activating a `[n]` marker is the shell's business: it opens the sources
   // panel and tells it which excerpt to show. Neither view knows the other.
@@ -556,7 +569,6 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
       */}
       {messages.length > 0 ? (
         <MessageList
-          canScrollToBottom={!atBottom}
           filterSummary={filterSummary}
           attachmentsFor={(messageId) => attachmentsByMessage[messageId]}
           foundNothing={(messageId) => noHitsAnswers.has(messageId)}
@@ -569,7 +581,6 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
             retry();
             focusField();
           }}
-          onScrollToBottom={() => scrollToBottom()}
           onSelectSource={showCitation}
         />
       ) : loading ? (
@@ -612,6 +623,20 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
       />
 
       <Composer
+        above={
+          messages.length > 0 && !atBottom ? (
+            <ScrollToBottom
+              onScroll={(byKeyboard) => {
+                scrollToBottom();
+                // The button goes when the column reaches the bottom, and a
+                // keyboard would land on <body> (WCAG 2.4.3). The field is
+                // where the reader is going next. Not for a tap: focus in the
+                // field opens the keyboard on a phone.
+                if (byKeyboard) fieldRef.current?.focus({ preventScroll: true });
+              }}
+            />
+          ) : null
+        }
         attachments={attachments}
         fieldRef={fieldRef}
         sendRef={sendRef}
