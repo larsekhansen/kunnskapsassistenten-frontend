@@ -1,4 +1,4 @@
-import { Paragraph } from '@digdir/designsystemet-react';
+import { Card, Paragraph } from '@digdir/designsystemet-react';
 import { useState } from 'react';
 import type { Message } from '../../model';
 import { AnswerMessage } from './AnswerMessage';
@@ -60,7 +60,7 @@ type MessageListProps = {
  * pinned strip looks like to a reader.
  *
  * Three kinds of turn, and this file is the choice between them. A question
- * is a paragraph. A turn that came back as `needs-clarification` is a question
+ * is a paragraph in a box at the end of the line. A turn that came back as `needs-clarification` is a question
  * to the reader and not an answer, so the sender line says «spurte» and the
  * card is `Clarification`. Everything else is an answer, and `AnswerMessage`
  * draws it — it holds state of its own, which is why it is a component and
@@ -110,19 +110,29 @@ export function MessageList({
           return (
             <li className="ka-message ka-message--user" key={message.id}>
               <span className="ds-sr-only">Du skrev:</span>
-              {/* Set larger than the answer and above the card, as in Figma:
-                  the question is what the card is an answer to. */}
-              <Paragraph data-size="lg" variant="long">
-                {message.content}
-              </Paragraph>
-              {/* What the question was asked with. Under the question and not
-                  over it: the words are what the reader wrote, the documents
-                  are what they wrote it about. */}
-              {attached?.length ? (
-                <Paragraph className="ka-message__attachments" data-size="sm">
-                  {attachmentsOnMessage(attached)}
-                </Paragraph>
-              ) : null}
+              {/*
+                The reader's words in a box of their own, at the end of the
+                line, in the size the answer is written in (Simens issue
+                117). Set larger and bare above the answer, as Figma had it,
+                the question read as a heading over the card. A box at the
+                far side is what other chats do and what a reader already
+                knows: ChatGPT, Gemini, Copilot and Claude all draw the
+                reader that way, and the answer across the column.
+
+                Designsystemet has no chat message, and `Card` is the box it
+                does have: tinted, and in the one blue the app uses.
+              */}
+              <Card className="ka-message__bubble" data-color="accent" variant="tinted">
+                <Paragraph variant="long">{message.content}</Paragraph>
+                {/* What the question was asked with. Under the question and not
+                    over it: the words are what the reader wrote, the documents
+                    are what they wrote it about. */}
+                {attached?.length ? (
+                  <Paragraph className="ka-message__attachments" data-size="sm">
+                    {attachmentsOnMessage(attached)}
+                  </Paragraph>
+                ) : null}
+              </Card>
             </li>
           );
         }
