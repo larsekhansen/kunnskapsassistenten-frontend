@@ -31,6 +31,19 @@ describe('SignedIn', () => {
     expect(localStorage.getItem('ka.sources.v1')).toBeNull();
   });
 
+  it('empties it too on a middle click, which opens the link in a new tab', () => {
+    localStorage.setItem('ka.sources.v1', '{"threads":{}}');
+    render(<SignedIn session={{ name: 'Kari Nordmann', logoutUrl: '/auth/logout' }} />);
+    const link = screen.getByRole('link', { name: 'Logg ut' });
+
+    // A right click opens a menu; nothing has been chosen yet.
+    fireEvent(link, new MouseEvent('auxclick', { bubbles: true, button: 2 }));
+    expect(localStorage.getItem('ka.sources.v1')).not.toBeNull();
+
+    fireEvent(link, new MouseEvent('auxclick', { bubbles: true, button: 1 }));
+    expect(localStorage.getItem('ka.sources.v1')).toBeNull();
+  });
+
   it('draws nothing when nobody is signed in', () => {
     const { container } = render(<SignedIn session={null} />);
 

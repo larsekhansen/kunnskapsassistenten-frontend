@@ -50,8 +50,22 @@ export function SignedIn({ session: given }: SignedInProps) {
           {session.name}
         </span>
       </Paragraph>
-      {/* `beforeLogout` empties what this browser kept of the reader's answers. */}
-      <Link href={session.logoutUrl} data-size="sm" onClick={beforeLogout}>
+      {/*
+        `beforeLogout` empties what this browser kept of the reader's answers.
+        A click, Enter and Ctrl- or Cmd-click all fire `click`; a middle click
+        that opens the link in a new tab fires only `auxclick` (KA CC on #243).
+        Only the middle button: `auxclick` fires for the right button too, and
+        a context menu is not a logout. «Åpne i ny fane» from that menu fires
+        nothing here, and is the server's to handle behind the BFF.
+      */}
+      <Link
+        href={session.logoutUrl}
+        data-size="sm"
+        onClick={beforeLogout}
+        onAuxClick={(event) => {
+          if (event.button === 1) beforeLogout();
+        }}
+      >
         <LeaveIcon aria-hidden="true" />
         Logg ut
       </Link>
