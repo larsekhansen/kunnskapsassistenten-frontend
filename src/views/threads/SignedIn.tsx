@@ -1,7 +1,7 @@
 import { Link, Paragraph } from '@digdir/designsystemet-react';
 import { LeaveIcon, PersonIcon } from '@navikt/aksel-icons';
 import { useEffect, useState } from 'react';
-import { fetchSession, type Session } from '../../api/session';
+import { beforeLogout, fetchSession, type Session } from '../../api/session';
 
 export type SignedInProps = {
   /** Overrides the fetch: a session, or null for none. Only for tests. */
@@ -50,7 +50,8 @@ export function SignedIn({ session: given }: SignedInProps) {
           {session.name}
         </span>
       </Paragraph>
-      <Link href={session.logoutUrl} data-size="sm">
+      {/* `beforeLogout` empties what this browser kept of the reader's answers. */}
+      <Link href={session.logoutUrl} data-size="sm" onClick={beforeLogout}>
         <LeaveIcon aria-hidden="true" />
         Logg ut
       </Link>

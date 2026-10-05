@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchSession } from '../../api/session';
 import { SignedIn } from './SignedIn';
@@ -14,6 +14,21 @@ describe('SignedIn', () => {
     expect(screen.getByText('Kari Nordmann')).toBeTruthy();
     expect(screen.getByText('Innlogget som')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Logg ut' }).getAttribute('href')).toBe('/auth/logout');
+  });
+
+  it('empties what this browser kept of the answers before it signs out', () => {
+    // ka.sources.v1 holds what came of the reader's questions, per browser
+    // and not per user (docs/arkitektur/0005). Lars said yes on 5.10.
+    localStorage.setItem('ka.sources.v1', '{"threads":{"conv-1":{"usedAt":1,"answers":{}}}}');
+    render(<SignedIn session={{ name: 'Kari Nordmann', logoutUrl: '/auth/logout' }} />);
+    // jsdom does not navigate; this keeps it from saying so in the console.
+    const stay = (event: Event) => event.preventDefault();
+    document.addEventListener('click', stay);
+
+    fireEvent.click(screen.getByRole('link', { name: 'Logg ut' }));
+
+    document.removeEventListener('click', stay);
+    expect(localStorage.getItem('ka.sources.v1')).toBeNull();
   });
 
   it('draws nothing when nobody is signed in', () => {

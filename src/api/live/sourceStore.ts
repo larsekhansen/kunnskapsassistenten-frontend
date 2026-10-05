@@ -279,3 +279,20 @@ export function recallThread(
   write(store);
   return new Map(Object.entries(thread.answers));
 }
+
+/**
+ * Forgets everything this store holds, for «Logg ut» (session.ts).
+ *
+ * The store is per browser and not per user, and part of it comes of the
+ * reader's own questions: the search words and the agent's plan
+ * (docs/arkitektur/0005, «Hva som ligger i lageret»). The next person to sign
+ * in on the same browser should not find them. Fails quietly, like the rest
+ * of this file: storage that cannot be reached has nothing to forget.
+ */
+export function forgetAllAnswers(): void {
+  try {
+    localStorage.removeItem(SOURCES_STORAGE_KEY);
+  } catch {
+    // Blocked storage. Nothing was written there either.
+  }
+}
