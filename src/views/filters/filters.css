@@ -234,6 +234,23 @@
   overflow: hidden;
 }
 
+/*
+ * The note when the filter is changed in a thread that is going on and not
+ * locked (Simens issue 90): the sentence, and «Ny tråd» under it, as the lock
+ * has them. Across the panel, like the fields it stands over.
+ */
+.filters-view__changed {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--ds-size-2);
+  inline-size: 100%;
+}
+
+.filters-view__changed[hidden] {
+  display: none;
+}
+
 /* The lock: its heading, the values as tags, what it means and the way out. */
 .locked-filter {
   display: flex;
