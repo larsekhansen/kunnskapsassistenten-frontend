@@ -1,15 +1,42 @@
-import { Button, Divider, Field, Label, Select, Skeleton } from '@digdir/designsystemet-react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  Button,
+  Divider,
+  Field,
+  Label,
+  Link,
+  Paragraph,
+  Select,
+  Skeleton,
+} from '@digdir/designsystemet-react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from 'react';
+import { Link as RouterLink } from 'react-router';
 import { createChatClient } from '../../api';
 import { BackIcon } from '../../components/icons';
 import { EmptyState, ErrorState, PanelHeader } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useCorpus } from '../../layout/useCorpus';
 import { useFilterSelection } from '../../layout/useFilterSelection';
+import { useNewThread } from '../../layout/useNewThread';
+import { useOpenThread } from '../../layout/useOpenThread';
 import { PanelHead } from '../../layout/PanelHead';
 import { ViewHead } from '../../layout/ViewHead';
 import type { SlotViewProps } from '../../layout/viewModel';
-import { emptyFilterSelection, isEmptySelection, type FilterFacet } from '../../model';
+import {
+  emptyFilterSelection,
+  filterDimensions,
+  isEmptySelection,
+  type FilterFacet,
+  type FilterSelection,
+} from '../../model';
 import { ActiveFilter } from './ActiveFilter';
 import { valuesWithoutField } from './withoutField';
 import { KudosDocuments } from './DocumentsList';
@@ -18,6 +45,23 @@ import { CorpusLine } from './CorpusLine';
 import { FacetField, type FacetFieldHandle } from './FacetField';
 import { LockedFilter } from './LockedFilter';
 import './filters.css';
+
+/**
+ * What the panel says when the filter is changed in a thread that is going on
+ * and not locked (Simens issue 90). The first two sentences are also what a
+ * screen reader is told when it appears.
+ */
+const CHANGED_IN_THREAD =
+  'Du har endret filteret i en tråd som er i gang. Nye spørsmål i tråden bruker det nye filteret.';
+
+/** Whether two selections hold the same values, in any order. */
+function sameSelection(a: FilterSelection, b: FilterSelection): boolean {
+  return filterDimensions.every((dimension) => {
+    const left = new Set(a[dimension]);
+    const right = new Set(b[dimension]);
+    return left.size === right.size && [...left].every((value) => right.has(value));
+  });
+}
 
 export type FiltersViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'> &
   /* Optional: a view mounted outside the shell has not been switched to. */
@@ -63,6 +107,59 @@ export function FiltersView({
     setKnownValues,
   } = useFilterSelection();
   const chosen = ownChoice ?? selection;
+
+  /*
+   * A thread that is going on, and what its filter was when it came on screen
+   * (Simens issue 90).
+   *
+   * A locked thread cannot have its filter changed: the fields are not drawn.
+   * One that is not — started without a filter, or in a mode that keeps none
+   * — could, and nothing said that the next question would be asked with
+   * something the answers above were not. So a change from what the filter
+   * was when the thread came on screen says so, with the same way out the
+   * lock has: «Ny tråd». Changing it back takes the note away.
+   *
+   * «When it came on screen» and not «what its questions were asked with»,
+   * which an unlocked thread does not keep. A thread started here comes on
+   * screen with its first question, so for it the two are the same.
+   *
+   * Adjusted during render, as `shownCorpus` below is, so the note is never
+   * drawn against the filter of the thread before.
+   */
+  const openThreadId = useOpenThread();
+  const [baseline, setBaseline] = useState({ thread: openThreadId, selection: chosen });
+  if (baseline.thread !== openThreadId) setBaseline({ thread: openThreadId, selection: chosen });
+  const inUnlockedThread = openThreadId !== undefined && !locked;
+  const changedInThread = inUnlockedThread && !sameSelection(chosen, baseline.selection);
+
+  /*
+   * «Ny tråd» from this panel, from the note and from the lock: a new
+   * conversation, the drawer out of the way and the keyboard in the compose
+   * field, as the thread list's — and the reader's filter kept, which is the
+   * difference. `useNewThread` empties it, because a new thread from the list
+   * starts from the whole corpus (Simen, 114); from here the reader has just
+   * said which filter they want, and is starting over to use it.
+   *
+   * A plain link to `/` did not do it. The chat slot keys `/` on «Ny tråd»
+   * being pressed, so for a thread started on this page the address changed
+   * and the conversation and the lock stayed (measured in live, 05.10).
+   */
+  const startNewThread = useNewThread();
+  function newThread(event: MouseEvent<HTMLAnchorElement>) {
+    const keep = chosen;
+    startNewThread(event);
+    setSelection(keep);
+    // The note was about the thread that is now gone.
+    setAnnouncement('');
+  }
+
+  /** Every change the reader makes, so the note is announced as it appears. */
+  function change(next: FilterSelection) {
+    if (inUnlockedThread && !changedInThread && !sameSelection(next, baseline.selection)) {
+      setAnnouncement(CHANGED_IN_THREAD);
+    }
+    setSelection(next);
+  }
   const { documents } = useAnswerSources();
   const { options, active, option, choosable, set } = useCorpus();
   /**
@@ -444,7 +541,27 @@ export function FiltersView({
         is asked with that (filterContext.ts, `locked`). The lock is drawn in
         place of everything that would let the reader change it.
       */}
-      {locked && <LockedFilter locked={locked} />}
+      {locked && <LockedFilter locked={locked} onNewThread={newThread} />}
+
+      {/*
+        The note for a thread that is not locked, where the lock would have
+        stood, and with the same way out (Simens issue 90). Designsystemet's
+        info alert: it is something to know, not something that went wrong.
+        It is not a live region; the panel's own region says it, from
+        `change`, so it is said once and not again on every render.
+      */}
+      {changedInThread && (
+        <Alert data-color="info" data-size="sm" className="filters-view__changed">
+          <Paragraph data-size="sm" variant="long">
+            {CHANGED_IN_THREAD} Vil du heller starte en ny tråd med det?
+          </Paragraph>
+          <Link asChild data-size="sm">
+            <RouterLink to="/" onClick={newThread}>
+              Ny tråd
+            </RouterLink>
+          </Link>
+        </Alert>
+      )}
 
       {loading && !locked && (
         <div className="filters-view__loading">
@@ -493,7 +610,7 @@ export function FiltersView({
             selection={chosen}
             chosen={withoutField}
             hasFields={(facets?.length ?? 0) > 0}
-            onChange={setSelection}
+            onChange={change}
             onFocusLost={onActiveFilterLostFocus}
             onAnnounce={setAnnouncement}
           />
@@ -507,7 +624,7 @@ export function FiltersView({
             ref={index === 0 ? firstFieldRef : undefined}
             facet={facet}
             selected={chosen[facet.dimension]}
-            onChange={(values) => setSelection({ ...chosen, [facet.dimension]: values })}
+            onChange={(values) => change({ ...chosen, [facet.dimension]: values })}
           />
         ))}
 

@@ -4,8 +4,8 @@ import { isEmptySelection, type FilterSelection, type ThreadDetail } from '../mo
 import { FilterContext } from './filterContext';
 
 /**
- * The lock a thread carries, or none. An empty filter locks nothing: the BFF
- * only remembers one that had values in it.
+ * The lock a thread carries, or none. An empty filter locks nothing: neither
+ * the BFF nor live keeps one that had no values in it.
  */
 export function lockOf(detail: ThreadDetail | null | undefined): FilterSelection | undefined {
   const filter = detail?.filter;
@@ -38,10 +38,12 @@ export function lockOf(detail: ThreadDetail | null | undefined): FilterSelection
  * Returns what the page calls for a thread it started: the BFF locks a
  * conversation from its first question — it remembers the filter when it
  * makes it, which is before it says the id — so the thread is read back once
- * it has one, and what the backend says is the lock. Nothing is guessed from
- * which client this is; mock and live keep no filter on a thread and say
- * none. `stillOpen` is asked when the answer comes, so a reader who has moved
- * on is not given a lock for a thread that is no longer on screen.
+ * it has one, and what the backend says is the lock. Live does the same since
+ * Simens issue 90: it stores the filter with the conversation it makes
+ * (`filter-value`) and reads it back. Nothing is guessed from which client
+ * this is; the mock keeps no filter on a thread and says none. `stillOpen` is
+ * asked when the answer comes, so a reader who has moved on is not given a
+ * lock for a thread that is no longer on screen.
  */
 export function useThreadFilterLock(
   client: ChatClient,
