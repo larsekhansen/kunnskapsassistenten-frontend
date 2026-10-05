@@ -1,6 +1,7 @@
 # CodeQL on our own code, so its alerts show up here before the client is
 # copied to digdir/kunnskapsassistenten, where code scanning runs with GitHub's
-# default setup. Same language and same default query suite as there.
+# default setup. Same language and same query suite as there: the extended
+# one, which is where log injection is (digdir/kunnskapsassistenten#129).
 #
 # JavaScript and TypeScript need no build: CodeQL reads the source as it is.
 name: CodeQL
@@ -43,6 +44,7 @@ jobs:
         with:
           languages: javascript-typescript
           build-mode: none
+          queries: security-extended
 
       - name: Analyze
         uses: github/codeql-action/analyze@v4
