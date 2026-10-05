@@ -35,7 +35,12 @@ async function listen(instance: Server): Promise<string> {
 }
 
 function stop(instance: Server | undefined): Promise<void> {
-  return instance ? new Promise<void>((done) => instance.close(() => done())) : Promise.resolve();
+  if (!instance) return Promise.resolve();
+  // A Typesense that never answered still holds the route's connection open,
+  // and `close` waits for it. Without this one failed timeout takes the next
+  // tests down with it.
+  instance.closeAllConnections();
+  return new Promise<void>((done) => instance.close(() => done()));
 }
 
 async function start(
