@@ -409,12 +409,15 @@ describe('SourcesView, the panel head that stays put', () => {
     );
   });
 
-  it('draws no head on a page with nothing to pin', () => {
-    // `:empty` hides it, so the border does not appear on the untouched front
-    // page. The box is still rendered, so it does not pop in and out.
+  it('holds only the panel heading on a page with nothing to search', () => {
+    // «Kilder» is visible and in the head from the first render, as Figma has
+    // it and as the navigation panel has «Filtrering» (Lars, 30.09). There is
+    // no search field before there is anything to search.
     render(<Harness answers={[]} />);
 
-    expect(head()?.children.length).toBe(0);
+    expect(head()?.textContent).toBe('Kilder');
+    expect(head()?.querySelector('h2')?.textContent).toBe('Kilder');
+    expect(head()?.querySelector('input')).toBeNull();
   });
 });
 
@@ -529,8 +532,73 @@ describe('SourcesView, the shell as it is today', () => {
   });
 });
 
+describe('SourcesView, raden i et utdrag', () => {
+  /**
+   * The name a browser gives the toggle: the visible word and the
+   * screen-reader text after it. Chrome names a `summary` from its content,
+   * «Åpne utdrag 1» (KA CC on #229), and jsdom gives it no role to ask
+   * `getByRole` with, so the content is read directly.
+   */
+  const toggleNames = (container: HTMLElement) =>
+    [...container.querySelectorAll('.source-excerpt summary')].map((summary) =>
+      (summary.textContent ?? '').replace(/\s+/g, ' ').trim(),
+    );
+
+  it('gir hver knapp utdragets nummer i navnet, og ingen to samme navn', () => {
+    // Every toggle shows the one word «Åpne», so the name is what tells them
+    // apart in a screen reader's list of controls (WCAG 2.4.9). Since #229
+    // the toggle shares its row with «Utdrag N», and nothing else on the row
+    // says which excerpt it opens.
+    const { container } = render(
+      <SourcesView
+        documents={[
+          documentWith('doc-a', 'Årsrapport 2021', [1, 2]),
+          documentWith('doc-b', 'Årsrapport 2022', [3]),
+        ]}
+      />,
+    );
+
+    expect(toggleNames(container)).toEqual(['Åpne utdrag 1', 'Åpne utdrag 2', 'Åpne utdrag 3']);
+  });
+
+  it('sier i raden at svaret ikke viser til et utdrag uten nummer', () => {
+    // The line stood under the head and over a preview until #229. Now the row
+    // is all a closed excerpt shows, so the line is in the row, outside what
+    // `details` hides — and the toggle is named by the excerpt's place in its
+    // document, since it has no number to be named by.
+    const cited = documentWith('doc-a', 'Årsrapport 2021', [1]);
+    const { container } = render(
+      <SourcesView
+        documents={[
+          {
+            ...cited,
+            excerpts: [
+              ...cited.excerpts,
+              { id: 'doc-a-uten-nummer', relevance: 'low', text: 'Et utdrag svaret ikke brukte.' },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const row = container.querySelector('.source-excerpt[data-uncited] .source-excerpt__head');
+    expect(row?.textContent).toContain('Ikke vist til i svaret');
+    expect(row?.closest('details')).toBeNull();
+    expect(container.querySelectorAll('.source-excerpt__uncited')).toHaveLength(1);
+    expect(toggleNames(container)).toEqual(['Åpne utdrag 1', 'Åpne utdrag 2 av 2']);
+  });
+});
+
 describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
-  /** Two documents whose excerpts all link out, which is the ordinary case. */
+  /**
+   * Two documents whose excerpts all link out, which is the ordinary case, and
+   * one excerpt whose address opens the page its quote is on.
+   *
+   * Every excerpt links to its document in live and bff mode, and to nothing
+   * more. Only a file URL with `#page=N` goes further (kudosLink.ts), and that
+   * is the one excerpt here with a link of its own (Lars, 30.09, on Simens
+   * issue 92).
+   */
   function withKudosLinks(): SourceDocument[] {
     const url = (id: string) => `https://kudos.dfo.no/dokument/${id}`;
 
@@ -540,7 +608,11 @@ describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
     ].map((source) => ({
       ...source,
       url: url(source.id),
-      excerpts: source.excerpts.map((excerpt) => ({ ...excerpt, kudosUrl: url(source.id) })),
+      excerpts: source.excerpts.map((excerpt) =>
+        excerpt.citationNumber === 2
+          ? { ...excerpt, page: 41, kudosUrl: `${url(source.id)}/filer/rapport.pdf#page=41` }
+          : { ...excerpt, kudosUrl: url(source.id) },
+      ),
     }));
   }
 
@@ -554,10 +626,8 @@ describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
   const LINK_NAMES = [
     'Årsrapport Nkom 2025',
     'Tildelingsbrev Nkom 2026',
-    'Les dokumentet på Kudos, utdrag 1, Årsrapport Nkom 2025 (åpnes i ny fane)',
-    'Les dokumentet på Kudos, utdrag 2, Årsrapport Nkom 2025 (åpnes i ny fane)',
+    'Les side 41 på Kudos, utdrag 2, Årsrapport Nkom 2025 (åpnes i ny fane)',
     'Les dokumentet på Kudos, Årsrapport Nkom 2025 (åpnes i ny fane)',
-    'Les dokumentet på Kudos, utdrag 3, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
     'Les dokumentet på Kudos, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
   ];
 
@@ -568,14 +638,25 @@ describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
     // navnet og entydigheten i samme påstand.
     expect(
       screen.getByRole('link', {
-        name: 'Les dokumentet på Kudos, utdrag 1, Årsrapport Nkom 2025 (åpnes i ny fane)',
+        name: 'Les side 41 på Kudos, utdrag 2, Årsrapport Nkom 2025 (åpnes i ny fane)',
       }),
     ).toBeTruthy();
     expect(
       screen.getByRole('link', {
-        name: 'Les dokumentet på Kudos, utdrag 3, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
+        name: 'Les dokumentet på Kudos, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
       }),
     ).toBeTruthy();
+  });
+
+  it('gir et utdrag egen lenke bare når den åpner siden sitatet står på', () => {
+    // Utdrag 1 og 3 lenker til dokumentet og ikke lenger: den lenka står én
+    // gang, nederst i dokumentet. Før sto den samme adressen under hvert
+    // sitat og én gang til under dokumentet (Lars 30.09, Simens issue 92).
+    render(<SourcesView documents={withKudosLinks()} />);
+
+    expect(screen.queryByRole('link', { name: /utdrag 1,/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /utdrag 3,/ })).toBeNull();
+    expect(screen.getAllByRole('link', { name: /^Les dokumentet på Kudos/ })).toHaveLength(2);
   });
 
   it('gir ingen to lenker i panelet samme navn', () => {
@@ -597,7 +678,7 @@ describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
     const { container } = render(<SourcesView documents={withKudosLinks()} />);
 
     const link = [...container.querySelectorAll('a')].find((a) =>
-      a.textContent?.includes('på Kudos'),
+      a.textContent?.includes('Les dokumentet på Kudos'),
     );
     const visible = [...(link?.childNodes ?? [])]
       .filter((node) => !(node instanceof HTMLElement && node.className.includes('ds-sr-only')))

@@ -820,11 +820,26 @@ function Sidebar({
             a box placed there covers nothing. The navigation panel has no free
             side: below is «Filtrering», further along the row is «Tråder»,
             and before the button is the edge of the window. It keeps `top`
-            until its row has room, and so does a rail.
+            until its row has room.
+
+            The sources rail puts it before the button, towards the answer
+            column, and not on top. The box is placed once, when it appears,
+            and then stays put: measured 30.09, it did not follow the button
+            when the panel opened, not even after a resize event. Opening the
+            panel from the keyboard changes the text under a box that is still
+            showing, from «Vis kilder» to the longer «Skjul kilder», and a box
+            placed on top of a rail at the window's edge grew from its start
+            edge out past the end of the window: 1190–1289 at 1280 × 720, and
+            the page scrolled 9 px sideways until the focus moved (KA CC on
+            #224). Placed before the button, it ends where the button starts,
+            and the 14 px it grows stay inside the window: 1139–1238 at 1280,
+            with no sideways scroll at 1280, 1440 or 1512. The navigation rail
+            keeps `top`: its box starts at the window's own start edge and
+            grows away from it.
           */}
           <Tooltip
             content={toggleLabel}
-            placement={!railed && slot === 'secondary-sidebar' ? 'right' : 'top'}
+            placement={slot === 'secondary-sidebar' ? (railed ? 'left' : 'right') : 'top'}
           >
             {toggleButton}
           </Tooltip>

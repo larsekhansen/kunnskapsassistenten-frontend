@@ -1,4 +1,5 @@
 import { Card, Heading, Link, Paragraph } from '@digdir/designsystemet-react';
+import { ExternalLinkIcon } from '@navikt/aksel-icons';
 import { hitsFor, type SearchHit } from '../../components';
 import type { SourceDocument } from '../../model';
 import { SourceExcerpt } from './SourceExcerpt';
@@ -29,17 +30,29 @@ type SourceDocumentCardProps = {
 };
 
 /**
- * One document with every excerpt taken from it (answer 57).
+ * One document with every excerpt taken from it (answer 57), Figma's
+ * `document`: a blue head with the title, and a grey body holding the
+ * excerpts as white boxes, then the way to the document itself.
  *
- * Grouping is what `Card` plus `Card.Block` is for: the blocks are separated
- * by rules inside one card, which is the shape Figma draws, and the document
- * title is written once instead of once per excerpt.
+ * `Card` plus two `Card.Block`s, because that is Designsystemet's shape for a
+ * box in parts. The head is the title and nothing else, as in Figma (Lars,
+ * 30.09); what the document is — type, publisher, year — opens the body, in
+ * small print over the excerpts it describes.
  *
- * The document link deliberately sits in its own block and NOT inside the
- * heading. `Card` delegates a click anywhere on the card to the first link it
- * finds inside a heading (card.tsx:52-70), and a card full of `Details`
- * toggles is the last place that belongs. Keeping the link out of the heading
- * is the documented way to switch the delegation off.
+ * No «N utdrag» any more. It stood in the head to say how many excerpts the
+ * card held, and with the excerpts closed to one row each (Simens issue 86)
+ * they now stand right under it and say so themselves, each with its own
+ * number. The shortcut list above still says which numbers each document has.
+ *
+ * The document's link is the last thing in the body, once per document (Lars,
+ * 30.09, on Simens issue 92). An excerpt carries a link of its own only when
+ * it opens the page the quote is on; see `SourceExcerpt`.
+ *
+ * The link deliberately sits OUTSIDE the heading. `Card` delegates a click
+ * anywhere on the card to the first link it finds inside a heading
+ * (card.tsx:52-70), and a card full of `Details` toggles is the last place
+ * that belongs. Keeping the link out of the heading is the documented way to
+ * switch the delegation off.
  */
 export function SourceDocumentCard({
   source,
@@ -67,54 +80,62 @@ export function SourceDocumentCard({
         <Heading level={3} data-size="xs">
           {source.title}
         </Heading>
+      </Card.Block>
+
+      <Card.Block className="source-document__body">
         {subtitle !== '' && (
           <Paragraph data-size="xs" className="source-document__subtitle">
             {subtitle}
           </Paragraph>
         )}
-        <Paragraph data-size="xs" className="source-document__count">
-          {source.excerpts.length} utdrag
-        </Paragraph>
-      </Card.Block>
 
-      {source.excerpts.map((excerpt, index) => {
-        const active =
-          excerpt.citationNumber !== undefined && excerpt.citationNumber === activeCitationNumber;
+        {source.excerpts.map((excerpt, index) => {
+          const active =
+            excerpt.citationNumber !== undefined && excerpt.citationNumber === activeCitationNumber;
 
-        return (
-          <SourceExcerpt
-            key={excerpt.id}
-            excerpt={excerpt}
-            documentTitle={source.title}
-            corpusName={corpusName}
-            // The place in the document, for naming an excerpt the answer
-            // never cited: the same count the card prints above them.
-            position={index + 1}
-            total={source.excerpts.length}
-            open={openExcerptIds.has(excerpt.id)}
-            onOpenChange={(open) => onExcerptOpenChange(excerpt.id, open)}
-            hits={hitsFor(hits, excerpt.id)}
-            currentHit={currentHit?.itemId === excerpt.id ? currentHit : undefined}
-            active={active}
-            // Only the excerpt the marker points at gets a way back, because
-            // it is the only one the reader was sent to.
-            onReturnToAnswer={active ? onReturnToAnswer : undefined}
-          />
-        );
-      })}
+          return (
+            <SourceExcerpt
+              key={excerpt.id}
+              excerpt={excerpt}
+              documentTitle={source.title}
+              corpusName={corpusName}
+              // The place in the document, for naming an excerpt the answer
+              // never cited.
+              position={index + 1}
+              total={source.excerpts.length}
+              open={openExcerptIds.has(excerpt.id)}
+              onOpenChange={(open) => onExcerptOpenChange(excerpt.id, open)}
+              hits={hitsFor(hits, excerpt.id)}
+              currentHit={currentHit?.itemId === excerpt.id ? currentHit : undefined}
+              active={active}
+              // Only the excerpt the marker points at gets a way back, because
+              // it is the only one the reader was sent to.
+              onReturnToAnswer={active ? onReturnToAnswer : undefined}
+            />
+          );
+        })}
 
-      <Card.Block className="source-document__foot">
         {own ? (
           // The reader's own file. It never had a public address, which is the
           // normal state for it — see `origin.ts` for why this is not the same
           // sentence as the folder-corpus one below.
-          <Paragraph data-size="xs">{OWN_DOCUMENT_NO_LINK}</Paragraph>
+          <Paragraph data-size="xs" className="source-document__no-link">
+            {OWN_DOCUMENT_NO_LINK}
+          </Paragraph>
         ) : source.url === undefined ? (
           // Normal, not an error: folder-based corpora have no public URL.
           // Saying so beats a dead link or an unexplained missing one.
-          <Paragraph data-size="xs">Dokumentet har ingen offentlig lenke.</Paragraph>
+          <Paragraph data-size="xs" className="source-document__no-link">
+            Dokumentet har ingen offentlig lenke.
+          </Paragraph>
         ) : (
-          <Link href={source.url} target="_blank" rel="noreferrer" data-size="sm">
+          <Link
+            href={source.url}
+            target="_blank"
+            rel="noreferrer"
+            data-size="sm"
+            className="source-link"
+          >
             {documentLinkLabel(corpusName)}
             {/* The title, because every document card ends in these same
                 words: without it a screen reader listing the panel's links
@@ -133,6 +154,9 @@ export function SourceDocumentCard({
               {', '}
               {source.title} (åpnes i ny fane)
             </span>
+            {/* Figma's icon for leaving the app, decorative for the same
+                reason as on the excerpt's page link. */}
+            <ExternalLinkIcon aria-hidden />
           </Link>
         )}
       </Card.Block>

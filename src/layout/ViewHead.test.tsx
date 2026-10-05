@@ -154,12 +154,14 @@ describe('view-hodet i skallet', () => {
     expect(threads.closest('.panel-head-slot')).not.toBeNull();
   });
 
-  it('lar hodet i kildepanelet stå tomt før det finnes et svar', () => {
+  it('har bare overskriften i hodet i kildepanelet før det finnes et svar', () => {
     openFrontPage();
 
     // Nothing has been asked, so there is no answer selector and no search to
-    // pin. An empty box is hidden by `.view-head:empty`, so no stray line.
+    // pin. «Kilder» is there from the first render, visible, as Figma has it
+    // and as the navigation panel has «Filtrering» (Lars, 30.09, answer S1).
     const head = document.querySelector('aside.secondary-sidebar .view-head');
-    expect(head?.childNodes).toHaveLength(0);
+    expect(head?.querySelector('h2')?.textContent).toBe('Kilder');
+    expect(head?.querySelector('input')).toBeNull();
   });
 });

@@ -9,15 +9,16 @@ import { EXCERPT_UNAVAILABLE, SourceExcerpt } from './SourceExcerpt';
  * teksten som ikke lot seg slå opp. Målt 29.09 mot poden med Typesense nede,
  * der hver kilde kom med tittel og Kudos-lenke og uten `excerpt`.
  *
- * Kortet er lukket når leseren møter det, så det er der setningen må stå.
- * Første forsøk satte den bare i `Details.Content`, som nettleseren skjuler
- * til «Åpne» er trykket, og da sto «Utdrag 1», «Mest relevant» og «Åpne» over
- * ingenting — nøyaktig gåten setningen finnes for å svare på (KA CC på #182).
+ * Lukket viser utdraget bare raden med «Utdrag N» og «Åpne», uansett om
+ * teksten finnes (Simens issue 86, 30.09). Før sto overskriftsstien og de
+ * første linjene der, og da måtte setningen stå der også (KA CC på #182).
+ * Nå står den der teksten ellers ville stått: i innholdet, når utdraget er
+ * åpnet.
  *
- * Påstandene peker derfor på FORHÅNDSVISNINGEN og ikke på dokumentet som
- * helhet. `getByText` finner tekst inne i et lukket `<details>` også, fordi
- * jsdom ikke skjuler noe, så en påstand om at setningen «finnes» ville vært
- * grønn med feilen i behold. Det var slik den gikk gjennom runde 1.
+ * `getByText` finner tekst inne i et lukket `<details>` også, fordi jsdom
+ * ikke skjuler noe. Påstanden om det lukkede utdraget ser derfor på
+ * strukturen: alt utenfor raden skal ligge i innholdet til `details`, som
+ * nettleseren skjuler til «Åpne» er trykket.
  *
  * Unntak fra dirigenten for `src/views/sources/`.
  */
@@ -50,21 +51,31 @@ function Kort({ excerpt, open: start }: { excerpt: Excerpt; open: boolean }) {
   );
 }
 
-const preview = (container: HTMLElement) =>
-  container.querySelector('.source-excerpt__preview')?.textContent ?? '';
+/** What the browser shows of a closed excerpt: everything but the content. */
+function shownClosed(container: HTMLElement): string {
+  const box = container.querySelector('.source-excerpt')!;
+  const content = box.querySelector('details > :not(summary):not(u-summary)');
+  const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
+  const shown: string[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!content?.contains(node)) shown.push(node.textContent ?? '');
+  }
+  return shown.join(' ');
+}
 
 describe('et utdrag som ikke lot seg hente', () => {
-  it('sier fra i FORHÅNDSVISNINGEN, som er det leseren ser før «Åpne»', () => {
+  it('viser bare raden når det er lukket, som alle utdrag', () => {
     const { container } = render(<Kort excerpt={excerptWith()} open={false} />);
 
-    expect(preview(container)).toContain(EXCERPT_UNAVAILABLE);
+    expect(container.querySelector('.source-excerpt__preview')).toBeNull();
+    expect(shownClosed(container)).not.toContain(EXCERPT_UNAVAILABLE);
+    expect(shownClosed(container)).toContain('Utdrag 1');
+    expect(shownClosed(container)).toContain('Åpne');
   });
 
-  it('sier fra i det åpne kortet også', () => {
-    const { container } = render(<Kort excerpt={excerptWith()} open />);
+  it('sier fra i det åpne kortet, der teksten ellers ville stått', () => {
+    render(<Kort excerpt={excerptWith()} open />);
 
-    // Åpent finnes ingen forhåndsvisning; setningen står i innholdet.
-    expect(container.querySelector('.source-excerpt__preview')).toBeNull();
     expect(screen.getByText(EXCERPT_UNAVAILABLE)).toBeTruthy();
   });
 
@@ -82,12 +93,14 @@ describe('et utdrag som ikke lot seg hente', () => {
           text: 'Departementet stiller midler til disposisjon.',
           textUnavailable: undefined,
         })}
-        open={false}
+        open
       />,
     );
 
-    expect(preview(container)).toContain('Departementet stiller midler');
-    expect(preview(container)).not.toContain(EXCERPT_UNAVAILABLE);
+    expect(container.querySelector('.source-excerpt__quote')?.textContent).toContain(
+      'Departementet stiller midler',
+    );
+    expect(container.textContent).not.toContain(EXCERPT_UNAVAILABLE);
     expect(container.querySelector('.source-excerpt__quote--unavailable')).toBeNull();
   });
 });

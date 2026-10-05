@@ -1,31 +1,10 @@
-import { Button, Card, Details, Heading, Link, Paragraph, Tag } from '@digdir/designsystemet-react';
+import { Button, Details, Heading, Link, Paragraph } from '@digdir/designsystemet-react';
+import { ExternalLinkIcon } from '@navikt/aksel-icons';
 import { HighlightedText, type SearchHit } from '../../components';
 import { BackIcon } from '../../components/icons';
-import { excerptDomId, relevanceLabels, type Excerpt } from '../../model';
-import { kudosLinkLabel } from './kudosLink';
+import { excerptDomId, type Excerpt } from '../../model';
+import { kudosLinkLabel, reachesPage } from './kudosLink';
 import { excerptName } from './excerptName';
-import { relevanceTagColor } from './relevance';
-
-/** How much of the quote is shown before the user opens it. */
-const PREVIEW_LENGTH = 180;
-
-/**
- * The first part of the quote, cut at a word boundary.
- *
- * Figma clips the closed excerpt at a fixed height and fades it out with a
- * gradient. We cut the string instead, for two reasons: a gradient hides text
- * without saying how much, and it has to be redrawn for dark mode. The
- * ellipsis says the same thing and costs nothing. `chunk.md` raises the same
- * objection to the gradient.
- */
-function previewOf(text: string): string {
-  if (text.length <= PREVIEW_LENGTH) return text;
-
-  const cut = text.slice(0, PREVIEW_LENGTH);
-  const lastSpace = cut.lastIndexOf(' ');
-
-  return `${lastSpace > 0 ? cut.slice(0, lastSpace) : cut}…`;
-}
 
 type SourceExcerptProps = {
   excerpt: Excerpt;
@@ -57,8 +36,8 @@ type SourceExcerptProps = {
  * Where the quote would have been, when its text could not be fetched.
  *
  * One sentence, and it does not offer the way on: «Les dokumentet på Kudos»
- * is the next line in the same card, and a note that asks for what the link
- * under it does is the finding this team already wrote down once
+ * is the last line of the same document, and a note that asks for what the
+ * link under it does is the finding this team already wrote down once
  * (brukerblikk 2026-09-15, funn 9).
  *
  * It says the excerpt is unavailable, not that it is empty. The chunk was
@@ -67,18 +46,27 @@ type SourceExcerptProps = {
 export const EXCERPT_UNAVAILABLE = 'Utdraget er ikke tilgjengelig.';
 
 /**
- * One excerpt: its number, how relevant it is, and the quote itself.
+ * One excerpt, Figma's `chunk`: a white box inside its document, with its
+ * number and the toggle on one row and the quote under them.
  *
- * The number is the whole point of this component. `citationNumber` is the
- * same number as the `[n]` marker in the answer (answer 19), it is the scroll
+ * The number is the whole point of the row. `citationNumber` is the same
+ * number as the `[n]` marker in the answer (answer 19), it is the scroll
  * target, and it sits in a heading so a screen reader user can reach it by
- * navigating headings rather than by reading the panel top to bottom.
+ * navigating headings rather than by reading the panel top to bottom. Figma
+ * puts a relevance tag there; Simen asked for «Utdrag N» instead (issue 86),
+ * and the tag went because every level of it was worked out from the order
+ * the chunks came in, not from a score (`relevanceFromRank`).
  *
  * An excerpt can arrive WITHOUT a number: the search finds more than the
  * answer cites, and the model marks `citationNumber` optional for exactly
  * that. Such an excerpt is still worth showing, it just has nothing pointing
- * at it, so it gets no scroll target and says plainly that the answer did not
- * use it.
+ * at it, so it gets no scroll target and says plainly, on the same row, that
+ * the answer did not use it.
+ *
+ * Closed, the row is all there is (Simens issue 86). Figma clips the closed
+ * quote and fades it out; the heading path and the first lines stood there
+ * too until 30.09, and Simen asked for the box to hold nothing it was not
+ * asked to show.
  *
  * Getting here is one click on a `[n]` marker; getting back was eight
  * Shift+Tab that ended somewhere else entirely, and Escape did nothing
@@ -92,13 +80,13 @@ export const EXCERPT_UNAVAILABLE = 'Utdraget er ikke tilgjengelig.';
  * free. It is controlled here because search has to be able to open an excerpt
  * the user never clicked, and the type then requires `onToggle`.
  *
- * The order follows `chunk.md`: relevance tag on the top line, the toggle above
- * the text, and the document's own section heading in bold as the first line of
- * the quote. One deviation, and it is forced: Figma puts the tag and «Åpne» on
- * the SAME line, but `Details.Summary` is a full-width row in Designsystemet,
- * and answer 38 says this has to be `Details`. Squeezing the summary onto the
- * tag line means drawing the toggle ourselves, which is the thing answer 38
- * rules out.
+ * `Details` makes the summary a row of its own, and the heading is not in it:
+ * a heading inside a summary is a heading inside a button to some screen
+ * readers, and this heading is what they navigate by. So the two share a grid
+ * cell instead. The heading is drawn over the start of the summary row and
+ * the summary's label at its end, which is Figma's one row, and the order in
+ * the document is still heading, toggle, quote. See `.source-excerpt` in
+ * sources.css.
  */
 export function SourceExcerpt({
   excerpt,
@@ -113,7 +101,7 @@ export function SourceExcerpt({
   active,
   onReturnToAnswer,
 }: SourceExcerptProps) {
-  const { citationNumber, relevance, heading, text, page, kudosUrl, textUnavailable } = excerpt;
+  const { citationNumber, heading, text, page, kudosUrl, textUnavailable } = excerpt;
   const cited = citationNumber !== undefined;
 
   // Unique per excerpt, so a screen reader reading the list of controls does
@@ -121,31 +109,47 @@ export function SourceExcerpt({
   // and an uncited excerpt are named by different numbers.
   const name = excerptName(citationNumber, position, total);
 
-  // The first line of the quote in Figma: the section heading from the source
-  // document, in bold, with the page after it. Rendered in whichever of the two
-  // branches below is on screen — never in both at once.
-  const quoteHeading =
-    heading === undefined && page === undefined ? null : (
-      <Paragraph data-size="xs" className="source-excerpt__quote-heading">
-        {heading !== undefined && <strong>{heading}</strong>}
-        {heading !== undefined && page !== undefined && ' · '}
-        {page !== undefined && <span className="source-excerpt__page">side {page}</span>}
-      </Paragraph>
-    );
+  /*
+    A link of its own only when it goes further than the document's does.
+
+    The document's link is at the end of the document, once (Lars, 30.09, on
+    Simens issue 92). An excerpt that linked to the same address said it again
+    under every quote — in live and bff mode `kudosUrl` IS the document's
+    address — and Figma's own note on the link says that it belongs a level up
+    when it only opens the document. A file URL with `#page=N` opens the page
+    the quote is on, and that is worth a link here. See `kudosLink.ts`.
+  */
+  const pageLink =
+    kudosUrl !== undefined && page !== undefined && reachesPage(kudosUrl, page)
+      ? kudosUrl
+      : undefined;
 
   return (
-    <Card.Block
+    /*
+      The keydown sits on the box rather than on a control, so Escape gets the
+      reader back from anywhere in the excerpt: from the box itself, where a
+      marker puts the focus, and from the toggle, the page link and «Tilbake
+      til svaret» inside it. The rule below guards against giving an element
+      without a role the behaviour of a control; nothing of the sort happens
+      here. Nothing is pressed on the box. It only listens to what bubbles up,
+      the same as the form in AnswerSearch.tsx. It was a `Card.Block` until
+      30.09, the same `div` to the browser, which the rule could not see
+      through.
+    */
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div
       className="source-excerpt ds-focus"
       // Only a cited excerpt is a scroll target: the id is the one the `[n]`
       // marker links to, and an excerpt with no number has no marker.
       id={cited ? excerptDomId(citationNumber) : undefined}
       data-active={active ? 'true' : undefined}
+      data-uncited={cited ? undefined : 'true'}
       // -1 so the panel can move focus here when the answer points at it.
       // Focus, not only scroll: focus is what tells a screen reader user that
       // something happened, and it puts the keyboard where the eye is.
       tabIndex={cited ? -1 : undefined}
       /*
-        Escape returns to the marker. Scoped to this card rather than to the
+        Escape returns to the marker. Scoped to this box rather than to the
         panel, so it cannot take Escape from the search field, where the
         browser's own `type='search'` handling clears the query.
 
@@ -166,16 +170,12 @@ export function SourceExcerpt({
         <Heading level={4} data-size="2xs" className="source-excerpt__number">
           {cited ? `Utdrag ${citationNumber}` : 'Utdrag'}
         </Heading>
-        <Tag data-color={relevanceTagColor[relevance]} data-size="sm">
-          {relevanceLabels[relevance]}
-        </Tag>
+        {!cited && (
+          <Paragraph data-size="xs" className="source-excerpt__uncited">
+            Ikke vist til i svaret
+          </Paragraph>
+        )}
       </div>
-
-      {!cited && (
-        <Paragraph data-size="xs" className="source-excerpt__uncited">
-          Ikke vist til i svaret
-        </Paragraph>
-      )}
 
       <Details
         className="source-excerpt__details"
@@ -189,13 +189,22 @@ export function SourceExcerpt({
           <span className="ds-sr-only"> {name}</span>
         </Details.Summary>
         <Details.Content>
-          {quoteHeading}
+          {/* The first line of the quote in Figma: the section heading from
+              the source document, in bold, with the page after it. */}
+          {(heading !== undefined || page !== undefined) && (
+            <Paragraph data-size="xs" className="source-excerpt__quote-heading">
+              {heading !== undefined && <strong>{heading}</strong>}
+              {heading !== undefined && page !== undefined && ' · '}
+              {page !== undefined && <span className="source-excerpt__page">side {page}</span>}
+            </Paragraph>
+          )}
+
           {/* The passage is looked up apart from the answer, so it can be
               missing while the excerpt itself is real and cited. Saying so is
-              the whole point: the heading, «Mest relevant» and «Utdrag 1»
-              drawn around a blank space read as a rendering fault. The way on
-              is the Kudos link right below, so this sentence does not repeat
-              it (brukerblikk 2026-09-15, funn 9). */}
+              the whole point: a heading and «Utdrag 1» drawn around a blank
+              space read as a rendering fault. The way on is the document's
+              link at the end of the document, so this sentence does not
+              repeat it (brukerblikk 2026-09-15, funn 9). */}
           {textUnavailable ? (
             <Paragraph
               data-size="sm"
@@ -215,21 +224,20 @@ export function SourceExcerpt({
             </Paragraph>
           )}
 
-          {/* `kudosUrl` is absent for corpora without public URLs — the model
-              says so plainly, and a link to nothing is worse than no link.
-
-              The label comes from the address, not from the page number:
-              Kudos's document page has no viewer and no page anchors, so only
-              a file URL with `#page=N` can open a page. See `kudosLink.ts`. */}
-          {kudosUrl !== undefined && (
-            <Link href={kudosUrl} target="_blank" rel="noreferrer" data-size="sm">
-              {kudosLinkLabel(kudosUrl, page, corpusName)}
-              {/* Every one of these links says the same visible words, so the
-                  accessible name carries what tells them apart: which excerpt,
-                  and which document. A screen reader listing the panel's links
-                  otherwise reads the same words once per excerpt
-                  (WCAG 2.4.9, found by KA CC on #70). The title comes last
-                  because the excerpt is what the reader is standing in.
+          {pageLink !== undefined && (
+            <Link
+              href={pageLink}
+              target="_blank"
+              rel="noreferrer"
+              data-size="sm"
+              className="source-link"
+            >
+              {kudosLinkLabel(pageLink, page, corpusName)}
+              {/* Every one of these links could say the same visible words,
+                  so the accessible name carries what tells them apart: which
+                  excerpt, and which document (WCAG 2.4.9, found by KA CC on
+                  #70). The title comes last because the excerpt is what the
+                  reader is standing in.
 
                   The computed name comes out as «… på Kudos , utdrag 1 …»:
                   accname joins a text node and an element with a space, and
@@ -240,6 +248,11 @@ export function SourceExcerpt({
                 {', '}
                 {name}, {documentTitle} (åpnes i ny fane)
               </span>
+              {/* Figma's icon for leaving the app. Decorative: the words
+                  «åpnes i ny fane» above say it, and Designsystemet asks that
+                  an icon never be the only thing that does. Last, because
+                  that is where Designsystemet's link gives an icon its gap. */}
+              <ExternalLinkIcon aria-hidden />
             </Link>
           )}
 
@@ -251,7 +264,7 @@ export function SourceExcerpt({
               acts on this page is a button, and the name says where it goes.
 
               Last in the content, because that is where the reader is by the
-              time they want it — after the quote and after the Kudos link. */}
+              time they want it — after the quote. */}
           {onReturnToAnswer !== undefined && (
             <Button
               type="button"
@@ -266,23 +279,6 @@ export function SourceExcerpt({
           )}
         </Details.Content>
       </Details>
-
-      {/* The closed card is what the reader sees first, so it has to say the
-          same thing: `previewOf('')` is an empty line, and «Utdrag 1», «Mest
-          relevant» and «Åpne» over nothing is the very riddle the sentence
-          exists to answer (KA CC on #182). */}
-      {!open && (
-        <div className="source-excerpt__preview">
-          {quoteHeading}
-          {textUnavailable ? (
-            <Paragraph data-size="sm" className="source-excerpt__quote--unavailable">
-              {EXCERPT_UNAVAILABLE}
-            </Paragraph>
-          ) : (
-            <Paragraph data-size="sm">{previewOf(text)}</Paragraph>
-          )}
-        </div>
-      )}
-    </Card.Block>
+    </div>
   );
 }
