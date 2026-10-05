@@ -1,14 +1,15 @@
-import { Heading, Skeleton } from '@digdir/designsystemet-react';
+import { Skeleton } from '@digdir/designsystemet-react';
 
-/** Widths of the fake shortcut lines. Varying them reads as text, not as bars. */
-const SHORTCUT_WIDTHS = ['82%', '68%', '90%', '74%'];
+/** One block per document card the answer is likely to have. */
+const DOCUMENT_PLACEHOLDERS = ['a', 'b', 'c', 'd'];
 
 /**
  * `excerpts-placeholder` from Figma: the loading state for the panel.
  *
- * It mirrors the shape of the real content — shortcut list first, then one
- * block per document card — so the layout does not jump when the sources
- * arrive.
+ * It mirrors the shape of the real content, one block per document card, so
+ * the layout does not jump when the sources arrive. The shortcut list it drew
+ * first went with the list itself: the documents are named under each answer
+ * now, in «Kilder brukt i svaret» (Simens issue 113).
  *
  * `Skeleton` sets `aria-hidden` on itself, always and in code. That means a
  * screen reader is told nothing at all unless we say it ourselves, and in
@@ -23,27 +24,9 @@ export function SourcesPlaceholder() {
           without this sentence a screen reader user is told nothing at all. */}
       <output className="ds-sr-only">Henter kilder …</output>
 
-      <div className="sources-overview">
-        {/* A `div`, not a labelled `section`, and no fixed id: the same two
-            reasons as in SourcesOverview. A labelled section is a landmark,
-            and a module-level id breaks the day two panels are on screen. */}
-        <Heading level={3} data-size="xs">
-          Snarveier til dokumentene
-        </Heading>
-
-        <div className="sources-placeholder__shortcuts">
-          {SHORTCUT_WIDTHS.map((width) => (
-            <div className="sources-placeholder__shortcut" key={width}>
-              <Skeleton variant="circle" />
-              <Skeleton variant="rectangle" width={width} height="var(--ds-size-5)" />
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="sources-placeholder__documents">
-        {SHORTCUT_WIDTHS.map((width) => (
-          <Skeleton key={width} variant="rectangle" height="var(--ds-size-18)" />
+        {DOCUMENT_PLACEHOLDERS.map((key) => (
+          <Skeleton key={key} variant="rectangle" height="var(--ds-size-18)" />
         ))}
       </div>
     </div>

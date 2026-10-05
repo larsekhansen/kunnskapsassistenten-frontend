@@ -5,9 +5,10 @@
  *
  * It removes an ambiguity the design has: a list of documents is numbered by
  * document, the excerpts are numbered by `[n]` marker, and without this line
- * the reader meets two numbering systems with no way to tell them apart. Two
- * lists have it: the shortcuts in this panel, and «Kilder brukt i svaret»
- * under the answer.
+ * the reader meets two numbering systems with no way to tell them apart.
+ * «Kilder brukt i svaret» under the answer has it. It lives here because the
+ * excerpts and their numbers are this panel's, and the shortcut list that
+ * had it first stood here until Simens issue 113.
  */
 export function excerptRange(numbers: (number | undefined)[]): string {
   const sorted = numbers.filter((number) => number !== undefined).sort((a, b) => a - b);
