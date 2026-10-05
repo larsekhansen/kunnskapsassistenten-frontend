@@ -532,6 +532,63 @@ describe('SourcesView, the shell as it is today', () => {
   });
 });
 
+describe('SourcesView, raden i et utdrag', () => {
+  /**
+   * The name a browser gives the toggle: the visible word and the
+   * screen-reader text after it. Chrome names a `summary` from its content,
+   * «Åpne utdrag 1» (KA CC on #229), and jsdom gives it no role to ask
+   * `getByRole` with, so the content is read directly.
+   */
+  const toggleNames = (container: HTMLElement) =>
+    [...container.querySelectorAll('.source-excerpt summary')].map((summary) =>
+      (summary.textContent ?? '').replace(/\s+/g, ' ').trim(),
+    );
+
+  it('gir hver knapp utdragets nummer i navnet, og ingen to samme navn', () => {
+    // Every toggle shows the one word «Åpne», so the name is what tells them
+    // apart in a screen reader's list of controls (WCAG 2.4.9). Since #229
+    // the toggle shares its row with «Utdrag N», and nothing else on the row
+    // says which excerpt it opens.
+    const { container } = render(
+      <SourcesView
+        documents={[
+          documentWith('doc-a', 'Årsrapport 2021', [1, 2]),
+          documentWith('doc-b', 'Årsrapport 2022', [3]),
+        ]}
+      />,
+    );
+
+    expect(toggleNames(container)).toEqual(['Åpne utdrag 1', 'Åpne utdrag 2', 'Åpne utdrag 3']);
+  });
+
+  it('sier i raden at svaret ikke viser til et utdrag uten nummer', () => {
+    // The line stood under the head and over a preview until #229. Now the row
+    // is all a closed excerpt shows, so the line is in the row, outside what
+    // `details` hides — and the toggle is named by the excerpt's place in its
+    // document, since it has no number to be named by.
+    const cited = documentWith('doc-a', 'Årsrapport 2021', [1]);
+    const { container } = render(
+      <SourcesView
+        documents={[
+          {
+            ...cited,
+            excerpts: [
+              ...cited.excerpts,
+              { id: 'doc-a-uten-nummer', relevance: 'low', text: 'Et utdrag svaret ikke brukte.' },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const row = container.querySelector('.source-excerpt[data-uncited] .source-excerpt__head');
+    expect(row?.textContent).toContain('Ikke vist til i svaret');
+    expect(row?.closest('details')).toBeNull();
+    expect(container.querySelectorAll('.source-excerpt__uncited')).toHaveLength(1);
+    expect(toggleNames(container)).toEqual(['Åpne utdrag 1', 'Åpne utdrag 2 av 2']);
+  });
+});
+
 describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
   /**
    * Two documents whose excerpts all link out, which is the ordinary case, and
