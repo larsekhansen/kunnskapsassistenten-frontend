@@ -331,7 +331,12 @@ test.describe('kildepanelet', () => {
       all.map((link) => (link.textContent ?? '').replace(/\s+/g, ' ').trim()),
     );
 
-    expect(names.length).toBeGreaterThan(1);
+    // At least one, so the test is not about an empty panel. It was «more
+    // than one» while the shortcut list stood here with a link per document.
+    // Without it, the mock thread has one link left — one of its three
+    // documents has an address — and the duplicates this test is for show up
+    // against a real backend, where every document with an address has one.
+    expect(names.length).toBeGreaterThan(0);
     expect(names.filter((name, index) => names.indexOf(name) !== index)).toEqual([]);
   });
 
