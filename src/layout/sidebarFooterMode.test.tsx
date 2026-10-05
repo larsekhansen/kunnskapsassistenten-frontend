@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetViewport, setViewportWidth } from '../test/matchMedia';
@@ -87,5 +87,56 @@ describe('hvor foten står', () => {
 
     // Skjult panel: innholdet er `hidden`, og da står ingenting å tabbe til.
     expect(scroller()?.hasAttribute('hidden')).toBe(true);
+  });
+});
+
+/**
+ * Skuffen, som er panelet under 1139. Raden hadde en slik test fra før; denne
+ * lukker hullet KA CC fant på #231: med foten tegnet begge steder i skuffen
+ * var alle 22 testene grønne.
+ */
+describe('foten i skuffen', () => {
+  function openDrawer(mode: 'pinned' | 'scrolls') {
+    setFooterMode(mode);
+    open(440);
+    act(() => {
+      screen.getByRole('button', { name: 'Vis tråder og filter' }).click();
+    });
+    return screen.getByRole('dialog', { name: 'Tråder og filter' });
+  }
+
+  it('står i skuffen, og bare én gang, i begge modusene', () => {
+    for (const mode of ['pinned', 'scrolls'] as const) {
+      const drawer = openDrawer(mode);
+
+      // Én fot, én lenkeliste, én fargemodus. To av noe her er feilen:
+      // foten tegnet både i rullefeltet og under det.
+      expect(drawer.querySelectorAll('.sidebar-footer')).toHaveLength(1);
+      expect(within(drawer).getAllByRole('list', { name: 'Om Kunnskapsassistenten' })).toHaveLength(
+        1,
+      );
+      expect(within(drawer).getAllByRole('group', { name: 'Fargemodus' })).toHaveLength(1);
+
+      cleanup();
+      resetFooterMode();
+    }
+  });
+
+  it('ligger i rullefeltet i skuffen når valget er «ruller med»', () => {
+    const drawer = openDrawer('scrolls');
+
+    const region = drawer.querySelector('.sidebar-content');
+    const inDrawer = drawer.querySelector('.sidebar-footer');
+    expect(region?.contains(inDrawer!)).toBe(true);
+    expect(region?.lastElementChild).toBe(inDrawer);
+  });
+
+  it('ligger utenfor rullefeltet i skuffen som standard', () => {
+    const drawer = openDrawer('pinned');
+
+    const region = drawer.querySelector('.sidebar-content');
+    const inDrawer = drawer.querySelector('.sidebar-footer');
+    expect(inDrawer).not.toBeNull();
+    expect(region?.contains(inDrawer!)).toBe(false);
   });
 });

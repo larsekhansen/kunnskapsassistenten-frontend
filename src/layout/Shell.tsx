@@ -596,16 +596,6 @@ function Sidebar({
    * reader user hears «Vis tråder og filter» in both states, and only the
    * sighted presentation changes.
    */
-  /**
-   * Everything below the head: the view head box and the view itself.
-   *
-   * One definition for both places it can be drawn — in the panel on the row,
-   * or inside the drawer — so the view is the same element in both and keeps
-   * its state when the window crosses the breakpoint.
-   *
-   * `hidden` only matters on the row. Inside a drawer the `<dialog>` is what
-   * shows and hides it, and a closed one is `display: none` already.
-   */
   /*
    * The foot of the navigation panel: the pages about Kunnskapsassistenten
    * and the app's own settings (Simens issue 85). What is in it is
@@ -617,8 +607,9 @@ function Sidebar({
    * opens as a drawer to steer from. Not on a rail: three choices do not fit
    * in 67 px, and a rail is one button (railWidth).
    *
-   * Outside the scrolling region, like the head, so it is where it is however
-   * long the thread list grows.
+   * Pinned below the scrolling region, like the head above it, so it is where
+   * it is however long the thread list grows. That is the default and was the
+   * only way until Simens issue 123; `footScrolls` just below is the other.
    */
   const foot = slot === 'primary-sidebar' ? <SidebarFooter /> : null;
 
@@ -628,12 +619,28 @@ function Sidebar({
    * be compared on the same page; see footerMode.ts. `pinned` is the default
    * and is what shipped with issue 85.
    *
-   * The SAME element either way, so switching does not remount the links or
-   * lose the focus inside them — only its place in the tree changes.
+   * One DEFINITION for both places, so the two cannot drift apart. Not one
+   * mounting: React gives a new parent a new mount, so switching tears the
+   * foot down and builds it again. Measured by KA CC on #231 — a selection
+   * inside the first link is gone after the switch.
+   *
+   * Nothing is lost by that today, because the switch happens inside a modal
+   * dialog and the focus cannot be in the foot while it does. The day the
+   * choice moves somewhere the foot is reachable from, that stops being true.
    */
   const footerMode = useFooterMode();
   const footScrolls = footerMode === 'scrolls' && foot !== null;
 
+  /**
+   * Everything below the head: the view head box and the view itself.
+   *
+   * One definition for both places it can be drawn — in the panel on the row,
+   * or inside the drawer — so the view is the same element in both and keeps
+   * its state when the window crosses the breakpoint.
+   *
+   * `hidden` only matters on the row. Inside a drawer the `<dialog>` is what
+   * shows and hides it, and a closed one is `display: none` already.
+   */
   const panelContent = (
     <div
       id={contentId}
