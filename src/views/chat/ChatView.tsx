@@ -2,7 +2,7 @@ import { Heading } from '@digdir/designsystemet-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { corpusDisplayNameFor, corpusOption, createChatClient, type ChatClient } from '../../api';
-import { ErrorState } from '../../components';
+import { ErrorState, PageTitle } from '../../components';
 import { useAnswerSources } from '../../layout/useAnswerSources';
 import { useCitation } from '../../layout/useCitation';
 import { useCorpus } from '../../layout/useCorpus';
@@ -15,8 +15,13 @@ import { MessageList } from './MessageList';
 import { ScrollToBottom } from './ScrollToBottom';
 import { chatErrorText } from './errorText';
 import { answerScopeText } from './filterSummary';
-import { CLARIFICATION_PLACEHOLDER, READING_THREAD, kickstartersFor } from './text';
-import { threadHeading } from './threadHeading';
+import {
+  CLARIFICATION_PLACEHOLDER,
+  NEW_THREAD_TITLE,
+  READING_THREAD,
+  kickstartersFor,
+} from './text';
+import { threadHeading, threadPageTitle } from './threadHeading';
 import { useComposerShortcut } from './useComposerShortcut';
 import { useFollowAnswer } from './useFollowAnswer';
 import { useAttachments } from './useAttachments';
@@ -425,6 +430,7 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
    * See threadHeading.ts for why a stand-in is heard and not seen.
    */
   const heading = threadHeading(thread, messages);
+  const pageName = threadPageTitle(thread, messages);
 
   /**
    * The agent asked back and is waiting: the last turn ended as
@@ -549,6 +555,15 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
 
   return (
     <div className="ka-chat" ref={rootRef}>
+      {/*
+        The tab's title, from the same heading the column draws: the thread's
+        title, or the first sentence of the first question until it has one
+        (WCAG 2.4.2; see `threadPageTitle`). «Ny tråd» before anything is asked. While a thread is
+        being read, the app's name alone, rather than calling it new.
+
+        Here and not in the route, which has the address and not the title.
+      */}
+      <PageTitle name={pageName ?? (loading ? undefined : NEW_THREAD_TITLE)} />
       {heading ? (
         <Heading
           className={heading.repeatsQuestion ? 'ds-sr-only' : undefined}

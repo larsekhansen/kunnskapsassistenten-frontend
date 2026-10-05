@@ -1,5 +1,5 @@
 import { Heading } from '@digdir/designsystemet-react';
-import { NotFoundState } from '../components';
+import { NotFoundState, PageTitle } from '../components';
 
 /**
  * The catch-all route: an address that matches nothing.
@@ -20,6 +20,7 @@ import { NotFoundState } from '../components';
 export function NotFound() {
   return (
     <>
+      <PageTitle name="Siden finnes ikke" />
       <Heading level={1} className="ds-sr-only">
         Kunnskapsassistenten
       </Heading>

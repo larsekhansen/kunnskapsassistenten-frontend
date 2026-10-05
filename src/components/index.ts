@@ -12,6 +12,8 @@ export { Markdown } from './Markdown';
 export type { MarkdownProps } from './Markdown';
 export { NotFoundState } from './NotFoundState';
 export type { NotFoundStateProps } from './NotFoundState';
+export { APP_TITLE, PageTitle, pageTitle } from './PageTitle';
+export type { PageTitleProps } from './PageTitle';
 export { PanelHeader } from './PanelHeader';
 export type { PanelHeaderProps } from './PanelHeader';
 export { MIN_QUERY_LENGTH, findHits, hitsFor, splitByHits, stepHit } from './textSearch';

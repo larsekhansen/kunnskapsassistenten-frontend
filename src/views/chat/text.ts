@@ -165,6 +165,12 @@ export const CLARIFICATION_ANNOUNCEMENT = 'Kunnskapsassistenten trenger en avkla
  */
 export const READING_THREAD = 'Henter samtalen';
 
+/**
+ * The page title before anything is asked: the conversation is the one «Ny
+ * tråd» starts, and the thread list calls it that too.
+ */
+export const NEW_THREAD_TITLE = 'Ny tråd';
+
 /*
  * The keyboard shortcut to the compose field (reise 7 and 15). The field is
  * tab stop 22 of 38 on a thread page, for the thing a reader does most often.

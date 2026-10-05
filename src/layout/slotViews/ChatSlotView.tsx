@@ -3,7 +3,7 @@ import { useParams } from 'react-router';
 import { activeCorpusKey, createChatClient, subscribeToCorpus } from '../../api';
 // Rett fra modulen og ikke via src/api/index.ts, som er #5 sin barrel.
 import { renamedThreads, subscribeToThreadRenames } from '../../api/threadActions';
-import { NotFoundState } from '../../components';
+import { NotFoundState, PageTitle } from '../../components';
 import { threadFromQuestion, type Thread, type ThreadDetail } from '../../model';
 import { ChatView } from '../../views/chat';
 import { COMPOSER_ID } from '../ids';
@@ -494,10 +494,17 @@ function ChatSlot({ threadId }: { threadId?: string }) {
   return (
     <ThreadContext value={value}>
       {missing ? (
-        <NotFoundState
-          title="Fant ikke tråden"
-          description="Lenken peker på en samtale som ikke finnes her. Tråder lagres ikke på tvers av nettlesere, så en delt lenke fører ikke fram ennå."
-        />
+        /*
+          The page title here and not in the chat view, which is not drawn:
+          this branch is the one place that knows the address names nothing.
+        */
+        <>
+          <PageTitle name="Fant ikke tråden" />
+          <NotFoundState
+            title="Fant ikke tråden"
+            description="Lenken peker på en samtale som ikke finnes her. Tråder lagres ikke på tvers av nettlesere, så en delt lenke fører ikke fram ennå."
+          />
+        </>
       ) : (
         /*
           `loading` is the one thing about the address the view cannot see.
