@@ -81,6 +81,16 @@ describe('readableExcerptText, the chunk as the reader sees it', () => {
     );
   });
 
+  test('starts at the text when the chunk starts with page 0 and its dashes', () => {
+    // #5 met one in live on #227 (05.10): a chunk that began with `{0}` and a
+    // line of dashes, the first page of its document. Nothing of the marker
+    // may stand above the first sentence, not even the blank lines after it.
+    const text = readableExcerptText(
+      '{0}\n\n------------------------------------------------\n\nÅrsrapport 2024 for Direktoratet for forvaltning og økonomistyring.',
+    );
+    expect(text).toBe('Årsrapport 2024 for Direktoratet for forvaltning og økonomistyring.');
+  });
+
   test('drops the italic markers and draws list items as bullets', () => {
     const text = readableExcerptText(ITALIC_AND_LIST);
     expect(text).not.toContain('*');
