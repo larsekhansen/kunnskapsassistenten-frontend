@@ -399,6 +399,27 @@ describe('LiveChatClient og feilkoder', () => {
     expect(errorOf(events)?.code).toBe('retrieval-unavailable');
   });
 
+  it('sier hva som må endres når backenden avviser filteret', async () => {
+    // The frame headless-rag main 1c65865 sends for 101 values in one field,
+    // with the progressToken this client sets. Measured 5.10 against :8093.
+    const events = await askAgainst(() =>
+      frameWith({
+        jsonrpc: '2.0',
+        id: 1,
+        error: {
+          code: -32602,
+          message: 'Invalid `retrieve-filter-by`: A filter field takes at most 100 options.',
+          data: { code: 'invalid_overrides' },
+        },
+      }),
+    );
+
+    expect(errorOf(events)).toEqual({
+      code: 'filter-refused',
+      message: 'Filteret har mer enn 100 verdier valgt i ett felt. Velg høyst 100, eller alle.',
+    });
+  });
+
   it('tar en ukjent kode som unknown i stedet for å krasje', async () => {
     const events = await askAgainst(() =>
       frameWith({ error: { message: 'Noe nytt.', data: { code: 'kvote-brukt-opp' } } }),

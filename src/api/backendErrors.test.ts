@@ -110,6 +110,46 @@ describe('errorFromBackend', () => {
     });
   });
 
+  /*
+   * headless-rag main 1c65865 (#15), measured 5.10 against :8093: the
+   * backend refuses the reader's filter before the tool runs.
+   */
+  it('gjør backendens avviste filter til filter-refused, med hva som må endres', () => {
+    expect(
+      errorFromBackend(
+        'Invalid `retrieve-filter-by`: A filter field takes at most 100 options.',
+        'invalid_overrides',
+      ),
+    ).toEqual({
+      code: 'filter-refused',
+      message: 'Filteret har mer enn 100 verdier valgt i ett felt. Velg høyst 100, eller alle.',
+    });
+    expect(
+      errorFromBackend(
+        'Invalid `retrieve-filter-by`: Filter options cannot contain a backtick, a backslash or a control character.',
+        'invalid_overrides',
+      ),
+    ).toEqual({
+      code: 'filter-refused',
+      message:
+        'Et av valgene i filteret har tegn eller en lengde søket ikke tar imot. Fjern det valget.',
+    });
+  });
+
+  it('gir filter-refused med den generelle setningen for en annen avvisning', () => {
+    expect(
+      errorFromBackend(
+        'Invalid `retrieve-filter-by`: A filter takes at most 20 fields.',
+        'invalid_overrides',
+      ),
+    ).toEqual({ code: 'filter-refused' });
+  });
+
+  it('tilbyr ikke å sende det samme filteret igjen', () => {
+    const text = chatErrorText(errorFromBackend('Invalid', 'invalid_overrides'));
+    expect(text.retryable).toBe(false);
+  });
+
   it('lar ikke en kode som heter som en egenskap på Object slå til', () => {
     expect(errorFromBackend('x', 'toString')).toEqual({ code: 'unknown' });
   });
