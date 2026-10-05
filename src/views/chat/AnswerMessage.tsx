@@ -9,6 +9,7 @@ import { AnswerSearch } from './AnswerSearch';
 import { AnswerTime } from './AnswerTime';
 import { ProcedurePanel } from './ProcedurePanel';
 import { RetrievalPanel } from './RetrievalPanel';
+import { SourcesSummary } from './SourcesSummary';
 import { ThinkingPanel } from './ThinkingPanel';
 import { useDisplayLevel } from './displayLevel';
 import {
@@ -352,6 +353,16 @@ export function AnswerMessage({
               <Paragraph className="ka-failed-note" data-size="sm" variant="long">
                 {FAILED_NOTE}
               </Paragraph>
+            ) : null}
+
+            {/*
+              The documents the answer rests on, under it and over the closing
+              question, as Simen draws it in issue 113. Only once the answer is
+              done: the sources arrive in the last frame, and a list that grew
+              while the text was still being written would move under it.
+            */}
+            {complete && !empty && !foundNothing ? (
+              <SourcesSummary documents={message.sources ?? []} onSelectSource={activateCitation} />
             ) : null}
 
             {complete && !empty && !foundNothing ? (

@@ -1,29 +1,9 @@
 import { Heading, Link, List, Paragraph } from '@digdir/designsystemet-react';
 import { useId } from 'react';
 import type { SourceDocument } from '../../model';
+import { excerptRange } from './excerptRange';
 import { documentDomId } from './ids';
 import { isOwnDocument, OWN_DOCUMENT_LABEL } from './origin';
-
-/**
- * «Utdrag 1–3» when the numbers run unbroken, «Utdrag 1, 2, 5» when they do
- * not, and nothing at all for a document whose excerpts the answer never
- * cited.
- *
- * It removes an ambiguity the design has: the shortcut list is numbered by
- * document, the excerpts are numbered by `[n]` marker, and without this line
- * the reader meets two numbering systems with no way to tell them apart.
- */
-function excerptRange(numbers: (number | undefined)[]): string {
-  const sorted = numbers.filter((number) => number !== undefined).sort((a, b) => a - b);
-  if (sorted.length === 0) return '';
-
-  const unbroken = sorted.every((number, index) => index === 0 || number === sorted[index - 1] + 1);
-
-  if (sorted.length === 1) return `Utdrag ${sorted[0]}`;
-  if (unbroken) return `Utdrag ${sorted[0]}–${sorted[sorted.length - 1]}`;
-
-  return `Utdrag ${sorted.join(', ')}`;
-}
 
 type SourcesOverviewProps = {
   documents: SourceDocument[];
