@@ -61,7 +61,10 @@ function value(raw: string | undefined): string | undefined {
  * dropped with one warning, and the first of a repeat wins, for the reasons
  * shared/filterFields.ts gives.
  */
-export function parseCollections(raw: string | undefined): Map<string, string> {
+export function parseCollections(
+  raw: string | undefined,
+  variable = 'KA_FACET_COLLECTIONS',
+): Map<string, string> {
   const collections = new Map<string, string>();
   const dropped: string[] = [];
 
@@ -80,7 +83,7 @@ export function parseCollections(raw: string | undefined): Map<string, string> {
   if (dropped.length > 0) {
     console.warn(
       `[ka] hopper over ${dropped.length} ugyldig(e) eller gjentatt(e) oppføring(er) i ` +
-        `KA_FACET_COLLECTIONS. Formatet er "datasett=samling;…". Hoppet over: ${dropped.join(', ')}`,
+        `${variable}. Formatet er "datasett=samling;…". Hoppet over: ${dropped.join(', ')}`,
     );
   }
   return collections;

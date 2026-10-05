@@ -182,18 +182,21 @@ steg 4 uten nøkkel, står appen i live uten nøkkel, og backenden svarer 401.
 
 ### Fasettene i filterpanelet
 
-Uten Typesense-variablene sier panelet at filtrering ikke er tilgjengelig; se
-[Fasettene i filterpanelet](#fasettene-i-filterpanelet). Med dem: sett de tre
-under og kjør steg 4 igjen. Nøkkelen leses med `read -rs`, og `deploy_live`
-fjerner den fra skallet etterpå. Det skal være en nøkkel som bare kan søke i
-dokumentsamlingen, **ikke adminnøkkelen**; se
+Uten Typesense-variablene sier panelet at filtrering ikke er tilgjengelig, og
+utdragene at teksten ikke kunne hentes; se
+[Fasettene i filterpanelet](#fasettene-i-filterpanelet) og
+[Teksten i utdragene](#teksten-i-utdragene). Med dem: sett de fire under og
+kjør steg 4 igjen. Nøkkelen leses med `read -rs`, og `deploy_live` fjerner den
+fra skallet etterpå. Det skal være en nøkkel som bare kan søke i dokument- og
+bitsamlingen, **ikke adminnøkkelen**; se
 [Fasettene i filterpanelet](#fasettene-i-filterpanelet).
 
 ```sh
 read -rs TYPESENSE_API_KEY
 TYPESENSE_URL="lim-inn-typesense-adressen-her"
-KA_FACET_COLLECTIONS="kudos-full=lim-inn-samlingsnavnet-her"
-export TYPESENSE_URL TYPESENSE_API_KEY KA_FACET_COLLECTIONS
+KA_FACET_COLLECTIONS="kudos-full=lim-inn-dokumentsamlingen-her"
+KA_CHUNK_COLLECTIONS="kudos-full=lim-inn-bitsamlingen-her"
+export TYPESENSE_URL TYPESENSE_API_KEY KA_FACET_COLLECTIONS KA_CHUNK_COLLECTIONS
 ```
 
 ### Ny versjon
@@ -721,9 +724,10 @@ Ett bilde, og modusen og korpuset er miljøvariabler.
 | `VITE_KA_DATASETS`           | Korpusene velgeren tilbyr: `nøkkel=Navn\|beskrivelse;…`.                                  | tom                     |
 | `VITE_KA_FILTER_FIELDS`      | Feltnavn per datasett: `datasett=dimensjon:felt:type\|…`.                                 | tom                     |
 | `VITE_KA_DOCUMENT_URLS`      | Lenke til dokumentet per datasett: `datasett=mal for tall\|mal for UUID;…`.               | tom                     |
-| `TYPESENSE_URL`              | Typesense for fasettene, med skjema og port.                                              | tom                     |
+| `TYPESENSE_URL`              | Typesense for fasettene og utdragene, med skjema og port.                                 | tom                     |
 | `TYPESENSE_API_KEY`          | Nøkkelen til den. Container Apps-secret, aldri i repoet.                                  | tom                     |
 | `KA_FACET_COLLECTIONS`       | Dokumentsamlingen per datasett: `datasett=samling;…`.                                     | tom                     |
+| `KA_CHUNK_COLLECTIONS`       | Bitsamlingen per datasett, for teksten i utdragene: `datasett=samling;…`.                 | tom                     |
 
 `VITE_KA_FILTER_FIELDS` sier hva hvert korpus kaller filterdimensjonene
 `documentType`, `organisation` og `year`, så feltnavna ikke står i koden. En
@@ -770,14 +774,36 @@ kilden bak ruta og klienten endres ikke. Koden er `server/facets.ts`.
 
 **Adminnøkkelen til Typesense skal ikke til Azure.** Den kan slette
 samlinger, og frontenden står mot internett; i dag ligger den bare i
-backenden, som har intern adresse. Ruta gjør bare søk, så frontenden trenger en
-nøkkel som bare kan søke i dokumentsamlingen (`documents:search` på den ene
-samlingen). Hvordan den skaffes, avgjør Lars. Lokalt kan adminnøkkelen fra
-`.env.benjamin` brukes, som i `docs/kjoremiljo-og-korpus.md`.
+backenden, som har intern adresse. Rutene gjør bare søk, så frontenden trenger
+en nøkkel som bare kan søke (`documents:search`) i dokumentsamlingen og i
+bitsamlingen, og ikke i noe annet. Hvordan den skaffes, avgjør Lars. Lokalt kan
+adminnøkkelen fra `.env.benjamin` brukes, som i `docs/kjoremiljo-og-korpus.md`.
 
 I mock svarer ruta 404 og spør ikke Typesense, som resten av `/api/`.
 Dev-serveren svarer på den samme ruta med de samme variablene fra
 `.env.local`, unntatt i bff-modus.
+
+## Teksten i utdragene
+
+Svaret fra backenden sier hvilke biter det bygger på, men ikke hva som står i
+dem. Serveren slår derfor opp teksten selv i bitsamlingen i Typesense og
+svarer på `GET /api/excerpts?dataset=…&ids=…` uten å sende den videre. Det er
+broen i `docs/arkitektur/0005-utdragstekst-og-kilder-etter-innlasting.md`.
+Koden er `server/excerpts.ts`.
+
+- **Samme** `TYPESENSE_URL` og `TYPESENSE_API_KEY` som fasettene, og
+  bitsamlingen for datasettet i `KA_CHUNK_COLLECTIONS`. Nøkkelen må kunne søke
+  i bitsamlingen også.
+- **Id-ene** kommer fra nettleseren. Ruta tar bare id-er av bokstavene a–z og
+  A–Z, sifre, `.`, `_`, `:` og `-`, og høyst 20 om gangen. Alt annet gir 400,
+  og da blir ikke Typesense spurt.
+- **Uten** variablene, eller for et datasett uten bitsamling, svarer ruta
+  tomt, og utdragene sier at teksten ikke kunne hentes. Svarer Typesense med
+  feil, blir det 502, og utdragene sier det samme. Svaret og lenkene til
+  dokumentene kommer uansett.
+- **Etter ny innlasting** slår klienten opp teksten på nytt med den samme
+  ruta. Hvilke biter hvert svar bygger på, ligger i nettleseren
+  (`ka.sources.v1`), for backenden lagrer dem ikke (headless-rag #21).
 
 ## Bytte mellom mock og live
 

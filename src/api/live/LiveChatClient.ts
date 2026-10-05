@@ -1,5 +1,12 @@
 import type { Facet } from '../../../shared/facets.ts';
-import type { FilterFacet, FilterSelection, StreamEvent, Thread, ThreadDetail } from '../../model';
+import type {
+  FilterFacet,
+  FilterSelection,
+  SourceDocument,
+  StreamEvent,
+  Thread,
+  ThreadDetail,
+} from '../../model';
 import { errorFromBackend, errorFromStatus } from '../backendErrors';
 import type { AskParams, ChatClient } from '../chatClient';
 import { CORPUS_TAG_PREFIX } from '../corpus';
@@ -14,7 +21,10 @@ import {
   filterArguments,
   toCitations,
   toSourceDocuments,
+  type McpChunk,
 } from './mcp';
+import { excerptIds, fetchExcerptTexts, withExcerptTexts } from './excerpts';
+import { answerFingerprint, recallThreadSources, rememberAnswerSources } from './sourceStore';
 import { createSseDecoder } from './sse';
 import {
   agentIdFromToolName,
@@ -375,7 +385,10 @@ export class LiveChatClient implements ChatClient {
         const frames = done ? decoder.flush() : decoder.push(value ?? '');
 
         for (const frame of frames) {
-          yield* readFrame(frame.data, state, conversationId, askedOf);
+          yield* readFrame(frame.data, state, conversationId, askedOf, {
+            withTexts: (documents) => this.#withTexts(documents, askedOf.corpusKey, params.signal),
+            remember: rememberAnswerSources,
+          });
         }
 
         if (done) return;
@@ -433,10 +446,57 @@ export class LiveChatClient implements ChatClient {
         messages?: ApiMessage[];
       };
       if (!body.conversation) return null;
-      return threadDetailFrom(body.conversation, body.messages);
+      return await this.#withRememberedSources(threadDetailFrom(body.conversation, body.messages));
     } catch {
       return null;
     }
+  }
+
+  /**
+   * The excerpts' text, from our own server (excerpts.ts). The lookup fails
+   * soft: an excerpt without text says so, and the answer is never held back
+   * by it.
+   */
+  async #withTexts(
+    documents: SourceDocument[],
+    dataset: string | undefined,
+    signal?: AbortSignal,
+  ): Promise<SourceDocument[]> {
+    if (documents.length === 0) return documents;
+    const texts = await fetchExcerptTexts(this.#basePath, dataset, excerptIds(documents), signal);
+    return withExcerptTexts(documents, texts);
+  }
+
+  /**
+   * A thread read back, with the sources this browser wrote down for its
+   * answers (sourceStore.ts, docs/arkitektur/0005).
+   *
+   * Only where the backend gave none: the day it keeps its chunks (headless-rag
+   * #21), what it says wins and this does nothing. Only a completed answer,
+   * and only one whose text is the text that was written down — an answer
+   * changed since is left without, which is better than with another's. Each
+   * answer is looked up on its own, because each holds at most the 20 the
+   * route takes, and they are looked up side by side.
+   */
+  async #withRememberedSources(detail: ThreadDetail): Promise<ThreadDetail> {
+    const remembered = recallThreadSources(detail.id);
+    if (!remembered) return detail;
+
+    const messages = await Promise.all(
+      detail.messages.map(async (message) => {
+        if (message.role !== 'assistant' || message.status !== 'complete') return message;
+        if (message.sources && message.sources.length > 0) return message;
+        const chunks = remembered.get(answerFingerprint(message.content))?.chunks;
+        if (!chunks || chunks.length === 0) return message;
+
+        const documents = await this.#withTexts(
+          toSourceDocuments(chunks, detail.corpusKey),
+          detail.corpusKey,
+        );
+        return { ...message, sources: documents, citations: toCitations(documents) };
+      }),
+    );
+    return { ...detail, messages };
   }
 
   /**
@@ -473,8 +533,17 @@ function finalAnswerText(content: { type?: string; text?: string }[] | undefined
   return content?.find((block) => block.type === 'text')?.text ?? '';
 }
 
+/**
+ * What the final frame needs from the client: the excerpts' text, and a place
+ * to write down which chunks the answer was built from.
+ */
+type FrameHooks = {
+  withTexts: (documents: SourceDocument[]) => Promise<SourceDocument[]>;
+  remember: (conversationId: string, answerText: string, chunks: McpChunk[]) => void;
+};
+
 /** Turns one decoded SSE payload into zero or more of our events. */
-function* readFrame(
+async function* readFrame(
   data: string,
   state: McpStreamState,
   fallbackConversationId?: string,
@@ -485,7 +554,8 @@ function* readFrame(
    * instead of putting `undefined` in it.
    */
   askedOf: { corpusKey?: string } = {},
-): Generator<StreamEvent> {
+  hooks?: FrameHooks,
+): AsyncGenerator<StreamEvent> {
   let message: {
     method?: string;
     params?: { _meta?: Record<string, unknown> };
@@ -544,10 +614,8 @@ function* readFrame(
     return;
   }
 
-  const chunks = (result.structuredContent?.chunks ?? []) as Parameters<
-    typeof toSourceDocuments
-  >[0];
-  const documents = toSourceDocuments(chunks, askedOf.corpusKey);
+  const chunks = (result.structuredContent?.chunks ?? []) as McpChunk[];
+  const listed = toSourceDocuments(chunks, askedOf.corpusKey);
 
   // Anything still held back was answer text after all: nothing followed it
   // to prove it was the agent's plan.
@@ -566,7 +634,7 @@ function* readFrame(
    * being empty: an answer that cites nothing is still an answer, and a
    * `sources` frame with no documents is what the panel needs to say so.
    */
-  if (documents.length === 0 && finalText === '') {
+  if (listed.length === 0 && finalText === '') {
     yield { type: 'error', error: { code: 'no-hits' }, ...askedOf };
     return;
   }
@@ -574,6 +642,24 @@ function* readFrame(
   if (state.answerText === '' && finalText !== '') {
     yield { type: 'token', text: finalText };
   }
+
+  // After the answer's text, so the reader is reading while the excerpts'
+  // text is looked up (docs/arkitektur/0005).
+  const documents = hooks ? await hooks.withTexts(listed) : listed;
+
+  const conversationId =
+    result._meta?.conversation_id ??
+    result.structuredContent?.conversation_id ??
+    fallbackConversationId ??
+    '';
+
+  /*
+   * Written down under the text the backend stores, which is the final
+   * frame's own: measured equal to what `GET /api/conversations/:id` gives
+   * back (30.09). The streamed text is the fallback for a frame that carried
+   * none. See sourceStore.ts.
+   */
+  hooks?.remember(conversationId, finalAnswerText(result.content) || finalText, chunks);
 
   yield {
     type: 'sources',
@@ -585,11 +671,7 @@ function* readFrame(
   yield {
     type: 'done',
     messageId: `msg-${Date.now()}`,
-    conversationId:
-      result._meta?.conversation_id ??
-      result.structuredContent?.conversation_id ??
-      fallbackConversationId ??
-      '',
+    conversationId,
     // Only the one value is read. `complete` is the default anyway, and the
     // schema's `error` is left alone on purpose: a failed turn already came
     // through as an `error` event above, from `isError`. If a frame ever
