@@ -32,10 +32,11 @@ import type { McpChunk } from './mcp';
 export const SOURCES_STORAGE_KEY = 'ka.sources.v1';
 
 /**
- * The most this store takes, in characters of JSON. A chunk is about 350
- * (measured: 1041 for three), an answer at most 20 chunks, so this is some
- * 140 answers at their largest and many more as they come. Browsers give an
- * origin about five million, and the rest of this app needs some of it.
+ * The most this store takes, in characters of JSON. A chunk is about 380
+ * (KA CC measured 5308 for 14 on #227), an answer at most 20 chunks and its
+ * steps, so this is well over a hundred answers at their largest and many
+ * more as they come. Browsers give an origin about five million, and the rest
+ * of this app needs some of it.
  */
 export const MAX_STORED_CHARS = 1_000_000;
 

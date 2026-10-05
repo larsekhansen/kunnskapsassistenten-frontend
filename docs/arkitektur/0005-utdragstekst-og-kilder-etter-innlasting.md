@@ -1,6 +1,6 @@
 # 0005 — Teksten i utdragene, og kildene etter ny innlasting, i live
 
-**Status:** valgt · **Dato:** 2026-09-30
+**Status:** valgt · **Dato:** 2026-09-30 · **Endret:** 2026-10-05, stegene (Simens issue 88) og tallene fra KA CC på #227
 
 ## Kontekst
 
@@ -60,6 +60,17 @@ henter teksten fra ruta i punkt 1. Det lagres bare det strømmen ga, altså
 id-er, dokumentnummer, tittel, adresse og overskrifter. Ingen tekst fra
 dokumentene lagres i nettleseren.
 
+**3. Stegene etter innlasting** (endret 2026-10-05). Fremgangsmåte-boksen
+forsvant av samme grunn (Simens issue 88). Det samme lageret tar derfor også
+vare på det strømmen sa om stegene, ved siden av bitene: stegene slik de kom
+(`thinkingSteps`), treffene, dokumentene og søkeordene (`retrieval`) og hvor
+lenge agenten tenkte (`thoughtMs`). Det er agentens egne ord om hva den
+gjorde, og søkestrengene den brukte, ikke tekst fra dokumentene. Tenketiden
+måles i klienten på samme hendelser og i samme rekkefølge som chatten måler
+den, så tallet etter innlasting er det som sto på skjermen. Svaret skrives
+ned før teksten slås opp, slik at en ny innlasting midt i oppslaget ikke
+mister noe.
+
 Grunnen til punkt 2 er at det er den eneste veien som virker nå uten en
 endring i headless-rag. Oppslaget på id-ene er det samme i begge situasjonene,
 så et nytt svar og et svar som leses tilbake, kan ikke vise ulik tekst for
@@ -95,13 +106,23 @@ samme bit.
   tekst.
 - **Id-ene fra nettleseren går inn i et filter i Typesense.** Ruta tar bare id-er
   som består av `A–Z`, `a–z`, `0–9`, `.`, `_`, `:` og `-`, og høyst 20 om
-  gangen, det samme som headless-rag gir per svar. Hver id settes i
+  gangen, det samme som headless-rag gir per svar (`shared/excerpts.ts`).
+  Klienten deler en lengre liste i forespørsler på 20, så et svar med flere
+  biter får teksten sin den dagen headless-rag gir flere. Hver id settes i
   backticks i `filter_by`. Nøkkelen forlater aldri serveren. Datasettet må
   være et av dem som er satt opp.
-- **Kildene kommer litt senere enn svaret,** med den tiden oppslaget tar. Det
-  er ikke målt. Ruta har et tak på 5 sekunder.
-- **Lageret i nettleseren har en grense.** Referansene tar om lag 350 tegn per
-  bit og høyst 20 biter per svar, altså høyst 7 000 tegn per svar. Klienten
+- **Kildene kommer litt senere enn svaret,** med den tiden oppslaget tar.
+  KA CC målte på #227: 150–155 ms mens svaret kom, og 45–155 ms etter ny
+  innlasting. En tråd som lastes på nytt, tegnes når alle oppslagene er
+  ferdige, og den sto 237 ms etter innlastingen. Henger Typesense, svarer
+  ruta 502 etter 5 sekunder (målt: 5011 ms), og så lenge venter både kildene
+  i et nytt svar og en tråd som åpnes. Klienten gir selv opp etter 6
+  sekunder. Å tegne tråden først og fylle inn teksten etterpå ville kreve en
+  ny vei for oppdateringer gjennom chatten og kildepanelet. Med 237 ms
+  vanligvis er det ikke verdt det nå.
+- **Lageret i nettleseren har en grense.** Referansene tar om lag 380 tegn per
+  bit (KA CC målte 5308 tegn for 14 biter på #227) og høyst 20 biter per
+  svar, altså om lag 7 600 tegn per svar, pluss stegene. Klienten
   holder lageret under 1 000 000 tegn ved å fjerne tråden som ble brukt
   lengst siden. Går det ikke å skrive, er alt som før: kildene forsvinner ved
   innlasting, og det er det eneste som skjer.
@@ -111,9 +132,6 @@ samme bit.
 - **Et svar kjennes igjen på teksten.** Endrer backenden teksten etter at den
   er lagret, får svaret ikke kildene tilbake, og panelet er da som i dag. Det
   er tryggere enn å sette kilder på feil svar.
-- **Stegene kommer etter.** Fremgangsmåte-boksen forsvinner av samme grunn
-  (Simens issue 88), og et svar i lageret er et objekt, så det strømmen sa om
-  stegene kan lagres ved siden av bitene i en egen PR.
 - **Bare live-modus.** Mock har egne data. Bak BFF-en er problemet det samme,
   og det samme lageret kan brukes der, men det er ikke en del av denne
   beslutningen.
