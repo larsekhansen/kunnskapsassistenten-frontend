@@ -27,6 +27,12 @@ jobs:
       contents: read
       # Uploading the results is what puts the alerts on the PR.
       security-events: write
+    env:
+      # The whole repo on a PR too, not only the lines it changes. The copy in
+      # digdir arrives as one PR where every line is new, so this is what it
+      # will be told; and a guard in one file can be what a sink in another
+      # depends on, which a diff of the guard alone would not show.
+      CODEQL_ACTION_DIFF_INFORMED_QUERIES: false
 
     steps:
       - name: Checkout
