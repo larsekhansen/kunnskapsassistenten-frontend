@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useParams } from 'react-router';
 import { activeCorpusKey, createChatClient, subscribeToCorpus } from '../../api';
 // Rett fra modulen og ikke via src/api/index.ts, som er #5 sin barrel.
@@ -6,6 +14,7 @@ import { renamedThreads, subscribeToThreadRenames } from '../../api/threadAction
 import { NotFoundState, PageTitle } from '../../components';
 import { threadFromQuestion, type Thread, type ThreadDetail } from '../../model';
 import { ChatView } from '../../views/chat';
+import { FilterContext } from '../filterContext';
 import { COMPOSER_ID } from '../ids';
 import { ThreadContext } from '../threadContext';
 import { useAnswerSources } from '../useAnswerSources';
@@ -190,6 +199,14 @@ function ChatSlot({ threadId }: { threadId?: string }) {
 
   // The filter lock of the thread on this page. See useThreadFilterLock.ts.
   const lockNewThread = useThreadFilterLock(client, thread, corpusKey);
+  /*
+    What the first question is asked with, for the thread it starts: a client
+    that keeps a filter on a thread stores it when it makes the conversation
+    (live, Simens issue 90). The context and not `useFilterSelection()`, for
+    the reason useThreadFilterLock gives: the page is mounted on its own in
+    tests.
+  */
+  const askedFilter = use(FilterContext)?.selection;
 
   useEffect(() => {
     if (!threadId) return;
@@ -436,8 +453,14 @@ function ChatSlot({ threadId }: { threadId?: string }) {
         thread minted here says the same thing as one read back from the
         backend (which carries it as a `corpus:` tag). A thread belongs to one
         corpus for good: switching starts a new one rather than moving this.
+        And with the filter it is asked with, which the client stores with
+        the conversation and which then locks the thread.
       */
-      const created: Thread = { ...threadFromQuestion(question), corpusKey: activeCorpusKey() };
+      const created: Thread = {
+        ...threadFromQuestion(question),
+        corpusKey: activeCorpusKey(),
+        ...(askedFilter ? { filter: askedFilter } : {}),
+      };
       startedRef.current = created;
       setStarted(created);
       addressesWrittenHere.add(created.id);
@@ -466,7 +489,7 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       void adoptRealThread(created);
       return created;
     },
-    [adoptRealThread, client, thread, threadId],
+    [adoptRealThread, askedFilter, client, thread, threadId],
   );
 
   const value = useMemo(

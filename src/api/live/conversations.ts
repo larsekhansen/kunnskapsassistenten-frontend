@@ -1,4 +1,14 @@
-import type { Citation, Message, SourceDocument, Thread, ThreadDetail } from '../../model';
+import {
+  emptyFilterSelection,
+  filterDimensions,
+  isEmptySelection,
+  type Citation,
+  type FilterSelection,
+  type Message,
+  type SourceDocument,
+  type Thread,
+  type ThreadDetail,
+} from '../../model';
 import { corpusKeyFromTags } from '../corpus';
 import { documentUrl } from '../documentUrls';
 
@@ -59,14 +69,15 @@ export type ApiMessage = {
   role?: string | null;
   created?: number | null;
   chunks?: ApiChunk[] | null;
-  /**
-   * Written down because the backend sends them, not because anything here
-   * reads them. `filterValue` is the narrowing the turn was asked with, which
-   * the frontend does not use yet (API-bestilling A2), and `tags` is the
-   * conversation store's own labelling.
-   */
+  /** The conversation store's own labelling. Not read here. */
   tags?: string[] | null;
-  filterValue?: string | null;
+  /**
+   * The filter the conversation was made with, on a message of its own whose
+   * `role` is null: what `filter-value` on the create call is kept as. Null on
+   * every turn, whatever the turn was asked with (measured 05.10). See
+   * `filterFromMessages`.
+   */
+  filterValue?: unknown;
 };
 
 /**
@@ -286,14 +297,51 @@ export function messagesFromApi(
     });
 }
 
+/** «document-type» and «documentType» are the same name. */
+function bareName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * The filter a conversation was made with, by dimension, or undefined when it
+ * has none (Simens issue 90).
+ *
+ * The backend keeps `filter-value` from the create call on a message of its
+ * own, and gives its keys back in kebab case: `documentType` comes back as
+ * `document-type` (measured 05.10). The names are matched without case and
+ * punctuation, so either spelling finds the dimension. Anything that is not a
+ * list of strings is left out rather than guessed at.
+ */
+export function filterFromMessages(
+  messages: ApiMessage[] | null | undefined,
+): FilterSelection | undefined {
+  const value = (messages ?? []).find(
+    (message) => message.filterValue !== null && typeof message.filterValue === 'object',
+  )?.filterValue as Record<string, unknown> | undefined;
+  if (!value) return undefined;
+
+  const selection: FilterSelection = { ...emptyFilterSelection };
+  for (const dimension of filterDimensions) {
+    const key = Object.keys(value).find((name) => bareName(name) === bareName(dimension));
+    const values = key === undefined ? undefined : value[key];
+    if (Array.isArray(values)) {
+      selection[dimension] = values.filter((entry): entry is string => typeof entry === 'string');
+    }
+  }
+  return isEmptySelection(selection) ? undefined : selection;
+}
+
 export function threadDetailFrom(
   conversation: ApiConversation,
   messages: ApiMessage[] | null | undefined,
 ): ThreadDetail {
   const thread = threadFromConversation(conversation);
   const turns = messagesFromApi(messages, thread.corpusKey);
+  const filter = filterFromMessages(messages);
   return {
     ...thread,
+    // What the thread is locked to; see `lockOf` in useThreadFilterLock.ts.
+    ...(filter ? { filter } : {}),
     // The last turn is the best «last activity» available, and it is better
     // than `created` whenever there is one. The list endpoint returns no
     // messages, so only a thread that has been opened can say this.

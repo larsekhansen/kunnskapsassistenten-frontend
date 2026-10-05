@@ -1,12 +1,13 @@
 import type { Facet } from '../../../shared/facets.ts';
-import type {
-  FilterFacet,
-  FilterSelection,
-  RetrievalDetails,
-  SourceDocument,
-  StreamEvent,
-  Thread,
-  ThreadDetail,
+import {
+  isEmptySelection,
+  type FilterFacet,
+  type FilterSelection,
+  type RetrievalDetails,
+  type SourceDocument,
+  type StreamEvent,
+  type Thread,
+  type ThreadDetail,
 } from '../../model';
 import { errorFromBackend, errorFromStatus } from '../backendErrors';
 import type { AskParams, ChatClient } from '../chatClient';
@@ -187,7 +188,12 @@ export class LiveChatClient implements ChatClient {
    */
   async createThread(thread: Thread, signal?: AbortSignal): Promise<Thread | undefined> {
     const dataset = this.#dataset();
-    const pending = this.#createConversation(thread.title, dataset.dataset_config_key, signal);
+    const pending = this.#createConversation(
+      thread.title,
+      dataset.dataset_config_key,
+      signal,
+      thread.filter,
+    );
     openConversation = pending;
 
     const id = await pending;
@@ -233,6 +239,7 @@ export class LiveChatClient implements ChatClient {
     title: string,
     corpusKey: string | undefined,
     signal?: AbortSignal,
+    filter?: FilterSelection,
   ): Promise<string | undefined> {
     try {
       const response = await this.#conversations('', {
@@ -255,6 +262,20 @@ export class LiveChatClient implements ChatClient {
             labels things with. `corpus:` is ours; see `corpusKeyFromTags`.
           */
           ...(corpusKey ? { tags: [`${CORPUS_TAG_PREFIX}${corpusKey}`] } : {}),
+          /*
+            The filter the thread is started with, which locks it (Simens
+            issue 90), the way the BFF locks a thread it was asked with.
+
+            The backend does not keep the filter a question is asked with —
+            measured against the local stack on 05.10: a turn sent with
+            `retrieve-filter-by` came back with `filterValue: null` on every
+            message. It keeps this one: `filter-value` on the create call
+            comes back on a message of its own, with `role: null`, and with
+            its keys in kebab case. See `filterFromMessages`.
+
+            Not sent for an empty filter, which locks nothing (`lockOf`).
+          */
+          ...(filter && !isEmptySelection(filter) ? { 'filter-value': filter } : {}),
         }),
       });
       if (!response.ok) return undefined;
@@ -298,7 +319,12 @@ export class LiveChatClient implements ChatClient {
     const conversationId =
       params.conversationId ??
       (await openConversation) ??
-      (await this.#createConversation(params.query, dataset.dataset_config_key, params.signal));
+      (await this.#createConversation(
+        params.query,
+        dataset.dataset_config_key,
+        params.signal,
+        params.filters,
+      ));
     /*
       The reader's filter, in the backend's own filter format.
 

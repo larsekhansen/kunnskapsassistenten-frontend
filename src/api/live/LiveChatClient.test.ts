@@ -630,6 +630,45 @@ describe('tråden heter det backenden kaller den', () => {
   beforeEach(() => resetLiveConversation());
   afterEach(() => vi.unstubAllGlobals());
 
+  /*
+   * Filteret tråden startes med, lagret med samtalen, så den låses som bak
+   * BFF-en (Simens issue 90). Målt mot den lokale stacken 05.10: backenden
+   * tar vare på `filter-value` fra opprettelsen, men ikke på filteret et
+   * spørsmål stilles med.
+   */
+  it('lagrer filteret tråden startes med', async () => {
+    const fetchMock = backendCreating('rskfhAR3otaiib3NJiKfQ');
+    const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' });
+
+    await client.createThread({
+      ...standIn,
+      filter: { documentType: ['Årsrapport'], organisation: [], year: ['2023'] },
+    });
+
+    const body = createdConversationBody(fetchMock) as { 'filter-value'?: unknown };
+    expect(body['filter-value']).toEqual({
+      documentType: ['Årsrapport'],
+      organisation: [],
+      year: ['2023'],
+    });
+  });
+
+  it('lagrer ikke et tomt filter, som ikke låser noe', async () => {
+    const fetchMock = backendCreating('rskfhAR3otaiib3NJiKfQ');
+    const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' });
+
+    await client.createThread({
+      ...standIn,
+      filter: { documentType: [], organisation: [], year: [] },
+    });
+    await client.createThread(standIn);
+
+    const calls = fetchMock.mock.calls as unknown as [unknown, RequestInit | undefined][];
+    for (const [, init] of calls) {
+      expect(JSON.parse(String(init?.body ?? '{}'))).not.toHaveProperty('filter-value');
+    }
+  });
+
   it('gir tråden backendens id, ikke klientens stedfortreder', async () => {
     backendCreating('rskfhAR3otaiib3NJiKfQ');
     const client = new LiveChatClient({ tenant: 'demo', datasetConfigKey: 'kudos-pilot' });
