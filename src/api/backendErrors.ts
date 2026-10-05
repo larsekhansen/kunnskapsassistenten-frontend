@@ -104,6 +104,42 @@ const KNOWN_TEXTS: { pattern: RegExp; error: (match: RegExpMatchArray) => ChatEr
 ];
 
 /**
+ * What the reader is told when the service turns their filter away, behind
+ * the BFF (`filter-too-many-values`, `filter-invalid-value`) and behind the
+ * backend itself (`invalid_overrides`). One wording for both, so a reader
+ * reads the same thing whichever of the two said no.
+ */
+export const FILTER_REFUSED_MESSAGES = {
+  tooManyValues: 'Filteret har mer enn 100 verdier valgt i ett felt. Velg høyst 100, eller alle.',
+  invalidValue:
+    'Et av valgene i filteret har tegn eller en lengde søket ikke tar imot. Fjern det valget.',
+} as const;
+
+/**
+ * headless-rag's refusal of the reader's filter, from main `1c65865` on (#15).
+ * It checks `retrieve-filter-by` before the tool runs and answers JSON-RPC
+ * `-32602` with `data.code` `invalid_overrides`. Measured 5.10 with the
+ * `progressToken` this client sends, the refusal comes as an ordinary SSE
+ * frame. Before this, the code was unknown here, and the reader got the
+ * general error for a filter they can change.
+ *
+ * The text says which rule was broken, in English. The two a reader of this
+ * panel can break get their own sentence (measured: «A filter field takes at
+ * most 100 options.» and «Filter options cannot contain a backtick, a
+ * backslash or a control character.»); any other refusal is still
+ * `filter-refused`, with the general sentence.
+ */
+function refusedFilter(text: string | undefined): ChatError {
+  if (text && /\bat most 100 options\b/u.test(text)) {
+    return { code: 'filter-refused', message: FILTER_REFUSED_MESSAGES.tooManyValues };
+  }
+  if (text && /\bcannot contain a backtick\b/u.test(text)) {
+    return { code: 'filter-refused', message: FILTER_REFUSED_MESSAGES.invalidValue };
+  }
+  return { code: 'filter-refused' };
+}
+
+/**
  * A failure the backend or the BFF described in its own words, as a code.
  *
  * Their text is English, technical and written for whoever runs the service
@@ -123,6 +159,7 @@ export function errorFromBackend(text: string | undefined, code?: unknown): Chat
 
   const known = chatErrorCode(code);
   if (known !== 'unknown') return { code: known };
+  if (code === 'invalid_overrides') return refusedFilter(text);
   if (typeof code === 'string' && Object.hasOwn(BACKEND_CODES, code)) return BACKEND_CODES[code];
 
   for (const { pattern, error } of KNOWN_TEXTS) {

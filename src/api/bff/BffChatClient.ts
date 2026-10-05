@@ -9,7 +9,7 @@ import type {
 import type { AskParams, ChatClient, ThreadCertainty } from '../chatClient';
 import { filterFieldsFor } from '../filterFields';
 import type { DatasetFilterFields } from '../filterFields';
-import { errorFromBackend, errorFromStatus } from '../backendErrors';
+import { FILTER_REFUSED_MESSAGES, errorFromBackend, errorFromStatus } from '../backendErrors';
 import { adoptServerCorpus } from '../corpus';
 import { createSseDecoder } from '../live/sse';
 import type {
@@ -513,17 +513,10 @@ async function errorFromResponse(response: Response): Promise<ChatError> {
   // Its own code, so the reader is told what to change and is not offered a
   // «Prøv igjen» that sends the same filter to the same refusal.
   if (body.code === 'filter-too-many-values') {
-    return {
-      code: 'filter-refused',
-      message: 'Filteret har mer enn 100 verdier valgt i ett felt. Velg høyst 100, eller alle.',
-    };
+    return { code: 'filter-refused', message: FILTER_REFUSED_MESSAGES.tooManyValues };
   }
   if (body.code === 'filter-invalid-value') {
-    return {
-      code: 'filter-refused',
-      message:
-        'Et av valgene i filteret har tegn eller en lengde søket ikke tar imot. Fjern det valget.',
-    };
+    return { code: 'filter-refused', message: FILTER_REFUSED_MESSAGES.invalidValue };
   }
   if (typeof body.error !== 'string' || !body.error.trim()) return fromStatus;
   const fromText = errorFromBackend(body.error);
