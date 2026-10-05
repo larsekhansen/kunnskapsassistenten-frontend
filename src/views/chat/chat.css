@@ -269,9 +269,11 @@
   inline-size: 100%;
 }
 
-/* The robot in the summary. Same size as Details' own chevron, from the same
-   token, so the two ends of the bar line up. */
-.ka-procedure__icon {
+/* The robot in «Fremgangsmåte» and the document in «Kilder brukt i svaret».
+   Same size as Details' own chevron, from the same token, so the two ends of
+   the bar line up. */
+.ka-procedure__icon,
+.ka-sources-summary__icon {
   font-size: var(--ds-icon-size);
 }
 
@@ -311,6 +313,60 @@
   list-style: none;
 }
 
+/* ------------------------------------------------------ kilder i svaret */
+
+/*
+ * «Kilder brukt i svaret» under the answer (Simens issue 113, Figma
+ * 1712:36955): Figma's `blackbox`, a white bar over a grey body, framed and
+ * rounded. The colours are Designsystemet's own Details variables, set to the
+ * two surfaces Figma names, so hover, open and focus stay Designsystemet's.
+ *
+ * Designsystemet frames a Details with a rule above and below and nothing at
+ * the sides. Figma frames it all round, which is what lets it stand as a box
+ * of its own on the white card, and `overflow: clip` rounds the bar's corners
+ * with the frame's.
+ */
+.ka-sources-summary {
+  --dsc-details-padding: var(--ds-size-4);
+  --dsc-details-background: var(--ds-color-neutral-background-tinted);
+  --dsc-details-border-color: var(--ds-color-neutral-border-subtle);
+  --dsc-details-summary-background: var(--ds-color-neutral-surface-default);
+  --dsc-details-summary-background--open: var(--ds-color-neutral-surface-default);
+  --dsc-details-summary-background--hover: var(--ds-color-neutral-surface-hover);
+
+  overflow: clip;
+  /* 32 px from the answer over it and from the closing question under it,
+     as Figma spaces it. The card's own 12 px over the question folds into
+     this. */
+  margin-block: var(--ds-size-8);
+  border: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+  border-radius: var(--ds-border-radius-lg);
+}
+
+/* The rule between the bar and the list, there only while the list is. */
+.ka-sources-summary[open] > summary {
+  border-block-end: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+}
+
+/*
+ * Figma's 16 px round the list and 24 under it, where Designsystemet puts 20
+ * on every side. Designsystemet writes these in `:where()`, so a class wins.
+ */
+.ka-sources-summary > :not(summary):not(u-summary) {
+  margin: var(--ds-size-4) var(--ds-size-4) var(--ds-size-6);
+}
+
+.ka-sources-summary__list {
+  margin: 0;
+}
+
+/* «Utdrag 1–2» under a title: what the markers in the text call it. Subtle,
+   because it says something about the row rather than something new. */
+.ka-sources-summary__excerpts {
+  margin: 0;
+  color: var(--ds-color-neutral-text-subtle);
+}
+
 /* ------------------------------------------------------------ innstillinger */
 
 /*
@@ -344,6 +400,7 @@
 }
 
 .ka-procedure__summary,
+.ka-sources-summary__title,
 .ka-thinking__summary {
   display: flex;
   align-items: center;
@@ -1100,6 +1157,7 @@
 .ka-streaming-status[hidden],
 .ka-procedure[hidden],
 .ka-procedure__summary[hidden],
+.ka-sources-summary__title[hidden],
 .ka-procedure__block[hidden],
 .ka-procedure__keywords[hidden],
 .ka-procedure__label[hidden],
