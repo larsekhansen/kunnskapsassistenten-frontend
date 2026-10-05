@@ -20,10 +20,62 @@ describe('Markdown', () => {
   it('puts a table in a named, focusable scroll box', () => {
     render(<Markdown>{'| A | B |\n| --- | --- |\n| 1 | 2 |'}</Markdown>);
 
-    const region = screen.getByRole('region', { name: 'Tabell' });
+    const region = screen.getByRole('region', { name: 'Tabell med kolonnene A og B' });
     expect(region.tabIndex).toBe(0);
     expect(screen.getByRole('table')).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'A' })).toBeTruthy();
+  });
+
+  it('gives two tables in one answer a name each, numbered', () => {
+    // Two regions with one name is axe's landmark-unique (#2): both were «Tabell».
+    const twoTables = [
+      '| År | Treff |',
+      '| --- | --- |',
+      '| 2023 | 4 |',
+      '',
+      'Og så:',
+      '',
+      '| År | Treff |',
+      '| --- | --- |',
+      '| 2024 | 7 |',
+    ].join('\n');
+    render(<Markdown>{twoTables}</Markdown>);
+
+    const names = screen.getAllByRole('region').map((region) => region.getAttribute('aria-label'));
+    expect(names).toEqual([
+      'Tabell 1 med kolonnene År og Treff',
+      'Tabell 2 med kolonnene År og Treff',
+    ]);
+  });
+
+  it('numbers the same way when the answer is drawn again', () => {
+    const twoTables = '| A |\n| --- |\n| 1 |\n\n| B |\n| --- |\n| 2 |';
+    const { rerender } = render(<Markdown>{twoTables}</Markdown>);
+    rerender(<Markdown>{twoTables}</Markdown>);
+
+    expect(
+      screen.getAllByRole('region').map((region) => region.getAttribute('aria-label')),
+    ).toEqual(['Tabell 1 med kolonnen A', 'Tabell 2 med kolonnen B']);
+  });
+
+  it('says Tabell alone when the header row has no text', () => {
+    render(<Markdown>{'|   |   |\n| --- | --- |\n| 1 | 2 |'}</Markdown>);
+
+    expect(screen.getByRole('region', { name: 'Tabell' })).toBeTruthy();
+  });
+
+  it('counts the columns past the fourth instead of reading them all out', () => {
+    render(
+      <Markdown>
+        {
+          '| A | B | C | D | E | F |\n| --- | --- | --- | --- | --- | --- |\n| 1 | 2 | 3 | 4 | 5 | 6 |'
+        }
+      </Markdown>,
+    );
+
+    expect(
+      screen.getByRole('region', { name: 'Tabell med kolonnene A, B, C, D og 2 til' }),
+    ).toBeTruthy();
   });
 
   it('renders links as links', () => {

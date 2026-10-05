@@ -227,6 +227,90 @@ function headingComponents(
   return Object.fromEntries(entries);
 }
 
+/** The bits of a hast node this file reads. Loose on purpose: see `numberTables`. */
+type HastNode = {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: Record<string, unknown>;
+  children?: HastNode[];
+};
+
+/**
+ * Numbers the tables in one answer, in the order they come, and says how
+ * many there are.
+ *
+ * The number and the count go on the table's own hast properties, where the
+ * `table` component reads them off `node`. They are never rendered: the
+ * component draws its own elements and passes none of the node's properties
+ * on. A rehype plugin rather than a counter in the component, because a
+ * component can render more than once (StrictMode, a re-render of one
+ * answer), and a counter would count again.
+ */
+function numberTables() {
+  return (tree: HastNode) => {
+    const tables: HastNode[] = [];
+    const walk = (node: HastNode) => {
+      if (node.type === 'element' && node.tagName === 'table') tables.push(node);
+      node.children?.forEach(walk);
+    };
+    walk(tree);
+    tables.forEach((table, index) => {
+      table.properties = { ...table.properties, tableNumber: index + 1, tableCount: tables.length };
+    });
+  };
+}
+
+/** All the text inside a hast node, as one trimmed string. */
+function textOf(node: HastNode): string {
+  if (node.type === 'text') return node.value ?? '';
+  return (node.children ?? []).map(textOf).join('').trim();
+}
+
+/** The text of the header cells in a table's first row. */
+function columnHeaders(table: HastNode | undefined): string[] {
+  const rows: HastNode[] = [];
+  const walk = (node: HastNode) => {
+    if (node.type === 'element' && node.tagName === 'tr') rows.push(node);
+    else node.children?.forEach(walk);
+  };
+  if (table) walk(table);
+  const cells = (rows[0]?.children ?? []).filter(
+    (cell) => cell.type === 'element' && cell.tagName === 'th',
+  );
+  return cells.map(textOf).filter(Boolean);
+}
+
+/** How many column names a table's name lists before it says how many more. */
+const NAMED_COLUMNS = 4;
+
+const columnList = new Intl.ListFormat('nb', { type: 'conjunction' });
+
+/**
+ * The accessible name of a table's scroll box: «Tabell med kolonnene År,
+ * Treff og Dokumenter», with its number when the answer has more than one —
+ * «Tabell 2 med kolonnene …».
+ *
+ * The box is a region, and every region on the page needs a name of its own
+ * (axe `landmark-unique`, found by #2): two tables in one answer were both
+ * «Tabell». A region per scrollable table is the usual pattern, and its name
+ * normally comes from the table's caption; a markdown table has none, so the
+ * header row stands in for it. The number makes two tables in one answer
+ * differ whatever their columns are. Across answers the columns usually do,
+ * and a number would not: every answer would count from 1.
+ *
+ * Past `NAMED_COLUMNS` the rest are counted rather than read out, so a wide
+ * table does not get a name a screen reader takes ten seconds to say.
+ */
+function tableName(number: number, count: number, headers: string[]): string {
+  const base = count > 1 ? `Tabell ${number}` : 'Tabell';
+  if (headers.length === 0) return base;
+  const named = headers.slice(0, NAMED_COLUMNS);
+  const rest = headers.length - named.length;
+  const columns = rest > 0 ? [...named, `${rest} til`] : named;
+  return `${base} med ${headers.length === 1 ? 'kolonnen' : 'kolonnene'} ${columnList.format(columns)}`;
+}
+
 export function Markdown({
   children,
   startLevel = 2,
@@ -261,22 +345,30 @@ export function Markdown({
       // A wide table gets its own scroll box, and a scrollable box must be
       // reachable by keyboard and carry a name. Pattern from
       // design/designsystemet/behov-til-komponent.md, question 14.
-      table: ({ children: content }) => (
-        // A scrollable box has to be reachable from the keyboard (WCAG 2.1.1).
-        // Chrome and Firefox now focus scroll containers on their own, Safari
-        // does not, so the tabIndex stays. The rule below assumes tabIndex on
-        // a non-interactive element is a mistake; here it is the fix.
-        //
-        // `ds-focus` draws the ring on :focus-visible. NOT `ds-focus--visible`,
-        // which is the forced-on variant and painted a 3 px ring around every
-        // table in every answer at rest — worst in dark mode, where it read as
-        // a border nobody had drawn (brukerblikk 3, funn 3). The same note is
-        // in src/views/filters/DocumentsList.tsx, which got the choice right.
-        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-        <section className="markdown__table ds-focus" aria-label="Tabell" tabIndex={0}>
-          <Table data-size="sm">{content}</Table>
-        </section>
-      ),
+      table: ({ children: content, node }) => {
+        // Named from its number and its columns; see `tableName`.
+        const name = tableName(
+          Number(node?.properties?.tableNumber ?? 1),
+          Number(node?.properties?.tableCount ?? 1),
+          columnHeaders(node as HastNode | undefined),
+        );
+        return (
+          // A scrollable box has to be reachable from the keyboard (WCAG 2.1.1).
+          // Chrome and Firefox now focus scroll containers on their own, Safari
+          // does not, so the tabIndex stays. The rule below assumes tabIndex on
+          // a non-interactive element is a mistake; here it is the fix.
+          //
+          // `ds-focus` draws the ring on :focus-visible. NOT `ds-focus--visible`,
+          // which is the forced-on variant and painted a 3 px ring around every
+          // table in every answer at rest — worst in dark mode, where it read as
+          // a border nobody had drawn (brukerblikk 3, funn 3). The same note is
+          // in src/views/filters/DocumentsList.tsx, which got the choice right.
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+          <section className="markdown__table ds-focus" aria-label={name} tabIndex={0}>
+            <Table data-size="sm">{content}</Table>
+          </section>
+        );
+      },
       thead: ({ children: content }) => <Table.Head>{content}</Table.Head>,
       tbody: ({ children: content }) => <Table.Body>{content}</Table.Body>,
       tfoot: ({ children: content }) => <Table.Foot>{content}</Table.Foot>,
@@ -299,7 +391,11 @@ export function Markdown({
 
   return (
     <div className="markdown">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[numberTables]}
+        components={components}
+      >
         {children}
       </ReactMarkdown>
     </div>
