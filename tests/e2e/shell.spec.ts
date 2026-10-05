@@ -472,7 +472,7 @@ test.describe('skallet', () => {
 
       await page.mouse.move(
         Math.round(column.x + column.width + margin / 2),
-        Math.round(column.y + column.height / 2),
+        await page.$eval('.main', (m) => m.getBoundingClientRect().y + m.clientHeight / 2),
       );
       await page.mouse.wheel(0, 400);
 
