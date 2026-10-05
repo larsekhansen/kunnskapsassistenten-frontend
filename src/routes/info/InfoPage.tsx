@@ -1,5 +1,5 @@
 import { Details, Heading } from '@digdir/designsystemet-react';
-import { Markdown } from '../../components';
+import { Markdown, PageTitle } from '../../components';
 import './info.css';
 
 /**
@@ -39,6 +39,7 @@ export type InfoPageProps = {
 export function InfoPage({ title, parts }: InfoPageProps) {
   return (
     <article className="info-page">
+      <PageTitle name={title} />
       <Heading level={1} data-size="lg">
         {title}
       </Heading>

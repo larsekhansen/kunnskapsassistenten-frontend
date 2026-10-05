@@ -14,6 +14,10 @@ import { Heading } from '@digdir/designsystemet-react';
  * would also rename it mid-session, the moment a title is generated from the
  * first question.
  *
+ * The browser's title is a different thing, and it does name the thread
+ * (WCAG 2.4.2). The chat view sets it, because it is the one that has the
+ * title; this route has only the address. See components/PageTitle.tsx.
+ *
  * Visually hidden because no header is drawn anywhere in Figma, and an h1
  * stacked above the thread title is not in the design. The day a header is
  * drawn, this is the element it replaces.
