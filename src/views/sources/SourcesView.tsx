@@ -9,6 +9,7 @@ import { ExcerptSearch } from './ExcerptSearch';
 import { CorpusDisclaimer } from './CorpusDisclaimer';
 import { corpusKeyFor, isOwnDocument } from './origin';
 import { SourceDocumentCard } from './SourceDocumentCard';
+import { distinctTitles } from './distinctTitles';
 import { SourcesPlaceholder } from './SourcesPlaceholder';
 import { noAnswerYet, emptyStateFor, type SourcesEmptyState } from './emptyStates';
 import { readableDocuments } from './readableText';
@@ -253,6 +254,8 @@ export function SourcesView({
     () => readableDocuments(activeAnswer?.documents ?? []),
     [activeAnswer],
   );
+  // Two documents with one title get their numbers, here and under the answer.
+  const names = useMemo(() => distinctTitles(documentList), [documentList]);
   const searchIndex = useMemo(() => buildSearchIndex(documentList), [documentList]);
   const hits = useMemo(() => findHits(searchIndex, query), [searchIndex, query]);
   const currentHit = hits[currentHitIndex];
@@ -608,6 +611,7 @@ export function SourcesView({
               <SourceDocumentCard
                 key={source.id}
                 source={source}
+                name={names.get(source.id) ?? source.title}
                 corpusName={linkCorpusName}
                 openExcerptIds={openExcerptIds}
                 onExcerptOpenChange={setExcerptOpen}

@@ -97,6 +97,27 @@ describe('SourcesSummary', () => {
     expect(visible).toBe('Årsrapport Nkom 2025');
   });
 
+  it('gir to dokumenter med samme tittel hvert sitt nummer, som kortene i panelet', () => {
+    // Målt 05.10: indeksen har «Årsrapport Datatilsynet 2023» som 90777 og
+    // 88640, og lista under svaret fikk to lenker med samme navn.
+    render(
+      <SourcesSummary
+        documents={[
+          documentWith('90777', 'Årsrapport Datatilsynet 2023', [1, 2]),
+          documentWith('12', 'Tildelingsbrev 2026', [4]),
+          documentWith('88640', 'Årsrapport Datatilsynet 2023', [3]),
+        ]}
+        onSelectSource={() => {}}
+      />,
+    );
+
+    expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual([
+      'Årsrapport Datatilsynet 2023, dokument 90777',
+      'Tildelingsbrev 2026',
+      'Årsrapport Datatilsynet 2023, dokument 88640',
+    ]);
+  });
+
   it('tegner ingenting uten dokumenter', () => {
     const { container } = render(<SourcesSummary documents={[]} onSelectSource={() => {}} />);
 

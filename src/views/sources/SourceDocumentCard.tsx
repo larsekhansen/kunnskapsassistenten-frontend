@@ -10,6 +10,12 @@ import { documentSubtitle, isOwnDocument, OWN_DOCUMENT_NO_LINK } from './origin'
 type SourceDocumentCardProps = {
   /** Named `source`, not `document`: the DOM global is used in this view. */
   source: SourceDocument;
+  /**
+   * What the card calls the document: its title, and its number when another
+   * document in the answer has the same title. From `distinctTitles`, which
+   * «Kilder brukt i svaret» under the answer uses too, so the two say the same.
+   */
+  name: string;
   /** What to call the corpus, or undefined when nothing names it. */
   corpusName: string | undefined;
   /** Ids of the excerpts that are currently open. */
@@ -56,6 +62,7 @@ type SourceDocumentCardProps = {
  */
 export function SourceDocumentCard({
   source,
+  name,
   corpusName,
   openExcerptIds,
   onExcerptOpenChange,
@@ -78,7 +85,7 @@ export function SourceDocumentCard({
     >
       <Card.Block className="source-document__head">
         <Heading level={3} data-size="xs">
-          {source.title}
+          {name}
         </Heading>
       </Card.Block>
 
@@ -97,7 +104,7 @@ export function SourceDocumentCard({
             <SourceExcerpt
               key={excerpt.id}
               excerpt={excerpt}
-              documentTitle={source.title}
+              documentTitle={name}
               corpusName={corpusName}
               // The place in the document, for naming an excerpt the answer
               // never cited.
@@ -152,7 +159,7 @@ export function SourceDocumentCard({
                 stays — and this note is here so nobody chases it twice. */}
             <span className="ds-sr-only">
               {', '}
-              {source.title} (åpnes i ny fane)
+              {name} (åpnes i ny fane)
             </span>
             {/* Figma's icon for leaving the app, decorative for the same
                 reason as on the excerpt's page link. */}

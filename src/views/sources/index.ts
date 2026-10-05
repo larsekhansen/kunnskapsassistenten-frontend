@@ -12,5 +12,6 @@ export { SourcesView } from './SourcesView';
 export type { SourcesViewProps } from './types';
 export { documentDomId } from './ids';
 export { excerptRange } from './excerptRange';
+export { distinctTitles } from './distinctTitles';
 export { isOwnDocument, OWN_DOCUMENT_LABEL } from './origin';
 export { excerptDomId } from '../../model';

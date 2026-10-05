@@ -670,6 +670,31 @@ describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
     }
   });
 
+  it('skiller to dokumenter med samme tittel med nummeret, på kortet og i lenka', () => {
+    // Målt 05.10: indeksen har «Årsrapport Datatilsynet 2023» som dokument 90777
+    // og 88640, og ett svar tok biter fra begge. Da sto to kort med samme
+    // overskrift og to lenker med samme navn til hver sin adresse.
+    const url = (id: string) => `https://kudos.dfo.no/documents/${id}`;
+    const twice = [
+      { ...documentWith('90777', 'Årsrapport Datatilsynet 2023', [1, 2]), url: url('90777') },
+      { ...documentWith('88640', 'Årsrapport Datatilsynet 2023', [3]), url: url('88640') },
+    ];
+    render(<SourcesView documents={twice} />);
+
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual([
+      'Årsrapport Datatilsynet 2023, dokument 90777',
+      'Årsrapport Datatilsynet 2023, dokument 88640',
+    ]);
+    const link = screen.getByRole('link', {
+      name: 'Les dokumentet på Kudos, Årsrapport Datatilsynet 2023, dokument 88640 (åpnes i ny fane)',
+    });
+    expect(link.getAttribute('href')).toBe(url('88640'));
+    const names = screen.getAllByRole('link').map((each) => each.textContent);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
   it('lar den synlige teksten være i fred', () => {
     // Tillegget er `ds-sr-only`: en seende leser skal fortsatt se de fire
     // ordene Figma har, ikke dokumenttittelen om igjen under hvert sitat.
