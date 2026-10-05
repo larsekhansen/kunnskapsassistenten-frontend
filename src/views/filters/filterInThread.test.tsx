@@ -12,7 +12,10 @@ import { emptyFilterSelection, type FilterSelection, type Thread } from '../../m
  * a thread was started with. The mock keeps no filter on a thread, so every
  * thread here is one with no lock — the case the note is for.
  */
-const seen = vi.hoisted(() => ({ created: [] as Thread[] }));
+const seen = vi.hoisted(() => ({
+  created: [] as Thread[],
+  locks: new Map<string, FilterSelection>(),
+}));
 
 vi.mock('../../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api')>();
@@ -29,7 +32,11 @@ vi.mock('../../api', async (importOriginal) => {
           seen.created.push(thread);
           return Promise.resolve({ ...thread, id: 'ny-traad', conversationId: 'ny-traad' });
         },
-        getThread: (id, signal) => inner.getThread(id, signal),
+        getThread: async (id, signal) => {
+          const found = await inner.getThread(id, signal);
+          const filter = seen.locks.get(id);
+          return found && filter ? { ...found, filter } : found;
+        },
       };
     },
   };
@@ -101,6 +108,7 @@ beforeEach(() => {
   vi.stubEnv('VITE_MOCK_SPEED', 'fast');
   setActiveCorpusKey('mock');
   seen.created = [];
+  seen.locks.clear();
   sessionStorage.clear();
   localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(emptyFilterSelection));
 });
@@ -186,5 +194,37 @@ describe('a thread started here', () => {
     // What a client that keeps a filter stores with the conversation (live).
     await waitFor(() => expect(seen.created).toHaveLength(1));
     expect(seen.created[0].filter?.documentType).toEqual(['Evaluering']);
+  });
+});
+
+/*
+ * «Ny tråd» in the lock, for a thread started on this page. The chat slot
+ * keys `/` on «Ny tråd» being pressed, so a plain link changed the address
+ * and left the conversation and the lock standing (measured in live, 05.10).
+ */
+describe('«Ny tråd» in the lock of a thread started here', () => {
+  it('starts a new conversation, with the reader’s own filter', async () => {
+    const own: FilterSelection = { ...emptyFilterSelection, documentType: ['Evaluering'] };
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(own));
+    seen.locks.set('ny-traad', own);
+    renderApp('/');
+
+    const field = screen.getByRole('textbox', { name: 'Spørsmål til Kunnskapsassistenten' });
+    fireEvent.change(field, { target: { value: 'Hva rapporterer Nkom?' } });
+    act(() => screen.getByRole('button', { name: 'Send spørsmålet' }).click());
+
+    const panel = await filterPanel();
+    const locked = await within(panel).findByRole(
+      'region',
+      { name: 'Avgrenset til' },
+      { timeout: 5000 },
+    );
+    act(() => within(locked).getByRole('link', { name: 'Ny tråd' }).click());
+
+    expect(await screen.findByRole('heading', { name: /Hva lurer du på\?/ })).toBeTruthy();
+    await waitFor(() =>
+      expect(within(panel).queryByRole('region', { name: 'Avgrenset til' })).toBeNull(),
+    );
+    expect(storedFilter().documentType).toEqual(['Evaluering']);
   });
 });
