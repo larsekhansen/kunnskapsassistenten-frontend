@@ -535,6 +535,75 @@ test.describe('hovedkolonnen', () => {
     },
   );
 
+  /**
+   * Simens runde 3, ekstra 1: writing in the field while not at the bottom
+   * scrolled the main column 49 px towards the end for every key. The guard
+   * for WCAG 2.4.11 was `scroll-padding` on the scroller, the field sits in
+   * the band that padding keeps clear, and every keystroke asked the browser
+   * to bring the caret out from behind the field.
+   *
+   * #228 moved the guard to a `scroll-margin` on what the field can hide, and
+   * the fix is four lines of CSS that jsdom cannot see: without them the
+   * column went 781 → 890 at 1440 × 900 and every unit test stayed green (KA
+   * CC on #228). So both halves are asserted here, in a browser: the column
+   * stands still while the reader writes, and nothing reached by Tab lands
+   * behind the field — the guard the padding was there for.
+   */
+  for (const [width, height] of [
+    [1440, 900],
+    [390, 844],
+  ] as const) {
+    test(
+      `skriving midt i tråden flytter ikke kolonnen, og Tab havner ikke bak feltet, ${width}`,
+      MOCK,
+      async ({ page }, testInfo) => {
+        covers(testInfo, 'skriving ruller ikke hovedkolonnen');
+        await page.setViewportSize({ width, height });
+        await page.goto('/threads/nkom-maaloppnaaelse');
+        await expect(page.getByRole('button', { name: 'Kopier svaret' }).first()).toBeVisible();
+
+        const main = page.locator('.main');
+        await main.evaluate((element) => {
+          element.scrollTop = Math.round((element.scrollHeight - element.clientHeight) / 2);
+        });
+        // Read before the click, not after it. With the margin on the field
+        // as well, the column jumps once when the field takes focus rather
+        // than once per key: measured from after the click, the test was
+        // green with the fix taken out.
+        const before = await main.evaluate((element) => element.scrollTop);
+        expect(before, 'tråden skal ha noe å rulle i').toBeGreaterThan(0);
+        await composer(page).click();
+
+        await page.keyboard.type('Hva sier rapporten om', { delay: 20 });
+        await expect(composer(page)).toHaveValue('Hva sier rapporten om');
+        expect(
+          await main.evaluate((element) => element.scrollTop),
+          'kolonnen skal stå stille mens leseren skriver',
+        ).toBe(before);
+
+        // From the top of the column, through everything focusable in the
+        // conversation. Each stop is measured against the area the field
+        // stands in, as the browser left it. «Behind» is what 2.4.11 means:
+        // entirely, so the whole box starts below the top of the area.
+        await main.evaluate((element) => (element.scrollTop = 0));
+        await page.getByRole('heading', { level: 2 }).first().click();
+        const behind: string[] = [];
+        for (let step = 0; step < 40; step += 1) {
+          await page.keyboard.press('Tab');
+          const hidden = await page.evaluate(() => {
+            const active = document.activeElement as HTMLElement | null;
+            if (!active?.closest('.ka-chat') || active.closest('.ka-composer-area')) return null;
+            const area = document.querySelector('.ka-composer-area')!.getBoundingClientRect();
+            const box = active.getBoundingClientRect();
+            return box.top >= area.top ? (active.textContent ?? active.tagName).trim() : null;
+          });
+          if (hidden) behind.push(hidden);
+        }
+        expect(behind, 'ingenting som får fokus skal stå bak feltet (WCAG 2.4.11)').toEqual([]);
+      },
+    );
+  }
+
   test('Tab gjennom hovedkolonnen i lys og mørk', REAL_ANSWER, async ({ page }, testInfo) => {
     covers(testInfo, 'tastatur: Tab gjennom viewet');
     await ask(page, 'Hva sier rapporten?');
