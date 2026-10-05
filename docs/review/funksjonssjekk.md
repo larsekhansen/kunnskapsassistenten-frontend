@@ -90,6 +90,7 @@ slik de ble anmeldt.
 | Når alle kontrollene i panelraden med peker                | `panel-head.spec.ts`        |
 | Ser at et svar navngir korpuset det kom fra                | `corpus-per-answer.spec.ts` |
 | Går til de tre sidene fra lenkene i foten                  | `shell.spec.ts`             |
+| Skriver midt i en tråd uten at kolonnen flytter seg        | `chat.spec.ts`              |
 
 ## Merget, men ikke dekket
 
