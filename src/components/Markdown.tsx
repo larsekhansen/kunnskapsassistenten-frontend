@@ -227,6 +227,95 @@ function headingComponents(
   return Object.fromEntries(entries);
 }
 
+/** The bits of a hast node this file reads. Loose on purpose: see `numberTables`. */
+type HastNode = {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: Record<string, unknown>;
+  children?: HastNode[];
+};
+
+/**
+ * Numbers the tables in one answer, in the order they come, and says how
+ * many there are.
+ *
+ * The number and the count go on the table's own hast properties, where the
+ * `table` component reads them off `node`. They are never rendered: the
+ * component draws its own elements and passes none of the node's properties
+ * on. A rehype plugin rather than a counter in the component, because a
+ * component can render more than once (StrictMode, a re-render of one
+ * answer), and a counter would count again.
+ */
+function numberTables() {
+  return (tree: HastNode) => {
+    const tables: HastNode[] = [];
+    const walk = (node: HastNode) => {
+      if (node.type === 'element' && node.tagName === 'table') tables.push(node);
+      node.children?.forEach(walk);
+    };
+    walk(tree);
+    tables.forEach((table, index) => {
+      table.properties = { ...table.properties, tableNumber: index + 1, tableCount: tables.length };
+    });
+  };
+}
+
+/** All the text inside a hast node, as one trimmed string. */
+function textOf(node: HastNode): string {
+  if (node.type === 'text') return node.value ?? '';
+  return (node.children ?? []).map(textOf).join('').trim();
+}
+
+/** The text of the header cells in a table's first row. */
+function columnHeaders(table: HastNode | undefined): string[] {
+  const rows: HastNode[] = [];
+  const walk = (node: HastNode) => {
+    if (node.type === 'element' && node.tagName === 'tr') rows.push(node);
+    else node.children?.forEach(walk);
+  };
+  if (table) walk(table);
+  const cells = (rows[0]?.children ?? []).filter(
+    (cell) => cell.type === 'element' && cell.tagName === 'th',
+  );
+  return cells.map(textOf).filter(Boolean);
+}
+
+/** How many column names a table's name lists before it says how many more. */
+const NAMED_COLUMNS = 4;
+
+const columnList = new Intl.ListFormat('nb', { type: 'conjunction' });
+
+/**
+ * The accessible name of a table's scroll box: «Tabell med kolonnene År,
+ * Treff og Dokumenter», with its number when the answer has more than one —
+ * «Tabell 2 med kolonnene …».
+ *
+ * The box is a named group, not a region. As a region, every table on the
+ * page was a landmark, and two of them with one name broke axe's
+ * `landmark-unique`: two tables in one answer (#2), and two answers with the
+ * same columns, which a follow-up or «Generer på nytt» gives (KA CC on #241).
+ * No name holds across a thread of any length, and a table is not a page
+ * region either: a long thread put one in the screen reader's list of
+ * landmarks per table, which is mostly noise. A group keeps the name and the
+ * tab stop, so the keyboard can still scroll it (`scrollable-region-focusable`).
+ *
+ * The name is for the reader, then, and not for uniqueness. It comes from the
+ * header row, since a markdown table has no caption, and the number tells two
+ * tables in one answer apart whatever their columns are.
+ *
+ * Past `NAMED_COLUMNS` the rest are counted rather than read out, so a wide
+ * table does not get a name a screen reader takes ten seconds to say.
+ */
+function tableName(number: number, count: number, headers: string[]): string {
+  const base = count > 1 ? `Tabell ${number}` : 'Tabell';
+  if (headers.length === 0) return base;
+  const named = headers.slice(0, NAMED_COLUMNS);
+  const rest = headers.length - named.length;
+  const columns = rest > 0 ? [...named, `${rest} til`] : named;
+  return `${base} med ${headers.length === 1 ? 'kolonnen' : 'kolonnene'} ${columnList.format(columns)}`;
+}
+
 export function Markdown({
   children,
   startLevel = 2,
@@ -260,23 +349,37 @@ export function Markdown({
       a: ({ children: content, href }) => <Link href={href}>{content}</Link>,
       // A wide table gets its own scroll box, and a scrollable box must be
       // reachable by keyboard and carry a name. Pattern from
-      // design/designsystemet/behov-til-komponent.md, question 14.
-      table: ({ children: content }) => (
-        // A scrollable box has to be reachable from the keyboard (WCAG 2.1.1).
-        // Chrome and Firefox now focus scroll containers on their own, Safari
-        // does not, so the tabIndex stays. The rule below assumes tabIndex on
-        // a non-interactive element is a mistake; here it is the fix.
-        //
-        // `ds-focus` draws the ring on :focus-visible. NOT `ds-focus--visible`,
-        // which is the forced-on variant and painted a 3 px ring around every
-        // table in every answer at rest — worst in dark mode, where it read as
-        // a border nobody had drawn (brukerblikk 3, funn 3). The same note is
-        // in src/views/filters/DocumentsList.tsx, which got the choice right.
-        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-        <section className="markdown__table ds-focus" aria-label="Tabell" tabIndex={0}>
-          <Table data-size="sm">{content}</Table>
-        </section>
-      ),
+      // design/designsystemet/behov-til-komponent.md, question 14. A group
+      // and not a region; see `tableName`.
+      table: ({ children: content, node }) => {
+        // Named from its number and its columns; see `tableName`.
+        const name = tableName(
+          Number(node?.properties?.tableNumber ?? 1),
+          Number(node?.properties?.tableCount ?? 1),
+          columnHeaders(node as HastNode | undefined),
+        );
+        return (
+          // A scrollable box has to be reachable from the keyboard (WCAG 2.1.1).
+          // Chrome and Firefox now focus scroll containers on their own, Safari
+          // does not, so the tabIndex stays. The rule below assumes tabIndex on
+          // a non-interactive element is a mistake; here it is the fix.
+          //
+          // `ds-focus` draws the ring on :focus-visible. NOT `ds-focus--visible`,
+          // which is the forced-on variant and painted a 3 px ring around every
+          // table in every answer at rest — worst in dark mode, where it read as
+          // a border nobody had drawn (brukerblikk 3, funn 3). The same note is
+          // in src/views/filters/DocumentsList.tsx, which got the choice right.
+          //
+          // `prefer-tag-over-role` offers `fieldset` for a group, and a
+          // fieldset is for form controls, with a legend; a table that scrolls
+          // is neither. The role on a `div` is the plain way to say «a named
+          // group», which is all this box is.
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex, jsx-a11y/prefer-tag-over-role
+          <div className="markdown__table ds-focus" role="group" aria-label={name} tabIndex={0}>
+            <Table data-size="sm">{content}</Table>
+          </div>
+        );
+      },
       thead: ({ children: content }) => <Table.Head>{content}</Table.Head>,
       tbody: ({ children: content }) => <Table.Body>{content}</Table.Body>,
       tfoot: ({ children: content }) => <Table.Foot>{content}</Table.Foot>,
@@ -299,7 +402,11 @@ export function Markdown({
 
   return (
     <div className="markdown">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[numberTables]}
+        components={components}
+      >
         {children}
       </ReactMarkdown>
     </div>
