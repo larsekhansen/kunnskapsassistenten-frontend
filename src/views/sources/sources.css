@@ -138,10 +138,15 @@
  * How much air, by the width of the view (Simens runde 3, and the dirigent's
  * answer S5, 30.09). Figma draws the panel with a view of 410 px, and from
  * there it gets Figma's own: 16 in the head, 24 / 24 / 32 in the body, 16 in
- * each excerpt. Under that it gets `--ds-size-3` all round. The view is 295 px
- * at 1440 with both panels open, and Figma's air there leaves the quote 215
- * px, against 246 before and the 174 that brukerblikk 2026-09-15, funn 1,
- * called thirty lines of two or three words. The small step leaves it 247.
+ * each excerpt. Under that it gets `--ds-size-3` all round.
+ *
+ * Measured 05.10 against main, the quote's width: 341 at 1280, 768 and 440,
+ * 299 at 390 and 317 at 1512 are what they were. 1440 with both panels open
+ * is the one view under 320 px (295), and there the quote went from 277 to
+ * 245: the old card took 8 px at the sides in a view that narrow, and two
+ * boxes inside each other cannot. Figma's air there would leave 213 (worked
+ * out, not drawn). Brukerblikk 2026-09-15, funn 1, called 174 px thirty lines
+ * of two or three words.
  */
 .source-document {
   --ka-document-head-padding: var(--ds-size-3);
