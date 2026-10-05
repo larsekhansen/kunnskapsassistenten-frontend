@@ -624,8 +624,6 @@ describe('SourcesView, Kudos-lenker som skiller seg fra hverandre', () => {
    * `textContent` would have passed it (KA CC on #92).
    */
   const LINK_NAMES = [
-    'Årsrapport Nkom 2025',
-    'Tildelingsbrev Nkom 2026',
     'Les side 41 på Kudos, utdrag 2, Årsrapport Nkom 2025 (åpnes i ny fane)',
     'Les dokumentet på Kudos, Årsrapport Nkom 2025 (åpnes i ny fane)',
     'Les dokumentet på Kudos, Tildelingsbrev Nkom 2026 (åpnes i ny fane)',
@@ -725,14 +723,6 @@ describe('SourcesView, et dokument leseren har lastet opp selv', () => {
 
     expect(screen.queryByRole('link', { name: /Kudos/ })).toBeNull();
     expect(screen.getByText(/Bare du har dette dokumentet/)).toBeTruthy();
-  });
-
-  it('sier i snarveien at dokumentet er ditt, uten å endre synlig tekst', () => {
-    // Et filnavn kan se ut akkurat som et korpusdokument, og snarveilista
-    // leses ut av sammenheng.
-    render(<SourcesView documents={[ownDocument('Årsrapport Nkom 2025')]} />);
-
-    expect(screen.getByRole('link', { name: 'Årsrapport Nkom 2025, ditt dokument' })).toBeTruthy();
   });
 
   it('sier at teksten er fra begge slags dokumenter, ikke bare fra Kudos', () => {

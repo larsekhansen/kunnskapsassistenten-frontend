@@ -9,10 +9,8 @@ import { ExcerptSearch } from './ExcerptSearch';
 import { CorpusDisclaimer } from './CorpusDisclaimer';
 import { corpusKeyFor, isOwnDocument } from './origin';
 import { SourceDocumentCard } from './SourceDocumentCard';
-import { SourcesOverview } from './SourcesOverview';
 import { SourcesPlaceholder } from './SourcesPlaceholder';
 import { noAnswerYet, emptyStateFor, type SourcesEmptyState } from './emptyStates';
-import { documentDomId } from './ids';
 import { readableDocuments } from './readableText';
 import { buildSearchIndex } from './search';
 import type { SourcesViewProps } from './types';
@@ -27,7 +25,8 @@ import './sources.css';
  * the field or on the «Neste» button, or the control makes itself unusable.
  *
  * `scrollToAndFocus` is «you asked to be moved here»: a `[n]` marker in the
- * answer, or a shortcut in the list. Focus is what makes a screen reader read
+ * answer, or a title in «Kilder brukt i svaret» under it, which takes the
+ * marker's route. Focus is what makes a screen reader read
  * the excerpt on arrival, and what makes the next Tab continue from there.
  *
  * `preventScroll` keeps the browser's own focus scroll from cutting the
@@ -604,11 +603,6 @@ export function SourcesView({
         <EmptyState title={content.state.title} description={content.state.description} />
       ) : (
         <>
-          <SourcesOverview
-            documents={documentList}
-            onNavigateToDocument={(documentId) => scrollToAndFocus(documentDomId(documentId))}
-          />
-
           <div className="sources-documents">
             {documentList.map((source) => (
               <SourceDocumentCard

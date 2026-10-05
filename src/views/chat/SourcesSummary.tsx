@@ -1,7 +1,7 @@
 import { Details, Link, List, Paragraph } from '@digdir/designsystemet-react';
 import { FileTextIcon } from '@navikt/aksel-icons';
 import { excerptDomId, type SourceDocument } from '../../model';
-import { excerptRange } from '../sources';
+import { excerptRange, isOwnDocument, OWN_DOCUMENT_LABEL } from '../sources';
 
 type SourcesSummaryProps = {
   /** The documents behind this answer, in the order the sources panel has. */
@@ -25,12 +25,18 @@ type SourcesSummaryProps = {
  * «Tilbake til svaret» and Escape as the way back. A document whose excerpts
  * the answer never cited has no number to go to, and its title is text.
  *
- * Numbered by document with the list's own numbers, as the shortcut list in
- * the panel is, and with the same line under each title: «Utdrag 1–2» says
- * which markers in the text point into it. Without that line, «2.» in this
- * list and «[2]» in the answer are two numbers for different things. Figma
- * draws the numbers in circles. The shortcut list gives the reason for the
- * native ones: Designsystemet puts a fix for VoiceOver in `li::before`.
+ * Numbered by document with the list's own numbers, and with a line under
+ * each title: «Utdrag 1–2» says which markers in the text point into it.
+ * Without that line, «2.» in this list and «[2]» in the answer are two numbers
+ * for different things. `List.Ordered` is a real `<ol>`, so a screen reader
+ * says how many documents there are and where in the list it is. Figma draws
+ * the numbers in circles; the native ones stay, because `list.md` documents a
+ * zero-width character Designsystemet puts in `li::before` against a VoiceOver
+ * bug, and a circle drawn there would knock the fix out.
+ *
+ * This replaced «Snarveier til dokumentene» at the top of the sources panel,
+ * the same list once per panel (Simens issue 113): here it stands by the
+ * answer it belongs to, where the reader meets it first.
  *
  * Open from the start, as Figma draws it. «Fremgangsmåte» opens only where
  * there is room, because it stands above the answer and would push it out of
@@ -58,11 +64,25 @@ export function SourcesSummary({ documents, onSelectSource }: SourcesSummaryProp
             const numbers = document.excerpts.map((excerpt) => excerpt.citationNumber);
             const first = numbers.filter((number) => number !== undefined).sort((a, b) => a - b)[0];
             const range = excerptRange(numbers);
+            /*
+             * An uploaded document is named by its file name, and a file name
+             * can look exactly like a corpus document's title. A list like
+             * this one is read out of context — a screen reader's list of
+             * links — so the name says whose it is. Seen on the card as a
+             * subtitle in the panel; here only in the name, so the row reads
+             * as the others do.
+             */
+            const own = isOwnDocument(document) ? (
+              <span className="ds-sr-only">, {OWN_DOCUMENT_LABEL.toLowerCase()}</span>
+            ) : null;
 
             return (
               <List.Item key={document.id}>
                 {first === undefined ? (
-                  document.title
+                  <>
+                    {document.title}
+                    {own}
+                  </>
                 ) : (
                   <Link
                     // Blue as links are, as Figma draws them. The box around
@@ -78,6 +98,7 @@ export function SourcesSummary({ documents, onSelectSource }: SourcesSummaryProp
                     }}
                   >
                     {document.title}
+                    {own}
                   </Link>
                 )}
                 {range !== '' && (

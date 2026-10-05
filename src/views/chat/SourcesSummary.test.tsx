@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { userDocumentSource } from '../../api/mock/fixtures';
 import type { Message, SourceDocument } from '../../model';
 import { MessageList } from './MessageList';
 import { SourcesSummary } from './SourcesSummary';
@@ -68,6 +69,32 @@ describe('SourcesSummary', () => {
 
     expect(container.querySelector('details')?.open).toBe(true);
     expect(container.querySelector('summary')?.textContent).toBe('Kilder brukt i svaret');
+  });
+
+  it('sier at et opplastet dokument er ditt, uten å endre synlig tekst', () => {
+    // Et filnavn kan se ut akkurat som et korpusdokument, og en liste med
+    // lenker leses ut av sammenheng. Dette sto i «Snarveier til dokumentene»
+    // til lista ble tatt ut av kildepanelet (Simens issue 113).
+    const own = userDocumentSource(
+      {
+        id: 'doc-egen',
+        name: 'Årsrapport Nkom 2025',
+        type: 'pdf',
+        size: 1024,
+        status: 'ready',
+        progress: 100,
+        uploadedAt: '2026-09-21T09:00:00.000Z',
+      },
+      1,
+    );
+    render(<SourcesSummary documents={[own]} onSelectSource={() => {}} />);
+
+    const link = screen.getByRole('link', { name: 'Årsrapport Nkom 2025, ditt dokument' });
+    const visible = [...link.childNodes]
+      .filter((node) => !(node instanceof HTMLElement && node.classList.contains('ds-sr-only')))
+      .map((node) => node.textContent)
+      .join('');
+    expect(visible).toBe('Årsrapport Nkom 2025');
   });
 
   it('tegner ingenting uten dokumenter', () => {

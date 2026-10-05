@@ -216,9 +216,8 @@ test.describe('kildepanelet', () => {
       const cards = panel.locator('.source-document');
       expect(await cards.count()).toBeGreaterThan(1);
 
-      // The shortcut list numbers documents; the excerpts carry the `[n]`
-      // numbers. Both are on screen, so the heading says which is which.
-      await expect(panel.getByRole('heading', { name: 'Snarveier til dokumentene' })).toBeVisible();
+      // The excerpts carry the `[n]` numbers. The documents are numbered in
+      // «Kilder brukt i svaret» under the answer now, not in the panel (#113).
       await expect(panel.getByRole('heading', { name: 'Utdrag 1' })).toBeVisible();
 
       // Every marker in the answer has an excerpt to point at.
@@ -233,19 +232,50 @@ test.describe('kildepanelet', () => {
     },
   );
 
-  test('en snarvei hopper til dokumentkortet', MOCK, async ({ page }, testInfo) => {
-    covers(testInfo, 'snarveislista');
-    await openSources(page, 1);
+  /**
+   * Simens issue 113: «Kilder brukt i svaret» under the answer is the way into
+   * the panel, and «Snarveier til dokumentene» is gone from it. A title takes
+   * the route a `[n]` marker takes: the panel opens on the document's first
+   * excerpt with the focus in it, and Escape comes back to the title.
+   *
+   * In a browser and not only in jsdom, which does not navigate: the title is
+   * a link to the excerpt's fragment, and without `preventDefault` following
+   * it would be a route change that remounts the chat (KA CC on #246).
+   */
+  test(
+    'en tittel under svaret åpner utdraget i kildepanelet, og Escape går tilbake',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'kilder brukt i svaret');
+      const address = page.url();
 
-    const panel = page.getByRole('complementary', { name: 'Kilder' });
-    const shortcut = panel.getByRole('link', { name: /^Årsrapport/ }).first();
-    const href = await shortcut.getAttribute('href');
-    await shortcut.click();
+      const summary = page.getByRole('main').locator('details', {
+        hasText: 'Kilder brukt i svaret',
+      });
+      const title = summary.getByRole('link').first();
+      await expect(title).toBeVisible();
+      await title.click();
 
-    const card = panel.locator(href as string);
-    await expect(card).toBeVisible();
-    await expect(card).toBeFocused();
-  });
+      const panel = page.getByRole('complementary', { name: 'Kilder' });
+      await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeVisible();
+      const excerpt = panel.locator('.source-excerpt', {
+        has: page.getByRole('heading', { name: 'Utdrag 1' }),
+      });
+      // The box itself takes the focus, so «inside» includes the box.
+      await expect
+        .poll(() => excerpt.evaluate((box) => box.contains(document.activeElement)), {
+          message: 'fokus skal stå i utdrag 1',
+        })
+        .toBe(true);
+      await expect(excerpt.locator('details')).toHaveAttribute('open', '');
+      expect(page.url(), 'adressen skal ikke få et fragment').toBe(address);
+
+      await page.keyboard.press('Escape');
+      await expect(title).toBeFocused();
+
+      await expectNoAxeViolations(page, 'svaret med kildene under');
+    },
+  );
 
   test(
     'søk i utdragene gir en treffteller og lar tastaturet bli i feltet',
@@ -301,7 +331,12 @@ test.describe('kildepanelet', () => {
       all.map((link) => (link.textContent ?? '').replace(/\s+/g, ' ').trim()),
     );
 
-    expect(names.length).toBeGreaterThan(1);
+    // At least one, so the test is not about an empty panel. It was «more
+    // than one» while the shortcut list stood here with a link per document.
+    // Without it, the mock thread has one link left — one of its three
+    // documents has an address — and the duplicates this test is for show up
+    // against a real backend, where every document with an address has one.
+    expect(names.length).toBeGreaterThan(0);
     expect(names.filter((name, index) => names.indexOf(name) !== index)).toEqual([]);
   });
 
