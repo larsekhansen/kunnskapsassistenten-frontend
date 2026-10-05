@@ -2,6 +2,7 @@ import type { Facet } from '../../../shared/facets.ts';
 import type {
   FilterFacet,
   FilterSelection,
+  RetrievalDetails,
   SourceDocument,
   StreamEvent,
   Thread,
@@ -24,7 +25,8 @@ import {
   type McpChunk,
 } from './mcp';
 import { excerptIds, fetchExcerptTexts, withExcerptTexts } from './excerpts';
-import { answerFingerprint, recallThreadSources, rememberAnswerSources } from './sourceStore';
+import { answerFingerprint, recallThread, rememberAnswer } from './sourceStore';
+import { TurnRecorder } from './turnRecorder';
 import { createSseDecoder } from './sse';
 import {
   agentIdFromToolName,
@@ -378,6 +380,7 @@ export class LiveChatClient implements ChatClient {
 
     const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
     const decoder = createSseDecoder();
+    const turn = new TurnRecorder();
 
     try {
       for (;;) {
@@ -385,10 +388,22 @@ export class LiveChatClient implements ChatClient {
         const frames = done ? decoder.flush() : decoder.push(value ?? '');
 
         for (const frame of frames) {
-          yield* readFrame(frame.data, state, conversationId, askedOf, {
+          const events = readFrame(frame.data, state, conversationId, askedOf, {
             withTexts: (documents) => this.#withTexts(documents, askedOf.corpusKey, params.signal),
-            remember: rememberAnswerSources,
+            remember: (id, answerText, chunks, retrieval) =>
+              rememberAnswer(id, answerText, {
+                chunks,
+                retrieval,
+                thinkingSteps: turn.thinkingSteps,
+                thoughtMs: turn.thoughtMs,
+              }),
           });
+          // Through the recorder on their way out, so what was shown can be
+          // written down with the answer. See turnRecorder.ts.
+          for await (const event of events) {
+            turn.observe(event);
+            yield event;
+          }
         }
 
         if (done) return;
@@ -446,7 +461,7 @@ export class LiveChatClient implements ChatClient {
         messages?: ApiMessage[];
       };
       if (!body.conversation) return null;
-      return await this.#withRememberedSources(threadDetailFrom(body.conversation, body.messages));
+      return await this.#withRemembered(threadDetailFrom(body.conversation, body.messages));
     } catch {
       return null;
     }
@@ -468,32 +483,47 @@ export class LiveChatClient implements ChatClient {
   }
 
   /**
-   * A thread read back, with the sources this browser wrote down for its
-   * answers (sourceStore.ts, docs/arkitektur/0005).
+   * A thread read back, with what this browser wrote down for its answers:
+   * the sources, «Fremgangsmåte», the hits and how long the agent thought
+   * (sourceStore.ts, docs/arkitektur/0005, Simens issue 88).
    *
-   * Only where the backend gave none: the day it keeps its chunks (headless-rag
-   * #21), what it says wins and this does nothing. Only a completed answer,
-   * and only one whose text is the text that was written down — an answer
-   * changed since is left without, which is better than with another's. Each
-   * answer is looked up on its own, because each holds at most the 20 the
-   * route takes, and they are looked up side by side.
+   * Only where the backend gave none: the day it keeps its chunks
+   * (headless-rag #21), what it says wins and this adds nothing. Only a
+   * completed answer, and only one whose text is the text that was written
+   * down — an answer changed since is left without, which is better than with
+   * another's. Each answer's text is looked up on its own, side by side.
+   *
+   * The thread is drawn when every lookup is done: 45–155 ms against
+   * Typesense, and the thread stood 237 ms after the reload (KA CC on #227).
+   * A Typesense that hangs holds it for the route's 5 s.
    */
-  async #withRememberedSources(detail: ThreadDetail): Promise<ThreadDetail> {
-    const remembered = recallThreadSources(detail.id);
+  async #withRemembered(detail: ThreadDetail): Promise<ThreadDetail> {
+    const remembered = recallThread(detail.id);
     if (!remembered) return detail;
 
     const messages = await Promise.all(
       detail.messages.map(async (message) => {
         if (message.role !== 'assistant' || message.status !== 'complete') return message;
-        if (message.sources && message.sources.length > 0) return message;
-        const chunks = remembered.get(answerFingerprint(message.content))?.chunks;
-        if (!chunks || chunks.length === 0) return message;
+        const answer = remembered.get(answerFingerprint(message.content));
+        if (!answer) return message;
 
-        const documents = await this.#withTexts(
-          toSourceDocuments(chunks, detail.corpusKey),
-          detail.corpusKey,
-        );
-        return { ...message, sources: documents, citations: toCitations(documents) };
+        const restored = { ...message };
+        if (!message.thinkingSteps?.length && answer.thinkingSteps?.length) {
+          restored.thinkingSteps = answer.thinkingSteps;
+        }
+        if (!message.retrieval && answer.retrieval) restored.retrieval = answer.retrieval;
+        if (message.thoughtMs === undefined && answer.thoughtMs !== undefined) {
+          restored.thoughtMs = answer.thoughtMs;
+        }
+        if (!message.sources?.length && answer.chunks.length > 0) {
+          const documents = await this.#withTexts(
+            toSourceDocuments(answer.chunks, detail.corpusKey),
+            detail.corpusKey,
+          );
+          restored.sources = documents;
+          restored.citations = toCitations(documents);
+        }
+        return restored;
       }),
     );
     return { ...detail, messages };
@@ -539,7 +569,12 @@ function finalAnswerText(content: { type?: string; text?: string }[] | undefined
  */
 type FrameHooks = {
   withTexts: (documents: SourceDocument[]) => Promise<SourceDocument[]>;
-  remember: (conversationId: string, answerText: string, chunks: McpChunk[]) => void;
+  remember: (
+    conversationId: string,
+    answerText: string,
+    chunks: McpChunk[],
+    retrieval: RetrievalDetails,
+  ) => void;
 };
 
 /** Turns one decoded SSE payload into zero or more of our events. */
@@ -643,29 +678,36 @@ async function* readFrame(
     yield { type: 'token', text: finalText };
   }
 
-  // After the answer's text, so the reader is reading while the excerpts'
-  // text is looked up (docs/arkitektur/0005).
-  const documents = hooks ? await hooks.withTexts(listed) : listed;
-
   const conversationId =
     result._meta?.conversation_id ??
     result.structuredContent?.conversation_id ??
     fallbackConversationId ??
     '';
+  // The documents only count here, and grouping is all the lookup below
+  // leaves alone, so this is the same «Fremgangsmåte» either side of it.
+  const retrieval = state.retrieval(listed, chunks.length);
 
   /*
    * Written down under the text the backend stores, which is the final
    * frame's own: measured equal to what `GET /api/conversations/:id` gives
-   * back (30.09). The streamed text is the fallback for a frame that carried
-   * none. See sourceStore.ts.
+   * back (30.09, and on four more answers by KA CC on #227). The streamed text
+   * is the fallback for a frame that carried none. See sourceStore.ts.
+   *
+   * Before the lookup and not after it: a reader who reloads while the text
+   * is being fetched — 150 ms as a rule, up to 5 s when Typesense hangs —
+   * would otherwise come back to nothing (KA CC on #227).
    */
-  hooks?.remember(conversationId, finalAnswerText(result.content) || finalText, chunks);
+  hooks?.remember(conversationId, finalAnswerText(result.content) || finalText, chunks, retrieval);
+
+  // After the answer's text, so the reader is reading while the excerpts'
+  // text is looked up (docs/arkitektur/0005).
+  const documents = hooks ? await hooks.withTexts(listed) : listed;
 
   yield {
     type: 'sources',
     documents,
     citations: toCitations(documents),
-    retrieval: state.retrieval(documents, chunks.length),
+    retrieval,
   };
 
   yield {

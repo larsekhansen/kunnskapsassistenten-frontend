@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { CHUNK_ID, MAX_EXCERPT_IDS } from '../shared/excerpts.ts';
 import { parseCollections } from './facets.ts';
 
 /**
@@ -21,21 +22,15 @@ import { parseCollections } from './facets.ts';
 
 export const EXCERPTS_PATH = '/api/excerpts';
 
-/**
- * As many as headless-rag gives one answer: `structuredContent.chunks` is
- * `(take 20 chunks)` (`mcp/tools.clj`). A reloaded thread asks once per
- * answer, so this is also the most one request ever needs.
- */
-export const MAX_IDS = 20;
+/** The limit on ids per request; see shared/excerpts.ts. */
+export const MAX_IDS = MAX_EXCERPT_IDS;
 
 /**
- * What a chunk id is made of. Kudos's are twelve hex digits; the rest of the
- * set is what the BFF accepts, so an id one of them takes, the other does too.
+ * Long enough for a slow Typesense, short enough that the panel does not wait
+ * long. Measured by KA CC on #227: a Typesense that never answers gave 502
+ * after 5011 ms.
  */
-const CHUNK_ID = /^[A-Za-z0-9._:-]{1,128}$/;
-
-/** Long enough for a slow Typesense, short enough that the panel does not wait long. */
-const TIMEOUT_MS = 5_000;
+export const TIMEOUT_MS = 5_000;
 
 export type ExcerptConfig = {
   /** Typesense, as a base URL with scheme and port and no trailing slash. */
@@ -47,6 +42,8 @@ export type ExcerptConfig = {
   typesenseKey: string | undefined;
   /** Dataset key → the Typesense collection its chunks are in. */
   collections: ReadonlyMap<string, string>;
+  /** How long Typesense gets before the route answers 502. A field so a test can shorten it. */
+  timeoutMs: number;
 };
 
 /** Blank is missing, as in config.ts. */
@@ -64,6 +61,7 @@ export function excerptConfigFrom(env: NodeJS.ProcessEnv): ExcerptConfig {
     typesenseUrl: value(env.TYPESENSE_URL)?.replace(/\/+$/, ''),
     typesenseKey: value(env.TYPESENSE_API_KEY),
     collections: parseCollections(env.KA_CHUNK_COLLECTIONS, 'KA_CHUNK_COLLECTIONS'),
+    timeoutMs: TIMEOUT_MS,
   };
 }
 
@@ -103,7 +101,7 @@ async function loadExcerpts(
 
   const response = await fetch(url, {
     headers: { 'X-TYPESENSE-API-KEY': config.typesenseKey ?? '' },
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.timeout(config.timeoutMs),
   });
   // The status and nothing of the body, as in facets.ts.
   if (!response.ok) throw new Error(`Typesense svarte ${response.status}`);
