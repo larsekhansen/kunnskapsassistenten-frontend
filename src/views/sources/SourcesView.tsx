@@ -1,7 +1,6 @@
-import { Heading } from '@digdir/designsystemet-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { corpusDisplayNameFor, corpusOption } from '../../api';
-import { EmptyState, findHits, stepHit, type SearchHit } from '../../components';
+import { EmptyState, findHits, PanelHeader, stepHit, type SearchHit } from '../../components';
 import { useActiveCorpus } from '../../layout/useActiveCorpus';
 import { ViewHead } from '../../layout/ViewHead';
 import { excerptDomId, type AnswerSources, type Excerpt, type SourceDocument } from '../../model';
@@ -522,13 +521,6 @@ export function SourcesView({
 
   return (
     <div className="sources-view">
-      {/* The slot's accessible name already says «Kilder», and the design has
-          no visible panel title here — the shell's own toggle button carries
-          the word. This heading is what the document titles below hang off. */}
-      <Heading level={2} className="ds-sr-only">
-        Kilder
-      </Heading>
-
       {/* Which answer is on screen, for a screen reader.
 
           Mounted from the first render and never taken away, empty while there
@@ -556,10 +548,22 @@ export function SourcesView({
           head, which is the only reason it could pin its own in #54 while the
           navigation panel could not in #55. See src/layout/viewHeadContext.ts.
 
-          Rendered even when both children are absent, so the box that carries
-          the border does not appear and disappear as answers arrive — and an
-          empty one draws no line. */}
+          It always holds the panel's heading, so the box that carries the
+          border is there from the first render and does not appear and
+          disappear as answers arrive. */}
       <ViewHead>
+        {/* «Kilder», visible, as Figma has it over the search (node 1549-46119)
+            and as the navigation panel has «Filtrering»: the same
+            `PanelHeader` at the same size, so the two panels start alike.
+            Lars, 30.09: nearer the design. It was a screen-reader-only
+            heading before, on the grounds that the toggle carried the word;
+            the toggle is an icon, and says it only in its tooltip.
+
+            In the pinned head like «Filtrering», and first in it, so it stays
+            with the search field while the excerpts scroll. The document
+            titles below are level 3 under it. */}
+        <PanelHeader title="Kilder" size="sm" />
+
         {/* Shown whenever the thread has more than one answer, including while
             the answer on screen has nothing to show: stepping back to the
             answer that DID have sources is the whole point of it then. */}
