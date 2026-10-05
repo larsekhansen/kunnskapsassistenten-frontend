@@ -62,7 +62,7 @@ slik de ble anmeldt.
 | Åpner kildepanelet med en markør                           | `sources.spec.ts`           |
 | Klikker `[n]` og havner i riktig utdrag, to ganger på rad  | `sources.spec.ts`           |
 | Ser utdragene gruppert per dokument                        | `sources.spec.ts`           |
-| Hopper til et dokument fra snarveislista                   | `sources.spec.ts`           |
+| Går fra en kilde under svaret til utdraget og tilbake      | `sources.spec.ts`           |
 | Søker i utdragene og stepper mellom treff                  | `sources.spec.ts`           |
 | Tabber gjennom hvert view i lys og mørk                    | alle fire spec-ene          |
 | Beholder filtervalget gjennom veksling filter ↔ tråder     | `primary-sidebar.spec.ts`   |
