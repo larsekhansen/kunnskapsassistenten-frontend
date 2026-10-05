@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Message } from '../../model';
-import { threadHeading } from './threadHeading';
+import { threadHeading, threadPageTitle } from './threadHeading';
 
 function question(content: string): Message[] {
   return [
@@ -92,5 +92,34 @@ describe('threadHeading', () => {
     expect(threadHeading(undefined, question('Hva sier\n  rapporten'))?.title).toBe(
       'Hva sier rapporten',
     );
+  });
+});
+
+/*
+ * The name in the browser's title (WCAG 2.4.2). The same conversation is one
+ * name, whether it is being asked on the front page or opened again from its
+ * address, where the stored title is the whole question.
+ */
+describe('threadPageTitle', () => {
+  const asked = 'Hva sier årsrapporten om tilsyn? Og om frekvenser.';
+
+  it('is the first sentence while the question is being asked', () => {
+    expect(threadPageTitle(undefined, question(asked))).toBe('Hva sier årsrapporten om tilsyn');
+  });
+
+  it('is the same first sentence for a thread named after the question', () => {
+    expect(threadPageTitle({ title: asked, titleFromQuestion: true }, question(asked))).toBe(
+      'Hva sier årsrapporten om tilsyn',
+    );
+  });
+
+  it('is a title of the thread’s own as it is', () => {
+    expect(threadPageTitle({ title: 'NKOM måloppnåelse' }, question(asked))).toBe(
+      'NKOM måloppnåelse',
+    );
+  });
+
+  it('is nothing before the first question', () => {
+    expect(threadPageTitle(undefined, [])).toBeUndefined();
   });
 });

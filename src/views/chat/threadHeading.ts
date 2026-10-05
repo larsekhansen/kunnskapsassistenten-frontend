@@ -87,3 +87,24 @@ export function threadHeading(
   const standIn = shorten(firstSentence(question));
   return standIn.length > 0 ? { title: standIn, repeatsQuestion: true } : undefined;
 }
+
+/**
+ * The thread's name for the browser's title (WCAG 2.4.2), or undefined when
+ * there is nothing to name yet.
+ *
+ * The heading's title, except that a title which is the question over again
+ * is cut to its first sentence, the way the stand-in is. A thread made from a
+ * question stores the whole question as its title, so the same conversation
+ * was «Hva sier årsrapporten om tilsyn» while it was being asked and «Hva
+ * sier årsrapporten om tilsyn? Og om frekvenser.» after going back to it:
+ * measured in the browser, from the front page and back from «Onboarding».
+ * A title of its own is used as it is.
+ */
+export function threadPageTitle(
+  thread: Pick<Thread, 'title' | 'titleFromQuestion'> | undefined,
+  messages: Message[],
+): string | undefined {
+  const heading = threadHeading(thread, messages);
+  if (!heading) return undefined;
+  return heading.repeatsQuestion ? shorten(firstSentence(heading.title)) : heading.title;
+}
