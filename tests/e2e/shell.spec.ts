@@ -29,10 +29,16 @@ import {
  * itself mid-session, the first time a title is generated from a question.
  */
 const ROUTES = {
-  newConversation: { path: '/', heading: 'Kunnskapsassistenten', name: 'ny-samtale' },
+  newConversation: {
+    path: '/',
+    heading: 'Kunnskapsassistenten',
+    title: 'Ny tråd – Kunnskapsassistenten',
+    name: 'ny-samtale',
+  },
   thread: {
     path: '/threads/nkom-maaloppnaaelse',
     heading: 'Kunnskapsassistenten',
+    title: 'NKOM måloppnåelse – Kunnskapsassistenten',
     subheading: 'NKOM måloppnåelse',
     name: 'traad',
   },
@@ -48,13 +54,15 @@ const INFO_PAGES = [
 /**
  * The page is the one asked for, and not the catch-all. Both are checked:
  * the catch-all has a level 1 of its own, so a heading alone would only say
- * which page it is not.
+ * which page it is not. And the browser's title says the same (WCAG 2.4.2):
+ * every address was «Kunnskapsassistenten» until #242.
  */
 async function expectInfoPage(page: Page, title: string): Promise<void> {
   await expect(page.getByRole('main')).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
   await expect(page.getByText('Siden finnes ikke')).toHaveCount(0);
+  await expect(page).toHaveTitle(`${title} – Kunnskapsassistenten`);
 }
 
 test.describe('skallet', () => {
@@ -70,6 +78,9 @@ test.describe('skallet', () => {
         // still have landmarks.
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(route.heading);
         await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+        // The level 1 names the app on every route; the browser's title names
+        // the page (WCAG 2.4.2, #242).
+        await expect(page).toHaveTitle(route.title);
         if ('subheading' in route) {
           await expect(
             page.getByRole('heading', { level: 2, name: route.subheading }),
@@ -232,6 +243,7 @@ test.describe('skallet', () => {
     await expect(page.getByRole('main')).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
     await expect(page.getByRole('heading', { name: 'Siden finnes ikke' })).toBeVisible();
+    await expect(page).toHaveTitle('Siden finnes ikke – Kunnskapsassistenten');
     await expect(page.getByRole('link', { name: 'Gå til forsiden' })).toBeVisible();
 
     // Ikke en samtale: skrivefeltet hører til forsida, ikke til denne.
@@ -308,6 +320,7 @@ test.describe('skallet', () => {
     await page.goto('/threads/finnes-ikke-her');
 
     await expect(page.getByRole('heading', { level: 2, name: 'Fant ikke tråden' })).toBeVisible();
+    await expect(page).toHaveTitle('Fant ikke tråden – Kunnskapsassistenten');
     await expect(composer(page)).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Gå til forsiden' })).toBeVisible();
 
