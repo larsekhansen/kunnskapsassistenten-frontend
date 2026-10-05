@@ -10,7 +10,15 @@ import { AT_BOTTOM_SLACK } from './useAtBottom';
  * nothing else. Measured in the scroll events, before the answer grows, and
  * kept while it grows: a column that grew by a paragraph is no longer at its
  * bottom, but the reader who was there is still following. Scrolling up
- * lets go, and scrolling back down takes hold again.
+ * lets go, and reaching the bottom again takes hold.
+ *
+ * Only UP lets go, and that is measured rather than tidy. The scroll event
+ * for a jump this hook makes arrives a frame later, and an answer can grow
+ * by a paragraph in between: the event then finds the column 31 px short of
+ * a bottom that has moved, and a rule that only asked «is it at the bottom»
+ * let go there. From the front page at 1920 × 1080 the second answer was
+ * left behind at 364 of 1268. A reader who means to leave scrolls up; a
+ * column that moved down and fell short was following.
  *
  * Only while an answer is on its way. Growth at any other time is somebody
  * opening a thread, or a panel in it, and a column that went to the bottom
@@ -42,12 +50,21 @@ export function useFollowAnswer(
       stuck.current = distanceToBottom(element) <= AT_BOTTOM_SLACK;
     };
 
+    // Where the column stood at the last scroll event, to tell up from down.
+    let lastTop = element.scrollTop;
+    const scrolled = () => {
+      const top = element.scrollTop;
+      if (distanceToBottom(element) <= AT_BOTTOM_SLACK) stuck.current = true;
+      else if (top < lastTop) stuck.current = false;
+      lastTop = top;
+    };
+
     measure();
-    element.addEventListener('scroll', measure, { passive: true });
+    element.addEventListener('scroll', scrolled, { passive: true });
 
     // jsdom has no ResizeObserver, and there is no layout there to follow.
     if (typeof ResizeObserver === 'undefined') {
-      return () => element.removeEventListener('scroll', measure);
+      return () => element.removeEventListener('scroll', scrolled);
     }
 
     const observer = new ResizeObserver(() => {
@@ -57,7 +74,7 @@ export function useFollowAnswer(
     observer.observe(content.current ?? element);
 
     return () => {
-      element.removeEventListener('scroll', measure);
+      element.removeEventListener('scroll', scrolled);
       observer.disconnect();
     };
   }, [container, content]);
