@@ -75,6 +75,7 @@ PORT=8799 KA_MODE=live \
   VITE_KA_DATASET_CONFIG_KEY=kudos-full \
   VITE_KA_DATASETS='kudos-full=Kudos|10 064 dokumenter fra kudos.dfo.no' \
   VITE_KA_FILTER_FIELDS='kudos-full=documentType:type|organisation:orgs_long|year:concerned_years:integer' \
+  VITE_KA_DOCUMENT_URLS='kudos-full=https://kudos.dfo.no/documents/{doc_num}|https://kudos.dfo.no/dokument/{doc_num}' \
   npm start
 ```
 
