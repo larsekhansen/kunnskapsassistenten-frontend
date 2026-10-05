@@ -319,6 +319,18 @@
   flex-direction: row-reverse;
   justify-content: flex-start;
   border-radius: var(--ds-border-radius-default);
+  /*
+   * Out by its own padding at each end, into the box's padding, which is 12 or
+   * 16 and so has room for it.
+   *
+   * Designsystemet draws the focus ring inside the summary, 6 px of outline
+   * and inset shadow from its edge. With the summary at the box's content
+   * edge, that ring lay over the «U» of «Utdrag N», which starts on the same
+   * edge (KA CC on #229, round 1). Out here, the ring is 8 px clear of the
+   * heading at the start, as it is of «Åpne» at the end, and the heading, the
+   * quote and the label keep the edges they line up on.
+   */
+  margin-inline: calc(var(--ds-size-2) * -1);
 }
 
 /*
