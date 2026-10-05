@@ -55,7 +55,9 @@ describe('InfoPage', () => {
   it('lar de lange eksempelsvarene stå sammenbrettet, med hvert sitt navn', () => {
     render(<InfoPage title="Onboarding" parts={onboardingParts} />);
 
-    const foldouts = screen.getAllByRole('group');
+    // A `details` is a group, and so is the scroll box around a table
+    // (Markdown.tsx), so only the details are the foldouts.
+    const foldouts = screen.getAllByRole('group').filter((group) => group.tagName === 'DETAILS');
     expect(foldouts.map((foldout) => foldout.querySelector('summary')?.textContent)).toEqual([
       'Les svaret på det første spørsmålet',
       'Les svaret på det omformulerte spørsmålet',
