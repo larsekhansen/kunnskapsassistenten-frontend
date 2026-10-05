@@ -291,13 +291,18 @@ const columnList = new Intl.ListFormat('nb', { type: 'conjunction' });
  * Treff og Dokumenter», with its number when the answer has more than one —
  * «Tabell 2 med kolonnene …».
  *
- * The box is a region, and every region on the page needs a name of its own
- * (axe `landmark-unique`, found by #2): two tables in one answer were both
- * «Tabell». A region per scrollable table is the usual pattern, and its name
- * normally comes from the table's caption; a markdown table has none, so the
- * header row stands in for it. The number makes two tables in one answer
- * differ whatever their columns are. Across answers the columns usually do,
- * and a number would not: every answer would count from 1.
+ * The box is a named group, not a region. As a region, every table on the
+ * page was a landmark, and two of them with one name broke axe's
+ * `landmark-unique`: two tables in one answer (#2), and two answers with the
+ * same columns, which a follow-up or «Generer på nytt» gives (KA CC on #241).
+ * No name holds across a thread of any length, and a table is not a page
+ * region either: a long thread put one in the screen reader's list of
+ * landmarks per table, which is mostly noise. A group keeps the name and the
+ * tab stop, so the keyboard can still scroll it (`scrollable-region-focusable`).
+ *
+ * The name is for the reader, then, and not for uniqueness. It comes from the
+ * header row, since a markdown table has no caption, and the number tells two
+ * tables in one answer apart whatever their columns are.
  *
  * Past `NAMED_COLUMNS` the rest are counted rather than read out, so a wide
  * table does not get a name a screen reader takes ten seconds to say.
@@ -344,7 +349,8 @@ export function Markdown({
       a: ({ children: content, href }) => <Link href={href}>{content}</Link>,
       // A wide table gets its own scroll box, and a scrollable box must be
       // reachable by keyboard and carry a name. Pattern from
-      // design/designsystemet/behov-til-komponent.md, question 14.
+      // design/designsystemet/behov-til-komponent.md, question 14. A group
+      // and not a region; see `tableName`.
       table: ({ children: content, node }) => {
         // Named from its number and its columns; see `tableName`.
         const name = tableName(
@@ -363,10 +369,15 @@ export function Markdown({
           // table in every answer at rest — worst in dark mode, where it read as
           // a border nobody had drawn (brukerblikk 3, funn 3). The same note is
           // in src/views/filters/DocumentsList.tsx, which got the choice right.
-          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-          <section className="markdown__table ds-focus" aria-label={name} tabIndex={0}>
+          //
+          // `prefer-tag-over-role` offers `fieldset` for a group, and a
+          // fieldset is for form controls, with a legend; a table that scrolls
+          // is neither. The role on a `div` is the plain way to say «a named
+          // group», which is all this box is.
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex, jsx-a11y/prefer-tag-over-role
+          <div className="markdown__table ds-focus" role="group" aria-label={name} tabIndex={0}>
             <Table data-size="sm">{content}</Table>
-          </section>
+          </div>
         );
       },
       thead: ({ children: content }) => <Table.Head>{content}</Table.Head>,

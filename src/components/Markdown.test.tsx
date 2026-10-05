@@ -20,14 +20,14 @@ describe('Markdown', () => {
   it('puts a table in a named, focusable scroll box', () => {
     render(<Markdown>{'| A | B |\n| --- | --- |\n| 1 | 2 |'}</Markdown>);
 
-    const region = screen.getByRole('region', { name: 'Tabell med kolonnene A og B' });
+    const region = screen.getByRole('group', { name: 'Tabell med kolonnene A og B' });
     expect(region.tabIndex).toBe(0);
     expect(screen.getByRole('table')).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'A' })).toBeTruthy();
   });
 
   it('gives two tables in one answer a name each, numbered', () => {
-    // Two regions with one name is axe's landmark-unique (#2): both were «Tabell».
+    // Both were «Tabell» (#2); the number tells them apart.
     const twoTables = [
       '| År | Treff |',
       '| --- | --- |',
@@ -41,7 +41,7 @@ describe('Markdown', () => {
     ].join('\n');
     render(<Markdown>{twoTables}</Markdown>);
 
-    const names = screen.getAllByRole('region').map((region) => region.getAttribute('aria-label'));
+    const names = screen.getAllByRole('group').map((region) => region.getAttribute('aria-label'));
     expect(names).toEqual([
       'Tabell 1 med kolonnene År og Treff',
       'Tabell 2 med kolonnene År og Treff',
@@ -53,15 +53,35 @@ describe('Markdown', () => {
     const { rerender } = render(<Markdown>{twoTables}</Markdown>);
     rerender(<Markdown>{twoTables}</Markdown>);
 
-    expect(
-      screen.getAllByRole('region').map((region) => region.getAttribute('aria-label')),
-    ).toEqual(['Tabell 1 med kolonnen A', 'Tabell 2 med kolonnen B']);
+    expect(screen.getAllByRole('group').map((region) => region.getAttribute('aria-label'))).toEqual(
+      ['Tabell 1 med kolonnen A', 'Tabell 2 med kolonnen B'],
+    );
+  });
+
+  it('is not a landmark, so two answers with the same columns break nothing', () => {
+    // A follow-up or «Generer på nytt» gives the same kind of table again, and
+    // two regions with one name were axe's landmark-unique (KA CC on #241).
+    const table = '| Ledd | Dokument | År |\n| --- | --- | --- |\n| 1 | Årsrapport | 2022 |';
+    render(
+      <>
+        <Markdown>{table}</Markdown>
+        <Markdown>{table}</Markdown>
+      </>,
+    );
+
+    expect(screen.queryAllByRole('region')).toHaveLength(0);
+    const groups = screen.getAllByRole('group', {
+      name: 'Tabell med kolonnene Ledd, Dokument og År',
+    });
+    expect(groups).toHaveLength(2);
+    // Still a tab stop, so the keyboard can scroll it.
+    expect(groups.every((group) => group.tabIndex === 0)).toBe(true);
   });
 
   it('says Tabell alone when the header row has no text', () => {
     render(<Markdown>{'|   |   |\n| --- | --- |\n| 1 | 2 |'}</Markdown>);
 
-    expect(screen.getByRole('region', { name: 'Tabell' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Tabell' })).toBeTruthy();
   });
 
   it('counts the columns past the fourth instead of reading them all out', () => {
@@ -74,7 +94,7 @@ describe('Markdown', () => {
     );
 
     expect(
-      screen.getByRole('region', { name: 'Tabell med kolonnene A, B, C, D og 2 til' }),
+      screen.getByRole('group', { name: 'Tabell med kolonnene A, B, C, D og 2 til' }),
     ).toBeTruthy();
   });
 
