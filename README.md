@@ -700,6 +700,20 @@ ikke følger med en lenke til en tråd noen limer inn et annet sted. Bakgrunnen
 står i `docs/arkitektur/0004-visningsnivaa.md`; koden ligger i
 `src/views/chat/displayLevel.ts`, `ProcedurePanel.tsx` og `SettingsDialog.tsx`.
 
+### Foten i navigasjonspanelet
+
+Samme meny holder et valg til, fra Simens issue 123:
+
+| Valg         | Hva som skjer                                                                             |
+| ------------ | ----------------------------------------------------------------------------------------- |
+| `Festet`     | Standard. Lenkene og fargemodus står under rullefeltet, uansett hvor langt du har rullet. |
+| `Ruller med` | Alt ligger i én kolonne. Foten står sist i rullefeltet og følger lista ned.               |
+
+Valget er her for å kunne sammenlignes, ikke fordi det er avgjort. Målingene
+av begge står i PR-en som la det inn. Koden ligger i
+`src/layout/footerMode.ts`, `Shell.tsx` og `.sidebar-content > .sidebar-footer`
+i `src/styles/global.css`.
+
 ## Mock-modus: spørsmål som gjør noe spesielt
 
 | Spørsmål                | Hva mocken gjør                                              |

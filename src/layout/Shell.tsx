@@ -15,6 +15,7 @@ import { ComposerContext } from './composerContext';
 import { COMPOSER_ID } from './ids';
 import { PanelSeparator } from './PanelSeparator';
 import { SidebarFooter } from './SidebarFooter';
+import { useFooterMode } from './footerMode';
 import { OpenThreadContext } from './openThreadContext';
 import { PanelHeadContext } from './panelHeadContext';
 import { MainScrollContext } from './scrollContext';
@@ -605,6 +606,34 @@ function Sidebar({
    * `hidden` only matters on the row. Inside a drawer the `<dialog>` is what
    * shows and hides it, and a closed one is `display: none` already.
    */
+  /*
+   * The foot of the navigation panel: the pages about Kunnskapsassistenten
+   * and the app's own settings (Simens issue 85). What is in it is
+   * SidebarFooter's business.
+   *
+   * The slot's and not a view's, so it stays put when the panel switches
+   * between «Tråder» and «Filtrering». The first slot and not the other,
+   * because it is the one open by default on a desktop, and the one a phone
+   * opens as a drawer to steer from. Not on a rail: three choices do not fit
+   * in 67 px, and a rail is one button (railWidth).
+   *
+   * Outside the scrolling region, like the head, so it is where it is however
+   * long the thread list grows.
+   */
+  const foot = slot === 'primary-sidebar' ? <SidebarFooter /> : null;
+
+  /*
+   * Simens issue 123: pinned below the scrolling region, or at the end of it
+   * and scrolling with the list. A setting rather than a rewrite, so both can
+   * be compared on the same page; see footerMode.ts. `pinned` is the default
+   * and is what shipped with issue 85.
+   *
+   * The SAME element either way, so switching does not remount the links or
+   * lose the focus inside them — only its place in the tree changes.
+   */
+  const footerMode = useFooterMode();
+  const footScrolls = footerMode === 'scrolls' && foot !== null;
+
   const panelContent = (
     <div
       id={contentId}
@@ -651,24 +680,11 @@ function Sidebar({
           />
         </PanelHeadContext>
       </ViewHeadContext>
+
+      {/* Last in the scrolling region, so it follows the list down. */}
+      {footScrolls ? foot : null}
     </div>
   );
-
-  /*
-   * The foot of the navigation panel: the pages about Kunnskapsassistenten
-   * and the app's own settings (Simens issue 85). What is in it is
-   * SidebarFooter's business.
-   *
-   * The slot's and not a view's, so it stays put when the panel switches
-   * between «Tråder» and «Filtrering». The first slot and not the other,
-   * because it is the one open by default on a desktop, and the one a phone
-   * opens as a drawer to steer from. Not on a rail: three choices do not fit
-   * in 67 px, and a rail is one button (railWidth).
-   *
-   * Outside the scrolling region, like the head, so it is where it is however
-   * long the thread list grows.
-   */
-  const foot = slot === 'primary-sidebar' ? <SidebarFooter /> : null;
 
   const toggleButton = (
     <Button
@@ -820,7 +836,7 @@ function Sidebar({
         </div>
 
         {drawer ? null : panelContent}
-        {railed ? null : foot}
+        {railed || footScrolls ? null : foot}
       </div>
 
       {/*
@@ -874,7 +890,7 @@ function Sidebar({
               <div className="panel-head-slot" ref={panelHeadRef} />
             </div>
             {panelContent}
-            {foot}
+            {footScrolls ? null : foot}
           </div>
         </Dialog>
       ) : null}

@@ -12,6 +12,7 @@ import { emptyFilterSelection, threadFromQuestion, type Message } from '../../mo
 import { AnswerMessage } from './AnswerMessage';
 import { MessageList } from './MessageList';
 import { ChatView } from './ChatView';
+import { getFooterMode, resetFooterMode } from '../../layout/footerMode';
 import { getDisplayLevel, resetDisplayLevel, setDisplayLevel } from './displayLevel';
 import { resetViewport, setViewportWidth } from '../../test/matchMedia';
 
@@ -222,6 +223,7 @@ describe('den skjulte innstillingsmenyen', () => {
   beforeEach(() => {
     localStorage.clear();
     resetDisplayLevel();
+    resetFooterMode();
   });
 
   it('finnes ikke uten adressen', () => {
@@ -253,6 +255,40 @@ describe('den skjulte innstillingsmenyen', () => {
 
     expect(getDisplayLevel()).toBe('detaljert');
     expect((detailed as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('holder også valget for foten, med festet som standard (Simens 123)', () => {
+    render(
+      <Shell at="/#innstillinger">
+        <ChatView client={idleClient} />
+      </Shell>,
+    );
+
+    const pinned = screen.getByRole('radio', { name: /Festet/u }) as HTMLInputElement;
+    const scrolls = screen.getByRole('radio', { name: /Ruller med/u }) as HTMLInputElement;
+    expect(pinned.checked).toBe(true);
+    expect(scrolls.checked).toBe(false);
+
+    fireEvent.click(scrolls);
+
+    expect(getFooterMode()).toBe('scrolls');
+    expect(scrolls.checked).toBe(true);
+  });
+
+  it('holder de to valgene fra hverandre, så ett ikke endrer det andre', () => {
+    render(
+      <Shell at="/#innstillinger">
+        <ChatView client={idleClient} />
+      </Shell>,
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: /Ruller med/u }));
+
+    // To radiogrupper, ikke én: nivået skal stå der det stod.
+    expect(getDisplayLevel()).toBe('standard');
+    expect((screen.getByRole('radio', { name: /Standard/u }) as HTMLInputElement).checked).toBe(
+      true,
+    );
   });
 
   it('tar bare hashen ut når den lukkes, og lar tråden stå', () => {
