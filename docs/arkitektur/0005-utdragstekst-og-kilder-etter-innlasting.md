@@ -1,6 +1,6 @@
 # 0005 — Teksten i utdragene, og kildene etter ny innlasting, i live
 
-**Status:** valgt · **Dato:** 2026-09-30 · **Endret:** 2026-10-05, stegene (Simens issue 88) og tallene fra KA CC på #227
+**Status:** valgt · **Dato:** 2026-09-30 · **Endret:** 2026-10-05, stegene (Simens issue 88), tallene fra KA CC på #227 og hva lageret inneholder (KA CC på #233)
 
 ## Kontekst
 
@@ -65,7 +65,8 @@ forsvant av samme grunn (Simens issue 88). Det samme lageret tar derfor også
 vare på det strømmen sa om stegene, ved siden av bitene: stegene slik de kom
 (`thinkingSteps`), treffene, dokumentene og søkeordene (`retrieval`) og hvor
 lenge agenten tenkte (`thoughtMs`). Det er agentens egne ord om hva den
-gjorde, og søkestrengene den brukte, ikke tekst fra dokumentene. Tenketiden
+gjorde, og søkestrengene den brukte, ikke tekst fra dokumentene. De kommer av
+spørsmålet leseren stilte; se «Hva som ligger i lageret» under. Tenketiden
 måles i klienten på samme hendelser og i samme rekkefølge som chatten måler
 den, så tallet etter innlasting er det som sto på skjermen. Svaret skrives
 ned før teksten slås opp, slik at en ny innlasting midt i oppslaget ikke
@@ -126,9 +127,43 @@ samme bit.
   holder lageret under 1 000 000 tegn ved å fjerne tråden som ble brukt
   lengst siden. Går det ikke å skrive, er alt som før: kildene forsvinner ved
   innlasting, og det er det eneste som skjer.
-- **Lageret er per nettleser, ikke per bruker.** Det inneholder bare referanser
-  til et offentlig korpus. En tråd kan bare få kilder fra lageret hvis
-  backenden gir den til brukeren.
+- **Hva som ligger i lageret** (`ka.sources.v1`, rettet 2026-10-05 etter KA CC
+  på #233). Nøkkelen er samtalens id fra backenden og et fingeravtrykk av
+  svarteksten, altså lengden og en hash, ikke selve teksten. For hvert svar
+  ligger dette der:
+  - **bitene**: id, dokumentnummer, tittel, adresse og overskriftsstien. Det er
+    det svaret selv bar, og det kommer fra et offentlig korpus.
+  - **stegene**: hvert steg med id, slag, etikett, detalj, søkestrenger og
+    varighet. Det er agentens plan i første person (etiketten på et tenkesteg),
+    søkestrengene den brukte (`queries`) og verktøyets oppsummering
+    (`result-summary`, som ligger i `detail`). Alt dette kommer av spørsmålet
+    leseren stilte.
+  - **søkeordene** i `retrieval.keywords`. Målt 5.10: det første søkeordet
+    var spørsmålet, ordrett.
+  - **tallene**: treff, dokumenter, tenketiden i millisekunder, og når tråden
+    sist ble brukt.
+
+  Svarteksten, spørsmålet som eget felt og tekst fra dokumentene ligger ikke
+  der. Spørsmålet kan likevel leses ut av søkeordene og agentens plan.
+
+- **Lageret er per nettleser, ikke per bruker, og det blir liggende.** Det har
+  ingen utløpstid. Det ryddes bare når det blir for stort (tråden som ble brukt
+  lengst siden, går først), når leseren tømmer dataene for nettstedet, eller
+  når koden fjerner det. I live uten innlogging, som i testmiljøet i dag, er
+  også identiteten per nettleser (`ka.user.v1`). Da ser den som bruker
+  nettleseren, trådene uansett. Med innlogging har hver bruker sine egne
+  tråder, og appen tar bare fram kilder og steg for tråder backenden gir den
+  som er logget inn. Lageret er likevel felles, så den neste som bruker samme
+  nettleser, kan lese de forriges søkeord og agentens plan i
+  utviklerverktøyene. Hva en utlogging i Azure gjør med `localStorage`, er
+  ikke målt.
+- **Foreslått, og ikke avgjort:** tøm lageret ved «Logg ut» der det finnes en
+  utlogging, altså i bff-modus (`/auth/logout`, `src/api/session.ts`). I dag
+  skriver bare live-modus til lageret, og live har ingen utlogging. Forslaget
+  gjelder derfor den dagen lageret tas i bruk bak BFF-en, eller live får
+  innlogging. Det kan gjøres i klienten før navigasjonen, eller med
+  `Clear-Site-Data` på svaret fra utloggingen. Lars avgjør om lageret er
+  greit slik det er, og om det skal tømmes.
 - **Et svar kjennes igjen på teksten.** Endrer backenden teksten etter at den
   er lagret, får svaret ikke kildene tilbake, og panelet er da som i dag. Det
   er tryggere enn å sette kilder på feil svar.
