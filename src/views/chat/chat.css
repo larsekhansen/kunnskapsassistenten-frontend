@@ -327,7 +327,13 @@
  * with the frame's.
  */
 .ka-sources-summary {
-  --dsc-details-padding: var(--ds-size-4);
+  /*
+   * Figma's 16 px on a desktop, 8 on a phone, where the box can be under 200
+   * px wide and 16 at each side of it is a sixth of the box. 2vw reaches the
+   * ceiling at 800.
+   */
+  --ka-sources-summary-inset: clamp(var(--ds-size-2), 2vw, var(--ds-size-4));
+  --dsc-details-padding: var(--ka-sources-summary-inset);
   --dsc-details-background: var(--ds-color-neutral-background-tinted);
   --dsc-details-border-color: var(--ds-color-neutral-border-subtle);
   --dsc-details-summary-background: var(--ds-color-neutral-surface-default);
@@ -350,14 +356,32 @@
 
 /*
  * Figma's 16 px round the list and 24 under it, where Designsystemet puts 20
- * on every side. Designsystemet writes these in `:where()`, so a class wins.
+ * on every side, and the same step down on a phone as the bar. Designsystemet
+ * writes these in `:where()`, so a class wins.
  */
 .ka-sources-summary > :not(summary):not(u-summary) {
-  margin: var(--ds-size-4) var(--ds-size-4) var(--ds-size-6);
+  margin: var(--ka-sources-summary-inset) var(--ka-sources-summary-inset)
+    calc(var(--ka-sources-summary-inset) * 1.5);
 }
 
+/*
+ * Document titles are where the long compound nouns are: «kommunikasjons-
+ * myndighet» alone is wider than the box on a phone, and the box clips. So
+ * a word that cannot fit on a line breaks, at a Norwegian hyphenation point
+ * where the browser has one, as the titles in the sources panel do.
+ */
 .ka-sources-summary__list {
   margin: 0;
+  overflow-wrap: break-word;
+  /* stylelint-disable-next-line plugin/browser-compat -- uprefikset
+     `hyphens` kom i Safari 17; 16 har den bare som `-webkit-hyphens`. Der
+     deles ordet av `overflow-wrap` over i stedet, uten bindestrek. */
+  hyphens: auto;
+}
+
+/* The icon keeps its size when the title next to it wraps. */
+.ka-sources-summary__icon {
+  flex-shrink: 0;
 }
 
 /* «Utdrag 1–2» under a title: what the markers in the text call it. Subtle,
