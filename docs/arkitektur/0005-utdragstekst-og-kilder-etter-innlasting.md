@@ -111,6 +111,9 @@ samme bit.
 - **Et svar kjennes igjen på teksten.** Endrer backenden teksten etter at den
   er lagret, får svaret ikke kildene tilbake, og panelet er da som i dag. Det
   er tryggere enn å sette kilder på feil svar.
+- **Stegene kommer etter.** Fremgangsmåte-boksen forsvinner av samme grunn
+  (Simens issue 88), og et svar i lageret er et objekt, så det strømmen sa om
+  stegene kan lagres ved siden av bitene i en egen PR.
 - **Bare live-modus.** Mock har egne data. Bak BFF-en er problemet det samme,
   og det samme lageret kan brukes der, men det er ikke en del av denne
   beslutningen.

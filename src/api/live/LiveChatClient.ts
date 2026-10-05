@@ -486,7 +486,7 @@ export class LiveChatClient implements ChatClient {
       detail.messages.map(async (message) => {
         if (message.role !== 'assistant' || message.status !== 'complete') return message;
         if (message.sources && message.sources.length > 0) return message;
-        const chunks = remembered.get(answerFingerprint(message.content));
+        const chunks = remembered.get(answerFingerprint(message.content))?.chunks;
         if (!chunks || chunks.length === 0) return message;
 
         const documents = await this.#withTexts(

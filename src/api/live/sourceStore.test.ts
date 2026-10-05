@@ -39,7 +39,7 @@ describe('rememberAnswerSources og recallThreadSources', () => {
 
     const remembered = recallThreadSources('conv-1', 2000);
 
-    expect(remembered?.get(answerFingerprint('Svar [1].'))).toEqual([
+    expect(remembered?.get(answerFingerprint('Svar [1].'))?.chunks).toEqual([
       {
         chunk_id: 'ef0a96e7e2bb',
         doc_num: '32062',
@@ -59,13 +59,25 @@ describe('rememberAnswerSources og recallThreadSources', () => {
     expect(localStorage.getItem(SOURCES_STORAGE_KEY)).not.toContain('Hele utdraget');
   });
 
+  it('lagrer et svar som et objekt, så stegene kan få plass ved siden av bitene senere', () => {
+    rememberAnswerSources('conv-1', 'Svar.', [chunks[0]]);
+
+    const answer = JSON.parse(localStorage.getItem(SOURCES_STORAGE_KEY) ?? '{}').threads['conv-1']
+      .answers[answerFingerprint('Svar.')];
+    expect(Object.keys(answer)).toEqual(['chunks']);
+  });
+
   it('holder svarene i en tråd fra hverandre', () => {
     rememberAnswerSources('conv-1', 'Første svar.', [chunks[0]]);
     rememberAnswerSources('conv-1', 'Andre svar.', [chunks[1]]);
 
     const remembered = recallThreadSources('conv-1');
-    expect(remembered?.get(answerFingerprint('Første svar.'))?.[0]?.chunk_id).toBe('ef0a96e7e2bb');
-    expect(remembered?.get(answerFingerprint('Andre svar.'))?.[0]?.chunk_id).toBe('3c399236a70d');
+    expect(remembered?.get(answerFingerprint('Første svar.'))?.chunks[0]?.chunk_id).toBe(
+      'ef0a96e7e2bb',
+    );
+    expect(remembered?.get(answerFingerprint('Andre svar.'))?.chunks[0]?.chunk_id).toBe(
+      '3c399236a70d',
+    );
   });
 
   it('skriver ingenting uten tråd, uten tekst eller uten biter', () => {
@@ -105,10 +117,20 @@ describe('rememberAnswerSources og recallThreadSources', () => {
     localStorage.setItem(
       SOURCES_STORAGE_KEY,
       JSON.stringify({
-        threads: { 'conv-1': { usedAt: 1, answers: { x: [null, 7, { chunk_id: 3 }] } } },
+        threads: {
+          'conv-1': {
+            usedAt: 1,
+            answers: {
+              x: { chunks: [null, 7, { chunk_id: 3 }] },
+              y: ['en liste', 'er ikke et svar'],
+            },
+          },
+        },
       }),
     );
-    expect(recallThreadSources('conv-1')?.get('x')).toEqual([{}]);
+    const remembered = recallThreadSources('conv-1');
+    expect(remembered?.get('x')).toEqual({ chunks: [{}] });
+    expect(remembered?.has('y')).toBe(false);
   });
 
   it('kaster ikke når nettleseren nekter å skrive', () => {

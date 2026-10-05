@@ -38,11 +38,25 @@ export const MAX_STORED_CHARS = 1_000_000;
 /** What is kept of one chunk: what `toSourceDocuments` reads, and no more. */
 export type StoredChunk = Pick<McpChunk, 'chunk_id' | 'doc_num' | 'title' | 'url' | 'metadata'>;
 
+/**
+ * What is kept of one answer.
+ *
+ * An object and not the list itself, so the next thing the backend forgets
+ * can sit beside the chunks without a new key or a migration. The next one is
+ * known: what the stream said about the steps — «Fremgangsmåte», the search
+ * words, and in the detailed view the time and the hits (Simens issue 88).
+ * That is a PR of its own.
+ */
+export type StoredAnswer = {
+  /** In the order the answer numbered them. */
+  chunks: StoredChunk[];
+};
+
 type StoredThread = {
   /** When this thread was last written or opened, for choosing what to drop. */
   usedAt: number;
-  /** Answer fingerprint → its chunks, in the order the answer numbered them. */
-  answers: Record<string, StoredChunk[]>;
+  /** Answer fingerprint → what is kept of it. */
+  answers: Record<string, StoredAnswer>;
 };
 
 type Store = { threads: Record<string, StoredThread> };
@@ -98,10 +112,10 @@ function read(): Store {
     const threads: Record<string, StoredThread> = {};
     for (const [id, thread] of Object.entries(parsed.threads)) {
       if (!isRecord(thread) || !isRecord(thread.answers)) continue;
-      const answers: Record<string, StoredChunk[]> = {};
-      for (const [fingerprint, chunks] of Object.entries(thread.answers)) {
-        if (!Array.isArray(chunks)) continue;
-        answers[fingerprint] = chunks.flatMap((chunk) => chunkFrom(chunk) ?? []);
+      const answers: Record<string, StoredAnswer> = {};
+      for (const [fingerprint, answer] of Object.entries(thread.answers)) {
+        if (!isRecord(answer) || !Array.isArray(answer.chunks)) continue;
+        answers[fingerprint] = { chunks: answer.chunks.flatMap((chunk) => chunkFrom(chunk) ?? []) };
       }
       threads[id] = { usedAt: typeof thread.usedAt === 'number' ? thread.usedAt : 0, answers };
     }
@@ -159,14 +173,16 @@ export function rememberAnswerSources(
   const store = read();
   const thread = store.threads[threadId] ?? { usedAt: now, answers: {} };
   thread.usedAt = now;
-  thread.answers[answerFingerprint(answerText)] = chunks.flatMap(
-    (chunk) =>
-      chunkFrom({
-        ...chunk,
-        // One name for the title, whichever of the three it arrived under.
-        title: chunk.title ?? chunk.doc_title ?? chunk.docTitle,
-      }) ?? [],
-  );
+  thread.answers[answerFingerprint(answerText)] = {
+    chunks: chunks.flatMap(
+      (chunk) =>
+        chunkFrom({
+          ...chunk,
+          // One name for the title, whichever of the three it arrived under.
+          title: chunk.title ?? chunk.doc_title ?? chunk.docTitle,
+        }) ?? [],
+    ),
+  };
   store.threads[threadId] = thread;
   write(store);
 }
@@ -179,7 +195,7 @@ export function rememberAnswerSources(
 export function recallThreadSources(
   threadId: string,
   now = Date.now(),
-): ReadonlyMap<string, StoredChunk[]> | undefined {
+): ReadonlyMap<string, StoredAnswer> | undefined {
   const store = read();
   const thread = store.threads[threadId];
   if (!thread) return undefined;
