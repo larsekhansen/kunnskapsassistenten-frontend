@@ -134,12 +134,34 @@
 }
 
 /*
- * The reader's own question: plain text above the answer card, larger than
- * the answer, with no rule and no bubble. Figma sets it slightly in from the
- * card edge.
+ * The reader's own question: a box at the end of the line, and the answer
+ * across the column under it (Simens issue 117). Plain and larger than the
+ * answer, as Figma drew it, it read as a heading over the answer card.
+ *
+ * Three things tell the two apart, so none of them carries it alone: the
+ * side, the tinted blue ground, and the width — the question stops short of
+ * the column, the answer fills it. A screen reader hears «Du skrev:».
+ *
+ * Narrower than the column so it reads as a message and not as a band, and
+ * wide enough that a phone does not break a short question over many lines.
+ * The padding is a step in from Designsystemet's card, which is made for
+ * blocks of content and not for a sentence.
+ *
+ * No border. With one, the box was a blue box with a blue edge, which is what
+ * the follow-up suggestions under the field look like — and those are
+ * buttons. A message is not a control, so it is drawn as ground alone. The
+ * box is not a control either, so WCAG 1.4.11 asks nothing of its edge.
  */
 .ka-message--user {
-  padding-inline: var(--ds-size-2);
+  align-items: end;
+}
+
+.ka-message__bubble {
+  --dsc-card-padding: var(--ds-size-3) var(--ds-size-4);
+  --dsc-card-border-color: transparent;
+
+  max-inline-size: 85%;
+  overflow-wrap: anywhere;
 }
 
 /*
@@ -148,8 +170,9 @@
  * Deliberately not a Chip. A Chip is a control — Designsystemet's own note on
  * Tag says filtering belongs to Chip precisely because chips are pressed and
  * removed — and this one is a statement about a question that has already
- * been asked. Set in from the card edge like the reader's own question, so
- * the two line up as the two things that framed the answer.
+ * been asked. Set a step in from the card edge, over the answer it framed.
+ * It used to line up with the reader's question, which stood in the same
+ * place; the question is a box at the far side now (Simens issue 117).
  */
 .ka-filter-summary {
   margin: 0;
