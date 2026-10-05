@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { covers, expectNoAxeViolations, saveScreenshot, setColorScheme } from './a11y';
 import {
   ask,
@@ -37,6 +37,25 @@ const ROUTES = {
     name: 'traad',
   },
 } as const;
+
+/** The pages linked from the foot of the navigation panel, in its order. */
+const INFO_PAGES = [
+  { path: '/onboarding', title: 'Onboarding' },
+  { path: '/endringslogg', title: 'Endringslogg' },
+  { path: '/om-prosjektet', title: 'Om prosjektet' },
+] as const;
+
+/**
+ * The page is the one asked for, and not the catch-all. Both are checked:
+ * the catch-all has a level 1 of its own, so a heading alone would only say
+ * which page it is not.
+ */
+async function expectInfoPage(page: Page, title: string): Promise<void> {
+  await expect(page.getByRole('main')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
+  await expect(page.getByText('Siden finnes ikke')).toHaveCount(0);
+}
 
 test.describe('skallet', () => {
   for (const route of Object.values(ROUTES)) {
@@ -225,6 +244,50 @@ test.describe('skallet', () => {
     await page.getByRole('link', { name: 'Gå til forsiden' }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator('.ka-composer__field textarea')).toBeVisible();
+  });
+
+  /**
+   * Kan 2 from the review of #226: nothing tested that the addresses give the
+   * pages. The unit tests render `InfoPage` directly, so with the three
+   * `Route`s taken out of App.tsx every test was green, and every link in the
+   * foot led to «Siden finnes ikke».
+   *
+   * The addresses are written out here rather than read from `infoPages`:
+   * they are the ones the old Kunnskapsassistenten uses, and a link somebody
+   * saved there has to land somewhere here. The reload is that saved link.
+   *
+   * Axe runs every rule it has, not just the WCAG set. These are pages of
+   * written content, and the empty header cell in the table on /onboarding
+   * was a best-practice rule that the WCAG set does not run.
+   */
+  test('lenkene i foten gir de tre sidene, også etter en reload', async ({ page }, testInfo) => {
+    covers(testInfo, 'sidene i foten');
+    await page.goto(ROUTES.newConversation.path);
+
+    const foot = page
+      .getByRole('navigation', { name: 'Tråder og filter' })
+      .getByRole('list', { name: 'Om Kunnskapsassistenten' });
+    await expect(foot.getByRole('link')).toHaveText(INFO_PAGES.map((info) => info.title));
+
+    for (const info of INFO_PAGES) {
+      const link = foot.getByRole('link', { name: info.title });
+      await link.click();
+      await expect(page).toHaveURL(new RegExp(`${info.path}$`));
+      await expectInfoPage(page, info.title);
+      await expect(link).toHaveAttribute('aria-current', 'page');
+
+      await page.reload();
+      await expectInfoPage(page, info.title);
+
+      for (const [scheme, mode] of [
+        ['light', 'lys'],
+        ['dark', 'mørk'],
+      ] as const) {
+        await setColorScheme(page, scheme);
+        await expectNoAxeViolations(page, `${info.path} i ${mode} modus`, { allRules: true });
+      }
+      await setColorScheme(page, 'light');
+    }
   });
 
   /**
