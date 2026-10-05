@@ -92,6 +92,7 @@ slik de ble anmeldt.
 | Går til de tre sidene fra lenkene i foten                  | `shell.spec.ts`             |
 | Skriver midt i en tråd uten at kolonnen flytter seg        | `chat.spec.ts`              |
 | Åpner kildepanelet fra skinna med tastaturet, uten rulling | `layout.spec.ts`            |
+| Ser spørsmålet i en boks mot slutten av linja              | `chat.spec.ts`              |
 
 ## Merget, men ikke dekket
 
