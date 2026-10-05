@@ -1,7 +1,7 @@
 import { Details, Link, List, Paragraph } from '@digdir/designsystemet-react';
 import { FileTextIcon } from '@navikt/aksel-icons';
 import { excerptDomId, type SourceDocument } from '../../model';
-import { excerptRange, isOwnDocument, OWN_DOCUMENT_LABEL } from '../sources';
+import { distinctTitles, excerptRange, isOwnDocument, OWN_DOCUMENT_LABEL } from '../sources';
 
 type SourcesSummaryProps = {
   /** The documents behind this answer, in the order the sources panel has. */
@@ -50,6 +50,10 @@ type SourcesSummaryProps = {
 export function SourcesSummary({ documents, onSelectSource }: SourcesSummaryProps) {
   if (documents.length === 0) return null;
 
+  // The same names as the cards in the sources panel: a document's number
+  // follows its title when another one in this answer has the same title.
+  const names = distinctTitles(documents);
+
   return (
     <Details className="ka-sources-summary" data-color="neutral" defaultOpen>
       <Details.Summary>
@@ -80,7 +84,7 @@ export function SourcesSummary({ documents, onSelectSource }: SourcesSummaryProp
               <List.Item key={document.id}>
                 {first === undefined ? (
                   <>
-                    {document.title}
+                    {names.get(document.id) ?? document.title}
                     {own}
                   </>
                 ) : (
@@ -97,7 +101,7 @@ export function SourcesSummary({ documents, onSelectSource }: SourcesSummaryProp
                       onSelectSource(first);
                     }}
                   >
-                    {document.title}
+                    {names.get(document.id) ?? document.title}
                     {own}
                   </Link>
                 )}
