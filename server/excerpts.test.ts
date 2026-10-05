@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHandler } from './app.ts';
 import { readConfig, type ServerConfig } from './config.ts';
-import { MAX_IDS, excerptConfigFrom, parseIds } from './excerpts.ts';
+import { MAX_IDS, TIMEOUT_MS, excerptConfigFrom, parseIds } from './excerpts.ts';
 
 /**
  * `/api/excerpts` measured through the server's own socket, against a fake
@@ -21,6 +21,8 @@ let asked: { url: URL; key: string | undefined }[];
 let forwarded: string[];
 /** What Typesense answers with next. */
 let answer: { status: number; body: string };
+/** When true, Typesense takes the connection and never answers. */
+let hang = false;
 
 const hits = (documents: Record<string, unknown>[]) =>
   JSON.stringify({ found: documents.length, hits: documents.map((document) => ({ document })) });
@@ -36,8 +38,13 @@ function stop(instance: Server | undefined): Promise<void> {
   return instance ? new Promise<void>((done) => instance.close(() => done())) : Promise.resolve();
 }
 
-async function start(env: NodeJS.ProcessEnv = {}, mode: 'live' | 'mock' = 'live') {
+async function start(
+  env: NodeJS.ProcessEnv = {},
+  mode: 'live' | 'mock' = 'live',
+  timeoutMs?: number,
+) {
   typesense = createServer((request, response) => {
+    if (hang) return;
     asked.push({
       url: new URL(request.url ?? '', 'http://typesense'),
       key: request.headers['x-typesense-api-key'] as string | undefined,
@@ -57,18 +64,22 @@ async function start(env: NodeJS.ProcessEnv = {}, mode: 'live' | 'mock' = 'live'
     ...readConfig({}, '/dist'),
     mode,
     apiBase,
-    excerpts: excerptConfigFrom({
-      TYPESENSE_URL: `${typesenseUrl}/`,
-      TYPESENSE_API_KEY: KEY,
-      KA_CHUNK_COLLECTIONS: 'kudos-full=KUDOS_chunks v4',
-      ...env,
-    }),
+    excerpts: {
+      ...excerptConfigFrom({
+        TYPESENSE_URL: `${typesenseUrl}/`,
+        TYPESENSE_API_KEY: KEY,
+        KA_CHUNK_COLLECTIONS: 'kudos-full=KUDOS_chunks v4',
+        ...env,
+      }),
+      ...(timeoutMs === undefined ? {} : { timeoutMs }),
+    },
   };
   server = createServer(createHandler(config));
   base = await listen(server);
 }
 
 beforeEach(() => {
+  hang = false;
   asked = [];
   forwarded = [];
   answer = {
@@ -203,6 +214,33 @@ describe('/api/excerpts', () => {
     expect(text).not.toContain('Forbidden');
     expect(JSON.parse(text)).toEqual({ error: 'Fikk ikke hentet utdragene.' });
     expect(String(logged.mock.calls[0])).toContain('403');
+  });
+
+  it('svarer 502 når Typesense aldri svarer, etter tidsavbruddet', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    hang = true;
+    await start({}, 'live', 100);
+
+    const started = Date.now();
+    const response = await fetch(`${base}/api/excerpts?dataset=kudos-full&ids=ef0a96e7e2bb`);
+
+    expect(response.status).toBe(502);
+    expect(Date.now() - started).toBeLessThan(3000);
+    expect(logged).toHaveBeenCalled();
+  });
+
+  it('har fem sekunder som tidsavbrudd mot Typesense', () => {
+    // KA CC measured it on #227: a Typesense that never answers gave 502
+    // after 5011 ms.
+    expect(TIMEOUT_MS).toBe(5000);
+    expect(excerptConfigFrom({}).timeoutMs).toBe(5000);
+  });
+
+  it('tar 20 id-er, det headless-rag gir ett svar', () => {
+    // `structuredContent.chunks` is `(take 20 chunks)` in
+    // server/src/digdir/mcp/tools.clj. The client splits a longer list, so
+    // this is the size of one request and not the most an answer may have.
+    expect(MAX_IDS).toBe(20);
   });
 
   it('sendes aldri til backend', async () => {

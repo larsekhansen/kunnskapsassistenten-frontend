@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StreamEvent } from '../../model';
 import { LiveChatClient, resetLiveConversation } from './LiveChatClient';
-import { SOURCES_STORAGE_KEY } from './sourceStore';
+import { SOURCES_STORAGE_KEY, answerFingerprint, recallThread } from './sourceStore';
 
 /**
  * The excerpts' text, and the sources after a reload, in live
@@ -26,8 +26,12 @@ const CHUNKS = [
 ];
 
 type Backend = {
+  /** `_meta` of each progress frame sent before the final one. */
+  progress: Record<string, unknown>[];
   /** What `/api/excerpts` answers with. */
   excerpts: { status: number; body: unknown };
+  /** Holds `/api/excerpts` until it settles, when set. */
+  excerptsHeld?: Promise<void>;
   /** The assistant message the backend gives back when the thread is read. */
   storedAnswer: { text: string; chunks: unknown[] };
 };
@@ -51,6 +55,7 @@ beforeEach(() => {
       body: { excerpts: { c1: 'Nkom nådde målene.', c3: 'Midlene ble brukt.' } },
     },
     storedAnswer: { text: ANSWER, chunks: [] },
+    progress: [],
   };
   fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
     const path = String(url);
@@ -65,12 +70,18 @@ beforeEach(() => {
           _meta: { conversation_id: 'conv-1', status: 'complete' },
         },
       };
-      return new Response(`data: ${JSON.stringify(frame)}\n\n`, {
+      const progress = backend.progress.map((meta) => ({
+        method: 'notifications/progress',
+        params: { _meta: meta },
+      }));
+      const body = [...progress, frame].map((item) => `data: ${JSON.stringify(item)}\n\n`).join('');
+      return new Response(body, {
         status: 200,
         headers: { 'Content-Type': 'text/event-stream' },
       });
     }
     if (path.startsWith('/api/excerpts?')) {
+      await backend.excerptsHeld;
       return json(backend.excerpts.body, backend.excerpts.status);
     }
     if (path.endsWith('/api/conversations/conv-1')) {
@@ -222,5 +233,62 @@ describe('kildene etter ny innlasting', () => {
       thread?.messages.find((message) => message.role === 'assistant')?.sources,
     ).toBeUndefined();
     expect(excerptCalls()).toEqual([]);
+  });
+});
+
+describe('Fremgangsmåte etter ny innlasting', () => {
+  it('gir svaret stegene, treffene og tenketiden tilbake', async () => {
+    backend.progress = [
+      { event: 'agent/thinking', reasoning: 'Jeg leter i årsrapporten til Nkom.' },
+      {
+        event: 'agent/turn-completed',
+        'tool-calls': [
+          { tool: 'search', args: { queries: ['Nkom måloppnåelse 2022'] }, 'duration-ms': 41 },
+        ],
+      },
+      { event: 'agent/finalized', iteration: 2 },
+    ];
+    const shown = (await ask()).flatMap((event) =>
+      event.type === 'thinking-step' ? [event.step] : [],
+    );
+
+    const thread = await client().getThread('conv-1');
+    const answer = thread?.messages.find((message) => message.role === 'assistant');
+
+    expect(shown).toHaveLength(3);
+    expect(answer?.thinkingSteps).toEqual(shown);
+    expect(answer?.retrieval).toEqual({
+      hitCount: 3,
+      documentCount: 2,
+      keywords: ['Nkom måloppnåelse 2022'],
+    });
+    expect(answer?.thoughtMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('husker under teksten i siste ramme, ikke den som ble strømmet', async () => {
+    // Deltas that nothing proves were the plan are released as the answer, so
+    // the streamed text is «Et utkast.» and the final frame's is ANSWER. The
+    // backend stores the final frame's (measured 30.09 and on #227).
+    backend.progress = [{ event: 'response/chunk', delta: 'Et utkast.' }];
+
+    await ask();
+
+    const remembered = recallThread('conv-1');
+    expect(remembered?.has(answerFingerprint(ANSWER))).toBe(true);
+    expect(remembered?.has(answerFingerprint('Et utkast.'))).toBe(false);
+  });
+
+  it('skriver ned svaret før teksten er hentet, så en ny innlasting midt i oppslaget ikke mister det', async () => {
+    let release = () => {};
+    backend.excerptsHeld = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const asking = ask();
+    await vi.waitFor(() => expect(excerptCalls()).toHaveLength(1));
+
+    expect(recallThread('conv-1')?.has(answerFingerprint(ANSWER))).toBe(true);
+    release();
+    await asking;
   });
 });
