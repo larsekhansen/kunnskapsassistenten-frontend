@@ -146,6 +146,29 @@ describe('«Bla til nederst»', () => {
     );
   });
 
+  /*
+   * The same in the chat view and not only in the button: a tap scrolls and
+   * leaves the focus where it was. Focus in the field opens the keyboard on a
+   * phone, over the text the reader just asked to see (KA CC on #228, kan 2).
+   */
+  it('scrolls the column after a tap, and leaves the focus where it was', () => {
+    const column = tallColumn();
+    render(
+      <Shell column={column}>
+        <ChatView client={client} thread={thread} />
+      </Shell>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Bla til nederst' });
+    // Where a tap leaves it in a browser that focuses what it clicks.
+    button.focus();
+    // A click with a pointer behind it: detail 1.
+    fireEvent.click(button, { detail: 1 });
+
+    expect(column.scrollTo).toHaveBeenCalledWith({ top: 2000, behavior: 'smooth' });
+    expect(document.activeElement).toBe(button);
+  });
+
   it('leaves focus alone after a tap, which would open the keyboard on a phone', () => {
     const onScroll = vi.fn();
     render(<ScrollToBottom onScroll={onScroll} />);
