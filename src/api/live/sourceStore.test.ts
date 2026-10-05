@@ -3,6 +3,7 @@ import {
   MAX_STORED_CHARS,
   SOURCES_STORAGE_KEY,
   answerFingerprint,
+  forgetAllAnswers,
   recallThread,
   rememberAnswer,
 } from './sourceStore';
@@ -214,5 +215,34 @@ describe('rememberAnswer og recallThread', () => {
     });
 
     expect(recallThread('conv-1')).toBeUndefined();
+  });
+});
+
+describe('forgetAllAnswers', () => {
+  it('tømmer hele lageret', () => {
+    rememberAnswer('conv-1', 'Svar.', { chunks });
+    rememberAnswer('conv-2', 'Svar.', { chunks });
+
+    forgetAllAnswers();
+
+    expect(localStorage.getItem(SOURCES_STORAGE_KEY)).toBeNull();
+    expect(recallThread('conv-1')).toBeUndefined();
+  });
+
+  it('lar resten av nettleserens lager stå', () => {
+    localStorage.setItem('ka.layout.v1', '{}');
+    rememberAnswer('conv-1', 'Svar.', { chunks });
+
+    forgetAllAnswers();
+
+    expect(localStorage.getItem('ka.layout.v1')).toBe('{}');
+  });
+
+  it('kaster ikke når nettleseren nekter', () => {
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new DOMException('blokkert', 'SecurityError');
+    });
+
+    expect(() => forgetAllAnswers()).not.toThrow();
   });
 });

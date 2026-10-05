@@ -1,6 +1,6 @@
 # 0005 — Teksten i utdragene, og kildene etter ny innlasting, i live
 
-**Status:** valgt · **Dato:** 2026-09-30 · **Endret:** 2026-10-05, stegene (Simens issue 88), tallene fra KA CC på #227 og hva lageret inneholder (KA CC på #233)
+**Status:** valgt · **Dato:** 2026-09-30 · **Endret:** 2026-10-05, stegene (Simens issue 88), tallene fra KA CC på #227, hva lageret inneholder (KA CC på #233) og at det tømmes ved Logg ut
 
 ## Kontekst
 
@@ -157,13 +157,13 @@ samme bit.
   nettleser, kan lese de forriges søkeord og agentens plan i
   utviklerverktøyene. Hva en utlogging i Azure gjør med `localStorage`, er
   ikke målt.
-- **Foreslått, og ikke avgjort:** tøm lageret ved «Logg ut» der det finnes en
-  utlogging, altså i bff-modus (`/auth/logout`, `src/api/session.ts`). I dag
-  skriver bare live-modus til lageret, og live har ingen utlogging. Forslaget
-  gjelder derfor den dagen lageret tas i bruk bak BFF-en, eller live får
-  innlogging. Det kan gjøres i klienten før navigasjonen, eller med
-  `Clear-Site-Data` på svaret fra utloggingen. Lars avgjør om lageret er
-  greit slik det er, og om det skal tømmes.
+- **Lageret tømmes ved «Logg ut»** (Lars sa ja 5.10). Det gjelder der det
+  finnes en utlogging, altså i bff-modus (`/auth/logout`, `beforeLogout` i
+  `src/api/session.ts`). Lageret tømmes i klikket, før nettleseren følger
+  lenka. I dag skriver bare live-modus til lageret, og live har ingen
+  utlogging, så bak BFF-en tømmes det en nettleser har med seg fra live.
+  Tømmingen er dermed på plass den dagen lageret tas i bruk bak BFF-en. Får
+  live innlogging, må den samme tømmingen inn der.
 - **Et svar kjennes igjen på teksten.** Endrer backenden teksten etter at den
   er lagret, får svaret ikke kildene tilbake, og panelet er da som i dag. Det
   er tryggere enn å sette kilder på feil svar.

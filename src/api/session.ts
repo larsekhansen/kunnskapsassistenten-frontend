@@ -1,3 +1,4 @@
+import { forgetAllAnswers } from './live/sourceStore';
 import { kaEnv } from './runtimeConfig';
 
 /** Who is signed in, and where signing out goes. */
@@ -43,4 +44,17 @@ export async function fetchSession(signal?: AbortSignal): Promise<Session | unde
   } catch {
     return undefined;
   }
+}
+
+/**
+ * What «Logg ut» does in this browser before the BFF ends the session.
+ *
+ * It empties the answer store (`ka.sources.v1`), which keeps what came of the
+ * reader's questions per browser and not per user (docs/arkitektur/0005).
+ * Lars said yes to this on 5.10. Synchronous, and called from the link's
+ * click, so it is done before the browser follows the link to
+ * `/auth/logout`.
+ */
+export function beforeLogout(): void {
+  forgetAllAnswers();
 }
