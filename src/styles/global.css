@@ -658,6 +658,36 @@ body {
 }
 
 /*
+ * Simens issue 123: the foot at the end of the scrolling region instead of
+ * below it, so the panel is one column with nothing fixed. Off by default;
+ * the hidden settings menu turns it on, see src/layout/footerMode.ts.
+ *
+ * Three things the pinned foot needs and this one does not:
+ *
+ *   - the minimum height, which existed to hold the pinned foot against the
+ *     bottom of the panel. Inside the scroller it would be dead air between
+ *     the last thread and the links;
+ *   - `space-between`, which spread the links and the colour scheme across
+ *     that height. Here they sit together at the end of the list;
+ *   - the panel's inline padding, which the scrolling region already keeps.
+ *
+ * The line over it stays. It is what separates the app's own settings from
+ * the list, whether or not the foot moves with it.
+ *
+ * No end padding here on purpose. Moving the foot inside takes BOTH
+ * `:has(> .sidebar-footer)` rules out of play — the foot is a descendant of
+ * the panel now, not a child — so the scrolling region keeps its own 32 px
+ * under its last item, and the panel keeps its own 32 px below that. Adding
+ * a third would be 80 px of air under three links.
+ */
+.sidebar-content > .sidebar-footer {
+  justify-content: start;
+  min-block-size: 0;
+  padding-inline: 0;
+  margin-block-start: var(--ds-size-6);
+}
+
+/*
  * The three pages about Kunnskapsassistenten. A list without markers: they
  * are links in a column, the way the old Kunnskapsassistenten draws them, and
  * a bullet beside an icon is two markers for one item. The list keeps its
