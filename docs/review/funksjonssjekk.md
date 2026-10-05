@@ -89,6 +89,7 @@ slik de ble anmeldt.
 | En lang filterchip holder seg i feltet, 1440 og i skuffa   | `filter-chip.spec.ts`       |
 | Når alle kontrollene i panelraden med peker                | `panel-head.spec.ts`        |
 | Ser at et svar navngir korpuset det kom fra                | `corpus-per-answer.spec.ts` |
+| Går til de tre sidene fra lenkene i foten                  | `shell.spec.ts`             |
 
 ## Merget, men ikke dekket
 

@@ -139,18 +139,24 @@ async function settle(page: Page, keepFocus = false): Promise<void> {
  * `keepFocus` for a state that only exists while something has focus — an open
  * dropdown, a highlighted row. Without it the state is gone before axe looks;
  * see `settle`.
+ *
+ * `allRules` runs every rule axe has on by default, best-practice included,
+ * instead of `RULE_SETS`. For pages of written content, where the advice rules
+ * catch what the WCAG set lets through: the table on `/onboarding` had an
+ * empty header cell (`empty-table-header`, best-practice) that the measurement
+ * in #226 could not see and the review found by hand. Not the default, for the
+ * reason given at `RULE_SETS`.
  */
 export async function expectNoAxeViolations(
   page: Page,
   what: string,
-  { keepFocus = false }: { keepFocus?: boolean } = {},
+  { keepFocus = false, allRules = false }: { keepFocus?: boolean; allRules?: boolean } = {},
 ): Promise<void> {
   await settle(page, keepFocus);
 
-  const results = await new AxeBuilder({ page })
-    .withTags(RULE_SETS)
-    .disableRules(DISABLED_RULES)
-    .analyze();
+  const builder = new AxeBuilder({ page });
+  if (!allRules) builder.withTags(RULE_SETS);
+  const results = await builder.disableRules(DISABLED_RULES).analyze();
 
   const summary = results.violations.map(
     (violation) =>
