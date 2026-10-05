@@ -59,20 +59,26 @@ export interface Thread {
    * one corpus exists (#2, del 2).
    */
   corpusKey?: string;
+  /**
+   * The filter the thread was started with, which every question in it is
+   * asked with. By dimension, as the filter panel holds it.
+   *
+   * On a thread the browser has just made, it is the filter the first
+   * question is asked with, so the client can store it when it makes the
+   * conversation (live, `filter-value`; Simens issue 90). On a thread read
+   * back, it is what the backend kept.
+   *
+   * Absent when the thread has none, and when the client cannot know: the
+   * mock keeps no filter on a thread, the BFF keeps it in memory
+   * (docs/arkitektur/0003-felt-og-korpus-fra-bff.md), and a live thread from
+   * before #90 was made without one.
+   */
+  filter?: FilterSelection;
 }
 
 /** A thread with its messages, the shape a thread route needs. */
 export interface ThreadDetail extends Thread {
   messages: Message[];
-  /**
-   * The filter the thread was started with, which every question in it is
-   * asked with. By dimension, as the filter panel holds it.
-   *
-   * Absent when the thread has none, and when the client cannot know: the
-   * mock and live keep no filter on a thread, and the BFF keeps it in memory
-   * (docs/arkitektur/0003-felt-og-korpus-fra-bff.md).
-   */
-  filter?: FilterSelection;
 }
 
 /**

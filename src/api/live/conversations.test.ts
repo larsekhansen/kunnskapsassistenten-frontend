@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   agentIdFromToolName,
   citationCountIn,
+  filterFromMessages,
   messagesFromApi,
   sourcesFromChunks,
   threadDetailFrom,
@@ -345,6 +346,67 @@ describe('threadDetailFrom', () => {
     const detail = threadDetailFrom(RECORDED.conversation, []);
     expect(detail.updatedAt).toBe(detail.createdAt);
     expect(detail.messages).toEqual([]);
+  });
+
+  it('bærer filteret samtalen ble laget med, som låser den', () => {
+    const detail = threadDetailFrom(RECORDED.conversation, [
+      ...RECORDED.messages,
+      { id: 'f', role: null, filterValue: { 'document-type': ['Årsrapport'] } },
+    ]);
+    expect(detail.filter?.documentType).toEqual(['Årsrapport']);
+  });
+
+  it('har ikke noe filter når samtalen ble laget uten', () => {
+    expect(threadDetailFrom(RECORDED.conversation, RECORDED.messages).filter).toBeUndefined();
+  });
+});
+
+/**
+ * Filteret en samtale ble laget med (Simens issue 90).
+ *
+ * Målt mot den lokale stacken 05.10: `filter-value` på opprettelsen kommer
+ * tilbake på en egen melding med `role: null`, og nøklene i kebab-case.
+ * Filteret et spørsmål ble stilt med, lagres ikke: `filterValue` er null på
+ * hver tur.
+ */
+describe('filterFromMessages', () => {
+  it('leser nøklene slik backenden gir dem tilbake, i kebab-case', () => {
+    const filter = filterFromMessages([
+      { id: 's', role: 'system', filterValue: null },
+      {
+        id: 'f',
+        role: null,
+        filterValue: { 'document-type': ['Årsrapport'], organisation: [], year: ['2023'] },
+      },
+      { id: 'u', role: 'user', text: 'Hva sier rapporten?', filterValue: null },
+    ]);
+
+    expect(filter).toEqual({ documentType: ['Årsrapport'], organisation: [], year: ['2023'] });
+  });
+
+  it('leser også navnene slik vi sendte dem', () => {
+    expect(
+      filterFromMessages([{ id: 'f', role: null, filterValue: { documentType: ['Evaluering'] } }])
+        ?.documentType,
+    ).toEqual(['Evaluering']);
+  });
+
+  it('gir ingenting for et tomt filter, som ikke låser noe', () => {
+    expect(
+      filterFromMessages([{ id: 'f', role: null, filterValue: { 'document-type': [] } }]),
+    ).toBeUndefined();
+  });
+
+  it('gir ingenting når ingen melding har et filter', () => {
+    expect(filterFromMessages([{ id: 'u', role: 'user', filterValue: null }])).toBeUndefined();
+    expect(filterFromMessages(undefined)).toBeUndefined();
+  });
+
+  it('hopper over det som ikke er en liste med tekst', () => {
+    const filter = filterFromMessages([
+      { id: 'f', role: null, filterValue: { 'document-type': ['Årsrapport', 3], year: '2023' } },
+    ]);
+    expect(filter).toEqual({ documentType: ['Årsrapport'], organisation: [], year: [] });
   });
 });
 
