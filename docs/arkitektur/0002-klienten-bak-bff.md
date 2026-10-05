@@ -163,10 +163,14 @@ målte at det ikke stemmer slik det var ment:
 | `filter-repo` og merge | 734     | 5, som i vårt repo                        | virker     | blir nye |
 
 Begge tar med commitene. Forskjellen er om man kan følge historikken til en
-enkelt fil etterpå, og det er `subtree` som ikke kan det. Valget mellom dem
-står åpent som D1 i planen: `subtree` beholder SHA-ene, som 140 steder i våre
-egne `docs/review/` viser til, mens `filter-repo` gir brukbar filhistorikk og
-nye SHA-er.
+enkelt fil etterpå, og det er `subtree` som ikke kan det.
+
+**Lars valgte 2026-10-05 en tredje vei: én kopi, uten historikk** (D1 i
+planen). Kilden og SHA-en står i commit-meldingen og i README-en i
+`apps/web`, så den som leter finner veien til det arkiverte repoet. Da er
+ingen av de to radene over det som skjer — de står igjen fordi de er
+grunnlaget valget ble tatt på, og fordi `subtree`, som 0002 opprinnelig
+pekte på, ikke gjør det ADR-en sa den gjorde.
 
 ## Rettet 2026-10-05: 0005 løser kildene bare i live
 
