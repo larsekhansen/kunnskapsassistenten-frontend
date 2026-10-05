@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SourceDocument } from '../../model';
-import { excerptIds, fetchExcerptTexts, withExcerptTexts } from './excerpts';
+import { EXCERPT_TIMEOUT_MS, excerptIds, fetchExcerptTexts, withExcerptTexts } from './excerpts';
 
 const documents: SourceDocument[] = [
   {
@@ -65,6 +65,72 @@ describe('fetchExcerptTexts', () => {
     );
 
     expect(await fetchExcerptTexts('/api', 'kudos-full', ['c1'])).toBeUndefined();
+  });
+
+  it('deler en lang liste i forespørsler på 20, og slår svarene sammen', async () => {
+    const ids = Array.from({ length: 25 }, (_, i) => `id${i}`);
+    const fetchMock = vi.fn(async (url: unknown) => {
+      const asked = new URL(String(url), 'http://localhost').searchParams.get('ids') ?? '';
+      const excerpts = Object.fromEntries(asked.split(',').map((id) => [id, `Tekst ${id}`]));
+      return new Response(JSON.stringify({ excerpts }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const texts = await fetchExcerptTexts('/api', 'kudos-full', ids);
+
+    const sizes = fetchMock.mock.calls.map(
+      ([url]) =>
+        new URL(String(url), 'http://localhost').searchParams.get('ids')?.split(',').length,
+    );
+    expect(sizes).toEqual([20, 5]);
+    expect(texts?.size).toBe(25);
+    expect(texts?.get('id24')).toBe('Tekst id24');
+  });
+
+  it('mister bare id-ene i en forespørsel som feiler', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const ids = Array.from({ length: 21 }, (_, i) => `id${i}`);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: unknown) => {
+        const asked = new URL(String(url), 'http://localhost').searchParams.get('ids') ?? '';
+        if (asked.split(',').length === 1) return new Response(null, { status: 502 });
+        const excerpts = Object.fromEntries(asked.split(',').map((id) => [id, 'Tekst']));
+        return new Response(JSON.stringify({ excerpts }), { status: 200 });
+      }),
+    );
+
+    const texts = await fetchExcerptTexts('/api', 'kudos-full', ids);
+
+    expect(texts?.size).toBe(20);
+    expect(texts?.has('id20')).toBe(false);
+  });
+
+  it('gir opp etter tidsavbruddet når serveren aldri svarer', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: unknown, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('avbrutt', 'AbortError')),
+            );
+          }),
+      ),
+    );
+
+    const started = Date.now();
+    const texts = await fetchExcerptTexts('/api', 'kudos-full', ['c1'], undefined, 50);
+
+    expect(texts).toBeUndefined();
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it('har seks sekunder som tidsavbrudd, mer enn serverens fem', () => {
+    // The server's 502 after 5 s is the answer that should arrive; this is the
+    // backstop for a server that does not answer at all.
+    expect(EXCERPT_TIMEOUT_MS).toBe(6000);
   });
 
   it('spør ikke uten datasett eller uten id-er', async () => {

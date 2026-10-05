@@ -3,8 +3,8 @@ import {
   MAX_STORED_CHARS,
   SOURCES_STORAGE_KEY,
   answerFingerprint,
-  recallThreadSources,
-  rememberAnswerSources,
+  recallThread,
+  rememberAnswer,
 } from './sourceStore';
 
 const chunks = [
@@ -33,11 +33,11 @@ describe('answerFingerprint', () => {
   });
 });
 
-describe('rememberAnswerSources og recallThreadSources', () => {
+describe('rememberAnswer og recallThread', () => {
   it('finner bitene igjen under tråden og teksten i svaret', () => {
-    rememberAnswerSources('conv-1', 'Svar [1].', chunks, 1000);
+    rememberAnswer('conv-1', 'Svar [1].', { chunks }, 1000);
 
-    const remembered = recallThreadSources('conv-1', 2000);
+    const remembered = recallThread('conv-1', 2000);
 
     expect(remembered?.get(answerFingerprint('Svar [1].'))?.chunks).toEqual([
       {
@@ -52,26 +52,59 @@ describe('rememberAnswerSources og recallThreadSources', () => {
   });
 
   it('lagrer bare det svaret bar, ikke tekst fra dokumentene', () => {
-    rememberAnswerSources('conv-1', 'Svar.', [
-      { ...chunks[0], content_markdown: 'Hele utdraget.' } as never,
-    ]);
+    rememberAnswer('conv-1', 'Svar.', {
+      chunks: [{ ...chunks[0], content_markdown: 'Hele utdraget.' } as never],
+    });
 
     expect(localStorage.getItem(SOURCES_STORAGE_KEY)).not.toContain('Hele utdraget');
   });
 
   it('lagrer et svar som et objekt, så stegene kan få plass ved siden av bitene senere', () => {
-    rememberAnswerSources('conv-1', 'Svar.', [chunks[0]]);
+    rememberAnswer('conv-1', 'Svar.', { chunks: [chunks[0]] });
 
     const answer = JSON.parse(localStorage.getItem(SOURCES_STORAGE_KEY) ?? '{}').threads['conv-1']
       .answers[answerFingerprint('Svar.')];
     expect(Object.keys(answer)).toEqual(['chunks']);
   });
 
-  it('holder svarene i en tråd fra hverandre', () => {
-    rememberAnswerSources('conv-1', 'Første svar.', [chunks[0]]);
-    rememberAnswerSources('conv-1', 'Andre svar.', [chunks[1]]);
+  it('tar vare på stegene, treffene og tenketiden ved siden av bitene', () => {
+    const thinkingSteps = [
+      { id: 'thinking-1', kind: 'reasoning' as const, label: 'Jeg søker etter årsrapporten.' },
+      {
+        id: 'search-2',
+        kind: 'search' as const,
+        label: 'Søkte',
+        queries: ['Nkom måloppnåelse 2022'],
+        durationMs: 812,
+      },
+    ];
+    const retrieval = { hitCount: 6, documentCount: 1, keywords: ['Nkom måloppnåelse 2022'] };
 
-    const remembered = recallThreadSources('conv-1');
+    rememberAnswer('conv-1', 'Svar.', { chunks, thinkingSteps, retrieval, thoughtMs: 4200 });
+
+    expect(recallThread('conv-1')?.get(answerFingerprint('Svar.'))).toMatchObject({
+      thinkingSteps,
+      retrieval,
+      thoughtMs: 4200,
+    });
+  });
+
+  it('tar vare på stegene også for et svar uten biter', () => {
+    const thinkingSteps = [{ id: 'thinking-1', kind: 'reasoning' as const, label: 'Jeg leter.' }];
+
+    rememberAnswer('conv-1', 'Fant ingenting om det.', { chunks: [], thinkingSteps });
+
+    expect(recallThread('conv-1')?.get(answerFingerprint('Fant ingenting om det.'))).toEqual({
+      chunks: [],
+      thinkingSteps,
+    });
+  });
+
+  it('holder svarene i en tråd fra hverandre', () => {
+    rememberAnswer('conv-1', 'Første svar.', { chunks: [chunks[0]] });
+    rememberAnswer('conv-1', 'Andre svar.', { chunks: [chunks[1]] });
+
+    const remembered = recallThread('conv-1');
     expect(remembered?.get(answerFingerprint('Første svar.'))?.chunks[0]?.chunk_id).toBe(
       'ef0a96e7e2bb',
     );
@@ -80,19 +113,19 @@ describe('rememberAnswerSources og recallThreadSources', () => {
     );
   });
 
-  it('skriver ingenting uten tråd, uten tekst eller uten biter', () => {
-    rememberAnswerSources('', 'Svar.', chunks);
-    rememberAnswerSources('conv-1', '  ', chunks);
-    rememberAnswerSources('conv-1', 'Svar.', []);
+  it('skriver ingenting uten tråd, uten tekst, eller uten både biter og steg', () => {
+    rememberAnswer('', 'Svar.', { chunks });
+    rememberAnswer('conv-1', '  ', { chunks });
+    rememberAnswer('conv-1', 'Svar.', { chunks: [] });
 
     expect(localStorage.getItem(SOURCES_STORAGE_KEY)).toBeNull();
-    expect(recallThreadSources('conv-1')).toBeUndefined();
+    expect(recallThread('conv-1')).toBeUndefined();
   });
 
   it('regner det som bruk å åpne tråden', () => {
-    rememberAnswerSources('conv-1', 'Svar.', chunks, 1000);
+    rememberAnswer('conv-1', 'Svar.', { chunks }, 1000);
 
-    recallThreadSources('conv-1', 5000);
+    recallThread('conv-1', 5000);
 
     expect(stored().threads['conv-1'].usedAt).toBe(5000);
   });
@@ -100,10 +133,10 @@ describe('rememberAnswerSources og recallThreadSources', () => {
   it('fjerner tråden som ble brukt lengst siden når lageret blir for stort', () => {
     // Four threads whose chunks each take a third of the room: only three fit.
     const big = [{ chunk_id: 'a', metadata: 'x'.repeat(MAX_STORED_CHARS / 3) }];
-    rememberAnswerSources('eldst', 'Svar.', big, 1);
-    rememberAnswerSources('nest', 'Svar.', big, 2);
-    recallThreadSources('eldst', 3);
-    rememberAnswerSources('nyest', 'Svar.', big, 4);
+    rememberAnswer('eldst', 'Svar.', { chunks: big }, 1);
+    rememberAnswer('nest', 'Svar.', { chunks: big }, 2);
+    recallThread('eldst', 3);
+    rememberAnswer('nyest', 'Svar.', { chunks: big }, 4);
 
     // «nest» was used longest ago once «eldst» was opened again.
     expect(Object.keys(stored().threads).sort()).toEqual(['eldst', 'nyest']);
@@ -112,7 +145,7 @@ describe('rememberAnswerSources og recallThreadSources', () => {
 
   it('tåler et lager med søppel i', () => {
     localStorage.setItem(SOURCES_STORAGE_KEY, '{ikke json');
-    expect(recallThreadSources('conv-1')).toBeUndefined();
+    expect(recallThread('conv-1')).toBeUndefined();
 
     localStorage.setItem(
       SOURCES_STORAGE_KEY,
@@ -128,9 +161,43 @@ describe('rememberAnswerSources og recallThreadSources', () => {
         },
       }),
     );
-    const remembered = recallThreadSources('conv-1');
+    const remembered = recallThread('conv-1');
     expect(remembered?.get('x')).toEqual({ chunks: [{}] });
     expect(remembered?.has('y')).toBe(false);
+
+    localStorage.setItem(
+      SOURCES_STORAGE_KEY,
+      JSON.stringify({
+        threads: {
+          'conv-1': {
+            usedAt: 1,
+            answers: {
+              z: {
+                chunks: [],
+                thinkingSteps: [
+                  { id: 's1', kind: 'reasoning', label: 'Beholdes.', durationMs: -5 },
+                  { id: 's2', kind: 'ukjent', label: 'Ukjent slag.' },
+                  { id: 's3', kind: 'search', label: 'Søkte', queries: ['a', 7] },
+                  'ikke et steg',
+                ],
+                retrieval: { hitCount: 'mange', documentCount: 1, keywords: [] },
+                thoughtMs: Number.NaN,
+              },
+            },
+          },
+        },
+      }),
+    );
+    // A negative duration and a query that is not text are dropped; a step of
+    // an unknown kind, a retrieval with a count that is not a number, and a
+    // thinking time that is not a number are not kept at all.
+    expect(recallThread('conv-1')?.get('z')).toEqual({
+      chunks: [],
+      thinkingSteps: [
+        { id: 's1', kind: 'reasoning', label: 'Beholdes.' },
+        { id: 's3', kind: 'search', label: 'Søkte' },
+      ],
+    });
   });
 
   it('kaster ikke når nettleseren nekter å skrive', () => {
@@ -138,7 +205,7 @@ describe('rememberAnswerSources og recallThreadSources', () => {
       throw new DOMException('full', 'QuotaExceededError');
     });
 
-    expect(() => rememberAnswerSources('conv-1', 'Svar.', chunks)).not.toThrow();
+    expect(() => rememberAnswer('conv-1', 'Svar.', { chunks })).not.toThrow();
   });
 
   it('kaster ikke når nettleseren nekter å lese', () => {
@@ -146,6 +213,6 @@ describe('rememberAnswerSources og recallThreadSources', () => {
       throw new DOMException('blokkert', 'SecurityError');
     });
 
-    expect(recallThreadSources('conv-1')).toBeUndefined();
+    expect(recallThread('conv-1')).toBeUndefined();
   });
 });
