@@ -566,11 +566,13 @@ test.describe('hovedkolonnen', () => {
         await main.evaluate((element) => {
           element.scrollTop = Math.round((element.scrollHeight - element.clientHeight) / 2);
         });
-        // Clicking the field is not what is under test, so the column is read
-        // after it and before the first key.
-        await composer(page).click();
+        // Read before the click, not after it. With the margin on the field
+        // as well, the column jumps once when the field takes focus rather
+        // than once per key: measured from after the click, the test was
+        // green with the fix taken out.
         const before = await main.evaluate((element) => element.scrollTop);
         expect(before, 'tråden skal ha noe å rulle i').toBeGreaterThan(0);
+        await composer(page).click();
 
         await page.keyboard.type('Hva sier rapporten om', { delay: 20 });
         await expect(composer(page)).toHaveValue('Hva sier rapporten om');
