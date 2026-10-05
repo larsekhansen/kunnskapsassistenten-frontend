@@ -91,6 +91,7 @@ slik de ble anmeldt.
 | Ser at et svar navngir korpuset det kom fra                | `corpus-per-answer.spec.ts` |
 | Går til de tre sidene fra lenkene i foten                  | `shell.spec.ts`             |
 | Skriver midt i en tråd uten at kolonnen flytter seg        | `chat.spec.ts`              |
+| Åpner kildepanelet fra skinna med tastaturet, uten rulling | `layout.spec.ts`            |
 
 ## Merget, men ikke dekket
 

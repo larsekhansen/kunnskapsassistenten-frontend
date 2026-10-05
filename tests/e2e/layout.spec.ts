@@ -438,6 +438,57 @@ test.describe('layouten', () => {
   });
 
   /**
+   * The tooltip is placed once, when it appears, and stays where it was put.
+   * Opening the sources panel from its rail with the keyboard changes the
+   * text under a tooltip that is still showing, from «Vis kilder» to the
+   * longer «Skjul kilder». Placed on top of a rail at the window's edge, the
+   * box grew from its start edge out past the end of the window: 1190–1289 at
+   * 1280 × 720, and the page scrolled 9 px sideways until focus moved (KA CC
+   * on #224, placed before the button in #229).
+   *
+   * The pointer cannot reach this state the same way: a click moves the
+   * pointer off the rail as the panel opens. Focus is what holds the tooltip.
+   */
+  test('å åpne kildepanelet fra skinna med tastaturet gir ingen vannrett rulling', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'layout: verktøytipset på kildeskinna');
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: HEIGHT });
+      await page.goto('/');
+      await setSidebars(page, stateNamed('nav-aapent'));
+
+      const toggle = page.getByRole('button', { name: SOURCES_TOGGLE });
+      await toggle.focus();
+      await expect(page.locator('.ds-tooltip', { hasText: 'Vis kilder' })).toBeVisible();
+
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('button', { name: 'Skjul kilder' })).toBeFocused();
+      const tooltip = page.locator('.ds-tooltip', { hasText: 'Skjul kilder' });
+      await expect(tooltip).toBeVisible();
+      // The box grows as the text changes, so measure when nothing is moving.
+      await page.waitForFunction(() =>
+        document.getAnimations().every((animation) => animation.playState !== 'running'),
+      );
+
+      const measured = await page.evaluate(() => ({
+        documentWidth: document.documentElement.scrollWidth,
+        windowWidth: window.innerWidth,
+        tooltipEnd: Math.round(
+          document.querySelector('.ds-tooltip')!.getBoundingClientRect().right,
+        ),
+      }));
+      expect(
+        measured.tooltipEnd,
+        `verktøytipset skal slutte innenfor vinduet på ${width}`,
+      ).toBeLessThanOrEqual(measured.windowWidth);
+      expect(measured.documentWidth, `ingen vannrett rulling på ${width}`).toBe(
+        measured.windowWidth,
+      );
+    }
+  });
+
+  /**
    * The rail wraps the toggle in a Tooltip and the open panel does not, so
    * collapsing REPLACES the button: a wrapper appearing around an element is
    * a different element to React, the old node is unmounted, and the user is
