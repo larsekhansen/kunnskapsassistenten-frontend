@@ -536,6 +536,75 @@ test.describe('hovedkolonnen', () => {
   );
 
   /**
+   * Simens issue 117: the reader's question read as a heading over the
+   * answer. #237 put it in a box at the end of the line, at most 85 % of the
+   * column, and the answer across the column under it. The side and the width
+   * are two of the three things that tell the two apart, and both are CSS:
+   * the unit tests cover the box, its colour and «Du skrev:», and nothing
+   * that a browser has to lay out (KA CC on #237).
+   *
+   * Two questions, because the width does two jobs. The long one in the
+   * thread is held at 85 %; a short one shrinks to its words instead of
+   * standing as a band.
+   */
+  for (const [width, height] of [
+    [1440, 900],
+    [390, 844],
+  ] as const) {
+    test(
+      `spørsmålet står i en boks mot slutten av linja, og svaret over hele kolonnen, ${width}`,
+      MOCK,
+      async ({ page }, testInfo) => {
+        covers(testInfo, 'spørsmål og svar skilles på side og bredde');
+        await page.setViewportSize({ width, height });
+        await page.goto('/threads/nkom-maaloppnaaelse');
+        await expect(page.getByRole('button', { name: 'Kopier svaret' }).first()).toBeVisible();
+
+        await composer(page).click();
+        await page.keyboard.type('Hei?');
+        await page.keyboard.press('Enter');
+        await expect(page.getByRole('button', { name: 'Kopier svaret' })).toHaveCount(2, {
+          timeout: ANSWER_TIMEOUT,
+        });
+
+        const placed = await page.evaluate(() =>
+          [...document.querySelectorAll('.ka-message--user')].map((turn) => {
+            const line = turn.getBoundingClientRect();
+            const box = turn.querySelector('.ka-message__bubble')!.getBoundingClientRect();
+            return {
+              text: turn.textContent!.replace('Du skrev:', '').trim().slice(0, 30),
+              share: box.width / line.width,
+              startGap: box.left - line.left,
+              endGap: line.right - box.right,
+            };
+          }),
+        );
+        const answer = await page.evaluate(() => {
+          const card = document.querySelector('.ka-message--assistant')!.getBoundingClientRect();
+          const line = document.querySelector('.ka-message--user')!.getBoundingClientRect();
+          return { share: card.width / line.width };
+        });
+
+        expect(placed, 'to spørsmål i tråden').toHaveLength(2);
+        for (const question of placed) {
+          expect(question.endGap, `«${question.text}» skal stå mot slutten av linja`).toBeLessThan(
+            1,
+          );
+          expect(
+            question.startGap,
+            `«${question.text}» skal ikke starte ved kanten`,
+          ).toBeGreaterThan(0);
+          expect(question.share, `«${question.text}» skal være høyst 85 %`).toBeLessThan(0.851);
+        }
+        const [long, short] = placed;
+        expect(long!.share, 'det lange spørsmålet skal fylle de 85 %').toBeGreaterThan(0.84);
+        expect(short!.share, '«Hei?» skal krympe til ordene').toBeLessThan(0.5);
+        expect(answer.share, 'svaret skal gå over hele kolonnen').toBeGreaterThan(0.99);
+      },
+    );
+  }
+
+  /**
    * Simens runde 3, ekstra 1: writing in the field while not at the bottom
    * scrolled the main column 49 px towards the end for every key. The guard
    * for WCAG 2.4.11 was `scroll-padding` on the scroller, the field sits in
