@@ -17,7 +17,6 @@ import { chatErrorText } from './errorText';
 import { answerScopeText } from './filterSummary';
 import { CLARIFICATION_PLACEHOLDER, READING_THREAD, kickstartersFor } from './text';
 import { threadHeading } from './threadHeading';
-import { useAtBottom } from './useAtBottom';
 import { useComposerShortcut } from './useComposerShortcut';
 import { useFollowAnswer } from './useFollowAnswer';
 import { useAttachments } from './useAttachments';
@@ -213,7 +212,6 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   // not go looking for it: the day chat is moved to another slot, a search up
   // the DOM finds the wrong element or nothing.
   const { ref: scrollRef, scrollToBottom } = useMainScroll();
-  const atBottom = useAtBottom(scrollRef, rootRef);
 
   /*
    * The compose field is sticky and opaque, so anything the browser scrolls
@@ -249,8 +247,13 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
     return () => observer.disconnect();
   }, []);
 
-  // An answer on its way is followed down, if the reader is at the bottom.
-  useFollowAnswer(scrollRef, rootRef, status === 'pending' || status === 'streaming');
+  // An answer on its way is followed down, if the reader is at the bottom,
+  // and «Bla til nederst» is drawn from the same measurement.
+  const atBottom = useFollowAnswer(
+    scrollRef,
+    rootRef,
+    status === 'pending' || status === 'streaming',
+  );
 
   // Activating a `[n]` marker is the shell's business: it opens the sources
   // panel and tells it which excerpt to show. Neither view knows the other.

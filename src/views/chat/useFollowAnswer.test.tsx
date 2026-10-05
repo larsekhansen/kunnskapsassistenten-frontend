@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { useRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useFollowAnswer } from './useFollowAnswer';
@@ -82,8 +82,8 @@ function column(height: number, top: number) {
 function Follow({ element, answering }: { element: HTMLElement; answering: boolean }) {
   const container = useRef<HTMLElement | null>(element);
   const content = useRef<HTMLElement | null>(element);
-  useFollowAnswer(container, content, answering);
-  return null;
+  const atBottom = useFollowAnswer(container, content, answering);
+  return <output data-testid="at-bottom">{String(atBottom)}</output>;
 }
 
 describe('useFollowAnswer', () => {
@@ -165,5 +165,29 @@ describe('useFollowAnswer', () => {
     rerender(<Follow element={col.element} answering={false} />);
 
     expect(col.element.scrollTop).toBe(580);
+  });
+  /*
+   * «Bla til nederst» is drawn from what this returns. While the column is
+   * held, a paragraph that has arrived and not yet been followed is not the
+   * reader leaving the bottom: the button came and went 90 times in three
+   * answers at 1440 × 900 when it had its own measurement.
+   */
+  it('counts a column it is holding as at the bottom, between a paragraph and the jump', () => {
+    const col = column(1000, 500);
+    render(<Follow element={col.element} answering />);
+
+    col.growQuietly(40);
+    col.scrolled();
+
+    expect(screen.getByTestId('at-bottom').textContent).toBe('true');
+  });
+
+  it('says so when the reader has scrolled up', () => {
+    const col = column(1000, 500);
+    render(<Follow element={col.element} answering />);
+
+    col.scrollTo(200);
+
+    expect(screen.getByTestId('at-bottom').textContent).toBe('false');
   });
 });

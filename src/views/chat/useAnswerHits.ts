@@ -44,7 +44,7 @@ export type AnswerHits = {
  * Which is why it is re-applied after EVERY render and not only when the
  * index changes. Measured in the browser 2026-09-15: stepping to hit 2 set
  * the attribute, and it was gone a moment later. The chat view re-renders on
- * scroll — `useAtBottom` watches the main column — and the smooth scroll to
+ * scroll — `useFollowAnswer` watches the main column — and the smooth scroll to
  * the hit is itself scrolling, so the render that followed took the attribute
  * with it while the effect that sets it sat still on unchanged dependencies.
  * Scrolling is the one thing that stays behind a dependency list: an effect

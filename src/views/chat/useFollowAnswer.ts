@@ -1,10 +1,21 @@
-import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
-import { AT_BOTTOM_SLACK } from './useAtBottom';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+
+/** How close to the end still counts as «at the bottom», in CSS pixels. */
+const SLACK = 24;
 
 /**
  * Keeps the main column at its bottom while an answer arrives, if that is
  * where the reader already was — and leaves it alone otherwise (Simens
- * runde 3, ekstra 4).
+ * runde 3, ekstra 4). Returns whether the column is at its bottom, which is
+ * what «Bla til nederst» is drawn from (answer 17): a control that does
+ * nothing is worse than no control.
+ *
+ * One hook for both, and that is measured. The button had a hook of its own
+ * that watched the same growth, and it saw each new paragraph a moment before
+ * this one took the column down to it: the button came and went 90 times in
+ * three answers at 1440 × 900, and 226 times at 390 × 844, while the column
+ * never left the bottom. Here the column is moved first and measured after,
+ * and a column that is being held counts as at the bottom.
  *
  * «Where the reader was» is decided by the reader's own scrolling, and by
  * nothing else. Measured in the scroll events, before the answer grows, and
@@ -38,7 +49,8 @@ export function useFollowAnswer(
   container: RefObject<HTMLElement | null>,
   content: RefObject<HTMLElement | null>,
   answering: boolean,
-): void {
+): boolean {
+  const [atBottom, setAtBottom] = useState(true);
   const stuck = useRef(true);
   const following = useRef(answering);
 
@@ -46,20 +58,22 @@ export function useFollowAnswer(
     const element = container.current;
     if (!element) return;
 
-    const measure = () => {
-      stuck.current = distanceToBottom(element) <= AT_BOTTOM_SLACK;
-    };
+    const near = () => distanceToBottom(element) <= SLACK;
+    // Held at the bottom counts as at the bottom: see above.
+    const report = () => setAtBottom(near() || (following.current && stuck.current));
 
     // Where the column stood at the last scroll event, to tell up from down.
     let lastTop = element.scrollTop;
     const scrolled = () => {
       const top = element.scrollTop;
-      if (distanceToBottom(element) <= AT_BOTTOM_SLACK) stuck.current = true;
+      if (near()) stuck.current = true;
       else if (top < lastTop) stuck.current = false;
       lastTop = top;
+      report();
     };
 
-    measure();
+    stuck.current = near();
+    report();
     element.addEventListener('scroll', scrolled, { passive: true });
 
     // jsdom has no ResizeObserver, and there is no layout there to follow.
@@ -69,7 +83,8 @@ export function useFollowAnswer(
 
     const observer = new ResizeObserver(() => {
       if (following.current && stuck.current) toEnd(element);
-      else measure();
+      else stuck.current = near();
+      report();
     });
     observer.observe(content.current ?? element);
 
@@ -92,6 +107,8 @@ export function useFollowAnswer(
     const element = container.current;
     if (was && !answering && stuck.current && element) toEnd(element);
   }, [answering, container]);
+
+  return atBottom;
 }
 
 /** To the end of the column, at once. */
