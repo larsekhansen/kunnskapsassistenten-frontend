@@ -9,8 +9,11 @@ import {
   useState,
   type RefObject,
 } from 'react';
-import { Outlet } from 'react-router';
+import { Outlet, useLocation, useNavigate } from 'react-router';
 import { PrimarySidebarIcon, SecondarySidebarIcon } from '../components/icons';
+import { FEATURE_FLAGS_HASH, FeatureFlagsDialog, useFlagLink } from '../flags';
+import { SETTINGS_HASH, useDisplayLevel } from '../views/chat/displayLevel';
+import { SettingsDialog } from '../views/chat/SettingsDialog';
 import { ComposerContext } from './composerContext';
 import { COMPOSER_ID } from './ids';
 import { PanelSeparator } from './PanelSeparator';
@@ -63,6 +66,30 @@ export type ShellProps = {
  */
 export function Shell({ routeOwnsMain = false }: ShellProps) {
   const { layout } = useLayout();
+  /*
+   * The two menus the address opens: `#innstillinger` and `#feature-flags`.
+   *
+   * Here and not in the chat view, which is where both were mounted. The
+   * settings menu used to hold one setting that belonged to that view, and the
+   * foot of the navigation panel now has a link into it (SidebarFooter.tsx):
+   * that link is drawn on every route, including the three pages about the
+   * project, where no chat view exists. Mounted there, the link opened nothing
+   * on those pages.
+   *
+   * What is in them is still the views' and the flags' own business; the shell
+   * only says WHERE the address draws them. The dialog components themselves
+   * still live beside what they set — see the note in SettingsDialog.tsx.
+   */
+  const { hash } = useLocation();
+  const navigate = useNavigate();
+  const settingsOpen = hash === SETTINGS_HASH;
+  const flagsOpen = hash === FEATURE_FLAGS_HASH;
+  const displayLevel = useDisplayLevel();
+  const settingsFooterMode = useFooterMode();
+  // `?flagg=` turns a flag on and lands on the menu. See src/flags/flagLink.ts.
+  useFlagLink();
+  // `replace`, so closing a menu leaves no step Back walks straight into again.
+  const closeMenu = useCallback(() => navigate({ hash: '' }, { replace: true }), [navigate]);
   /*
    * A panel's drawn width depends on the window as well as on the layout: a
    * panel dragged wider than this window can hold is drawn at what fits. See
@@ -258,6 +285,21 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
 
             <Sidebar slot="secondary-sidebar" element="aside" drawer={drawer} />
           </div>
+
+          {/*
+            Mounted only while the address asks for one, so a page nobody asked
+            it of holds no trace of it. Outside `.shell` because that is a grid
+            of three columns and these are neither; a modal dialog draws in the
+            top layer wherever it sits.
+          */}
+          {settingsOpen ? (
+            <SettingsDialog
+              footerMode={settingsFooterMode}
+              level={displayLevel}
+              onClose={closeMenu}
+            />
+          ) : null}
+          {flagsOpen ? <FeatureFlagsDialog onClose={closeMenu} /> : null}
         </OpenThreadContext>
       </ComposerContext>
     </MainScrollContext>

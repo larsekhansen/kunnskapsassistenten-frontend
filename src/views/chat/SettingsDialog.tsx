@@ -1,5 +1,6 @@
-import { Dialog, Fieldset, Heading, Paragraph, Radio } from '@digdir/designsystemet-react';
+import { Dialog, Fieldset, Heading, Label, Paragraph, Radio } from '@digdir/designsystemet-react';
 import { useId } from 'react';
+import { ColorSchemeToggle } from '../../layout/ColorSchemeToggle';
 import { setFooterMode, type FooterMode } from '../../layout/footerMode';
 import { setDisplayLevel, type DisplayLevel } from './displayLevel';
 
@@ -80,6 +81,7 @@ export function SettingsDialog({ level, footerMode, onClose }: SettingsDialogPro
   const headingId = useId();
   const groupName = useId();
   const footerGroupName = useId();
+  const colourLegendId = useId();
 
   return (
     <Dialog
@@ -124,6 +126,29 @@ export function SettingsDialog({ level, footerMode, onClose }: SettingsDialogPro
             />
           ))}
         </Fieldset>
+        {/*
+          Lys, mørk og auto, moved here from the foot of the navigation panel
+          (chosen 06.10): it is a setting like the two above, and the foot was
+          the one place in the app that carried a control of its own.
+
+          The group it already was, not a third pair of radios. Three fixed
+          answers with an icon each read faster than three rows of text, and
+          the control is the one a reader has used before. The legend names it,
+          so the group itself carries no second name.
+        */}
+        <div className="ka-settings__group">
+          {/*
+            A label beside the group and not a `Fieldset` around it: the toggle
+            group IS a fieldset, and a second one around it gave two groups
+            with the same name, one inside the other. `Label asChild` on a
+            span draws the same line the two legends above draw, without
+            claiming a control of its own.
+          */}
+          <Label asChild id={colourLegendId}>
+            <span>Fargemodus</span>
+          </Label>
+          <ColorSchemeToggle labelledBy={colourLegendId} />
+        </div>
         <Paragraph className="ka-settings__note" data-size="sm" variant="long">
           Valgene huskes i denne nettleseren.
         </Paragraph>

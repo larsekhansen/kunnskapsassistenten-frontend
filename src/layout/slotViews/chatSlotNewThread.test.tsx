@@ -224,19 +224,18 @@ describe('«Ny tråd» after a conversation started on this page', () => {
      * pressing «Lukk» left the field empty and the conversation remounted
      * (KA CC on #208, with #203 in).
      *
-     * Driven through the menu itself rather than through a bare `navigate`,
-     * because it is the closing that has to be safe, not a navigation in the
-     * abstract.
+     * Driven as the two navigations the menu makes, and not through the menu
+     * itself: the menu is the shell's from 06.10, so it is not in this
+     * component's tree any more. What has to be safe is the closing, which is
+     * `navigate({ hash: '' }, { replace: true })` — written out here so the
+     * guard still measures the navigation that broke it.
      */
     show();
     fireEvent.change(field(), { target: { value: 'Halvskrevet' } });
 
     act(() => void go.navigate?.({ hash: '#innstillinger' }));
-    expect(screen.getByText('Innstillinger')).toBeTruthy();
+    act(() => void go.navigate?.({ hash: '' }, { replace: true }));
 
-    act(() => fireEvent.click(screen.getByRole('button', { name: 'Lukk' })));
-
-    expect(screen.queryByText('Innstillinger')).toBeNull();
     expect(field().value).toBe('Halvskrevet');
   });
 

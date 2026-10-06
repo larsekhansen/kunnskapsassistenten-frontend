@@ -709,6 +709,20 @@ body {
 }
 
 /*
+ * The way into the settings menu, where lys/mørk/auto used to stand. The same
+ * row as the three links over it — icon, gap, text — so the foot reads as one
+ * column of four and not as three links with a control under them.
+ *
+ * Outside the list on purpose: that list is named «Om Kunnskapsassistenten»
+ * and holds pages about the project, and this one changes the app.
+ */
+.sidebar-footer__settings {
+  display: flex;
+  gap: var(--ds-size-2);
+  align-items: center;
+}
+
+/*
  * With a foot, the 32 px the region keeps under its last item and the 32 px
  * the panel keeps under itself would be 64 px of air around one row of
  * buttons, taken from the list that scrolls. The line already ends the

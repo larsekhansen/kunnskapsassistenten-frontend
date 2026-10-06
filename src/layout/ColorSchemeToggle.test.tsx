@@ -76,6 +76,10 @@ describe('ColorSchemeToggle', () => {
   });
 });
 
+/*
+ * Velgeren står i innstillingene (valgt 06.10), ikke i foten. Veien dit er
+ * «Innstillinger» nederst i navigasjonspanelet.
+ */
 describe('hvor den står', () => {
   function open(width: number) {
     setViewportWidth(width);
@@ -90,28 +94,34 @@ describe('hvor den står', () => {
     );
   }
 
-  it('står nederst i navigasjonspanelet, og bare der', () => {
+  const group = () => screen.queryByRole('group', { name: 'Fargemodus' });
+
+  it('er ikke i foten, der den sto før', () => {
     open(1440);
 
     const nav = screen.getByRole('navigation', { name: 'Tråder og filter' });
-    expect(within(nav).getByRole('group', { name: 'Fargemodus' })).toBeDefined();
+    expect(within(nav).queryByRole('group', { name: 'Fargemodus' })).toBeNull();
+    expect(group()).toBeNull();
+  });
+
+  it('står i innstillingene, og bare der', () => {
+    open(1440);
+
+    fireEvent.click(screen.getByRole('link', { name: 'Innstillinger' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Innstillinger' });
+    expect(within(dialog).getByRole('group', { name: 'Fargemodus' })).toBeDefined();
     expect(screen.getAllByRole('group', { name: 'Fargemodus' })).toHaveLength(1);
   });
 
-  it('står ikke på skinnen, der tre valg ikke får plass', () => {
-    open(1440);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Skjul tråder og filter' }));
-
-    expect(screen.queryByRole('group', { name: 'Fargemodus' })).toBeNull();
-  });
-
-  it('står nederst i skuffen på en smal skjerm', () => {
+  it('nås fra skuffen på en smal skjerm', () => {
     open(440);
 
     fireEvent.click(screen.getByRole('button', { name: 'Vis tråder og filter' }));
-
     const drawer = screen.getByRole('dialog', { name: 'Tråder og filter' });
-    expect(within(drawer).getByRole('group', { name: 'Fargemodus' })).toBeDefined();
+    fireEvent.click(within(drawer).getByRole('link', { name: 'Innstillinger' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Innstillinger' });
+    expect(within(dialog).getByRole('group', { name: 'Fargemodus' })).toBeDefined();
   });
 });

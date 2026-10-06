@@ -438,6 +438,18 @@
 }
 
 /*
+ * The colour group: its label over the toggle, with the air Designsystemet
+ * keeps between a legend and the first radio above it, so the three groups in
+ * the menu read as three of the same thing.
+ */
+div.ka-settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-size-2);
+  align-items: flex-start;
+}
+
+/*
  * The line under the choices in the hidden settings menu. Designsystemet puts
  * no space between a Fieldset and what follows it inside a Dialog.Block, and
  * without one the note reads as a third option's description.

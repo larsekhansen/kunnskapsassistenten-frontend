@@ -17,9 +17,21 @@ import { useColorScheme } from './useColorScheme';
  * so a screen reader says «1 av 3» and which is chosen.
  *
  * Words beside the icons, not icons alone. Designsystemet asks for a tooltip
- * on an icon-only item, and at the foot of a 400 px panel there is room for
- * the words, which say more than a sun does.
+ * on an icon-only item, and there is room for the words, which say more than
+ * a sun does.
+ *
+ * It stands in the settings menu now (chosen 06.10), where the display level
+ * and the foot already are, rather than at the foot of the navigation panel.
+ * `labelledBy` is for that: the menu draws a legend over the group, and a
+ * group that carried its own `aria-label` as well would be named twice.
+ * Without it the group names itself, which is what a caller that draws no
+ * legend needs.
  */
+
+export type ColorSchemeToggleProps = {
+  /** The id of a legend naming the group, instead of its own label. */
+  labelledBy?: string;
+};
 const choices: { value: ColorScheme; label: string; Icon: typeof SunIcon }[] = [
   { value: 'light', label: 'Lys', Icon: SunIcon },
   { value: 'dark', label: 'Mørk', Icon: MoonIcon },
@@ -33,12 +45,20 @@ function isColorScheme(value: string): value is ColorScheme {
   return choices.some((choice) => choice.value === value);
 }
 
-export function ColorSchemeToggle() {
+export function ColorSchemeToggle({ labelledBy }: ColorSchemeToggleProps = {}) {
   const scheme = useColorScheme();
+
+  /*
+   * One name or the other, never both and never neither: Designsystemet types
+   * the group that way, and a radio group with two names is read out twice.
+   */
+  const naming: { 'aria-labelledby': string } | { 'aria-label': string } = labelledBy
+    ? { 'aria-labelledby': labelledBy }
+    : { 'aria-label': 'Fargemodus' };
 
   return (
     <ToggleGroup
-      aria-label="Fargemodus"
+      {...naming}
       className="color-scheme-toggle"
       data-size="sm"
       onChange={(value) => {

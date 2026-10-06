@@ -1,17 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { useRef, type ReactNode } from 'react';
-import { MemoryRouter, useLocation } from 'react-router';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ChatClient } from '../../api';
-import { AnswerSourcesContext, inertAnswerSources } from '../../layout/answerSourcesContext';
-import { CitationContext } from '../../layout/citationContext';
-import { FilterContext } from '../../layout/filterContext';
-import { MainScrollContext } from '../../layout/scrollContext';
-import { ThreadContext } from '../../layout/threadContext';
-import { emptyFilterSelection, threadFromQuestion, type Message } from '../../model';
+import type { Message } from '../../model';
 import { AnswerMessage } from './AnswerMessage';
 import { MessageList } from './MessageList';
-import { ChatView } from './ChatView';
+import { LayoutProvider } from '../../layout/LayoutProvider';
+import { Shell as AppShell } from '../../layout/Shell';
 import { getFooterMode, resetFooterMode } from '../../layout/footerMode';
 import { getDisplayLevel, resetDisplayLevel, setDisplayLevel } from './displayLevel';
 import { resetViewport, setViewportWidth } from '../../test/matchMedia';
@@ -69,40 +63,10 @@ function showAnswer() {
   );
 }
 
-const idleClient: ChatClient = {
-  // oxlint-disable-next-line require-yield
-  async *ask() {
-    throw new Error('ikke spurt');
-  },
-  listThreads: async () => [],
-  getThread: async () => null,
-  listFacets: async () => [],
-};
-
 /** Skriver adressen ut, så en test kan lese hva lukkingen gjorde med den. */
 function Address() {
   const { pathname, hash } = useLocation();
   return <p data-testid="adresse">{pathname + hash}</p>;
-}
-
-function Shell({ children, at }: { children: ReactNode; at: string }) {
-  const scrollRef = useRef<HTMLElement | null>(null);
-  return (
-    <MemoryRouter initialEntries={[at]}>
-      <MainScrollContext value={scrollRef}>
-        <CitationContext value={{ activeCitation: undefined, showCitation: () => {} }}>
-          <AnswerSourcesContext value={inertAnswerSources}>
-            <ThreadContext value={{ startThread: (question) => threadFromQuestion(question) }}>
-              <FilterContext value={{ selection: emptyFilterSelection, setSelection: () => {} }}>
-                {children}
-                <Address />
-              </FilterContext>
-            </ThreadContext>
-          </AnswerSourcesContext>
-        </CitationContext>
-      </MainScrollContext>
-    </MemoryRouter>
-  );
 }
 
 describe('visningsnivået i svaret', () => {
@@ -222,26 +186,45 @@ describe('den skjulte innstillingsmenyen', () => {
     resetFooterMode();
   });
 
-  it('finnes ikke uten adressen', () => {
-    // «Standard er standard. Uten adressen ser ingen at menyen finnes.»
-    render(
-      <Shell at="/">
-        <ChatView client={idleClient} />
-      </Shell>,
+  /*
+   * Menyen mountes i skallet (valgt 06.10), ikke i chatvisningen, fordi veien
+   * inn står i foten på alle rutene. Testene her tegner derfor det ekte
+   * skallet, som er det som avgjør om adressen åpner noe.
+   */
+  function openMenu(at: string) {
+    return render(
+      <MemoryRouter initialEntries={[at]}>
+        <LayoutProvider>
+          <Routes>
+            <Route path="/" element={<AppShell />} />
+            <Route path="/threads/:threadId" element={<AppShell />} />
+          </Routes>
+          <Address />
+        </LayoutProvider>
+      </MemoryRouter>,
     );
+  }
 
-    expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.queryByText('Innstillinger')).toBeNull();
+  it('er lukket uten adressen, med veien inn i foten', () => {
+    openMenu('/');
+
+    expect(screen.queryByRole('dialog', { name: 'Innstillinger' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Innstillinger' })).toBeTruthy();
+  });
+
+  it('åpnes av lenka i foten, uten å forlate sida', () => {
+    openMenu('/');
+
+    fireEvent.click(screen.getByRole('link', { name: 'Innstillinger' }));
+
+    expect(screen.getByRole('dialog', { name: 'Innstillinger' })).toBeTruthy();
+    expect(screen.getByTestId('adresse').textContent).toBe('/#innstillinger');
   });
 
   it('åpnes av #innstillinger og skifter nivå med én gang', () => {
-    render(
-      <Shell at="/#innstillinger">
-        <ChatView client={idleClient} />
-      </Shell>,
-    );
+    openMenu('/#innstillinger');
 
-    expect(screen.getByText('Innstillinger')).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Innstillinger' })).toBeTruthy();
     const detailed = screen.getByRole('radio', { name: /Detaljert/u });
     expect((screen.getByRole('radio', { name: /Standard/u }) as HTMLInputElement).checked).toBe(
       true,
@@ -254,11 +237,7 @@ describe('den skjulte innstillingsmenyen', () => {
   });
 
   it('holder også valget for foten, med «ruller med» som standard', () => {
-    render(
-      <Shell at="/#innstillinger">
-        <ChatView client={idleClient} />
-      </Shell>,
-    );
+    openMenu('/#innstillinger');
 
     const pinned = screen.getByRole('radio', { name: /Festet/u }) as HTMLInputElement;
     const scrolls = screen.getByRole('radio', { name: /Ruller med/u }) as HTMLInputElement;
@@ -272,11 +251,7 @@ describe('den skjulte innstillingsmenyen', () => {
   });
 
   it('holder de to valgene fra hverandre, så ett ikke endrer det andre', () => {
-    render(
-      <Shell at="/#innstillinger">
-        <ChatView client={idleClient} />
-      </Shell>,
-    );
+    openMenu('/#innstillinger');
 
     fireEvent.click(screen.getByRole('radio', { name: /Festet/u }));
 
@@ -293,17 +268,14 @@ describe('den skjulte innstillingsmenyen', () => {
      * leser ut av tråden sin for å lukke en meny. `navigate({ hash: '' })`
      * løses mot der man står, så stien blir stående.
      */
-    render(
-      <Shell at="/threads/abc123#innstillinger">
-        <ChatView client={idleClient} />
-      </Shell>,
-    );
+    openMenu('/threads/abc123#innstillinger');
 
     expect(screen.getByTestId('adresse').textContent).toBe('/threads/abc123#innstillinger');
 
     fireEvent.click(screen.getByRole('button', { name: 'Lukk' }));
 
     expect(screen.getByTestId('adresse').textContent).toBe('/threads/abc123');
-    expect(screen.queryByText('Innstillinger')).toBeNull();
+    // Lenka i foten heter det samme; det er dialogen som skal være borte.
+    expect(screen.queryByRole('dialog', { name: 'Innstillinger' })).toBeNull();
   });
 });

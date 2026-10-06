@@ -1,26 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { useRef, type ReactNode } from 'react';
-import { MemoryRouter, useLocation } from 'react-router';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ChatClient } from '../api';
-import { AnswerSourcesContext, inertAnswerSources } from '../layout/answerSourcesContext';
-import { CitationContext } from '../layout/citationContext';
-import { FilterContext } from '../layout/filterContext';
-import { MainScrollContext } from '../layout/scrollContext';
-import { ThreadContext } from '../layout/threadContext';
-import { emptyFilterSelection, threadFromQuestion } from '../model';
-import { ChatView } from '../views/chat/ChatView';
+import { LayoutProvider } from '../layout/LayoutProvider';
+import { Shell } from '../layout/Shell';
 import { FLAGS_STORAGE_KEY, isFlagOn, resetFlags } from './flags';
-
-const idleClient: ChatClient = {
-  // oxlint-disable-next-line require-yield
-  async *ask() {
-    throw new Error('ikke spurt');
-  },
-  listThreads: async () => [],
-  getThread: async () => null,
-  listFacets: async () => [],
-};
 
 /** Skriver adressen ut, så en test kan lese hva menyen og lenken gjorde med den. */
 function Address() {
@@ -28,31 +11,22 @@ function Address() {
   return <p data-testid="adresse">{pathname + search + hash}</p>;
 }
 
-function Shell({ children, at }: { children: ReactNode; at: string }) {
-  const scrollRef = useRef<HTMLElement | null>(null);
-  return (
-    <MemoryRouter initialEntries={[at]}>
-      <MainScrollContext value={scrollRef}>
-        <CitationContext value={{ activeCitation: undefined, showCitation: () => {} }}>
-          <AnswerSourcesContext value={inertAnswerSources}>
-            <ThreadContext value={{ startThread: (question) => threadFromQuestion(question) }}>
-              <FilterContext value={{ selection: emptyFilterSelection, setSelection: () => {} }}>
-                {children}
-                <Address />
-              </FilterContext>
-            </ThreadContext>
-          </AnswerSourcesContext>
-        </CitationContext>
-      </MainScrollContext>
-    </MemoryRouter>
-  );
-}
-
+/*
+ * Menyen mountes i skallet (valgt 06.10), ikke i chatvisningen, fordi veien
+ * inn i innstillingene står i foten på alle rutene og begge menyene åpnes av
+ * adressen. Testene tegner derfor det ekte skallet.
+ */
 function openAt(at: string) {
   return render(
-    <Shell at={at}>
-      <ChatView client={idleClient} />
-    </Shell>,
+    <MemoryRouter initialEntries={[at]}>
+      <LayoutProvider>
+        <Routes>
+          <Route path="/" element={<Shell />} />
+          <Route path="/threads/:threadId" element={<Shell />} />
+        </Routes>
+        <Address />
+      </LayoutProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -119,7 +93,7 @@ describe('den skjulte menyen for funksjonsflagg', () => {
   it('står ved siden av innstillingene, ikke i dem', () => {
     openAt('/#innstillinger');
 
-    expect(screen.getByText('Innstillinger')).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Innstillinger' })).toBeTruthy();
     expect(screen.queryByText('Eksperimenter')).toBeNull();
   });
 });
