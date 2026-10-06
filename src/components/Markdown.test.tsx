@@ -233,3 +233,77 @@ describe('Markdown og søk i teksten', () => {
     expect(marks(container)).toHaveLength(0);
   });
 });
+
+/**
+ * The answer text comes from a language model, and the model can be steered
+ * by what it reads in the sources. Nothing in it may run.
+ *
+ * The client this one replaces piped `marked` through DOMPurify and tested
+ * four cases. These are the same four. Here the protection is react-markdown
+ * itself: raw HTML is never parsed, only shown as text, and its
+ * `defaultUrlTransform` empties any URL whose protocol is not on its list.
+ * Turning on raw HTML (rehype-raw) or passing a `urlTransform` that lets
+ * everything through makes these red, which is what they are for.
+ */
+describe('Markdown runs nothing from the answer text', () => {
+  /** Everything in the rendered answer that a browser could execute. */
+  function executable(root: Element): string[] {
+    const found: string[] = [];
+    for (const element of root.querySelectorAll('*')) {
+      const tag = element.tagName.toLowerCase();
+      if (['script', 'iframe', 'object', 'embed'].includes(tag)) found.push(`<${tag}>`);
+      for (const { name, value } of element.attributes) {
+        if (/^on/i.test(name)) found.push(`${tag}[${name}]`);
+        if (['href', 'src', 'action', 'formaction'].includes(name) && isScriptUrl(value)) {
+          found.push(`${tag}[${name}=${value}]`);
+        }
+      }
+    }
+    return found;
+  }
+
+  /**
+   * What a browser would read as `javascript:`. The URL parser ignores case,
+   * trims control characters and spaces at the ends and drops tabs and
+   * newlines anywhere, so `java\tscript:` counts. Dropping every one of them
+   * anywhere is stricter than the parser, which is the safe side for a test.
+   */
+  function isScriptUrl(value: string): boolean {
+    const compact = [...value].filter((char) => char.charCodeAt(0) > 0x20).join('');
+    return compact.toLowerCase().startsWith('javascript:');
+  }
+
+  it.each([
+    ['inline', 'hei <script>alert(1)</script> da'],
+    ['as its own block', '<script>alert(1)</script>\n\nEtterpå.'],
+  ])('renders no script tag (%s)', (_, answer) => {
+    const { container } = render(<Markdown>{answer}</Markdown>);
+
+    expect(executable(container)).toEqual([]);
+  });
+
+  it('renders no inline event handler', () => {
+    const { container } = render(<Markdown>{'<img src=x onerror="alert(1)">'}</Markdown>);
+
+    expect(executable(container)).toEqual([]);
+  });
+
+  it.each([
+    ['plain', '[klikk](javascript:alert(1))'],
+    ['mixed case', '[klikk](JaVaScRiPt:alert(1))'],
+    ['entity-encoded', '[klikk](&#x6A;avascript:alert(1))'],
+  ])('keeps the text of a javascript: link but not the script (%s)', (_, answer) => {
+    const { container } = render(<Markdown>{answer}</Markdown>);
+
+    expect(executable(container)).toEqual([]);
+    expect(container.textContent).toBe('klikk');
+  });
+
+  it('renders no iframe', () => {
+    const { container } = render(
+      <Markdown>{'<iframe src="https://evil.example"></iframe>'}</Markdown>,
+    );
+
+    expect(executable(container)).toEqual([]);
+  });
+});
