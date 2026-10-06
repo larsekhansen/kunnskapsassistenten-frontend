@@ -416,6 +416,33 @@ export const drawerMaxViewport =
 export const drawerViewportQuery = `(width < ${drawerMaxViewport}px)`;
 
 /**
+ * The narrowest window where the two rails still belong beside the answer
+ * column, with the flag `mobile-top-row` on (digdir/kunnskapsassistenten#120).
+ *
+ * The narrowest of the three states in `drawerMaxViewport`: both panels
+ * folded to rails, and the answer column on its floor between them.
+ *
+ *   67 + 640 + 67 = 774
+ *
+ * Below it every pixel a rail stands on is taken out of an answer column that
+ * is already under its floor: at 393 the rails take 134 px and the column gets
+ * 259. With the flag on, the rails leave the row there: the answer column
+ * takes the whole width, and the two toggle buttons stand in a bar above it and
+ * open the same drawers as before.
+ *
+ * Summed from the model like the other two, so it moves if a rail or the floor
+ * does. 1440 at 200 % zoom is 720 and lands under it, which is the point: a
+ * reader who zooms that far needs the width most.
+ */
+export const compactMaxViewport =
+  slotRail(defaultLayout.slots['primary-sidebar'].sizing) +
+  slotFloor(defaultLayout.slots.main.sizing) +
+  slotRail(defaultLayout.slots['secondary-sidebar'].sizing);
+
+/** True while the window is narrow enough for the bar, flag or not. */
+export const compactViewportQuery = `(width < ${compactMaxViewport}px)`;
+
+/**
  * Which edge a drawer slides in from, in Designsystemet's own words.
  *
  * `left` and `right` are the vendor's values for `Dialog`'s `placement`, and
@@ -738,6 +765,7 @@ export function layoutStyle(
   layout: Layout,
   viewport: number,
   drawer = false,
+  compact = false,
 ): Record<string, string> {
   const style: Record<string, string> = {};
   const fitted = fittedWidths(layout, viewport);
@@ -765,10 +793,11 @@ export function layoutStyle(
      * 67 needs 774. Under the floor the column simply gets what is left and
      * the text wraps; nothing is clipped and nothing scrolls sideways.
      */
-    const rails = sidebarSlots.reduce(
-      (total, slot) => total + slotRail(layout.slots[slot].sizing),
-      0,
-    );
+    // In the bar (`compactMaxViewport`) the rails stand above the answer
+    // column and not beside it, so nothing on the row is theirs.
+    const rails = compact
+      ? 0
+      : sidebarSlots.reduce((total, slot) => total + slotRail(layout.slots[slot].sizing), 0);
     const room = Math.max(0, viewport - rails);
     style['--ka-main-min-width'] = `${drawer ? Math.min(main.minWidth, room) : main.minWidth}px`;
     style['--ka-main-max-width'] = `${main.maxWidth}px`;
