@@ -11,7 +11,7 @@ dokumenter» og nøkkelordene.
 
 To lesere vil ha hver sin del av det. Issue 88 i
 `digdir/kunnskapsassistenten` ber om «Fremgangsmåte» over svaret, og enklere
-tenkesteg uten tekniske detaljer. Meldt 30.09: det tekniske i svarene er
+tenkesteg uten tekniske detaljer. Meldt 30.09: det tekniske i svarene kan være
 nyttig for utviklere som vil ha verbose eller debug-aktig tilbakemelding på
 hva som skjer akkurat nå.
 

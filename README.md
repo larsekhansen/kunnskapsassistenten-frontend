@@ -371,7 +371,7 @@ gapet en `margin` på panelet og ikke `gap` på rada: `gap` sier det samme om
 alle par, og en rail skal ligge klemt inntil.
 
 Det var 236 og 198 fram til 2026-09-15, brede nok til å tegne hver sin etikett
-på én linje. Målt i mørk modus: 236 px tom flate med én knapp øverst
+på én linje. Sett i mørk modus: 236 px tom flate med én knapp øverst
 leses som et hull, ikke som en kolonne som er lagt sammen. Poenget med å
 kollapse et panel er å gi plassen tilbake.
 
