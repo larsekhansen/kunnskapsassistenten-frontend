@@ -101,16 +101,18 @@ Grunnen til hash og ikke spørring:
 - **E2E-suiten må si hvilket nivå den måler.** Fjorten påstander i
   `tests/e2e/` leser «Tenkte i N sekunder», «Fremgangsmåte» med treff, eller
   `.ka-thinking__*`. De måler det detaljerte nivået og må be om det.
-- **Menyen er udokumentert i grensesnittet.** Ingen knapp peker på den, så den
-  står i README-en i stedet. Det er med vilje: «Standard er standard. Uten
-  adressen ser ingen at menyen finnes.»
+- **Menyen er udokumentert i grensesnittet.** **Endret 2026-10-06:** her sto
+  det at ingen knapp peker på menyen, og at den derfor sto i README-en i
+  stedet. Lenka «Innstillinger» i foten av navigasjonspanelet peker på den nå.
+  Se «Endret 2026-10-06» over.
 - **Nivået er per nettleser, ikke per bruker.** Samme valg som mørk modus, og
   det holder så lenge det ikke finnes en innlogget profil å henge det på.
 
 ## Hva som ville endret beslutningen
 
-- **En synlig innstillingsknapp blir tegnet.** Da åpner knappen den samme
-  dialogen, og hashen kan bli stående eller forsvinne. Ingenting annet endres.
+- **En synlig innstillingsknapp blir tegnet** (skjedde 06.10, se over). Da
+  åpner knappen den samme dialogen, og hashen kan bli stående eller forsvinne.
+  Ingenting annet endres. Den ble stående: lenka skriver hashen.
 - **Nivået skal gjelde flere flater enn svaret.** Da flytter `displayLevel.ts`
   fra `src/views/chat/` til `src/layout/`, som er der delt tilstand bor. Det
   er én fil og fire importsteder.

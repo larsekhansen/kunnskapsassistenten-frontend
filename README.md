@@ -690,10 +690,14 @@ under `ka.display-level`, og `standard` er det alle får uten å velge noe.
 | `standard`  | «Fremgangsmåte», åpen: stegene i klartekst og søkeordene               | ingenting ekstra                       |
 | `detaljert` | tenkepanelet: «Tenkte i N sekunder», stegenes detaljer og søkestrenger | «Fremgangsmåte» med treff og nøkkelord |
 
-Nivået velges i en skjult meny. **Legg `#innstillinger` til i adressen**, for
-eksempel `http://localhost:5173/#innstillinger`, så åpner den seg; å lukke den
-tar hashen ut igjen. Ingen knapp peker på den, med vilje: standard er standard,
-og den som vil ha det tekniske, er en utvikler som har fått adressen.
+Nivået velges i innstillingene. **Lenka «Innstillinger» nederst i
+navigasjonspanelet** åpner dem, på alle sidene. Adressen virker som før:
+**legg `#innstillinger` til**, for eksempel
+`http://localhost:5173/#innstillinger`. Å lukke menyen tar hashen ut igjen.
+
+Menyen var skjult til 06.10, da fargemodus flyttet inn i den og den fikk lenka
+si vei inn. Fargemodus, visningsnivået og hvor foten står er de tre valgene i
+den.
 
 Hash og ikke spørring, fordi en hash aldri når serveren, ikke bytter rute, og
 ikke følger med en lenke til en tråd noen limer inn et annet sted. Bakgrunnen
