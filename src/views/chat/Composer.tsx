@@ -449,7 +449,7 @@ export function Composer({
         <ul className="ka-follow-ups">
           {FOLLOW_UP_QUESTIONS.map((question) => (
             <li key={question}>
-              <Chip.Button onClick={() => trySubmit(() => onFollowUp(question))}>
+              <Chip.Button data-wrap="wrap" onClick={() => trySubmit(() => onFollowUp(question))}>
                 {question}
               </Chip.Button>
             </li>
