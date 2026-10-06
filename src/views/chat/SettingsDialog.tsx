@@ -37,7 +37,7 @@ const FOOTER_OPTIONS: { value: FooterMode; label: string; description: string }[
   {
     value: 'pinned',
     label: 'Festet',
-    description: 'Lenkene og fargemodus står nederst i panelet, uansett hvor langt du har rullet.',
+    description: 'Lenkene står nederst i panelet, uansett hvor langt du har rullet.',
   },
   {
     value: 'scrolls',

@@ -635,7 +635,8 @@ body {
   gap: var(--ds-size-4);
   inline-size: 100%;
   /*
-   * As tall as the links and the colour scheme, and no taller (chosen 06.10).
+   * As tall as the links and the way into the settings, and no taller
+   * (chosen 06.10).
    * Every pixel here is taken off the thread list above, which is the region
    * that scrolls.
    */

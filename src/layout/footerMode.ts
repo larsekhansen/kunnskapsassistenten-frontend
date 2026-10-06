@@ -9,8 +9,7 @@
  * `scrolls` is the default (chosen 06.10): the foot is at the end of the
  * scrolling region, so the panel is one column and nothing is fixed.
  * `pinned` keeps the foot below the scrolling region, outside it, so the links
- * and the colour scheme are where they were however far the thread list has
- * been scrolled. It was the default before, and a browser that has it stored
+ * are where they were however far the thread list has been scrolled. It was the default before, and a browser that has it stored
  * keeps it.
  *
  * Shaped exactly like `src/views/chat/displayLevel.ts`, down to the storage

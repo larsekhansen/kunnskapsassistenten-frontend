@@ -1,6 +1,7 @@
-# 0004 — Visningsnivå, og en skjult meny å velge det i
+# 0004 — Visningsnivå, og en meny å velge det i
 
-**Status:** valgt · **Dato:** 2026-09-30
+**Status:** valgt · **Dato:** 2026-09-30 · **Endret:** 2026-10-06, menyen har
+en synlig vei inn, og fargemodus står i den
 
 ## Kontekst
 
@@ -51,6 +52,29 @@ kolonnen slutter å være en lesebredde mellom to skinner og blir hele vinduet
 (67 + 640 + 67, samme sum som `drawerMaxViewport`). Over den står svarets
 første overskrift på skjermen under panelet; under den ER fremgangsmåten
 skjermen. Designet tegner det åpent på desktop, og der er det åpent.
+
+## Endret 2026-10-06: menyen er ikke skjult lenger
+
+Dette er det ADR-en over pekte på: «menyen skal kunne bli synlig senere uten å
+bygges om … og da er det plasseringen som endres, ikke innholdet».
+
+Fargemodus (lys, mørk, auto) sto som eneste kontroll i foten av
+navigasjonspanelet. Den er en innstilling som visningsnivået og fotvalget, så
+den står i menyen nå, som en egen gruppe. I stedet har foten en lenke
+«Innstillinger» der velgeren sto. Dermed har menyen en vei inn for alle, og
+visningsnivået og fotvalget blir synlige med den.
+
+Menyen mountes i skallet og ikke i chatvisningen. Foten tegnes på alle rutene,
+også de tre sidene om prosjektet, og der finnes ingen chatvisning: sto menyen
+der, åpnet lenka ingenting på de sidene. Menyen for funksjonsflagg flyttet
+samme vei, siden den åpnes av adressen på samme måte.
+
+Hashen står som før, og grunnene under gjelder fortsatt: lenka skriver bare
+hashen, så menyen åpnes over den sida leseren står på.
+
+Målt 2026-10-06 i mock: foten er 145 px mot 163 px før, på både 1440 × 900 og
+390 × 844. Lenka er 24 px der velgeren var 42. axe gir 0 brudd i lys og mørk
+på begge bredder, for foten og for menyen åpen.
 
 Grunnen til hash og ikke spørring:
 
