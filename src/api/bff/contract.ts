@@ -86,6 +86,39 @@ export interface BffAskRequest {
   filter?: Record<string, string[]>;
 }
 
+/** One mode of an agent in `GET /api/models`. */
+export interface BffAgentMode {
+  /** The backend's tool name, which is what `model` in `POST /api/ask` takes. */
+  id: string;
+  label: string;
+  isDefault: boolean;
+}
+
+/** One agent in `GET /api/models`, as the BFF groups `/v1/models` (`toAgents`). */
+export interface BffAgentOption {
+  id: string;
+  label: string;
+  description?: string;
+  modes: BffAgentMode[];
+}
+
+/**
+ * `GET /api/models`. `{ models: [] }` when the backend said no and
+ * `{ agents: [] }` when it could not be reached, so both mean none.
+ *
+ * Calling it is also what makes the BFF accept a `model` at all: it lets
+ * through only the tools the last call listed (`setAllowedTools` in its
+ * `mcp.ts`), and answers with its default for anything else.
+ */
+export interface BffModels {
+  agents?: BffAgentOption[];
+}
+
+/** The part of `GET /api/me` read for the agents: the tool it answers with by default. */
+export interface BffMe {
+  tool?: string;
+}
+
 export interface BffConversationSummary {
   id: string;
   topic: string;

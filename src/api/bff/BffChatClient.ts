@@ -1,4 +1,5 @@
 import type {
+  AgentList,
   ChatError,
   FilterFacet,
   FilterSelection,
@@ -20,10 +21,13 @@ import type {
   BffConversationSummary,
   BffFacet,
   BffFilterRefused,
+  BffMe,
+  BffModels,
   BffTurnEvent,
 } from './contract';
 import { facetsFrom } from '../facets';
 import {
+  agentsFromBff,
   BffTurnState,
   fieldsFromFacets,
   filterBody,
@@ -375,6 +379,7 @@ export class BffChatClient implements ChatClient {
       const body: BffAskRequest = {
         query: params.query,
         ...(conversationId ? { conversationId } : {}),
+        ...(params.model ? { model: params.model } : {}),
         ...(filter ? { filter } : {}),
       };
       response = await this.#fetch('/ask', {
@@ -500,6 +505,21 @@ export class BffChatClient implements ChatClient {
    *
    * Throws when the BFF cannot be reached, so the panel can offer to try again.
    */
+  /**
+   * The agents, and the one the BFF answers with by default.
+   *
+   * Both calls are allowed to fail on their own: without `/api/me` there is
+   * a list and no default, and without `/api/models` there is nothing to
+   * choose, which hides the choice.
+   */
+  async listAgents(signal?: AbortSignal): Promise<AgentList> {
+    const [models, me] = await Promise.all([
+      this.#json<BffModels>('/models', signal).catch((): BffModels => ({})),
+      this.#json<BffMe>('/me', signal).catch((): BffMe => ({})),
+    ]);
+    return agentsFromBff(models.agents, me.tool);
+  }
+
   async listFacets(signal?: AbortSignal, selection?: FilterSelection): Promise<FilterFacet[]> {
     const { capabilities: can } = await this.#capabilities(true, signal);
     // The probe is not the caller's to cancel (see above), so the caller's
