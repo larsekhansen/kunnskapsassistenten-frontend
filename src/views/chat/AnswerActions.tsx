@@ -70,14 +70,41 @@ export function AnswerActions({
         Kopier svaret
       </Button>
 
+      {/*
+        The link opens the thread in THIS browser and nowhere else, and the
+        button says so (issue 119). The reader is remembered per browser and
+        the backend hands out the conversations that belong to that reader, so
+        the same address in another browser, or in anyone else's, answers
+        «Fant ikke tråden». Sharing it is the thing a reader is most likely to
+        try next, and finding out from the person at the other end is the
+        worst way to learn it.
+
+        In the name and not only in the receipt: the receipt comes after the
+        copying, and what the reader needs is to know before they paste it
+        somewhere. The receipt says the whole sentence, because that IS the
+        moment before the paste.
+
+        «til tråden» stays in front, so the name still begins with what the
+        button does. The parenthesis is the limit, and the two halves of it —
+        for you, in this browser — are in the receipt, which is also the live
+        region a screen reader hears.
+
+        This goes when there is a sign-in: then the conversations follow the
+        person and a link can be shared for real (digdir/kunnskapsassistenten#118).
+      */}
       <Button
         data-color="neutral"
         data-size="sm"
-        onClick={() => void copy(window.location.href, 'Lenken til tråden er kopiert.')}
+        onClick={() =>
+          void copy(
+            window.location.href,
+            'Lenken til tråden er kopiert. Den virker bare for deg, i denne nettleseren.',
+          )
+        }
         variant="tertiary"
       >
         <ClipboardLinkIcon aria-hidden />
-        Kopier lenke til tråden
+        Kopier lenke til tråden (virker bare for deg)
       </Button>
 
       {/*

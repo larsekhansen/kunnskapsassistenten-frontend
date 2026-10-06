@@ -619,7 +619,7 @@ describe('ChatView', () => {
     expect(screen.queryByRole('button', { name: FOLLOW_UP_QUESTIONS[0] })).toBeNull();
 
     // Nothing a finished answer carries.
-    expect(screen.queryByRole('button', { name: 'Kopier lenke til tråden' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Kopier lenke til tråden/u })).toBeNull();
     expect(screen.queryByText('Fremgangsmåte')).toBeNull();
   });
 
