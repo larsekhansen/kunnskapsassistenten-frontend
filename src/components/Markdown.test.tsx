@@ -104,6 +104,17 @@ describe('Markdown', () => {
     const link = screen.getByRole('link', { name: 'Kudos' });
     expect(link.getAttribute('href')).toBe('https://kudos.dfo.no');
   });
+
+  it('leaves the text of a link whose address was refused, and no link', () => {
+    // react-markdown empties a javascript: address. Drawn as a link, that is
+    // `<a href="">`: a link to the page the reader is already on. Testing
+    // Library's role query does not count `href=""` as a link, so the test
+    // looks for the element.
+    const { container } = render(<Markdown>{'Se [her](javascript:alert(1)).'}</Markdown>);
+
+    expect(container.querySelector('a')).toBeNull();
+    expect(container.textContent).toBe('Se her.');
+  });
 });
 
 describe('Markdown citations', () => {
