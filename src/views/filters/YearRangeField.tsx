@@ -153,13 +153,26 @@ export function YearRangeField({ ref, facet, selected, onChange }: FacetFieldPro
         <Suggestion.Toggle />
         <Suggestion.Clear />
         <Suggestion.List data-overscroll="contain" data-autoplacement="false">
-          <Suggestion.Empty>
-            {query.trim() === '' ? HINT : `Ikke et år eller en periode. ${HINT}.`}
-          </Suggestion.Empty>
-          {typed && (
-            <Suggestion.Option value={rangeKey(typed)} label={formatRange(typed)}>
+          {/*
+            One or the other, never both. u-datalist decides whether the empty
+            option shows when the input event arrives, before React has drawn
+            the period, so with both in the list the hint stood over the
+            option it was wrong about (measured in Chromium).
+
+            The option's `label` is the text as typed. Enter in the field
+            chooses the option whose label is what the field holds, as it does
+            in the other fields when a value's name is typed in full — so
+            «23-28» and Enter is 2023–2028. What the reader sees and hears is
+            the children: the period written out, and its documents.
+          */}
+          {typed ? (
+            <Suggestion.Option value={rangeKey(typed)} label={query.trim()}>
               {count === undefined ? formatRange(typed) : `${formatRange(typed)} (${count})`}
             </Suggestion.Option>
+          ) : (
+            <Suggestion.Empty>
+              {query.trim() === '' ? HINT : `Ikke et år eller en periode. ${HINT}.`}
+            </Suggestion.Empty>
           )}
         </Suggestion.List>
       </Suggestion>
