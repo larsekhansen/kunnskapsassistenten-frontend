@@ -84,8 +84,11 @@ type StoredDraft = { text: string; path: string };
 /** The compose fields on the page, each able to say what it holds. */
 const draftSources = new Set<() => string>();
 
-/** A question that has been sent and not yet answered. */
-let questionInFlight: string | undefined;
+/**
+ * A question that has been sent and not yet answered, and the page it belongs
+ * on when that is not the page the browser is on.
+ */
+let questionInFlight: { text: string; page: () => string | undefined } | undefined;
 
 /**
  * A compose field says how its text can be read. Returns the way to take that
@@ -104,11 +107,22 @@ export function provideDraft(read: () => string): () => void {
  * The field empties the moment a question is sent (`ChatView`, `submit`), so
  * a 401 on `/api/ask` comes when the field has nothing in it, and the
  * question is the text the reader would lose.
+ *
+ * `page` is where the question belongs, when the address is not it. A
+ * question that starts a thread is filed under a stand-in address until the
+ * BFF names the conversation (`ChatSlotView`). A 401 means it never will, so
+ * after the sign-in that address says «Fant ikke tråden» (measured
+ * 2026-10-06). Such a question belongs on the front page, where threads are
+ * started.
  */
-export function noteQuestionInFlight(question: string): () => void {
-  questionInFlight = question;
+export function noteQuestionInFlight(
+  question: string,
+  page: () => string | undefined = () => undefined,
+): () => void {
+  const entry = { text: question, page };
+  questionInFlight = entry;
   return () => {
-    if (questionInFlight === question) questionInFlight = undefined;
+    if (questionInFlight === entry) questionInFlight = undefined;
   };
 }
 
@@ -119,21 +133,30 @@ export function noteQuestionInFlight(question: string): () => void {
  * been emptied, so that is the question; a 401 on anything else keeps what
  * the reader is writing at that moment.
  *
+ * Returns the address the sign-in should come back to: the page the draft
+ * belongs on. That is the page the reader is on, unless a question on its
+ * way says otherwise (see `noteQuestionInFlight`).
+ *
  * Nothing is kept when nothing is written. Never throws: storage that is not
  * there, as in a private window, must not stand between the reader and the
  * sign-in.
  */
-export function keepDraft(): void {
+export function keepDraft(): string {
+  const here = window.location.pathname + window.location.search;
+  let page: string | undefined;
   try {
-    const text = [...[...draftSources].map((read) => read()), questionInFlight].find(
+    page = questionInFlight?.page();
+    const text = [...[...draftSources].map((read) => read()), questionInFlight?.text].find(
       (candidate): candidate is string => candidate !== undefined && candidate.trim() !== '',
     );
-    if (text === undefined) return;
-    const draft: StoredDraft = { text, path: window.location.pathname };
-    sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    if (text !== undefined) {
+      const draft: StoredDraft = { text, path: page ?? window.location.pathname };
+      sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    }
   } catch {
     // The sign-in matters more than the draft.
   }
+  return page ?? here;
 }
 
 /**

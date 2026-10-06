@@ -294,9 +294,16 @@ describe('BffChatClient, utkastet når økta går ut', () => {
   beforeEach(() => {
     sessionStorage.clear();
     resetDraftSources();
+    // Where the shell files a new thread until the BFF names it.
+    window.history.replaceState(null, '', '/threads/stand-in');
+  });
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
   });
 
   it('tar vare på spørsmålet når /ask svarer 401, for feltet ble tømt da det ble sendt', async () => {
+    window.history.replaceState(null, '', '/threads/conv-1');
     fakeBff({ 'POST /api/ask': () => json({ error: 'Ikke innlogget.' }, 401) });
     provideDraft(() => '');
     // Read when the browser is sent away, not after: that is when it has to be there.
@@ -305,19 +312,35 @@ describe('BffChatClient, utkastet når økta går ut', () => {
       atRedirect = kept();
     });
 
+    await drain(
+      client({ onUnauthorized }).ask({ query: 'Hva skriver DFØ?', conversationId: 'conv-1' }),
+    );
+
+    expect(onUnauthorized).toHaveBeenCalledExactlyOnceWith('/threads/conv-1');
+    expect(atRedirect).toEqual({ text: 'Hva skriver DFØ?', path: '/threads/conv-1' });
+  });
+
+  it('sender et spørsmål som skulle starte en tråd, tilbake til forsiden med spørsmålet', async () => {
+    // The stand-in address leads to «Fant ikke tråden» after the sign-in,
+    // since the BFF never made the conversation (measured 2026-10-06).
+    fakeBff({ 'POST /api/ask': () => json({ error: 'Ikke innlogget.' }, 401) });
+    const onUnauthorized = vi.fn();
+
     await drain(client({ onUnauthorized }).ask({ query: 'Hva skriver DFØ?' }));
 
-    expect(onUnauthorized).toHaveBeenCalledOnce();
-    expect(atRedirect).toEqual({ text: 'Hva skriver DFØ?', path: window.location.pathname });
+    expect(onUnauthorized).toHaveBeenCalledExactlyOnceWith('/');
+    expect(kept()).toEqual({ text: 'Hva skriver DFØ?', path: '/' });
   });
 
   it('tar vare på teksten i feltet når et annet kall svarer 401', async () => {
     fakeBff({ 'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
     provideDraft(() => 'Et spørsmål under arbeid');
+    const onUnauthorized = vi.fn();
 
-    await client({ onUnauthorized: vi.fn() }).listThreads();
+    await client({ onUnauthorized }).listThreads();
 
-    expect(kept()).toEqual({ text: 'Et spørsmål under arbeid', path: window.location.pathname });
+    expect(onUnauthorized).toHaveBeenCalledExactlyOnceWith('/threads/stand-in');
+    expect(kept()).toEqual({ text: 'Et spørsmål under arbeid', path: '/threads/stand-in' });
   });
 
   it('lagrer ingenting når feltet er tomt og ingenting er på vei', async () => {

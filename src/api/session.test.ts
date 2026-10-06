@@ -58,6 +58,24 @@ describe('the draft kept across a sign-in', () => {
     expect(stored()).toEqual({ text: 'Neste spørsmål', path: '/threads/conv-1' });
   });
 
+  it('puts a question that would have started a thread back on the front page', () => {
+    // The address is the stand-in the thread was filed under, which the BFF
+    // never named: after the sign-in it would say «Fant ikke tråden».
+    window.history.replaceState(null, '', '/threads/stand-in');
+    provideDraft(() => '');
+    noteQuestionInFlight('Hvor mange dokumenter finnes?', () => '/');
+
+    expect(keepDraft()).toBe('/');
+    expect(stored()).toEqual({ text: 'Hvor mange dokumenter finnes?', path: '/' });
+  });
+
+  it('comes back to the page the reader is on otherwise', () => {
+    window.history.replaceState(null, '', '/threads/conv-1?q=1');
+    provideDraft(() => 'Utkastet');
+
+    expect(keepDraft()).toBe('/threads/conv-1?q=1');
+  });
+
   it('forgets the question once it has arrived', () => {
     const arrived = noteQuestionInFlight('Hvor mange dokumenter finnes?');
     arrived();
