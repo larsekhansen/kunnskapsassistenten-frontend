@@ -72,4 +72,5 @@ føres, står i [README](README.md). PR-numrene uten repo foran er i dette repoe
   Postgres ([deploy-backend.md](../deploy-backend.md)). Det delte testmiljøet
   tok ikke imot filteret og svarte ikke med agentene.
 - **Hvor kunnskapen om et korpus skal bo** er foreslått, men ikke valgt
-  ([ADR 0001](../arkitektur/0001-fasetter-og-korpuskunnskap.md)).
+  ([ADR 0001](../arkitektur/0001-fasetter-og-korpuskunnskap.md), skrevet 24.09
+  og merget med #163).
