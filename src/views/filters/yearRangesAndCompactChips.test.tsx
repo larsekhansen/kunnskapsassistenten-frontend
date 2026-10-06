@@ -130,6 +130,19 @@ describe('årsfilteret med perioder (year-ranges)', () => {
     expect(chips(container)).toEqual(['2019–2023']);
   });
 
+  it('velger perioden med Enter, rett fra teksten som ble skrevet', () => {
+    // u-combobox chooses on Enter the option whose label is what the field
+    // holds, so the option's label is the text as typed.
+    const seen: string[][] = [];
+    const { container } = render(<Years seen={seen} />);
+
+    type('23-24');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+
+    expect(seen.at(-1)).toEqual(['2023', '2024']);
+    expect(chips(container)).toEqual(['2023–2024']);
+  });
+
   it('tømmer teksten etter et valg, så neste periode kan skrives', () => {
     render(<Years />);
 

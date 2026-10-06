@@ -102,7 +102,7 @@ export function YearRangeField({ ref, facet, selected, onChange }: FacetFieldPro
   }
 
   return (
-    <Field>
+    <Field className="year-range-field">
       <div className="facet-field__label-row">
         <Label>{facet.label}</Label>
 
@@ -150,7 +150,10 @@ export function YearRangeField({ ref, facet, selected, onChange }: FacetFieldPro
           placeholder="Skriv et år eller en periode"
           onInput={(event) => setQuery(event.currentTarget.value)}
         />
-        <Suggestion.Toggle />
+        {/*
+          No Toggle: there is no list of years to open, only the period the
+          text makes, and an arrow that opened an empty box promised one.
+        */}
         <Suggestion.Clear />
         <Suggestion.List data-overscroll="contain" data-autoplacement="false">
           {/*
