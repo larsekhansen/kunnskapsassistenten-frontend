@@ -25,6 +25,7 @@ import { useScrollTabStop } from './useScrollTabStop';
 import { useOpenThreadRegistry } from './useOpenThread';
 import { useCitation } from './useCitation';
 import { useComposerRegistry } from './useComposerPresence';
+import { useCompactMode } from './useCompactMode';
 import { useDrawerMode } from './useDrawerMode';
 import { useLayout } from './useLayout';
 import { useViewportWidth } from './useViewportWidth';
@@ -76,6 +77,13 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
    * be two subscriptions to the same fact.
    */
   const drawer = useDrawerMode();
+  /*
+   * Below 774, with the flag `mobile-top-row` on, the rails leave the row too
+   * and stand in a bar above the answer column. A narrower case of drawer mode
+   * rather than a third layout: the panels open as the same drawers, and only
+   * where the buttons stand changes. See `compactMaxViewport` in viewModel.ts.
+   */
+  const compact = useCompactMode();
   // The main slot owns the scroll, so the element is handed to the views
   // rather than looked up from inside them. See scrollContext.ts.
   const mainScroll = useRef<HTMLElement | null>(null);
@@ -178,7 +186,8 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
           <div
             className="shell"
             data-drawer={drawer || undefined}
-            style={layoutStyle(layout, viewport, drawer)}
+            data-compact={compact || undefined}
+            style={layoutStyle(layout, viewport, drawer, compact)}
           >
             <Sidebar slot="primary-sidebar" element="nav" drawer={drawer} />
 
