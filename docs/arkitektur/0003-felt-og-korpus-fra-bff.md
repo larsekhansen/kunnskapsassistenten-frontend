@@ -11,8 +11,8 @@ må vite hva korpuset heter. I live og mock leser klienten dette fra
 `VITE_KA_FILTER_FIELDS` og `VITE_KA_DATASETS`, enten bakt inn i bygget eller
 fra `/config.js` fra tynnserveren vår (`src/api/runtimeConfig.ts`).
 
-Bak Nikolais BFF finnes ikke `/config.js`. Poden, som er monorepoet med
-klienten vår i `src/apps/web`, fikk derfor et dødt filterpanel. Det sto
+Bak BFF-en i digdir/kunnskapsassistenten finnes ikke `/config.js`. Poden, som er
+monorepoet med klienten vår i `src/apps/web`, fikk derfor et dødt filterpanel. Det sto
 «Filtrering er ikke tilgjengelig», selv om `/api/facets` svarte med data (målt
 29.09, #3 og #5). Dette er D16 i `design/plan-monorepo-2026-09-29.md`.
 
