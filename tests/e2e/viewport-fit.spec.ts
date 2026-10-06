@@ -229,24 +229,52 @@ function expectFits(fit: Fit, where: string): void {
  * Until no finite animation is running, so a measurement never catches a
  * panel halfway open. Endless ones, such as a spinner, are left out: they
  * would never end.
+ *
+ * Each finite animation found is run to its end at once with `finish()`
+ * rather than waited for. What is measured is the layout an animation ends
+ * in, not the animation, and a machine under load can take seconds to play
+ * one that lasts 300 ms: one run on a busy machine failed here with
+ * «animasjonene ble ikke ferdige» after a drawer opened, and the next run
+ * passed 26 of 26. Throttling the CPU 20 times did not bring it back,
+ * since the compositor plays CSS animations by the clock. The poll goes on
+ * while anything new starts, and its message names what still runs.
+ *
+ * Not `reducedMotion: 'reduce'`: Designsystemet turns `.ds-dialog[open]` off
+ * then, but the drawers' own `[data-placement]` animation outranks that rule
+ * and plays anyway (measured 07.10 at 393).
  */
 async function settled(page: Page): Promise<void> {
   await expect
     .poll(
       () =>
-        page.evaluate(
-          () =>
-            document
-              .getAnimations()
-              .filter(
-                (animation) =>
-                  animation.playState === 'running' &&
-                  animation.effect?.getComputedTiming().endTime !== Infinity,
-              ).length,
+        page.evaluate(() =>
+          document
+            .getAnimations()
+            .filter(
+              (animation) =>
+                animation.playState === 'running' &&
+                animation.effect?.getComputedTiming().endTime !== Infinity,
+            )
+            .map((animation) => {
+              const name =
+                animation instanceof CSSAnimation
+                  ? animation.animationName
+                  : animation instanceof CSSTransition
+                    ? animation.transitionProperty
+                    : 'animasjon';
+              const target =
+                animation.effect instanceof KeyframeEffect ? animation.effect.target : null;
+              try {
+                animation.finish();
+              } catch {
+                // An animation that cannot be finished is reported as still running.
+              }
+              return `${name} på ${target?.tagName.toLowerCase() ?? 'ukjent'}`;
+            }),
         ),
-      { message: 'animasjonene ble ikke ferdige' },
+      { message: 'animasjonene ble ikke ferdige', timeout: 15_000 },
     )
-    .toBe(0);
+    .toEqual([]);
 }
 
 /**
