@@ -50,8 +50,8 @@ node --version
 
 Det skal stå `v24` og noe mer.
 
-**GitHub.** Du trenger en konto på [github.com](https://github.com), og Lars må
-gi den skrivetilgang til repoet. Du får en invitasjon på e-post; godta den.
+**GitHub.** Du trenger en konto på [github.com](https://github.com), og den må
+få skrivetilgang til repoet. Du får en invitasjon på e-post; godta den.
 
 **GitHub CLI** (`gh`), så Claude Code kan lage pull requests for deg. Last ned
 macOS-installasjonen fra [cli.github.com](https://cli.github.com) og kjør den.
@@ -70,7 +70,8 @@ for git, og **Login with a web browser**. Følg det som står i nettleseren.
 curl -fsSL https://claude.ai/install.sh | bash
 ```
 
-Spør Lars hvilken konto du skal logge inn med første gang du starter den.
+Spør den som ga deg tilgang hvilken konto du skal logge inn med første gang du
+starter den.
 
 ## 2. Hente koden og kjøre appen
 
@@ -148,5 +149,5 @@ og rett det.» Den kan lese hva som feilet.
   installer Node 24 på nytt og åpne Terminal igjen.
 - **Claude Code får ikke pushet eller laget PR.** Kjør `gh auth status`. Står
   det at du ikke er logget inn, kjør `gh auth login` igjen.
-- **Noe annet.** Spør Claude Code først; lim inn feilmeldingen. Spør Lars hvis
-  det ikke løser seg.
+- **Noe annet.** Spør Claude Code først; lim inn feilmeldingen. Spør den som ga
+  deg tilgang hvis det ikke løser seg.

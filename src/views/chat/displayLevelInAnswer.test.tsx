@@ -113,7 +113,7 @@ describe('visningsnivået i svaret', () => {
 
   it('viser «Fremgangsmåte», stegene og nøkkelordene, uten det tekniske, på standard', () => {
     /*
-     * Simens issue 88, tegnet i issue 113: ett panel over svarkortet, med
+     * Issue 88, tegnet i issue 113: ett panel over svarkortet, med
      * stegene under «Tenkte» og søkeordene under «Nøkkelord som ble brukt i
      * søket». Stegene sier hva assistenten prøver å gjøre, og nøkkelordene er
      * det svaret kan etterprøves mot. Tiden, treffene og det hvert steg målte
@@ -253,7 +253,7 @@ describe('den skjulte innstillingsmenyen', () => {
     expect((detailed as HTMLInputElement).checked).toBe(true);
   });
 
-  it('holder også valget for foten, med festet som standard (Simens 123)', () => {
+  it('holder også valget for foten, med «ruller med» som standard', () => {
     render(
       <Shell at="/#innstillinger">
         <ChatView client={idleClient} />
@@ -262,13 +262,13 @@ describe('den skjulte innstillingsmenyen', () => {
 
     const pinned = screen.getByRole('radio', { name: /Festet/u }) as HTMLInputElement;
     const scrolls = screen.getByRole('radio', { name: /Ruller med/u }) as HTMLInputElement;
-    expect(pinned.checked).toBe(true);
-    expect(scrolls.checked).toBe(false);
-
-    fireEvent.click(scrolls);
-
-    expect(getFooterMode()).toBe('scrolls');
     expect(scrolls.checked).toBe(true);
+    expect(pinned.checked).toBe(false);
+
+    fireEvent.click(pinned);
+
+    expect(getFooterMode()).toBe('pinned');
+    expect(pinned.checked).toBe(true);
   });
 
   it('holder de to valgene fra hverandre, så ett ikke endrer det andre', () => {
@@ -278,7 +278,7 @@ describe('den skjulte innstillingsmenyen', () => {
       </Shell>,
     );
 
-    fireEvent.click(screen.getByRole('radio', { name: /Ruller med/u }));
+    fireEvent.click(screen.getByRole('radio', { name: /Festet/u }));
 
     // To radiogrupper, ikke én: nivået skal stå der det stod.
     expect(getDisplayLevel()).toBe('standard');

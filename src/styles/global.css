@@ -34,7 +34,7 @@
    */
   --ka-slot-gap: var(--ds-size-8); /* 32 px */
   /*
-   * 20 px, Lars 23.09. It was 36, and 36 was most of a narrow panel: at 1440
+   * 20 px, decided 23.09. It was 36, and 36 was most of a narrow panel: at 1440
    * with both sidebars open the sources panel sits on its 336 px floor, and
    * 72 px of padding left an excerpt 246 px to set text in — two or three
    * words a line (measured by #4 in #24). Back then 20 px was the exception
@@ -78,7 +78,7 @@
    *
    * A variable and not one colour, because the three regions do not share a
    * ground: the navigation panel has its own white surface, the sources panel
-   * has none and sits on the page (Lars, 2026-09-15), and the answer column
+   * has none and sits on the page (decided 2026-09-15), and the answer column
    * is the page. Each of them redeclares this where it declares its
    * background, so the head cannot drift from the surface it is painted on.
    */
@@ -170,9 +170,9 @@ body {
  *
  * `gap` cannot say that: it spaces every pair of items alike, and a collapsed
  * rail must sit flush against the answer column. That is the whole point of
- * the rail — Lars, 2026-09-15, on the collapsed navigation panel in dark
- * mode: «skjult filter kolonne er ikke skjult». 32 px of tinted page beside a
- * 67 px rail reads as a hole where a column used to be.
+ * the rail — seen 2026-09-15 on the collapsed navigation panel in dark mode:
+ * a hidden filter column did not read as hidden. 32 px of tinted page beside
+ * a 67 px rail reads as a hole where a column used to be.
  *
  * A collapsed slot has no separator either, so `:not([data-collapsed])` is
  * the one condition both the gap and the handle hang on.
@@ -451,7 +451,7 @@ body {
 .secondary-sidebar > .panel {
   border-inline-start: var(--ka-panel-border);
   /*
-   * No surface of its own while it is open, and that is Lars's call on
+   * No surface of its own while it is open, decided on
    * 2026-09-15: the sources belong with the answer, so this column shares the
    * answer column's ground and the border is what marks the edge. Finding 15
    * asked whether the asymmetry was deliberate. It is.
@@ -465,7 +465,7 @@ body {
  * A collapsed slot is a rail: its toggle button, centred, and nothing else.
  *
  * It keeps a panel surface and a border so it reads as a column folded away
- * rather than as empty page. That is the fix Lars asked for on 2026-09-15,
+ * rather than as empty page. That is the fix asked for on 2026-09-15,
  * and the surface is what dark mode needed most: without it the collapsed
  * navigation panel was tinted page against tinted page, and the only thing
  * on screen was a button floating in nothing.
@@ -484,7 +484,7 @@ body {
  * A rail keeps a surface whichever column it is, including the sources panel
  * that has none while open. That is the point of the rail: a folded column
  * has to read as a column, and on the page's own ground it read as a hole
- * (Lars, 2026-09-15). Open, the sources panel is not folded away and has the
+ * (decided 2026-09-15). Open, the sources panel is not folded away and has the
  * answer beside it to belong to.
  */
 .primary-sidebar[data-collapsed] > .panel,
@@ -652,7 +652,7 @@ body {
   gap: var(--ds-size-4);
   inline-size: 100%;
   /*
-   * As tall as the links and the colour scheme, and no taller (Lars 06.10).
+   * As tall as the links and the colour scheme, and no taller (chosen 06.10).
    * Every pixel here is taken off the thread list above, which is the region
    * that scrolls.
    */
@@ -663,9 +663,10 @@ body {
 }
 
 /*
- * Simens issue 123: the foot at the end of the scrolling region instead of
- * below it, so the panel is one column with nothing fixed. Off by default;
- * the hidden settings menu turns it on, see src/layout/footerMode.ts.
+ * The foot at the end of the scrolling region instead of below it, so the
+ * panel is one column with nothing fixed (digdir/kunnskapsassistenten#123).
+ * The default; «Festet» in the hidden settings menu pins it instead, see
+ * src/layout/footerMode.ts.
  *
  * The panel's inline padding is the one thing the pinned foot needs and this
  * one does not: the scrolling region already keeps it.
@@ -673,15 +674,21 @@ body {
  * The line over it stays. It is what separates the app's own settings from
  * the list, whether or not the foot moves with it.
  *
- * No end padding here on purpose. Moving the foot inside takes BOTH
- * `:has(> .sidebar-footer)` rules out of play — the foot is a descendant of
- * the panel now, not a child — so the scrolling region keeps its own 32 px
- * under its last item, and the panel keeps its own 32 px below that. Adding
- * a third would be 80 px of air under three links.
+ * Under it, 16 px to the panel's edge, the same as under the pinned foot
+ * (chosen 06.10: less air under it). The region's own 32 px under its last
+ * item and the panel's 32 px below that made 64 px under the colour scheme.
  */
 .sidebar-content > .sidebar-footer {
   padding-inline: 0;
   margin-block-start: var(--ds-size-6);
+}
+
+.sidebar-content:has(> .sidebar-footer) {
+  padding-block-end: 0;
+}
+
+.panel:has(> .sidebar-content > .sidebar-footer) {
+  padding-block-end: var(--ds-size-4);
 }
 
 /*
@@ -846,9 +853,9 @@ body {
  *
  * They used to be one box, and then the grey on either side of the column was
  * dead: the wheel does nothing unless the pointer is over a scroller, so a
- * reader with the pointer in that margin got nothing. Lars, 21.09 on 5182:
- * «Jeg vil kunne bruke scroll-wheelet med pilen her også – for nå er dette
- * området ingenmannsland.»
+ * reader with the pointer in that margin got nothing. Reported 21.09 on 5182:
+ * the wheel should work with the pointer in that margin too, because the area
+ * was no man's land.
  *
  * `main` keeps the id, the ref and the landmark: the skip link points at it,
  * the `scroll-padding-block-start` the view head sets is a property of the

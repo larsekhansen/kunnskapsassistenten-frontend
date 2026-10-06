@@ -5,8 +5,8 @@ const SLACK = 24;
 
 /**
  * Keeps the main column at its bottom while an answer arrives, if that is
- * where the reader already was — and leaves it alone otherwise (Simens
- * runde 3, ekstra 4). Returns whether the column is at its bottom, which is
+ * where the reader already was — and leaves it alone otherwise (runde 3,
+ * ekstra 4). Returns whether the column is at its bottom, which is
  * what «Bla til nederst» is drawn from (answer 17): a control that does
  * nothing is worse than no control.
  *

@@ -120,8 +120,8 @@ export interface MockDelays {
  * How fast the mock answers, as three settings rather than a number.
  *
  * `realistic` is the default and the reason this exists: a mock that answers
- * instantly cannot show what it is supposed to show. Lars asked to see the
- * skeletons, the thinking panel and the streaming actually happen, and at
+ * instantly cannot show what it is supposed to show. The skeletons, the
+ * thinking panel and the streaming have to be visible as they happen, and at
  * 500 ms per thinking step and 18 ms per token the whole thing was over
  * before any of them registered. These numbers are what a real agent takes —
  * measured against the running stack on 2026-09-11, one question took 15,1
@@ -565,8 +565,8 @@ export class MockChatClient implements ChatClient {
       }
 
       /*
-       * A cached conversation, when the question is one of the eleven. Lars
-       * asked for «noen nye søk, cachede, så jeg kan teste selv»; see
+       * A cached conversation, when the question is one of the eleven. New
+       * cached searches were asked for, so the app can be tried by hand; see
        * conversations/scripts.ts. Everything below it — steps, answer,
        * sources, done — is the same sequence the default answer uses, so a
        * scripted turn and an unscripted one are indistinguishable to a view.

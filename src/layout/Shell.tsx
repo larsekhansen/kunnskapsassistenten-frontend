@@ -47,7 +47,7 @@ export type ShellProps = {
  * Slots are named after position — `primary-sidebar`, `main`,
  * `secondary-sidebar` — and never after the content that happens to sit in
  * them today. Views are named after content and can move between slots. Same
- * split VS Code makes, and the rule Lars set on 2026-09-11.
+ * split VS Code makes, and the rule set on 2026-09-11.
  *
  * Two reasons the slots are not named after the side they sit on today:
  *
@@ -88,7 +88,7 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
    * It never came up while every page in here had a compose field or a link
    * to tab to. `/om-prosjektet` is the first that has neither: six paragraphs
    * of prose, 1073 px of them in a 900 px window at 1440, and no way to
-   * scroll it from the keyboard at all. Measured by #3 on Simens issue 85d.
+   * scroll it from the keyboard at all. Measured by #3 on issue 85d.
    *
    * No `role` and no `aria-label`, unlike the sidebars: `main` is already a
    * landmark and already named. The tab stop is the whole change.
@@ -164,7 +164,7 @@ export function Shell({ routeOwnsMain = false }: ShellProps) {
         who tabs here will look for it, and because the hint by the field
         itself is going away — H3 in
         design/hoydebudsjett-forslag-2026-09-21.md buys 24 px of reading
-        window by taking it out of the footer, and Lars said yes on 21.09. The
+        window by taking it out of the footer, and that was decided on 21.09. The
         modifier is the one this machine has; see shortcutModifier.ts.
       */}
       {composerPresence.hasComposer ? (
@@ -470,7 +470,7 @@ function Sidebar({
 
   /**
    * Whether the pointer is holding this slot's separator. A drag that folds
-   * the panel goes on until it is let go (Simens issue 80, round 2), so the
+   * the panel goes on until it is let go (issue 80, round 2), so the
    * separator is drawn over the rail for as long as this is true. See
    * PanelSeparator.tsx.
    *
@@ -554,7 +554,7 @@ function Sidebar({
    *
    * No count of what the panel holds, on the rail or in the name. The badge
    * that said how many documents stood behind a collapsed sources panel came
-   * off on Simen's issue 87: a number on the button reads as a notification,
+   * off on issue 87: a number on the button reads as a notification,
    * and nothing behind it is waiting to be dealt with. The retrieval step in
    * the answer still says «N treff i M dokumenter».
    *
@@ -588,7 +588,7 @@ function Sidebar({
 
   /*
    * «Skjul» on screen before the icon, in the navigation panel while it is
-   * open, and the button at the end of the row (Lars 06.10).
+   * open, and the button at the end of the row (decided 06.10).
    *
    * The word and not the whole name. «Skjul tråder og filter» is 209 px, and
    * beside «Tråder» it pushed the row past the panel (KA CC on #119). The word
@@ -607,7 +607,7 @@ function Sidebar({
 
   /*
    * The foot of the navigation panel: the pages about Kunnskapsassistenten
-   * and the app's own settings (Simens issue 85). What is in it is
+   * and the app's own settings (issue 85). What is in it is
    * SidebarFooter's business.
    *
    * The slot's and not a view's, so it stays put when the panel switches
@@ -616,17 +616,16 @@ function Sidebar({
    * opens as a drawer to steer from. Not on a rail: three choices do not fit
    * in 67 px, and a rail is one button (railWidth).
    *
-   * Pinned below the scrolling region, like the head above it, so it is where
-   * it is however long the thread list grows. That is the default and was the
-   * only way until Simens issue 123; `footScrolls` just below is the other.
+   * At the end of the scrolling region by default, or pinned below it when
+   * that is chosen in #innstillinger; see `footScrolls` just below.
    */
   const foot = slot === 'primary-sidebar' ? <SidebarFooter /> : null;
 
   /*
-   * Simens issue 123: pinned below the scrolling region, or at the end of it
-   * and scrolling with the list. A setting rather than a rewrite, so both can
-   * be compared on the same page; see footerMode.ts. `pinned` is the default
-   * and is what shipped with issue 85.
+   * At the end of the scrolling region and scrolling with the list, or pinned
+   * below it (digdir/kunnskapsassistenten#123). A setting rather than a
+   * rewrite, so both can be compared on the same page; see footerMode.ts.
+   * Scrolling is the default (chosen 06.10).
    *
    * One DEFINITION for both places, so the two cannot drift apart. Not one
    * mounting: React gives a new parent a new mount, so switching tears the
@@ -954,7 +953,7 @@ function Sidebar({
         content nobody can navigate to by landmark.
 
         And over the rail while a drag that folded the panel is still held,
-        so the drag can open it again (Simens issue 80, round 2).
+        so the drag can open it again (issue 80, round 2).
       */}
       {railed && !resizing ? null : <PanelSeparator slot={slot} onDraggingChange={setResizing} />}
     </Element>
