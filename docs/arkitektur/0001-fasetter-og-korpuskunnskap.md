@@ -1,6 +1,7 @@
 # 0001 — Hvor kunnskapen om et korpus skal bo
 
-Skrevet 2026-09-24. Status: **foreslått**, ikke avtalt med Benjamin eller Nikolai.
+Skrevet 2026-09-24. Status: **foreslått**, ikke avtalt med digdir-headless-rag
+eller digdir/kunnskapsassistenten.
 
 ## Spørsmålet
 
@@ -15,7 +16,7 @@ struktur vil alltid være forskjellige fra org til org.
 
 ## Det som er gjort i dag
 
-**Nikolais frontend** har fasettene som en fast liste i sin egen server
+**Frontenden i digdir/kunnskapsassistenten** har fasettene som en fast liste i sin egen server
 (`apps/server/src/facets.ts`), med kommentaren _«orgs_short is left out: it is
 empty in this corpus»_. Serveren spør Typesense direkte, med egen nøkkel.
 
@@ -36,7 +37,7 @@ korpus uten ny kode.
 
 ## Anbefalt: D
 
-Benjamin har alt skrevet prinsippet ned, for tittelfelt og auto-filter, i
+Prinsippet er alt skrevet ned i headless-rag, for tittelfelt og auto-filter, i
 `digdir-headless-rag/plans/proposed/retrieval-configurable-fields-rules-plan.md`:
 
 > Code should ship the **mechanism** (…); the **policy** (which fields, which
@@ -52,7 +53,7 @@ datasettets profil, og returnerer fasettene i et generisk format:
 [{ field: "type", label: "dokumenttyper", options: [{ value: "Årsrapport", count: 2874 }, …] }, …]
 ```
 
-Det er formatet Nikolai alt bruker. Frontenden tegner det som kommer, og vet
+Det er formatet digdir/kunnskapsassistenten alt bruker. Frontenden tegner det som kommer, og vet
 ingenting om Kudos.
 
 **Policyen, per datasett.** Skjemaet alene holder ikke. I Kudos er også
@@ -103,7 +104,7 @@ formatereren leste `:name` i stedet for `:value`. Agenten svarte «ett
 dokument» på hvor mange dokumenter Kudos har. Etter rettelsen: «over 10 000».
 Funksjonen er et naturlig utgangspunkt for mekanismen i D.
 
-**Nikolai har gjort det samme, strengere.** PR #15 i headless-rag
+**Det samme er gjort strengere i headless-rag.** PR #15 der
 («Make tools/call filtering work end to end», åpnet 2026-09-25) retter 1–5.
 Den skiller seg fra vår gren på tre punkter:
 
@@ -129,13 +130,13 @@ og Årsrapport + 2024 gir bare årsrapporter fra 2024.
 - Profilen er én ting til å vedlikeholde per datasett. Men den er data, ikke
   kode, og uten den kopieres logikken i hver frontend i stedet.
 - Mekanismen må bygges i headless-rag. Det er et tillegg, ikke en omskriving,
-  men det er Benjamins kode og hans avgjørelse.
+  men det er headless-rag sin kode, og avgjørelsen ligger der.
 - Inntil den finnes, må noen levere fasettene midlertidig. Se «Neste steg».
 
 ## Neste steg
 
-1. Avklare med Nikolai om han har løst filter på en annen måte, og med
-   Benjamin om D og de seks rettelsene over.
+1. Avklare med digdir/kunnskapsassistenten om filter er løst på en annen måte
+   der, og med headless-rag om D og de seks rettelsene over.
 2. Imens: la live-klienten sende valgt filter. Den delen er riktig uansett
    hvor fasettene ender, fordi formatet er backendens eget.
 3. Midlertidig bro for fasettene: vår tynne server leverer dem i det generiske

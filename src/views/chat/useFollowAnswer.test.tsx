@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useFollowAnswer } from './useFollowAnswer';
 
 /**
- * Following an answer down the column (Simens runde 3, ekstra 4).
+ * Following an answer down the column (runde 3, ekstra 4).
  *
  * jsdom lays nothing out, so the column's three numbers are set by hand and
  * the observer is a stand-in that the test fires when the content «grows».
