@@ -25,7 +25,7 @@ npm run dev
 
 Utviklingsserveren svarer på <http://localhost:5173>.
 
-Node 22.18 eller nyere; CI og bildet bruker 24.
+Node 24 eller nyere, som i CI og bildet.
 
 | Skript                  | Gjør                                                                                             |
 | ----------------------- | ------------------------------------------------------------------------------------------------ |
