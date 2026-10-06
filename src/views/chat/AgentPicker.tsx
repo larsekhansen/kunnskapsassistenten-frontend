@@ -69,6 +69,9 @@ export function AgentPicker({ agents, current, onChoose }: AgentPickerProps) {
       */}
       <Dropdown
         className="ka-agent-picker"
+        // Neutral, not the accent blue the list's buttons take by default: a
+        // list of names to read and choose from, not a row of links.
+        data-color="neutral"
         data-size="sm"
         onClose={() => setOpen(false)}
         onOpen={() => setOpen(true)}
