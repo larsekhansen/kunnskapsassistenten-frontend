@@ -1,6 +1,6 @@
-import { Button } from '@digdir/designsystemet-react';
+import { Button, Tooltip } from '@digdir/designsystemet-react';
 import { ClipboardIcon, ClipboardLinkIcon, MagnifyingGlassIcon } from '@navikt/aksel-icons';
-import type { RefObject } from 'react';
+import { useId, type RefObject } from 'react';
 import type { SourceDocument } from '../../model';
 import { AnswerTime } from './AnswerTime';
 import { answerWithSources, copyReceipt, referenceList } from './answerText';
@@ -22,6 +22,12 @@ type AnswerActionsProps = {
   /** Where focus goes when the search strip closes. */
   searchToggleRef?: RefObject<HTMLButtonElement | null>;
 };
+
+/**
+ * The limit on a copied link, in one string: the tooltip, the description a
+ * screen reader reads, and the first half of the receipt. See the button.
+ */
+const LINK_NOTE = 'Virker bare for deg, i denne nettleseren';
 
 /**
  * What a reader can do with a finished answer: copy it (answer 15), copy a
@@ -52,6 +58,7 @@ export function AnswerActions({
   searchToggleRef,
 }: AnswerActionsProps) {
   const { receipt, copy } = useCopy();
+  const linkNoteId = useId();
 
   return (
     <div className="ka-answer-actions">
@@ -70,15 +77,43 @@ export function AnswerActions({
         Kopier svaret
       </Button>
 
-      <Button
-        data-color="neutral"
-        data-size="sm"
-        onClick={() => void copy(window.location.href, 'Lenken til tråden er kopiert.')}
-        variant="tertiary"
-      >
-        <ClipboardLinkIcon aria-hidden />
-        Kopier lenke til tråden
-      </Button>
+      {/*
+        The link opens the thread in THIS browser and nowhere else (issue 119).
+        The reader is remembered per browser and the backend hands out the
+        conversations that belong to that reader, so the same address in
+        another browser answers «Fant ikke tråden». Sharing it is the thing a
+        reader is most likely to try next.
+
+        The limit is a description and not part of the name: the name stays
+        what the button DOES, and the row keeps its height where the answer
+        column is narrow. A name carrying the limit is 224 px tall at 320
+        against 141 (measured 07.10).
+
+        Three ways to the same sentence, because no one of them reaches
+        everybody: the tooltip on hover and on focus, `aria-describedby` for a
+        screen reader, and the receipt — which is the moment before the
+        address is pasted somewhere, and the one a reader cannot miss.
+
+        This goes when there is a sign-in: then the conversations follow the
+        person and a link can be shared for real (digdir/kunnskapsassistenten#118).
+      */}
+      <Tooltip content={LINK_NOTE}>
+        <Button
+          aria-describedby={linkNoteId}
+          data-color="neutral"
+          data-size="sm"
+          onClick={() =>
+            void copy(window.location.href, `Lenken til tråden er kopiert. ${LINK_NOTE}.`)
+          }
+          variant="tertiary"
+        >
+          <ClipboardLinkIcon aria-hidden />
+          Kopier lenke til tråden
+        </Button>
+      </Tooltip>
+      <span className="ds-sr-only" id={linkNoteId}>
+        {LINK_NOTE}.
+      </span>
 
       {/*
         The reader's own way into a long answer (brukerreiser punkt 13). The
