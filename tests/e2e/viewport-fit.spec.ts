@@ -241,3 +241,64 @@ for (const size of SIZES) {
     });
   });
 }
+
+/**
+ * Fra desktop til telefon i samme økt, og telefonen snudd.
+ *
+ * Etter et slikt bytte sto det et mørkt felt under panelene. Skallet var like
+ * høyt som før, og resten av skjermen var tom. Siden var zoomet ut: raden ble
+ * regnet fra `innerWidth`, som på en telefon er det synlige vinduet, og en rad
+ * som var for bred, fikk vinduet til å melde seg bredere, så raden holdt seg for
+ * bred. Målt 06.10: 774 × 1678 CSS-px og zoom 0,51, med et skall på 852 px øverst.
+ *
+ * `isMobile` er det som gjør at Chromium zoomer ut, så testen må ha det fra
+ * start og bytte størrelse i samme side, slik DevTools gjør.
+ */
+test.describe('bytte av størrelse i samme økt', () => {
+  test.use({
+    viewport: { width: 1440, height: 900 },
+    isMobile: true,
+    hasTouch: true,
+    deviceScaleFactor: 3,
+  });
+
+  test('skallet dekker vinduet etter bytte fra desktop til telefon og snudd telefon', async ({
+    page,
+  }, testInfo) => {
+    covers(testInfo, 'skallet: ingenting ruller sidelengs fra 320 (WCAG 1.4.10)');
+
+    await page.goto('/threads/nkom-maaloppnaaelse');
+    await expect(page.locator('main .markdown').first()).toBeVisible();
+
+    for (const [width, height, where] of [
+      [393, 852, 'byttet fra 1440×900 til 393×852'],
+      [852, 393, 'snudd til 852×393'],
+      [393, 852, 'snudd tilbake til 393×852'],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      await page.waitForTimeout(500);
+
+      const screen = await page.evaluate(() => {
+        const shell = document.querySelector('.shell')!.getBoundingClientRect();
+        return {
+          scale: Math.round((window.visualViewport?.scale ?? 1) * 100) / 100,
+          visual: { width: window.innerWidth, height: window.innerHeight },
+          layout: {
+            width: document.documentElement.clientWidth,
+            height: document.documentElement.clientHeight,
+          },
+          shell: { top: Math.round(shell.top), height: Math.round(shell.height) },
+        };
+      });
+
+      expect.soft(screen.scale, `${where}: siden er zoomet`).toBe(1);
+      expect
+        .soft(screen.visual, `${where}: det synlige vinduet er større enn siden`)
+        .toEqual(screen.layout);
+      expect
+        .soft(screen.shell, `${where}: skallet dekker ikke vinduet`)
+        .toEqual({ top: 0, height: height });
+      expectFits(await measure(page), where);
+    }
+  });
+});
