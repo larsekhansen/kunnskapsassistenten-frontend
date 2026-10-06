@@ -236,7 +236,7 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
    * which is what this was. The padding applied to the field too, and the
    * field is inside the band the padding keeps clear: every keystroke asked
    * the browser to bring the caret out from behind the field, and the column
-   * moved 49 px per key towards the bottom (Simens runde 3, ekstra 1). The
+   * moved 49 px per key towards the bottom (runde 3, ekstra 1). The
    * margin is on what the field can hide, and not on the field.
    *
    * Measured rather than written down: the field grows with the question
@@ -512,7 +512,7 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   /*
    * The hidden settings menu. `#innstillinger` in the address opens it, and
    * nothing else does — without the hash nobody can see that it is there,
-   * which is what Lars asked for on 30.09.
+   * which is what was asked for on 30.09.
    *
    * The hash and not a query: it never reaches the server, it never changes
    * which route is showing, and it does not travel in a link somebody pastes
@@ -522,7 +522,7 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   const navigate = useNavigate();
   const settingsOpen = hash === SETTINGS_HASH;
   const displayLevel = useDisplayLevel();
-  // Simens issue 123, read here only to hand the dialog the choice on screen.
+  // Issue 123, read here only to hand the dialog the choice on screen.
   const footerMode = useFooterMode();
 
   /*
@@ -699,7 +699,7 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
 
       {/*
         The hidden settings menu, opened by `#innstillinger` in the address
-        (Lars, 30.09). It lives here rather than in the shell because the one
+        (decided 30.09). It lives here rather than in the shell because the one
         setting it holds is this view's, and a menu with one setting belongs
         next to it until there is a second. See SettingsDialog.tsx.
 
