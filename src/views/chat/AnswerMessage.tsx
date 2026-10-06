@@ -1,4 +1,4 @@
-import { Button, Card, Paragraph, Skeleton, Spinner } from '@digdir/designsystemet-react';
+import { Alert, Button, Card, Paragraph, Skeleton, Spinner } from '@digdir/designsystemet-react';
 import { ArrowsCirclepathIcon } from '@navikt/aksel-icons';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Markdown } from '../../components';
@@ -12,11 +12,13 @@ import { RetrievalPanel } from './RetrievalPanel';
 import { SourcesSummary } from './SourcesSummary';
 import { ThinkingPanel } from './ThinkingPanel';
 import { useDisplayLevel } from './displayLevel';
+import { lacksSources } from './noSources';
 import {
   ABORTED_BEFORE_ANSWER,
   ABORTED_NOTE,
   CLOSING_QUESTION,
   FAILED_NOTE,
+  NO_SOURCES_WARNING,
   REGENERATE,
 } from './text';
 import { ANSWER_MARK_CLASS, useAnswerHits } from './useAnswerHits';
@@ -297,6 +299,20 @@ export function AnswerMessage({
         <Card className="ka-answer-card" data-color="neutral">
           <Card.Block>
             {empty && streaming ? <AnswerSkeleton /> : null}
+
+            {/*
+              Over the answer and not under it, as in the client in
+              digdir/kunnskapsassistenten: it is read before the text it is
+              about. `warning` because nothing is broken and nothing is
+              stopped, which is what Designsystemet keeps `danger` for. No
+              role: it arrives with the finished answer, and the live region
+              says it then («Svaret er ferdig.» and this sentence, useChat).
+            */}
+            {lacksSources(message) ? (
+              <Alert className="ka-no-sources-warning" data-color="warning" data-size="sm">
+                {NO_SOURCES_WARNING}
+              </Alert>
+            ) : null}
 
             {/* The ref is what the search counts marks inside, so it wraps the
                 answer and nothing else: the closing question and the action
