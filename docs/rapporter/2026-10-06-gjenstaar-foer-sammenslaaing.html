@@ -329,7 +329,7 @@
   <body>
     <main class="page">
       <header>
-        <div class="eyebrow">Rapport · 6. oktober 2026</div>
+        <div class="eyebrow">Rapport · 6. oktober 2026, oppdatert kl. 13:48</div>
         <h1>Det som gjenstår før klienten erstatter src/apps/web</h1>
         <p class="lede">
           Hva klienten og BFF-en i
@@ -339,7 +339,7 @@
         </p>
         <div class="facts">
           <span>Eksisterende: <code>main</code> 8639267 (25.09)</span>
-          <span>Vår: <code>main</code> efe51d9</span>
+          <span>Vår: <code>main</code> 6ce60a1</span>
           <span
             >Sammenslåingen:
             <a href="https://github.com/digdir/kunnskapsassistenten/pull/129">utkast-PR #129</a>
@@ -354,18 +354,50 @@
           <h2>Kort fortalt</h2>
           <ul>
             <li>
-              <strong>Sju ting gjenstår før sammenslåingen.</strong> Bare valget av agent er middels
-              stort. Resten er små. To av dem trenger en avgjørelse før de kan lages: hvor
-              agentvalget skal stå, og hvor lenken til tilbakemelding skal gå.
+              <strong>Gjort i dag:</strong> testene på at svarteksten ikke kan kjøre skript (<a
+                href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/254"
+                >#254</a
+              >,
+              <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/258"
+                >#258</a
+              >), kontrakttypene i klienten er like pakken (<a
+                href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/255"
+                >#255</a
+              >), utkastet tas vare på når økta går ut (<a
+                href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/259"
+                >#259</a
+              >), en <code>javascript:</code>-lenke blir tekst (<a
+                href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/256"
+                >#256</a
+              >), og et ukjent filterfelt gir en egen feilmelding (<a
+                href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/260"
+                >#260</a
+              >). Alt er ute i testmiljøet.
             </li>
             <li>
-              <strong>Tre ting er alt løst i #129:</strong> stegene mens svaret lages, at bildet
-              bygges mot BFF-en, og CI for klienten. Det samme gjelder fem endringer i BFF-en, som
-              svarteksten og kildene per bit.
+              <strong>Klar, men venter på en avgjørelse:</strong> advarselen når svaret mangler
+              kilder (<a
+                href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/257"
+                >#257</a
+              >). Svarkortet blir 92 px høyere på 1440 og 284 px høyere på en telefon (390), og
+              høyden på telefon skal vurderes først.
             </li>
             <li>
-              <strong>Resten av det den eksisterende har,</strong> trengs ikke i klienten, fordi det
-              ligger i BFF-en og følger med, eller det kan komme etter sammenslåingen.
+              <strong>Flyttet til etter sammenslåingen:</strong> lenken til tilbakemelding under
+              hvert svar. Den skal tenkes nytt, fordi den gir mye støy under hvert svar.
+            </li>
+            <li>
+              <strong>Venter på en avgjørelse:</strong> hvor agentvalget skal stå (1), versjonen av
+              Node og TypeScript (6), og én kom-i-gang og én serie med arkitekturvalg (7).
+            </li>
+            <li>
+              <strong>Funnet underveis:</strong> en feil i BFF-en som gir et svar feil kilder etter
+              ny innlasting. Se «Funnet underveis» under.
+            </li>
+            <li>
+              <strong>Allerede løst i #129:</strong> stegene mens svaret lages, at bildet bygges mot
+              BFF-en, CI for klienten, og fem endringer i BFF-en, som svarteksten og kildene per
+              bit.
             </li>
           </ul>
         </div>
@@ -394,7 +426,7 @@
                 <th>Hos dem i dag</th>
                 <th>Hos oss nå</th>
                 <th>Omfang</th>
-                <th>Trenger avgjørelse</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -416,7 +448,7 @@
                 <td>Mangler. Ingen kall til <code>/api/models</code>.</td>
                 <td class="size">M</td>
                 <td>
-                  <span class="pill todo">Ja</span
+                  <span class="pill todo">Avgjørelse</span
                   ><span class="note">Hvor valget skal stå, for eksempel i innstillingene.</span>
                 </td>
               </tr>
@@ -433,7 +465,8 @@
                 <td>Mangler. Skjemaet nevnes bare i endringsloggen.</td>
                 <td class="size">L</td>
                 <td>
-                  <span class="pill todo">Ja</span><span class="note">Hvor lenken skal gå.</span>
+                  <span class="pill none">Etter</span
+                  ><span class="note">Flyttet til etter sammenslåingen, og skal tenkes nytt.</span>
                 </td>
               </tr>
               <tr>
@@ -450,11 +483,17 @@
                   også <code>done.insufficient</code>.
                 </td>
                 <td>
-                  Delvis. Kildepanelet sier «Ingen kilder til dette svaret», men svaret selv sier
-                  ingenting.
+                  Advarselen er laget (<a
+                    href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/257"
+                    >#257</a
+                  >): over svaret, med samme tekst som den eksisterende. Bak BFF-en står den bare
+                  mens samtalen pågår, fordi kildene ikke lagres per svar.
                 </td>
                 <td class="size">L</td>
-                <td><span class="pill none">Nei</span></td>
+                <td>
+                  <span class="pill partly">Klar</span
+                  ><span class="note">Venter på en avgjørelse om høyden på telefon.</span>
+                </td>
               </tr>
               <tr>
                 <td class="num">4</td>
@@ -467,10 +506,17 @@
                   (skript, <code>onerror</code>, <code>javascript:</code>-lenke og iframe).
                 </td>
                 <td>
-                  Delvis. <code>react-markdown</code> tegner ikke rå HTML, men ingen test sier det.
+                  Gjort: testene dekker skript, <code>onerror</code>, iframe, og lenker med
+                  <code>javascript:</code>, <code>vbscript:</code> og <code>data:</code> (<a
+                    href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/254"
+                    >#254</a
+                  >,
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/258"
+                    >#258</a
+                  >).
                 </td>
                 <td class="size">L</td>
-                <td><span class="pill none">Nei</span></td>
+                <td><span class="pill ok">Gjort</span></td>
               </tr>
               <tr>
                 <td class="num">5</td>
@@ -480,11 +526,17 @@
                 </td>
                 <td><code>packages/contract</code>, brukt av både klienten og serveren.</td>
                 <td>
-                  Delvis. Pakken har fått feltene i #129, men klienten bruker fortsatt sin egen kopi
-                  i <code>api/bff/contract.ts</code>.
+                  Kopien i <code>api/bff/contract.ts</code> er lik pakken (<a
+                    href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/255"
+                    >#255</a
+                  >). Byttet til pakken trenger at <code>ConversationDetail</code> i pakken får
+                  <code>sources</code>.
                 </td>
                 <td class="size">L</td>
-                <td><span class="pill none">Nei</span></td>
+                <td>
+                  <span class="pill partly">Delvis</span
+                  ><span class="note">Gjort hos oss. Byttet trenger én linje i pakken.</span>
+                </td>
               </tr>
               <tr>
                 <td class="num">6</td>
@@ -501,7 +553,10 @@
                   Node 22. Klienten har TypeScript 6.
                 </td>
                 <td class="size">M</td>
-                <td><span class="pill none">Nei</span></td>
+                <td>
+                  <span class="pill todo">Avgjørelse</span
+                  ><span class="note">TypeScript 5 i rota, 6 i klienten.</span>
+                </td>
               </tr>
               <tr>
                 <td class="num">7</td>
@@ -515,16 +570,38 @@
                 </td>
                 <td><code>docs/arkitektur/0001–0005</code> på norsk, og egne kom-i-gang-sider.</td>
                 <td class="size">L</td>
-                <td><span class="pill none">Nei</span></td>
+                <td><span class="pill todo">Avgjørelse</span></td>
               </tr>
             </tbody>
           </table>
         </div>
         <p class="lede" style="font-size: 0.92rem">
-          I tillegg bør utkastet i skrivefeltet tas vare på når økta går ut. Ingen av klientene gjør
-          det i dag, men økta i BFF-en varer i 8 timer og fornyes ikke, så det treffer den som har
-          appen åpen en hel arbeidsdag. Omfang L.
+          Utkastet i skrivefeltet tas nå vare på når økta går ut (<a
+            href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/259"
+            >#259</a
+          >), og settes inn igjen etter innloggingen. Det gjelder også et spørsmål som ble sendt i
+          det økta gikk ut.
         </p>
+
+        <div class="summary">
+          <h2 id="funnet">Funnet underveis</h2>
+          <ul>
+            <li>
+              <strong>Feil kilder etter ny innlasting bak BFF-en.</strong> I
+              <code>sourceStore.ts</code> hopper <code>remember</code> over et tomt sett med kilder.
+              Har det siste svaret ingen kilder, får det kildene til svaret før etter ny innlasting.
+              Målt lokalt mot BFF-en i #129, og koden er den samme på <code>main</code> 8639267. Det
+              må rettes i BFF-en.
+            </li>
+            <li>
+              <strong>Et ukjent filterfelt</strong> ga «svarte med feil (400)». Nå får leseren en
+              egen tekst (<a
+                href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/260"
+                >#260</a
+              >).
+            </li>
+          </ul>
+        </div>
       </section>
 
       <section id="side-om-side">
@@ -547,29 +624,34 @@
               </li>
               <li>
                 <div class="row">
-                  <strong>Lenke til tilbakemelding</strong><span class="pill todo">Før</span>
+                  <strong>Lenke til tilbakemelding</strong><span class="pill none">Etter</span>
                 </div>
-                <p>Under hvert svar.</p>
+                <p>Under hvert svar. Den skal tenkes nytt etter sammenslåingen.</p>
               </li>
               <li>
                 <div class="row">
                   <strong>Advarsel i svaret når kildene mangler</strong
-                  ><span class="pill todo">Før</span>
+                  ><span class="pill partly">Klar</span>
                 </div>
-                <p>Vår sier det bare i kildepanelet.</p>
+                <p>
+                  Laget i
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/257"
+                    >#257</a
+                  >, og venter på en avgjørelse om høyden på telefon.
+                </p>
               </li>
               <li>
                 <div class="row">
-                  <strong>Tester på skript i svarteksten</strong><span class="pill todo">Før</span>
+                  <strong>Tester på skript i svarteksten</strong><span class="pill ok">Gjort</span>
                 </div>
-                <p>Fire tester på <code>marked</code> og DOMPurify.</p>
+                <p>Våre dekker også <code>vbscript:</code> og <code>data:</code>.</p>
               </li>
               <li>
                 <div class="row">
                   <strong>Felles typer fra <code>packages/contract</code></strong
                   ><span class="pill partly">Delvis</span>
                 </div>
-                <p>Pakken er oppdatert i #129, men klienten bruker en kopi.</p>
+                <p>Kopien er lik pakken. Byttet trenger én linje i pakken.</p>
               </li>
               <li>
                 <div class="row">
@@ -936,7 +1018,7 @@
       <footer>
         <span
           >Laget 6. oktober 2026 fra koden på <code>main</code> 8639267 i
-          digdir/kunnskapsassistenten, <code>main</code> efe51d9 her, og utkast-PR #129 (9172aeb).
+          digdir/kunnskapsassistenten, <code>main</code> 6ce60a1 her, og utkast-PR #129 (9172aeb).
           «Målt» betyr kjørt mot en lokal backend eller testmiljøet. Alt annet er lest i
           koden.</span
         >
