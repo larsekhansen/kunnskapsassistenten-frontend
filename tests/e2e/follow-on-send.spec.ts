@@ -27,6 +27,30 @@ function distanceToBottom(main: Locator): Promise<number> {
   );
 }
 
+/**
+ * Until the thread has stopped growing. A thread read from its address goes
+ * on laying itself out for a moment after its first answer shows, and a
+ * column put 30 px from a bottom that then moves is no longer 30 px from it.
+ * Measured: without this the column stood 4455 px short after sending at
+ * 390, and 30 px further down in the middle at both widths, while the same
+ * steps by hand held.
+ */
+async function settled(page: Page, main: Locator): Promise<void> {
+  await page.evaluate(() => document.fonts.ready);
+  let last = -1;
+  await expect
+    .poll(
+      async () => {
+        const height = await main.evaluate((element) => element.scrollHeight);
+        const still = height === last;
+        last = height;
+        return still;
+      },
+      { intervals: [250], timeout: 10_000 },
+    )
+    .toBe(true);
+}
+
 /** Send a follow-up from where the column stands, and wait for its answer. */
 async function send(page: Page): Promise<void> {
   const before = await finished(page).count();
@@ -45,6 +69,7 @@ for (const [width, height] of [
       await page.setViewportSize({ width, height });
       await page.goto(THREAD);
       await expect(finished(page).first()).toBeVisible();
+      await settled(page, page.locator('.main'));
     });
 
     test('midt i tråden står kolonnen, og «Bla til nederst» vises', MOCK, async ({ page }) => {
