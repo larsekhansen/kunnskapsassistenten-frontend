@@ -226,18 +226,32 @@ function expectFits(fit: Fit, where: string): void {
 }
 
 /**
+ * Up to this long, a finite animation is run to its end at once.
+ * Designsystemet's finite ones are 0.15–0.4 s. Its 0.8–6 s ones are the
+ * skeleton and the spinner, which are endless and left out anyway.
+ */
+const FINISH_AT_ONCE_MS = 2_000;
+
+/**
  * Until no finite animation is running, so a measurement never catches a
  * panel halfway open. Endless ones, such as a spinner, are left out: they
  * would never end.
  *
- * Each finite animation found is run to its end at once with `finish()`
- * rather than waited for. What is measured is the layout an animation ends
- * in, not the animation, and a machine under load can take seconds to play
- * one that lasts 300 ms: one run on a busy machine failed here with
- * «animasjonene ble ikke ferdige» after a drawer opened, and the next run
- * passed 26 of 26. Throttling the CPU 20 times did not bring it back,
- * since the compositor plays CSS animations by the clock. The poll goes on
- * while anything new starts, and its message names what still runs.
+ * A short one, up to `FINISH_AT_ONCE_MS`, is run to its end at once with
+ * `finish()` rather than waited for. What is measured is the layout it ends
+ * in, and a machine under load can take seconds to play one that lasts
+ * 300 ms: one run on a busy machine failed here with «animasjonene ble ikke
+ * ferdige» after a drawer opened, and the next run passed 26 of 26.
+ * Throttling the CPU 20 times did not bring it back, since the compositor
+ * plays CSS animations by the clock.
+ *
+ * A longer one is waited for, not finished. A transition that got a far too
+ * long duration by mistake is something the reader sees, and finishing it
+ * would hide that. If it has not ended in time, the message names it with its
+ * length. The poll goes on while anything new starts, so one that starts over
+ * and over is named too. With the short ones finished at once, load no longer
+ * decides how long this takes, and five seconds is Playwright's own default
+ * for an expect: three calls in one test fit in its 30 s.
  *
  * Not `reducedMotion: 'reduce'`: Designsystemet turns `.ds-dialog[open]` off
  * then, but the drawers' own `[data-placement]` animation outranks that rule
@@ -247,32 +261,37 @@ async function settled(page: Page): Promise<void> {
   await expect
     .poll(
       () =>
-        page.evaluate(() =>
-          document
-            .getAnimations()
-            .filter(
-              (animation) =>
-                animation.playState === 'running' &&
-                animation.effect?.getComputedTiming().endTime !== Infinity,
-            )
-            .map((animation) => {
-              const name =
-                animation instanceof CSSAnimation
-                  ? animation.animationName
-                  : animation instanceof CSSTransition
-                    ? animation.transitionProperty
-                    : 'animasjon';
-              const target =
-                animation.effect instanceof KeyframeEffect ? animation.effect.target : null;
-              try {
-                animation.finish();
-              } catch {
-                // An animation that cannot be finished is reported as still running.
-              }
-              return `${name} på ${target?.tagName.toLowerCase() ?? 'ukjent'}`;
-            }),
+        page.evaluate(
+          (finishAtOnce) =>
+            document
+              .getAnimations()
+              .filter(
+                (animation) =>
+                  animation.playState === 'running' &&
+                  animation.effect?.getComputedTiming().endTime !== Infinity,
+              )
+              .map((animation) => {
+                const name =
+                  animation instanceof CSSAnimation
+                    ? animation.animationName
+                    : animation instanceof CSSTransition
+                      ? animation.transitionProperty
+                      : 'animasjon';
+                const target =
+                  animation.effect instanceof KeyframeEffect ? animation.effect.target : null;
+                const where = `${name} på ${target?.tagName.toLowerCase() ?? 'ukjent'}`;
+                const length = Number(animation.effect?.getComputedTiming().endTime ?? 0);
+                if (length > finishAtOnce) return `${where} varer ${Math.round(length)} ms`;
+                try {
+                  animation.finish();
+                } catch {
+                  // An animation that cannot be finished is reported as still running.
+                }
+                return where;
+              }),
+          FINISH_AT_ONCE_MS,
         ),
-      { message: 'animasjonene ble ikke ferdige', timeout: 15_000 },
+      { message: 'animasjonene ble ikke ferdige', timeout: 5_000 },
     )
     .toEqual([]);
 }
