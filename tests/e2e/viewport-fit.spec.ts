@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { covers } from './a11y';
 import { ANSWER_TIMEOUT, composer } from './helpers';
 
@@ -17,9 +17,15 @@ import { ANSWER_TIMEOUT, composer } from './helpers';
  * Påstandene regnes ut i siden:
  * - `<html>` har ikke overflyt, og `window.scrollTo` flytter ingenting.
  * - `main` ruller ikke sidelengs.
- * - Ingen synlige elementer går utenfor vinduet sidelengs. Det som klippes av
- *   en boks med egen rulling, som tabellene i et svar, regnes ikke. Det gjør
- *   heller ikke lukkede skuffer, `inert` og `hidden`.
+ * - Ingen synlige elementer går utenfor vinduet sidelengs. Bare det som ikke
+ *   ligger inne i en boks med `overflow-x` som klipper eller ruller, sjekkes
+ *   her: alt inne i `main` og panelene ligger i en slik boks, og dekkes av de
+ *   to neste. Lukkede skuffer, `inert` og `hidden` regnes ikke.
+ * - Ingen tekst kuttes av en boks med `overflow: hidden` eller `clip`.
+ *   Svarkortet er en slik boks (`.ds-card`), så et ord som ikke brytes i et
+ *   svar, får ikke `main` til å rulle. Det blir borte i stedet, og det er det
+ *   denne fanger. Tekst med `text-overflow: ellipsis` er kuttet med vilje og
+ *   regnes ikke, og heller ikke hopp-lenkene før de får fokus.
  * - Bare de avtalte boksene ruller (`SCROLLERS`).
  */
 
@@ -74,6 +80,7 @@ type Fit = {
   moved: { x: number; y: number };
   main: number;
   outside: string[];
+  cut: string[];
   scrolling: string[];
 };
 
@@ -99,7 +106,14 @@ async function measure(page: Page): Promise<Fit> {
       return box.width > 0 && box.height > 0;
     };
 
-    // Clipped by a box of its own, which then has to stay inside the window.
+    /*
+     * Inside a box that clips or scrolls (`overflow-x` other than `visible`).
+     * Such content can stick out of the window without the window showing
+     * it, so the window check below skips it, and the box decides instead:
+     * a box that scrolls must be one of `SCROLLERS`, and a box that clips must
+     * not cut any text off (`cut`). `main` and the panels are boxes like
+     * that, so this check sees only what is drawn outside them.
+     */
     const clipped = (el: Element) => {
       for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) {
         if (getComputedStyle(up).overflowX !== 'visible') return true;
@@ -131,6 +145,47 @@ async function measure(page: Page): Promise<Fit> {
       }
     }
 
+    /*
+     * Text cut off by a box that clips. The answer card (`.ds-card`) clips,
+     * so a word too long for the line is hidden there, and `main` does not
+     * scroll — measured on 06.10 at 393: the 175-character link ran 207 px
+     * past the card with nothing else to show for it. Each text node is held
+     * against its nearest clipping box. A box that scrolls stops the search:
+     * what is in it can be scrolled to. So does the top layer and
+     * `position: fixed`, which no box around them clips: a tooltip is drawn
+     * in the top layer from inside a 67 px rail. Cut on purpose, and not
+     * counted: `text-overflow: ellipsis`, and a box 1 px wide or tall, which
+     * is text kept for a screen reader — a skip link before it has focus, and
+     * what the tooltip leaves for one to read.
+     */
+    const cut: string[] = [];
+    const cutting = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = cutting.nextNode(); node; node = cutting.nextNode()) {
+      const parent = node.parentElement;
+      if (!parent || !node.textContent?.trim() || !shown(parent)) continue;
+      if (getComputedStyle(parent).textOverflow === 'ellipsis') continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const right = Math.max(...[...range.getClientRects()].map((box) => box.right));
+      for (let up: Element | null = parent; up && up !== document.body; up = up.parentElement) {
+        const style = getComputedStyle(up);
+        const overflow = style.overflowX;
+        if (overflow === 'auto' || overflow === 'scroll') break;
+        if (overflow === 'hidden' || overflow === 'clip') {
+          const box = up.getBoundingClientRect();
+          const edge = box.right;
+          const forScreenReader = box.width <= 1 || box.height <= 1;
+          if (!forScreenReader && right > edge + 0.5) {
+            cut.push(
+              `teksten «${node.textContent.trim().slice(0, 40)}» kuttes ${Math.round(right - edge)} px av ${describe(up)}`,
+            );
+          }
+          break;
+        }
+        if (up.matches(':popover-open, dialog[open]') || style.position === 'fixed') break;
+      }
+    }
+
     const scrolling: string[] = [];
     for (const el of document.querySelectorAll('*')) {
       if (!shown(el)) continue;
@@ -155,6 +210,7 @@ async function measure(page: Page): Promise<Fit> {
       moved,
       main: main.scrollWidth - main.clientWidth,
       outside: outside.slice(0, 10),
+      cut: cut.slice(0, 10),
       scrolling,
     };
   }, SCROLLERS);
@@ -165,22 +221,57 @@ function expectFits(fit: Fit, where: string): void {
   expect.soft(fit.moved, `${where}: window.scrollTo flyttet siden`).toEqual({ x: 0, y: 0 });
   expect.soft(fit.main, `${where}: main ruller sidelengs`).toBe(0);
   expect.soft(fit.outside, `${where}: utenfor vinduet sidelengs`).toEqual([]);
+  expect.soft(fit.cut, `${where}: tekst kuttes av en boks`).toEqual([]);
   expect.soft(fit.scrolling, `${where}: ruller uten å skulle`).toEqual([]);
 }
 
-/** Opens a sidebar by its rail or toggle, when it is not open already. */
-async function openSidebar(page: Page, name: string): Promise<void> {
-  const show = page.getByRole('button', { name, exact: true });
-  if (await show.count()) {
-    await show.click();
-    await page.waitForTimeout(400);
-  }
+/**
+ * Until no finite animation is running, so a measurement never catches a
+ * panel halfway open. Endless ones, such as a spinner, are left out: they
+ * would never end.
+ */
+async function settled(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            document
+              .getAnimations()
+              .filter(
+                (animation) =>
+                  animation.playState === 'running' &&
+                  animation.effect?.getComputedTiming().endTime !== Infinity,
+              ).length,
+        ),
+      { message: 'animasjonene ble ikke ferdige' },
+    )
+    .toBe(0);
 }
 
-/** Closes whatever drawer or menu is open. */
-async function closeOverlay(page: Page): Promise<void> {
+/**
+ * Opens a sidebar by its rail or toggle, when it is not open already, and
+ * waits until it says it is open. Open already, as the navigation panel is
+ * on a desktop, it is measured as it is.
+ */
+async function openSidebar(page: Page, name: string): Promise<void> {
+  const show = page.getByRole('button', { name, exact: true });
+  if (!(await show.count())) return;
+  const controls = await show.getAttribute('aria-controls');
+  await show.click();
+  if (controls) {
+    await expect(
+      page.locator(`[aria-controls="${controls}"][aria-expanded="true"]`).first(),
+    ).toBeAttached();
+  }
+  await settled(page);
+}
+
+/** Closes the drawer or menu that is open, and waits until it is gone. */
+async function closeOverlay(page: Page, overlay: Locator): Promise<void> {
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(300);
+  await expect(overlay).toBeHidden();
+  await settled(page);
 }
 
 for (const size of SIZES) {
@@ -201,7 +292,7 @@ for (const size of SIZES) {
       await page.getByRole('button', { name: /^Agent:/ }).click();
       await expect(page.locator('.ka-agent-picker')).toBeVisible();
       expectFits(await measure(page), 'agentmenyen åpen');
-      await closeOverlay(page);
+      await closeOverlay(page, page.locator('.ka-agent-picker'));
 
       await composer(page).click();
       await page.keyboard.type('simuler lang lenke');
@@ -217,11 +308,15 @@ for (const size of SIZES) {
 
       await openSidebar(page, 'Vis tråder og filter');
       expectFits(await measure(page), 'navigasjonspanelet åpent');
-      if (await page.locator('dialog[open]').count()) await closeOverlay(page);
+      if (await page.locator('dialog[open]').count()) {
+        await closeOverlay(page, page.locator('dialog[open]'));
+      }
 
       await openSidebar(page, 'Vis kilder');
       expectFits(await measure(page), 'kildepanelet åpent');
-      if (await page.locator('dialog[open]').count()) await closeOverlay(page);
+      if (await page.locator('dialog[open]').count()) {
+        await closeOverlay(page, page.locator('dialog[open]'));
+      }
 
       await page.locator('.ka-composer__file-input').setInputFiles({
         name: LONG_FILE_NAME,
@@ -276,7 +371,14 @@ test.describe('bytte av størrelse i samme økt', () => {
       [393, 852, 'snudd tilbake til 393×852'],
     ] as const) {
       await page.setViewportSize({ width, height });
-      await page.waitForTimeout(500);
+      // Two frames for the new size to reach layout, then until nothing moves.
+      await page.evaluate(
+        () =>
+          new Promise<void>((done) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => done())),
+          ),
+      );
+      await settled(page);
 
       const screen = await page.evaluate(() => {
         const shell = document.querySelector('.shell')!.getBoundingClientRect();
