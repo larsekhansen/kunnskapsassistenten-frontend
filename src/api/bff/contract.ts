@@ -11,7 +11,10 @@
  * The shapes are the package's, under names with `Bff` in front, so that
  * import is a list of `Source as BffSource` and nothing else changes. One
  * field is here and not there: `sources` on `BffConversationDetail`, which
- * the BFF on that branch sends and the package does not declare yet.
+ * the BFF on that branch sends and the package does not declare yet. The same
+ * goes for `BffModels` (`{ agents? }` around `GET /api/models`) and `BffMe`
+ * (`{ tool? }` from `GET /api/me`): the package has no types for either, so
+ * they stay here when the rest becomes an import.
  *
  * The `{ conversations }` around the list is not in the package; it is read
  * off `apps/server/src/server.ts` and checked against a running BFF on

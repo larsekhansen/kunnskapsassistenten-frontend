@@ -346,23 +346,6 @@ function nextMessageId(): string {
 }
 
 /**
- * A backend that is not there. Streams the NKOM answer token by token with
- * thinking steps first and sources last, in the same order and shape the live
- * client will produce.
- *
- * It honours the document filter, which the real backend does not yet. See
- * filtering.ts for why that belongs here and not only in a test.
- *
- * Cancellation surfaces as a final `error` event with code `aborted` rather
- * than a thrown exception, so a caller has one code path for «the answer
- * stopped» regardless of why.
- *
- * It also remembers: every turn that produced text is written into the open
- * thread in `sessionStorage`, so a reload finds the conversation again and
- * the thread list shows it. See sessionThreads.ts for why a mock does this
- * and the live client does not.
- */
-/**
  * Three of the agents the BFF lists, with the names and descriptions it gives
  * them (`api/bff/fixtures/models.json`, recorded 06.10), so the choice in the
  * compose field can be seen and tested without one.
@@ -395,6 +378,23 @@ export const MOCK_AGENTS: AgentList = {
   defaultId: 'builtin/agent-rag-agent',
 };
 
+/**
+ * A backend that is not there. Streams the NKOM answer token by token with
+ * thinking steps first and sources last, in the same order and shape the live
+ * client will produce.
+ *
+ * It honours the document filter, which the real backend does not yet. See
+ * filtering.ts for why that belongs here and not only in a test.
+ *
+ * Cancellation surfaces as a final `error` event with code `aborted` rather
+ * than a thrown exception, so a caller has one code path for «the answer
+ * stopped» regardless of why.
+ *
+ * It also remembers: every turn that produced text is written into the open
+ * thread in `sessionStorage`, so a reload finds the conversation again and
+ * the thread list shows it. See sessionThreads.ts for why a mock does this
+ * and the live client does not.
+ */
 export class MockChatClient implements ChatClient {
   readonly #delays: MockDelays;
 

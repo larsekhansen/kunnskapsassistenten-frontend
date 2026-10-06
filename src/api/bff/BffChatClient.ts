@@ -505,6 +505,16 @@ export class BffChatClient implements ChatClient {
    *
    * Throws when the BFF cannot be reached, so the panel can offer to try again.
    */
+  async listFacets(signal?: AbortSignal, selection?: FilterSelection): Promise<FilterFacet[]> {
+    const { capabilities: can } = await this.#capabilities(true, signal);
+    // The probe is not the caller's to cancel (see above), so the caller's
+    // own abort is honoured here — the panel drops a stale answer by it.
+    signal?.throwIfAborted();
+    if (!can.filters) return [];
+    const facets = await this.#facets(signal);
+    return facetsFrom(facets, this.#fieldsFor(facets, this.#corpusKey()), selection);
+  }
+
   /**
    * The agents, and the one the BFF answers with by default.
    *
@@ -518,16 +528,6 @@ export class BffChatClient implements ChatClient {
       this.#json<BffMe>('/me', signal).catch((): BffMe => ({})),
     ]);
     return agentsFromBff(models.agents, me.tool);
-  }
-
-  async listFacets(signal?: AbortSignal, selection?: FilterSelection): Promise<FilterFacet[]> {
-    const { capabilities: can } = await this.#capabilities(true, signal);
-    // The probe is not the caller's to cancel (see above), so the caller's
-    // own abort is honoured here — the panel drops a stale answer by it.
-    signal?.throwIfAborted();
-    if (!can.filters) return [];
-    const facets = await this.#facets(signal);
-    return facetsFrom(facets, this.#fieldsFor(facets, this.#corpusKey()), selection);
   }
 }
 
