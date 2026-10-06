@@ -1,13 +1,10 @@
 import { Dialog, Fieldset, Heading, Paragraph, Radio } from '@digdir/designsystemet-react';
 import { useId } from 'react';
-import { setFooterMode, type FooterMode } from '../../layout/footerMode';
 import { setDisplayLevel, type DisplayLevel } from './displayLevel';
 
 export type SettingsDialogProps = {
   /** The level on screen now. */
   level: DisplayLevel;
-  /** Where the navigation panel's foot sits now. */
-  footerMode: FooterMode;
   /** Takes `#innstillinger` back out of the address. */
   onClose: () => void;
 };
@@ -28,24 +25,6 @@ const OPTIONS: { value: DisplayLevel; label: string; description: string }[] = [
 ];
 
 /**
- * Simens issue 123, which asks whether the panel's foot has to be pinned at
- * all or whether the whole panel could be one container with nothing fixed.
- * Both are here so the two can be compared on the same page.
- */
-const FOOTER_OPTIONS: { value: FooterMode; label: string; description: string }[] = [
-  {
-    value: 'pinned',
-    label: 'Festet',
-    description: 'Lenkene og fargemodus står nederst i panelet, uansett hvor langt du har rullet.',
-  },
-  {
-    value: 'scrolls',
-    label: 'Ruller med',
-    description: 'Alt ligger i én kolonne. Lenkene står etter den siste tråden og ruller med den.',
-  },
-];
-
-/**
  * The hidden settings menu.
  *
  * Lars, 30.09: «kanskje egentlig bare at jeg kan skrive noe i urlen for å få
@@ -53,9 +32,11 @@ const FOOTER_OPTIONS: { value: FooterMode; label: string; description: string }[
  * den i det samme type designet, men ikke gjør for mye ut av det heller.»
  *
  * So: one Designsystemet `Dialog`, a `Fieldset` of radios per setting, and
- * nothing else. It held one setting when it was built and took the second
- * without changing shape — which is the whole reason it is a menu and not a
- * console command like `window.ka.colorScheme`.
+ * nothing else. It held one setting when it was built, took a second for a
+ * while — where the navigation panel's foot sits, until
+ * digdir/kunnskapsassistenten#123 settled it — and gave it back, without
+ * changing shape. That is the whole reason it is a menu and not a console
+ * command like `window.ka.colorScheme`.
  *
  * **Opened by `#innstillinger`** and not by a query, because a hash never
  * reaches the server, never changes the route, and never travels in a link
@@ -76,10 +57,9 @@ const FOOTER_OPTIONS: { value: FooterMode; label: string; description: string }[
  * trace of it at all. The chat view does that; this component is open by the
  * time it exists.
  */
-export function SettingsDialog({ level, footerMode, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ level, onClose }: SettingsDialogProps) {
   const headingId = useId();
   const groupName = useId();
-  const footerGroupName = useId();
 
   return (
     <Dialog
@@ -110,22 +90,8 @@ export function SettingsDialog({ level, footerMode, onClose }: SettingsDialogPro
             />
           ))}
         </Fieldset>
-        <Fieldset className="ka-settings__group">
-          <Fieldset.Legend>Foten i navigasjonspanelet</Fieldset.Legend>
-          {FOOTER_OPTIONS.map((option) => (
-            <Radio
-              checked={footerMode === option.value}
-              description={option.description}
-              key={option.value}
-              label={option.label}
-              name={footerGroupName}
-              onChange={() => setFooterMode(option.value)}
-              value={option.value}
-            />
-          ))}
-        </Fieldset>
         <Paragraph className="ka-settings__note" data-size="sm" variant="long">
-          Valgene huskes i denne nettleseren.
+          Valget huskes i denne nettleseren.
         </Paragraph>
       </Dialog.Block>
     </Dialog>

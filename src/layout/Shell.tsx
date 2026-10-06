@@ -15,7 +15,6 @@ import { ComposerContext } from './composerContext';
 import { COMPOSER_ID } from './ids';
 import { PanelSeparator } from './PanelSeparator';
 import { SidebarFooter } from './SidebarFooter';
-import { useFooterMode } from './footerMode';
 import { OpenThreadContext } from './openThreadContext';
 import { PanelHeadContext } from './panelHeadContext';
 import { MainScrollContext } from './scrollContext';
@@ -616,29 +615,14 @@ function Sidebar({
    * opens as a drawer to steer from. Not on a rail: three choices do not fit
    * in 67 px, and a rail is one button (railWidth).
    *
-   * Pinned below the scrolling region, like the head above it, so it is where
-   * it is however long the thread list grows. That is the default and was the
-   * only way until Simens issue 123; `footScrolls` just below is the other.
+   * Last in the scrolling region and scrolling with it, after the threads or
+   * the filter, and not pinned to the bottom of the panel
+   * (digdir/kunnskapsassistenten#123; Lars, 06.10: «Gjør den non-sticky»).
+   * Pinned, it took its height off the list in every state; here it costs
+   * nothing until the reader scrolls to it. A short panel has it right under
+   * the content rather than pushed down to the bottom.
    */
   const foot = slot === 'primary-sidebar' ? <SidebarFooter /> : null;
-
-  /*
-   * Simens issue 123: pinned below the scrolling region, or at the end of it
-   * and scrolling with the list. A setting rather than a rewrite, so both can
-   * be compared on the same page; see footerMode.ts. `pinned` is the default
-   * and is what shipped with issue 85.
-   *
-   * One DEFINITION for both places, so the two cannot drift apart. Not one
-   * mounting: React gives a new parent a new mount, so switching tears the
-   * foot down and builds it again. Measured by KA CC on #231 — a selection
-   * inside the first link is gone after the switch.
-   *
-   * Nothing is lost by that today, because the switch happens inside a modal
-   * dialog and the focus cannot be in the foot while it does. The day the
-   * choice moves somewhere the foot is reachable from, that stops being true.
-   */
-  const footerMode = useFooterMode();
-  const footScrolls = footerMode === 'scrolls' && foot !== null;
 
   /**
    * Everything below the head: the view head box and the view itself.
@@ -698,7 +682,7 @@ function Sidebar({
       </ViewHeadContext>
 
       {/* Last in the scrolling region, so it follows the list down. */}
-      {footScrolls ? foot : null}
+      {foot}
     </div>
   );
 
@@ -876,7 +860,6 @@ function Sidebar({
         </div>
 
         {drawer ? null : panelContent}
-        {railed || footScrolls ? null : foot}
       </div>
 
       {/*
@@ -930,7 +913,6 @@ function Sidebar({
               <div className="panel-head-slot" ref={panelHeadRef} />
             </div>
             {panelContent}
-            {footScrolls ? null : foot}
           </div>
         </Dialog>
       ) : null}

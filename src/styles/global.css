@@ -621,11 +621,17 @@ body {
 }
 
 /*
- * The panel's foot: the app's own settings, under the scrolling region and
- * outside it. Only the navigation panel has one; see `foot` in Shell.tsx.
+ * The panel's foot: the pages about Kunnskapsassistenten and the colour
+ * scheme. Only the navigation panel has one; see `foot` in Shell.tsx.
  *
- * The line over it is the one the view head draws under itself, so the
- * region that scrolls is framed the same way at both ends.
+ * Last in the scrolling region and scrolling with the threads or the filter,
+ * not pinned below the region (digdir/kunnskapsassistenten#123). The line
+ * over it is what separates the app's own settings from the list.
+ *
+ * No inline padding: the scrolling region already keeps the panel's. No end
+ * padding either: the region keeps its own 32 px under its last item, and the
+ * panel its own 32 px below that. A third would be 80 px of air under three
+ * links.
  */
 .sidebar-footer {
   flex: 0 0 auto;
@@ -634,37 +640,11 @@ body {
   flex-direction: column;
   gap: var(--ds-size-4);
   inline-size: 100%;
-  /*
-   * As tall as the links and the colour scheme, and no taller (Lars 06.10).
-   * Every pixel here is taken off the thread list above, which is the region
-   * that scrolls.
-   */
+  /* As tall as the links and the colour scheme, and no taller (Lars 06.10). */
   block-size: fit-content;
-  padding-inline: var(--ka-sidebar-padding-inline);
+  margin-block-start: var(--ds-size-6);
   padding-block-start: var(--ds-size-4);
   border-block-start: var(--ka-panel-border);
-}
-
-/*
- * Simens issue 123: the foot at the end of the scrolling region instead of
- * below it, so the panel is one column with nothing fixed. Off by default;
- * the hidden settings menu turns it on, see src/layout/footerMode.ts.
- *
- * The panel's inline padding is the one thing the pinned foot needs and this
- * one does not: the scrolling region already keeps it.
- *
- * The line over it stays. It is what separates the app's own settings from
- * the list, whether or not the foot moves with it.
- *
- * No end padding here on purpose. Moving the foot inside takes BOTH
- * `:has(> .sidebar-footer)` rules out of play — the foot is a descendant of
- * the panel now, not a child — so the scrolling region keeps its own 32 px
- * under its last item, and the panel keeps its own 32 px below that. Adding
- * a third would be 80 px of air under three links.
- */
-.sidebar-content > .sidebar-footer {
-  padding-inline: 0;
-  margin-block-start: var(--ds-size-6);
 }
 
 /*
@@ -699,20 +679,6 @@ body {
  */
 .sidebar-footer__links a[aria-current='page'] {
   font-weight: var(--ds-font-weight-semibold);
-}
-
-/*
- * With a foot, the 32 px the region keeps under its last item and the 32 px
- * the panel keeps under itself would be 64 px of air around one row of
- * buttons, taken from the list that scrolls. The line already ends the
- * region, so 16 px (`--ds-size-4`, the panel's own gap) on each side of it.
- */
-.panel:has(> .sidebar-footer) {
-  padding-block-end: var(--ds-size-4);
-}
-
-.panel:has(> .sidebar-footer) > .sidebar-content {
-  padding-block-end: 0;
 }
 
 /*

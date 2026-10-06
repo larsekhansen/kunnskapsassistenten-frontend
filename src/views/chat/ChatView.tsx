@@ -31,7 +31,6 @@ import { AgentPicker } from './AgentPicker';
 import { ThreadLoading } from './ThreadLoading';
 import { Welcome } from './Welcome';
 import { SettingsDialog } from './SettingsDialog';
-import { useFooterMode } from '../../layout/footerMode';
 import { SETTINGS_HASH, useDisplayLevel } from './displayLevel';
 import './chat.css';
 
@@ -519,8 +518,6 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   const navigate = useNavigate();
   const settingsOpen = hash === SETTINGS_HASH;
   const displayLevel = useDisplayLevel();
-  // Simens issue 123, read here only to hand the dialog the choice on screen.
-  const footerMode = useFooterMode();
 
   /*
    * The same rescue, for the error that arrives on its own.
@@ -710,7 +707,6 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
       */}
       {settingsOpen ? (
         <SettingsDialog
-          footerMode={footerMode}
           level={displayLevel}
           onClose={() => navigate({ hash: '' }, { replace: true })}
         />
