@@ -1,3 +1,4 @@
+import { forgetFlags } from '../flags/flags';
 import { forgetAgentChoice } from './agentChoice';
 import { forgetAllAnswers } from './live/sourceStore';
 import { kaEnv } from './runtimeConfig';
@@ -65,6 +66,7 @@ export function beforeLogout(): void {
   forgetAllAnswers();
   forgetDraft();
   forgetAgentChoice();
+  forgetFlags();
 }
 
 /**
