@@ -1328,6 +1328,25 @@ describe('ChatView og valget av agent', () => {
     window.localStorage.removeItem(AGENT_STORAGE_KEY);
   });
 
+  it('glemmer valget når leseren går tilbake til standarden, så BFF-en bestemmer igjen', async () => {
+    window.localStorage.setItem(AGENT_STORAGE_KEY, 'builtin/fact-checker-agent');
+    const { client, asked } = clientWithAgents();
+    render(
+      <Shell>
+        <ChatView client={client} />
+      </Shell>,
+    );
+
+    await waitFor(() => expect(agentButton().textContent).toContain('fact-checker'));
+    fireEvent.click(agentButton());
+    fireEvent.click(screen.getByRole('button', { name: /^agent-rag/, hidden: true }));
+    ask('Hva er måloppnåelse?');
+
+    await waitFor(() => expect(asked).toHaveLength(1));
+    expect(asked[0]).not.toHaveProperty('model');
+    expect(window.localStorage.getItem(AGENT_STORAGE_KEY)).toBeNull();
+  });
+
   it('bruker standarden når den valgte agenten ikke finnes lenger', async () => {
     window.localStorage.setItem(AGENT_STORAGE_KEY, 'builtin/borte-agent');
     const { client, asked } = clientWithAgents();
