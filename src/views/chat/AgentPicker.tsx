@@ -72,6 +72,10 @@ export function AgentPicker({ agents, current, onChoose }: AgentPickerProps) {
         // Neutral, not the accent blue the list's buttons take by default: a
         // list of names to read and choose from, not a row of links.
         data-color="neutral"
+        // The BFF lists eight agents, 663 px of list on a phone. `contain`
+        // makes Designsystemet cap it at the room above the button and
+        // scroll inside it, instead of running off the top of a short screen.
+        data-overscroll="contain"
         data-size="sm"
         onClose={() => setOpen(false)}
         onOpen={() => setOpen(true)}
