@@ -1,6 +1,7 @@
 import type { Thread } from '../model';
 import { deleteMockThread, renameMockThread } from './mock/sessionThreads';
 import { kaEnv } from './runtimeConfig';
+import { keepDraft } from './session';
 
 /**
  * What the reader can do to a thread besides open it: give it a new name, and
@@ -152,7 +153,11 @@ function toLogin(): void {
 
 async function send(path: string, init: RequestInit): Promise<void> {
   const response = await fetch(path, { credentials: 'same-origin', ...init });
-  if (response.status === 401) toLogin();
+  if (response.status === 401) {
+    // What is in the compose field outlives the sign-in (session.ts).
+    keepDraft();
+    toLogin();
+  }
   if (!response.ok) throw new Error(`${init.method} ${path} ${response.status}`);
 }
 

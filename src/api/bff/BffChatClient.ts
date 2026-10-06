@@ -12,6 +12,7 @@ import type { DatasetFilterFields } from '../filterFields';
 import { FILTER_REFUSED_MESSAGES, errorFromBackend, errorFromStatus } from '../backendErrors';
 import { adoptServerCorpus } from '../corpus';
 import { createSseDecoder } from '../live/sse';
+import { keepDraft, noteQuestionInFlight } from '../session';
 import type {
   BffAskRequest,
   BffCapabilities,
@@ -184,13 +185,19 @@ export class BffChatClient implements ChatClient {
     this.#settleDelaysMs = options.settleDelaysMs ?? SETTLE_DELAYS_MS;
   }
 
-  /** Every call goes through here, so a 401 anywhere leads to sign-in. */
+  /**
+   * Every call goes through here, so a 401 anywhere leads to sign-in, with
+   * what the reader had written kept for when they are back (session.ts).
+   */
   async #fetch(path: string, init?: RequestInit): Promise<Response> {
     const response = await fetch(`${this.#basePath}${path}`, {
       ...init,
       headers: { 'Content-Type': 'application/json', ...init?.headers },
     });
-    if (response.status === 401) this.#onUnauthorized();
+    if (response.status === 401) {
+      keepDraft();
+      this.#onUnauthorized();
+    }
     return response;
   }
 
@@ -329,10 +336,15 @@ export class BffChatClient implements ChatClient {
       openConversation = id;
       creating?.settle(id);
     };
+    // The field is empty by now, so a 401 before the answer has to keep the
+    // question itself. Any 401 while it is out, not only the one on `/ask`:
+    // the filter can ask for the capabilities and the facets first.
+    const arrived = noteQuestionInFlight(params.query);
 
     try {
       yield* this.#stream(params, conversationId, corpusKey, askedOf, made);
     } finally {
+      arrived();
       if (creating) {
         // Nothing was made if the BFF never said so. Settling twice is a
         // no-op, so this only matters for a question that failed first.
