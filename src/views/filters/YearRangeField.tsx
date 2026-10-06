@@ -47,8 +47,8 @@ export function YearRangeField({ ref, facet, selected, onChange }: FacetFieldPro
   const facetYears = facet.values.map((value) => value.value);
   const total = facetYears.length;
   const chosen = selected.length;
-  const allChosen =
-    total > 0 && chosen === total && facetYears.every((year) => selected.includes(year));
+  // As in FacetField: every listed year ticked, whatever else is.
+  const allChosen = total > 0 && facetYears.every((year) => selected.includes(year));
 
   const selectedItems = toRanges(selected).map((range) => ({
     value: rangeKey(range),
@@ -113,7 +113,7 @@ export function YearRangeField({ ref, facet, selected, onChange }: FacetFieldPro
               data-color="neutral"
               data-size="sm"
               aria-label={`Velg alle ${facet.label.toLocaleLowerCase('nb-NO')}`}
-              onClick={() => changeFromButton(facetYears)}
+              onClick={() => changeFromButton([...new Set([...selected, ...facetYears])])}
             >
               Velg alle
             </Button>

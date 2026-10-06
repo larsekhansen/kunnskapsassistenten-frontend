@@ -59,7 +59,17 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
   useImperativeHandle(ref, () => ({ focus: () => inputRef.current?.focus() }), []);
   const total = facet.values.length;
   const chosen = selected.length;
-  const allChosen = chosen === total;
+  /*
+   * Every value the list holds is ticked, which is the rule the question
+   * leaves the field out by (`askedSelection`), so the field and the question
+   * say the same. Not `chosen === total`: the list can hold fewer values than
+   * are ticked. A field where everything is ticked is not sent, so the facets
+   * are counted without it, and in mock a value with no documents under the
+   * other fields is not listed — 259 ticked, 136 listed. That read «259 av
+   * 136 valgt» with the limit warning while the question went without the
+   * field (design/measurements/select-all-then-narrow.md).
+   */
+  const allChosen = total > 0 && facet.values.every((value) => selected.includes(value.value));
   const dimension = facet.label.toLocaleLowerCase('nb-NO');
 
   /*
@@ -192,7 +202,14 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
               data-color="neutral"
               data-size="sm"
               aria-label={`Velg alle ${facet.label.toLocaleLowerCase('nb-NO')}`}
-              onClick={() => changeFromButton(facet.values.map((value) => value.value))}
+              onClick={() =>
+                // Adds to the choice and never takes from it: a value ticked
+                // and not in the list now is kept, so «Velg alle» under a
+                // narrowing does not shrink the filter for later.
+                changeFromButton([
+                  ...new Set([...selected, ...facet.values.map((value) => value.value)]),
+                ])
+              }
             >
               Velg alle
             </Button>
