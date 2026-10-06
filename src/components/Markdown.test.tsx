@@ -244,9 +244,10 @@ describe('Markdown og søk i teksten', () => {
  * `defaultUrlTransform` empties any URL whose protocol is not on its list.
  *
  * Each case was made red by taking a layer away (2026-10-06):
- * - a `urlTransform` that lets everything through: the javascript: links.
- *   React 19 then swaps the href for one that throws, but it is still a
- *   javascript: URL, and react-markdown should never have let it through.
+ * - a `urlTransform` that lets everything through: the javascript:,
+ *   vbscript: and data: links. React 19 swaps a javascript: href for one
+ *   that throws, but it is still a javascript: URL, and react-markdown should
+ *   never have let it through. The other two React leaves as they are.
  * - raw HTML turned on with rehype-raw: script and iframe. The event handler
  *   stays green there, because React refuses a string as a listener.
  * - the answer set as HTML directly, as `marked` without DOMPurify would:
@@ -261,7 +262,7 @@ describe('Markdown runs nothing from the answer text', () => {
       if (['script', 'iframe', 'object', 'embed'].includes(tag)) found.push(`<${tag}>`);
       for (const { name, value } of element.attributes) {
         if (/^on/i.test(name)) found.push(`${tag}[${name}]`);
-        if (['href', 'src', 'action', 'formaction'].includes(name) && isScriptUrl(value)) {
+        if (['href', 'src', 'action', 'formaction'].includes(name) && isUnsafeUrl(value)) {
           found.push(`${tag}[${name}=${value}]`);
         }
       }
@@ -270,14 +271,24 @@ describe('Markdown runs nothing from the answer text', () => {
   }
 
   /**
-   * What a browser would read as `javascript:`. The URL parser ignores case,
-   * trims control characters and spaces at the ends and drops tabs and
-   * newlines anywhere, so `java\tscript:` counts. Dropping every one of them
-   * anywhere is stricter than the parser, which is the safe side for a test.
+   * An address that runs code when followed: `javascript:` and `vbscript:`,
+   * and `data:`, which can carry a whole page with its own script.
+   *
+   * The URL parser ignores case, trims control characters and spaces at the
+   * ends and drops tabs and newlines anywhere, so `java\tscript:` counts.
+   * Dropping every one of them anywhere is stricter than the parser, which is
+   * the safe side for a test.
    */
-  function isScriptUrl(value: string): boolean {
-    const compact = [...value].filter((char) => char.charCodeAt(0) > 0x20).join('');
-    return compact.toLowerCase().startsWith('javascript:');
+  function isUnsafeUrl(value: string): boolean {
+    const compact = [...value]
+      .filter((char) => char.charCodeAt(0) > 0x20)
+      .join('')
+      .toLowerCase();
+    return (
+      compact.startsWith('javascript:') ||
+      compact.startsWith('vbscript:') ||
+      compact.startsWith('data:')
+    );
   }
 
   it.each([
@@ -296,10 +307,12 @@ describe('Markdown runs nothing from the answer text', () => {
   });
 
   it.each([
-    ['plain', '[klikk](javascript:alert(1))'],
-    ['mixed case', '[klikk](JaVaScRiPt:alert(1))'],
-    ['entity-encoded', '[klikk](&#x6A;avascript:alert(1))'],
-  ])('keeps the text of a javascript: link but not the script (%s)', (_, answer) => {
+    ['javascript:', '[klikk](javascript:alert(1))'],
+    ['javascript: in mixed case', '[klikk](JaVaScRiPt:alert(1))'],
+    ['javascript: entity-encoded', '[klikk](&#x6A;avascript:alert(1))'],
+    ['vbscript:', '[klikk](vbscript:msgbox(1))'],
+    ['data:', '[klikk](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)'],
+  ])('keeps the text of a link but not an address that runs code (%s)', (_, answer) => {
     const { container } = render(<Markdown>{answer}</Markdown>);
 
     expect(executable(container)).toEqual([]);
