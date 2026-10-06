@@ -191,6 +191,34 @@ describe('årsfilteret med perioder (year-ranges)', () => {
   });
 });
 
+describe('årsfeltet når lista har færre år enn det som er valgt', () => {
+  it('sier at alle er valgt når hvert år i lista er valgt, også med et år utenfor', () => {
+    // 2030 holds no documents (question 4), and the six listed years are all
+    // ticked: the question leaves the field out, and the field says the same.
+    render(<Years initial={['2019', '2020', '2021', '2022', '2023', '2024', '2030']} />);
+
+    expect(screen.getByText('Alle 6 valgt, altså ingen avgrensning')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Velg alle år' })).toBeNull();
+  });
+
+  it('legger til med «Velg alle» og beholder år som ikke står i lista', () => {
+    const seen: string[][] = [];
+    render(<Years initial={['2030']} seen={seen} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Velg alle år' }));
+
+    expect([...(seen.at(-1) ?? [])].sort()).toEqual([
+      '2019',
+      '2020',
+      '2021',
+      '2022',
+      '2023',
+      '2024',
+      '2030',
+    ]);
+  });
+});
+
 describe('samlede merkelapper (compact-filter-chips)', () => {
   function Organisations({ initial, seen }: { initial: string[]; seen?: string[][] }) {
     const [selected, setSelected] = useState(initial);
