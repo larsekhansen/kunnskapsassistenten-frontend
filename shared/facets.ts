@@ -1,6 +1,7 @@
 /**
  * Facets in the generic format from docs/arkitektur/0001, which is also the
- * one Nikolai's BFF answers `GET /api/facets` with (src/api/bff/contract.ts).
+ * one the BFF in digdir/kunnskapsassistenten answers `GET /api/facets` with
+ * (src/api/bff/contract.ts).
  *
  * The contract between whoever counts the facets and the client that draws
  * them. Today our own server counts them from Typesense (server/facets.ts);

@@ -1,6 +1,6 @@
 # 0002 — Klienten vår som `apps/web`, bak BFF-en i monorepoet
 
-Skrevet 2026-09-28. Status: **retning valgt** av Lars. Detaljene under er
+Skrevet 2026-09-28. Status: **retning valgt**. Detaljene under er
 foreslått og ikke avtalt med dem som eier monorepoet.
 
 Rettet 2026-10-05 på tre punkter, etter at flyttingen ble prøvd på ordentlig:
@@ -10,11 +10,9 @@ rettelse står der påstanden sto. Nå-bildet for flyttingen er
 
 ## Valget
 
-> «Vi sikter på å overta /web i digdir/kunnskapsassistenten/src/apps. …
-> Jeg antar /server er backend for frontend. Men det må funke bra.»
->
-> «Vi kan vel se for oss en merge hvor vi beholder det beste fra mitt og
-> hans.» (Lars, 2026-09-28)
+Valgt 2026-09-28: klienten vår overtar `src/apps/web` i
+digdir/kunnskapsassistenten, med `src/apps/server` som BFF foran backenden.
+Det beste fra begge klientene skal beholdes, og resultatet må virke godt.
 
 `digdir/kunnskapsassistenten/src` har tre deler:
 
@@ -86,7 +84,7 @@ holder deltaene tilbake til det er klart om de er plan eller svar
 
 ## Det som må endres
 
-**I BFF-en** (kode i monorepoet, så en PR dit krever Lars' ja per post):
+**I BFF-en** (kode i monorepoet, så en PR dit krever eget ja per post):
 
 1. Skille plan fra svar i strømmen, slik klienten vår gjør.
 2. Sende kildene per melding når en tråd åpnes igjen. **Rettet 2026-10-05:**
@@ -168,7 +166,7 @@ målte at det ikke stemmer slik det var ment:
 Begge tar med commitene. Forskjellen er om man kan følge historikken til en
 enkelt fil etterpå, og det er `subtree` som ikke kan det.
 
-**Lars valgte 2026-10-05 en tredje vei: én kopi, uten historikk** (D1 i
+**Valgt 2026-10-05, en tredje vei: én kopi, uten historikk** (D1 i
 planen). Kilden og SHA-en står i commit-meldingen og i README-en i
 `apps/web`, så den som leter finner veien til det arkiverte repoet. Da er
 ingen av de to radene over det som skjer — de står igjen fordi de er

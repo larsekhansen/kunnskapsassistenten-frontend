@@ -1,10 +1,10 @@
 # 0005 — Teksten i utdragene, og kildene etter ny innlasting, i live
 
-**Status:** valgt · **Dato:** 2026-09-30 · **Endret:** 2026-10-05, stegene (Simens issue 88), tallene fra KA CC på #227, hva lageret inneholder (KA CC på #233) og at det tømmes ved Logg ut
+**Status:** valgt · **Dato:** 2026-09-30 · **Endret:** 2026-10-05, stegene (issue 88), tallene fra KA CC på #227, hva lageret inneholder (KA CC på #233) og at det tømmes ved Logg ut
 
 ## Kontekst
 
-To av Simens punkter i runde 3 gjelder dataene bak kildepanelet i live-modus.
+To av punktene i runde 3 gjelder dataene bak kildepanelet i live-modus.
 Det er modusen testmiljøet i Azure kjører.
 
 - **86d:** et åpent utdrag viser overskriftsstien og lenka til Kudos, men ikke
@@ -35,9 +35,9 @@ Dette ble målt mot den lokale stakken på :8080 (tenant `kudos`, datasett
 headless-rag har ingen rute der en klient med `X-API-Key` får teksten til
 biter ut fra id-ene. Det er lest i koden, ikke målt. Utdraget ligger i
 Typesense, i bitsamlingen til datasettet, i feltet `content_markdown`, og
-`chunk_id` er også Typesense-id-en (`docs/loader.clj:521`). Nikolais BFF
-henter teksten derfra, med id-ene fra svaret (`apps/server/src/excerpts.ts` i
-poden). Tynnserveren vår spør allerede Typesense om fasettene (0001).
+`chunk_id` er også Typesense-id-en (`docs/loader.clj:521`). BFF-en i
+digdir/kunnskapsassistenten henter teksten derfra, med id-ene fra svaret
+(`apps/server/src/excerpts.ts` i poden). Tynnserveren vår spør allerede Typesense om fasettene (0001).
 
 ## Beslutning
 
@@ -61,7 +61,7 @@ id-er, dokumentnummer, tittel, adresse og overskrifter. Ingen tekst fra
 dokumentene lagres i nettleseren.
 
 **3. Stegene etter innlasting** (endret 2026-10-05). Fremgangsmåte-boksen
-forsvant av samme grunn (Simens issue 88). Det samme lageret tar derfor også
+forsvant av samme grunn (issue 88). Det samme lageret tar derfor også
 vare på det strømmen sa om stegene, ved siden av bitene: stegene slik de kom
 (`thinkingSteps`), treffene, dokumentene og søkeordene (`retrieval`) og hvor
 lenge agenten tenkte (`thoughtMs`). Det er agentens egne ord om hva den
@@ -92,7 +92,7 @@ samme bit.
 - **`/v1/chat/completions`.** Den gir teksten for de bitene svaret siterer,
   men bare ved å kjøre en ny tur med agenten.
 - **`sessionStorage`.** Den overlever at siden lastes på nytt, men ikke at
-  fanen lukkes. Simen vil ha kildene tilbake også dagen etter.
+  fanen lukkes. Kildene skal være tilbake også dagen etter.
 - **Vente på headless-rag #21.** Det er den riktige rettelsen, men den er
   ikke på plass.
 
@@ -102,7 +102,7 @@ samme bit.
   frontenden har der i dag (id 2), har bare `documents:search` på
   `KUDOS_preprod_v4_documents_.*`. Da svarer oppslaget med feil, og alle
   utdragene får `textUnavailable`. En ny nøkkel er en skriving mot Typesense,
-  og den må Lars eller Benjamin lage. Navnet på bitsamlingen må også inn i
+  og den lages utenfor dette repoet. Navnet på bitsamlingen må også inn i
   `KA_CHUNK_COLLECTIONS`. Uten disse to fungerer punkt 2 fortsatt, men uten
   tekst.
 - **Id-ene fra nettleseren går inn i et filter i Typesense.** Ruta tar bare id-er
@@ -157,7 +157,7 @@ samme bit.
   nettleser, kan lese de forriges søkeord og agentens plan i
   utviklerverktøyene. Hva en utlogging i Azure gjør med `localStorage`, er
   ikke målt.
-- **Lageret tømmes ved «Logg ut»** (Lars sa ja 5.10). Det gjelder der det
+- **Lageret tømmes ved «Logg ut»** (valgt 5.10). Det gjelder der det
   finnes en utlogging, altså i bff-modus (`/auth/logout`, `beforeLogout` i
   `src/api/session.ts`). Lageret tømmes i klikket, før nettleseren følger
   lenka. I dag skriver bare live-modus til lageret, og live har ingen
