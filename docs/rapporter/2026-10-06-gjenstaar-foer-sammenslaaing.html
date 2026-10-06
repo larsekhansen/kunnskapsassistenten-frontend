@@ -533,7 +533,10 @@
                   <code>sources</code>.
                 </td>
                 <td class="size">L</td>
-                <td><span class="pill ok">Gjort hos oss</span></td>
+                <td>
+                  <span class="pill partly">Delvis</span
+                  ><span class="note">Gjort hos oss. Byttet trenger én linje i pakken.</span>
+                </td>
               </tr>
               <tr>
                 <td class="num">6</td>
@@ -587,8 +590,8 @@
               <strong>Feil kilder etter ny innlasting bak BFF-en.</strong> I
               <code>sourceStore.ts</code> hopper <code>remember</code> over et tomt sett med kilder.
               Har det siste svaret ingen kilder, får det kildene til svaret før etter ny innlasting.
-              Målt lokalt mot BFF-en på <code>main</code> 8639267, og det samme står på grenen i
-              #129. Det må rettes i BFF-en.
+              Målt lokalt mot BFF-en i #129, og koden er den samme på <code>main</code> 8639267. Det
+              må rettes i BFF-en.
             </li>
             <li>
               <strong>Et ukjent filterfelt</strong> ga «svarte med feil (400)». Nå får leseren en

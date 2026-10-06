@@ -6,12 +6,13 @@ føres, står i [README](README.md). PR-numrene uten repo foran er i dette repoe
 ## 2026-10-06
 
 - **Lenken til tilbakemelding under hvert svar tas etter sammenslåingen** og
-  skal tenkes nytt, fordi den gir mye støy under hvert svar.
+  skal tenkes nytt, fordi den gir mye støy under hvert svar (punkt 2 i
+  [rapporten](2026-10-06-gjenstaar-foer-sammenslaaing.html#gjenstaar)).
 - **Svarteksten kan ikke kjøre skript, og det er nå testet**
   ([#254](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/254), [#258](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/258)): skript, `onerror`, iframe, og lenker med
   `javascript:`, `vbscript:` og `data:`. En `javascript:`-lenke blir tekst og
   ikke en tom lenke ([#256](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/256)).
-- **Kontrakttypene i klienten er like `packages/contract`** ([#255](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/255)),
+- **Kontrakttypene i klienten er like `packages/contract` i digdir#129** ([#255](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/255)),
   så byttet til pakken i monorepoet blir en import. Pakken trenger `sources` på
   `ConversationDetail`.
 - **Utkastet i skrivefeltet tas vare på når økta går ut** ([#259](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/259)), og
