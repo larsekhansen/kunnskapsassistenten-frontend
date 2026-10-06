@@ -1,6 +1,7 @@
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { ChatClient } from '../../api';
+import { threadDetailFromBff } from '../../api/bff/mapping';
 import { messagesFromApi } from '../../api/live/conversations';
 import type { Message, SourceDocument, StreamEvent } from '../../model';
 import { MessageList } from './MessageList';
@@ -96,7 +97,7 @@ describe('advarselen når svaret ikke har kilder', () => {
     }
   });
 
-  it('står etter ny innlasting fra live og bff, som bruker samme lesing', () => {
+  it('står etter ny innlasting fra live', () => {
     const [, restored] = messagesFromApi([
       { id: 'q', role: 'user', text: 'Hva er måloppnåelse?', created: 1 },
       { id: 'a', role: 'assistant', text: answer.content, created: 2 },
@@ -111,6 +112,53 @@ describe('advarselen når svaret ikke har kilder', () => {
       { id: 'a', role: 'assistant', text: 'Målene står i tildelingsbrevet [1].', created: 2 },
     ]);
     show(restored as Message);
+    expect(warning()).toBeNull();
+  });
+});
+
+describe('advarselen etter ny innlasting fra bff', () => {
+  it('står ikke over et svar BFF-en ikke tok vare på kildene til', () => {
+    // Measured 06.10 against the BFF on :8791: the second of three answers
+    // had sources and no markers, and after a reload it was told it had none.
+    const thread = threadDetailFromBff({
+      conversation: { id: 'c1', topic: 'Første', created: 1 },
+      messages: [
+        { id: 'q1', role: 'user', text: 'Første', created: 1 },
+        { id: 'a1', role: 'assistant', text: 'Et svar med kilder [1][2].', created: 2 },
+        { id: 'q2', role: 'user', text: 'Andre', created: 3 },
+        { id: 'a2', role: 'assistant', text: 'Et svar med kilder og uten markører.', created: 4 },
+        { id: 'q3', role: 'user', text: 'Tredje', created: 5 },
+        { id: 'a3', role: 'assistant', text: 'Det siste svaret.', created: 6 },
+      ],
+      sources: [
+        { docNum: '1', title: 'Årsrapport', url: '', marker: 1, chunkId: 'a', excerpt: 'x' },
+      ],
+    });
+
+    render(
+      <MessageList
+        foundNothing={() => false}
+        messages={thread.messages}
+        onRegenerate={() => {}}
+        onSelectSource={() => {}}
+      />,
+    );
+    expect(warning()).toBeNull();
+  });
+
+  it('står ikke over et svar som ble lest tilbake uten noe BFF-en husket', () => {
+    // After a restart of the BFF, or for a thread that never had sources:
+    // from here the two look the same, so nothing is claimed.
+    const thread = threadDetailFromBff({
+      conversation: { id: 'c1', topic: 'Første', created: 1 },
+      messages: [
+        { id: 'q1', role: 'user', text: 'Hva er 17 ganger 23?', created: 1 },
+        { id: 'a1', role: 'assistant', text: '17 × 23 = 391.', created: 2 },
+      ],
+      sources: [],
+    });
+
+    show(thread.messages[1] as Message);
     expect(warning()).toBeNull();
   });
 });
