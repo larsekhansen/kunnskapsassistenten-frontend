@@ -12,6 +12,7 @@ import askTooManyValues from './fixtures/ask-too-many-values.json';
 import capabilitiesD16 from './fixtures/capabilities-d16.json';
 import facetsD16 from './fixtures/facets-d16.json';
 import { activeCorpusKey, corpusOption } from '../corpus';
+import { provideDraft, resetDraftSources } from '../session';
 
 /**
  * Fixturene er tatt opp fra Nikolais BFF (`8639267`, med rettelsen for plan og
@@ -284,6 +285,48 @@ describe('BffChatClient.ask, strømmen', () => {
       { type: 'error', error: { code: 'unauthorized' }, corpusKey: 'kudos-full' },
     ]);
     expect(onUnauthorized).toHaveBeenCalledOnce();
+  });
+});
+
+describe('BffChatClient, utkastet når økta går ut', () => {
+  const kept = () => JSON.parse(sessionStorage.getItem('ka.draft.v1') ?? 'null') as unknown;
+
+  beforeEach(() => {
+    sessionStorage.clear();
+    resetDraftSources();
+  });
+
+  it('tar vare på spørsmålet når /ask svarer 401, for feltet ble tømt da det ble sendt', async () => {
+    fakeBff({ 'POST /api/ask': () => json({ error: 'Ikke innlogget.' }, 401) });
+    provideDraft(() => '');
+    // Read when the browser is sent away, not after: that is when it has to be there.
+    let atRedirect: unknown;
+    const onUnauthorized = vi.fn(() => {
+      atRedirect = kept();
+    });
+
+    await drain(client({ onUnauthorized }).ask({ query: 'Hva skriver DFØ?' }));
+
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+    expect(atRedirect).toEqual({ text: 'Hva skriver DFØ?', path: window.location.pathname });
+  });
+
+  it('tar vare på teksten i feltet når et annet kall svarer 401', async () => {
+    fakeBff({ 'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
+    provideDraft(() => 'Et spørsmål under arbeid');
+
+    await client({ onUnauthorized: vi.fn() }).listThreads();
+
+    expect(kept()).toEqual({ text: 'Et spørsmål under arbeid', path: window.location.pathname });
+  });
+
+  it('lagrer ingenting når feltet er tomt og ingenting er på vei', async () => {
+    fakeBff({ 'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
+    provideDraft(() => '');
+
+    await client({ onUnauthorized: vi.fn() }).listThreads();
+
+    expect(sessionStorage.getItem('ka.draft.v1')).toBeNull();
   });
 });
 
