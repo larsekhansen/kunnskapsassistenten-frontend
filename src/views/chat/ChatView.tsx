@@ -33,6 +33,7 @@ import { Welcome } from './Welcome';
 import { SettingsDialog } from './SettingsDialog';
 import { useFooterMode } from '../../layout/footerMode';
 import { SETTINGS_HASH, useDisplayLevel } from './displayLevel';
+import { FEATURE_FLAGS_HASH, FeatureFlagsDialog, useFlagLink } from '../../flags';
 import './chat.css';
 
 export type ChatViewProps = {
@@ -518,6 +519,10 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   const { hash } = useLocation();
   const navigate = useNavigate();
   const settingsOpen = hash === SETTINGS_HASH;
+  // The flags menu opens the same way, from `#feature-flags`, and a link with
+  // `?flagg=` turns a flag on and lands there. See src/flags/flagLink.ts.
+  const flagsOpen = hash === FEATURE_FLAGS_HASH;
+  useFlagLink();
   const displayLevel = useDisplayLevel();
   // Simens issue 123, read here only to hand the dialog the choice on screen.
   const footerMode = useFooterMode();
@@ -714,6 +719,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
           level={displayLevel}
           onClose={() => navigate({ hash: '' }, { replace: true })}
         />
+      ) : null}
+      {flagsOpen ? (
+        <FeatureFlagsDialog onClose={() => navigate({ hash: '' }, { replace: true })} />
       ) : null}
     </div>
   );
