@@ -259,8 +259,8 @@ export const AGENT_HEADING = 'Velg agent';
  * panel says otherwise.
  *
  * Shorter than the client in digdir/kunnskapsassistenten, which says «ingen
- * kilder fra dokumentgrunnlaget»: one quiet line, as Lars chose on 06.10
- * («en kort og subtil statusmelding»), with the same advice.
+ * kilder fra dokumentgrunnlaget»: one short, quiet line, as chosen on 06.10,
+ * with the same advice.
  */
 export const NO_SOURCES_WARNING =
   'Svaret har ingen kilder. Kontroller det mot originaldokumentene før du bruker det.';

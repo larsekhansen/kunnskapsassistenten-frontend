@@ -43,7 +43,7 @@ function warning() {
 }
 
 describe('advarselen når svaret ikke har kilder', () => {
-  it('er den korte linja Lars valgte', () => {
+  it('er den korte linja', () => {
     expect(NO_SOURCES_WARNING).toBe(
       'Svaret har ingen kilder. Kontroller det mot originaldokumentene før du bruker det.',
     );

@@ -57,8 +57,9 @@ export interface Message {
    * empty `sources` says nothing about whether it had any.
    *
    * The BFF passes each message on as text alone, and keeps one set of
-   * sources per conversation in memory: the last one that was not empty, and
-   * none after a restart. An answer read back from it without sources may
+   * sources per conversation in memory: the last answer's (on its `main`,
+   * `8639267`, the last set that was not empty), and none after a restart.
+   * An answer read back from it without sources may
    * well have had them. Measured 06.10 on :8791: an answer with sources and
    * no `[n]` came back with none, and was told so. Set by
    * `threadDetailFromBff`; the warning in the answer card and the sources

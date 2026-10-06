@@ -73,7 +73,8 @@ describe('sourceDocumentsFrom', () => {
  *
  * The BFF passes each message on as text alone, without the chunks the
  * backend stores, and keeps one set of sources per conversation in memory:
- * the last set that was not empty, gone after a restart. Measured 06.10
+ * the last answer's (on its `main`, the last set that was not empty), gone
+ * after a restart. Measured 06.10
  * against the BFF on :8791, three questions and a reload: the second answer
  * had sources and no `[n]`, came back with none, and was told it had none.
  */
