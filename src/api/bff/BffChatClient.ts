@@ -535,6 +535,9 @@ async function errorFromResponse(response: Response): Promise<ChatError> {
   if (body.code === 'filter-invalid-value') {
     return { code: 'filter-refused', message: FILTER_REFUSED_MESSAGES.invalidValue };
   }
+  if (body.code === 'filter-unknown-field') {
+    return { code: 'filter-refused', message: FILTER_REFUSED_MESSAGES.unknownField };
+  }
   if (typeof body.error !== 'string' || !body.error.trim()) return fromStatus;
   const fromText = errorFromBackend(body.error);
   return fromText.code === 'unknown' && !fromText.message ? fromStatus : fromText;

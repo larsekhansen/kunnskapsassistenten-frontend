@@ -105,12 +105,15 @@ describe('Markdown', () => {
     expect(link.getAttribute('href')).toBe('https://kudos.dfo.no');
   });
 
-  it('leaves the text of a link whose address was refused, and no link', () => {
-    // react-markdown empties a javascript: address. Drawn as a link, that is
-    // `<a href="">`: a link to the page the reader is already on. Testing
-    // Library's role query does not count `href=""` as a link, so the test
-    // looks for the element.
-    const { container } = render(<Markdown>{'Se [her](javascript:alert(1)).'}</Markdown>);
+  it.each([
+    ['refused', 'Se [her](javascript:alert(1)).'],
+    ['left out', 'Se [her]().'],
+  ])('leaves the text of a link whose address was %s, and no link', (_, answer) => {
+    // react-markdown empties a javascript: address, and `[her]()` has none to
+    // begin with. Drawn as a link, either is `<a href="">`: a link to the page
+    // the reader is already on. Testing Library's role query does not count
+    // `href=""` as a link, so the test looks for the element.
+    const { container } = render(<Markdown>{answer}</Markdown>);
 
     expect(container.querySelector('a')).toBeNull();
     expect(container.textContent).toBe('Se her.');

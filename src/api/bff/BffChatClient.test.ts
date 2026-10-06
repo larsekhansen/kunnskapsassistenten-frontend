@@ -332,6 +332,45 @@ describe('BffChatClient, utkastet når økta går ut', () => {
     expect(kept()).toEqual({ text: 'Hva skriver DFØ?', path: '/' });
   });
 
+  it('sender leseren tilbake til den nye tråden når BFF-en har navngitt den før 401-en', async () => {
+    // The answer holds after the `conversation` event, so the question is
+    // still on its way when the other call gets its 401.
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => (release = resolve));
+    const frames = [
+      sse({ type: 'conversation', id: 'conv-new', topic: 'Hva skriver DFØ?' }),
+      sse({ type: 'done', conversationId: 'conv-new', insufficient: false }),
+    ];
+    const held = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        if (frames.length === 1) await released;
+        const frame = frames.shift();
+        if (frame === undefined) return controller.close();
+        controller.enqueue(new TextEncoder().encode(frame));
+      },
+    });
+    fakeBff({
+      'POST /api/ask': () =>
+        new Response(held, { headers: { 'Content-Type': 'text/event-stream' } }),
+      'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401),
+    });
+    const onUnauthorized = vi.fn();
+    const bff = client({ onUnauthorized });
+
+    // In the shell's order: wait for the name, then ask.
+    const created = bff.createThread(threadFromQuestion('Hva skriver DFØ?'));
+    const asked = drain(bff.ask({ query: 'Hva skriver DFØ?' }));
+    await expect(created).resolves.toMatchObject({ id: 'conv-new' });
+    // The shell moves the thread to its real address once it is named.
+    window.history.replaceState(null, '', '/threads/conv-new');
+    await bff.listThreads();
+    release();
+    await asked;
+
+    expect(onUnauthorized).toHaveBeenCalledExactlyOnceWith('/threads/conv-new');
+    expect(kept()).toEqual({ text: 'Hva skriver DFØ?', path: '/threads/conv-new' });
+  });
+
   it('tar vare på teksten i feltet når et annet kall svarer 401', async () => {
     fakeBff({ 'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
     provideDraft(() => 'Et spørsmål under arbeid');
@@ -655,6 +694,30 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
         code: 'filter-refused',
         message:
           'Et av valgene i filteret har tegn eller en lengde søket ikke tar imot. Fjern det valget.',
+      },
+    });
+  });
+
+  it('sier med egne ord at filteret har et felt som ikke finnes, når BFF-en nekter feltet', async () => {
+    // The BFF's own sentence, from `FilterUnknownField` in apps/server/src/facets.ts.
+    fromBff({
+      'POST /api/ask': () =>
+        json(
+          {
+            error:
+              'Filteret har feltet «documentType», som ikke finnes. Feltene er «type», som i field i /api/facets.',
+            code: 'filter-unknown-field',
+            field: 'documentType',
+          },
+          400,
+        ),
+    });
+    const events = await drain(noBuildConfig().ask({ query: 'x', filters: documentType(['a']) }));
+    expect(events.at(-1)).toMatchObject({
+      type: 'error',
+      error: {
+        code: 'filter-refused',
+        message: 'Filteret bruker et felt som ikke finnes i innholdet det søkes i.',
       },
     });
   });
