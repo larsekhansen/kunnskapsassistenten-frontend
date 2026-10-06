@@ -7,7 +7,7 @@ import { defaultViewportWidth, setViewportWidth } from '../test/matchMedia';
 import { LayoutProvider } from './LayoutProvider';
 import { LAYOUT_STORAGE_KEY } from './persistence';
 import { useLayout } from './useLayout';
-import { drawerMaxViewport } from './viewModel';
+import { bothSidebarsMinViewport, drawerMaxViewport } from './viewModel';
 
 /**
  * The trial with the filters over the sources in the secondary sidebar
@@ -83,6 +83,21 @@ describe('flagget filters-right-panel i layouten', () => {
         <Probe />
       </LayoutProvider>,
     );
+
+    expect(read('secondary')).toBe('filters,sources');
+    expect(read('secondary-open')).toBe('false');
+  });
+
+  it('lar navigasjonspanelet være det som er åpent når flagget slås på i et smalt vindu', () => {
+    // Too narrow for both sidebars, wide enough not to draw them as drawers.
+    setViewportWidth(bothSidebarsMinViewport - 1);
+    render(
+      <LayoutProvider>
+        <Probe />
+      </LayoutProvider>,
+    );
+
+    act(() => setFlag('filters-right-panel', true));
 
     expect(read('secondary')).toBe('filters,sources');
     expect(read('secondary-open')).toBe('false');
