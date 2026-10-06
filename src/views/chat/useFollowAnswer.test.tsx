@@ -190,4 +190,69 @@ describe('useFollowAnswer', () => {
 
     expect(screen.getByTestId('at-bottom').textContent).toBe('false');
   });
+
+  /*
+   * Sending is no different from an answer arriving: the column follows when
+   * the reader is at the bottom or so near it that it looks the same, and
+   * stands where it is when the reader is further up (digdir/kunnskapsassistenten#126,
+   * chosen 06.10). The question itself is the first growth of the turn.
+   */
+  describe('when the reader sends', () => {
+    /** The view as it is just before and just after the send button. */
+    function send(col: ReturnType<typeof column>, view: ReturnType<typeof render>) {
+      view.rerender(<Follow element={col.element} answering />);
+      col.growBy(340);
+    }
+
+    it('follows the question and the answer down from the bottom', () => {
+      const col = column(1000, 500);
+      const view = render(<Follow element={col.element} answering={false} />);
+
+      send(col, view);
+
+      expect(col.element.scrollTop).toBe(840);
+    });
+
+    it('follows from nearly the bottom, a line and half a wheel step short', () => {
+      // 80 short of the bottom at 500: the last line and part of the action
+      // row are under the edge, and it looks like the end.
+      const col = column(1000, 420);
+      const view = render(<Follow element={col.element} answering={false} />);
+
+      send(col, view);
+
+      expect(col.element.scrollTop).toBe(840);
+    });
+
+    it('also when the reader scrolled up that little from the bottom', () => {
+      const col = column(1000, 500);
+      const view = render(<Follow element={col.element} answering={false} />);
+      col.scrollTo(440);
+
+      send(col, view);
+
+      expect(col.element.scrollTop).toBe(840);
+    });
+
+    it('stands still in the middle of the thread, and offers «Bla til nederst»', () => {
+      const col = column(3000, 1000);
+      const view = render(<Follow element={col.element} answering={false} />);
+
+      send(col, view);
+
+      expect(col.element.scrollTop).toBe(1000);
+      expect(screen.getByTestId('at-bottom').textContent).toBe('false');
+    });
+  });
+
+  it('counts 80 px from the bottom as the bottom, and 81 as further up', () => {
+    const col = column(1000, 500);
+    render(<Follow element={col.element} answering={false} />);
+
+    col.scrollTo(420);
+    expect(screen.getByTestId('at-bottom').textContent).toBe('true');
+
+    col.scrollTo(419);
+    expect(screen.getByTestId('at-bottom').textContent).toBe('false');
+  });
 });
