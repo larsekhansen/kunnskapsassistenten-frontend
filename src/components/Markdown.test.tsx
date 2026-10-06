@@ -242,8 +242,15 @@ describe('Markdown og søk i teksten', () => {
  * four cases. These are the same four. Here the protection is react-markdown
  * itself: raw HTML is never parsed, only shown as text, and its
  * `defaultUrlTransform` empties any URL whose protocol is not on its list.
- * Turning on raw HTML (rehype-raw) or passing a `urlTransform` that lets
- * everything through makes these red, which is what they are for.
+ *
+ * Each case was made red by taking a layer away (2026-10-06):
+ * - a `urlTransform` that lets everything through: the javascript: links.
+ *   React 19 then swaps the href for one that throws, but it is still a
+ *   javascript: URL, and react-markdown should never have let it through.
+ * - raw HTML turned on with rehype-raw: script and iframe. The event handler
+ *   stays green there, because React refuses a string as a listener.
+ * - the answer set as HTML directly, as `marked` without DOMPurify would:
+ *   all of them, the event handler included.
  */
 describe('Markdown runs nothing from the answer text', () => {
   /** Everything in the rendered answer that a browser could execute. */
