@@ -394,6 +394,16 @@
 /* ------------------------------------------------------------ innstillinger */
 
 /*
+ * Space between two settings in the hidden menu, for the same reason as the
+ * note below: Designsystemet puts none between a Fieldset and what follows
+ * it inside a Dialog.Block, and without it the second legend reads as the
+ * last option of the first group.
+ */
+.ka-settings__group {
+  margin-block-start: var(--ds-size-6);
+}
+
+/*
  * The line under the choices in the hidden settings menu. Designsystemet puts
  * no space between a Fieldset and what follows it inside a Dialog.Block, and
  * without one the note reads as a third option's description.
