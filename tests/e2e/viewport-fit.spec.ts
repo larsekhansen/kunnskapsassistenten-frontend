@@ -5,10 +5,11 @@ import { ANSWER_TIMEOUT, composer } from './helpers';
 /**
  * Ingenting ruller sidelengs, på noen bredde fra 320 (WCAG 1.4.10 Reflow).
  *
- * Lars så det på telefon 06.10: hovedkolonnen rullet sidelengs, 37 px på 375
- * og 19 på 393, med et rullefelt nederst på skjermen. Årsaken var lange ord
- * som ikke ble brutt, i et forslag og i en trådtittel. Denne fila passer på
- * at det ikke kommer tilbake, uansett hva som stikker ut neste gang.
+ * Målt 06.10 på telefon: hovedkolonnen rullet sidelengs, 37 px på 375 og 19
+ * på 393, med et rullefelt nederst på skjermen. Årsaken var lange ord som
+ * ikke ble brutt, i et forslag og i en trådtittel, og chips som ikke kunne
+ * brytes. Denne fila passer på at det ikke kommer tilbake, uansett hva som
+ * stikker ut neste gang.
  *
  * Én test per bruddpunkt, som går gjennom tilstandene i samme side. Feiler
  * noe, sier meldingen hvilken tilstand, hvilket element og hvor langt.
@@ -54,14 +55,19 @@ const SCROLLERS: { selector: string; x: boolean; y: boolean }[] = [
 ];
 
 /**
- * Panel widths stored by a desktop session, wider than a phone. Lars had
- * stored widths when he saw it, and a phone has to draw from them too.
+ * Panel widths stored by a desktop session, wider than a phone. The overflow
+ * was first seen in a browser with stored widths, and a phone has to draw
+ * from them too.
  */
 const STORED_WIDE_LAYOUT = JSON.stringify({
   collapsed: { 'primary-sidebar': false, 'secondary-sidebar': false },
   widths: { 'primary-sidebar': 560, 'secondary-sidebar': 640 },
   sourcesDismissed: false,
 });
+
+/** A file name with no space in it, longer than a phone is wide. */
+const LONG_FILE_NAME =
+  'Arsrapport_2024_Kommunikasjonsmyndigheten_endelig_versjon_med_vedlegg_og_merknader_fra_styret_2025-03-14_v7_godkjent.pdf';
 
 type Fit = {
   html: { x: number; y: number };
@@ -216,6 +222,14 @@ for (const size of SIZES) {
       await openSidebar(page, 'Vis kilder');
       expectFits(await measure(page), 'kildepanelet åpent');
       if (await page.locator('dialog[open]').count()) await closeOverlay(page);
+
+      await page.locator('.ka-composer__file-input').setInputFiles({
+        name: LONG_FILE_NAME,
+        mimeType: 'application/pdf',
+        buffer: Buffer.from('%PDF-1.4\n%%EOF\n'),
+      });
+      await expect(page.locator('.ka-attachments')).toBeVisible();
+      expectFits(await measure(page), 'vedlegg med et langt filnavn');
 
       await page.evaluate(
         (stored) => localStorage.setItem('ka.layout.v1', stored),
