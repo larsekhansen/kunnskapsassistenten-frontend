@@ -5,6 +5,19 @@ føres, står i [README](README.md). PR-numrene uten repo foran er i dette repoe
 
 ## 2026-10-06
 
+- **Lenken til tilbakemelding under hvert svar tas etter sammenslåingen** og
+  skal tenkes nytt, fordi den gir mye støy under hvert svar.
+- **Svarteksten kan ikke kjøre skript, og det er nå testet**
+  ([#254](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/254), [#258](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/258)): skript, `onerror`, iframe, og lenker med
+  `javascript:`, `vbscript:` og `data:`. En `javascript:`-lenke blir tekst og
+  ikke en tom lenke ([#256](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/256)).
+- **Kontrakttypene i klienten er like `packages/contract`** ([#255](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/255)),
+  så byttet til pakken i monorepoet blir en import. Pakken trenger `sources` på
+  `ConversationDetail`.
+- **Utkastet i skrivefeltet tas vare på når økta går ut** ([#259](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/259)), og
+  settes inn igjen etter innloggingen.
+- **Et ukjent filterfelt gir en egen feilmelding** ([#260](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/260)) og ikke
+  «svarte med feil (400)».
 - **Rapporter og beslutningslogg i `docs/rapporter/`.** Valg og milepæler skal
   kunne leses senere uten konteksten fra da de ble gjort. Den første rapporten
   er [det som gjenstår før sammenslåingen](2026-10-06-gjenstaar-foer-sammenslaaing.html).
