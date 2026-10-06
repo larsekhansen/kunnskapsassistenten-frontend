@@ -125,6 +125,23 @@ body {
   margin: 0;
   font-family: var(--ds-font-family), sans-serif;
   font-feature-settings: 'cv05' 1; /* hale på liten l */
+  /*
+   * A word longer than the line it stands on breaks, wherever it stands.
+   * Norwegian compounds and web addresses are the ones that do: on a phone
+   * «lærerspesialtordningen?» in a suggestion and «måloppnåelse» in a thread
+   * title were wider than the answer column, and the column scrolled
+   * sideways — 92 px at 320, 37 at 375, 19 at 393 (WCAG 1.4.10).
+   *
+   * `anywhere` and not `break-word`: both break the word, but only `anywhere`
+   * counts towards min-content size, and the suggestion's text sits in a
+   * flex button, where min-content is what decides how narrow it can get. It
+   * only breaks inside a word when the word alone does not fit, so a line
+   * that wraps at spaces is unchanged.
+   *
+   * On `body` and inherited, so it reaches what is drawn outside the shell
+   * too, such as a popover. The answer's tables opt out below.
+   */
+  overflow-wrap: anywhere;
 }
 
 /*
@@ -976,6 +993,12 @@ body {
 .markdown__table {
   overflow-x: auto;
   max-inline-size: 100%;
+  /*
+   * Not `anywhere`, which `body` sets: a table sizes its columns from
+   * min-content, and with it the columns squeezed into the box with every
+   * word broken (331 px of table into 159 at 375). The box scrolls instead.
+   */
+  overflow-wrap: normal;
 }
 
 /*
