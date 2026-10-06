@@ -43,6 +43,20 @@ export const FLAGS = [
       'På telefon ligger tråder, filter og kilder i en rad øverst i stedet for som skinner på sidene.',
     issue: 'https://github.com/digdir/kunnskapsassistenten/issues/120',
   },
+  {
+    id: 'year-ranges',
+    title: 'Årsfilter med perioder',
+    description:
+      'Skriv et år eller en periode, som 2021 eller 2023–2028. År på rad står som én merkelapp.',
+    issue: 'https://github.com/digdir/kunnskapsassistenten/issues/115',
+  },
+  {
+    id: 'compact-filter-chips',
+    title: 'Samlede merkelapper i filteret',
+    description:
+      'Når alle eller mange verdier er valgt, står én merkelapp, som «Alle dokumenttyper» eller «12 virksomheter».',
+    issue: 'https://github.com/digdir/kunnskapsassistenten/issues/116',
+  },
 ] as const satisfies readonly Flag[];
 
 export type FlagId = (typeof FLAGS)[number]['id'];
