@@ -254,12 +254,13 @@ export const AGENT_DEFAULT_LABEL = 'Standard';
 export const AGENT_HEADING = 'Velg agent';
 
 /**
- * Over a finished answer with no sources behind it.
+ * Over a finished answer with no sources behind it. Without it, an answer
+ * with no sources looks exactly like one with them, and only the sources
+ * panel says otherwise.
  *
- * Word for word what the client in digdir/kunnskapsassistenten says, so a
- * reader who knows that one knows this one. Without it, an answer with no
- * sources looks exactly like one with them, and only the sources panel says
- * otherwise.
+ * Shorter than the client in digdir/kunnskapsassistenten, which says «ingen
+ * kilder fra dokumentgrunnlaget»: one quiet line, as Lars chose on 06.10
+ * («en kort og subtil statusmelding»), with the same advice.
  */
 export const NO_SOURCES_WARNING =
-  'Svaret har ingen kilder fra dokumentgrunnlaget. Kontroller det mot originaldokumentene før du bruker det.';
+  'Svaret har ingen kilder. Kontroller det mot originaldokumentene før du bruker det.';

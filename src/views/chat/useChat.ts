@@ -451,7 +451,7 @@ export function useChat(
        * nothing else would not know the warning is there.
        */
       let sourceCount = 0;
-      const finished = () =>
+      const doneAnnouncement = () =>
         content.trim() !== '' && sourceCount === 0
           ? `Svaret er ferdig. ${NO_SOURCES_WARNING}`
           : 'Svaret er ferdig.';
@@ -527,7 +527,7 @@ export function useChat(
               const clarifying = event.outcome === 'needs-clarification';
               settleAnswer(answerId, clarifying ? 'needs-clarification' : 'complete', event);
               if (isCurrentTurn()) {
-                setAnnouncement(clarifying ? CLARIFICATION_ANNOUNCEMENT : finished());
+                setAnnouncement(clarifying ? CLARIFICATION_ANNOUNCEMENT : doneAnnouncement());
                 setStatus('idle');
               }
               return;
@@ -589,7 +589,7 @@ export function useChat(
         // more, so the answer is as finished as it is going to get.
         settleAnswer(answerId, 'complete');
         if (isCurrentTurn()) {
-          setAnnouncement(finished());
+          setAnnouncement(doneAnnouncement());
           setStatus('idle');
         }
       } catch {

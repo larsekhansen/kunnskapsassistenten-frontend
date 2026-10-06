@@ -1,5 +1,5 @@
-import { Alert, Button, Card, Paragraph, Skeleton, Spinner } from '@digdir/designsystemet-react';
-import { ArrowsCirclepathIcon } from '@navikt/aksel-icons';
+import { Button, Card, Paragraph, Skeleton, Spinner } from '@digdir/designsystemet-react';
+import { ArrowsCirclepathIcon, InformationSquareIcon } from '@navikt/aksel-icons';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Markdown } from '../../components';
 import { ViewHead } from '../../layout/ViewHead';
@@ -301,17 +301,24 @@ export function AnswerMessage({
             {empty && streaming ? <AnswerSkeleton /> : null}
 
             {/*
-              Over the answer and not under it, as in the client in
-              digdir/kunnskapsassistenten: it is read before the text it is
-              about. `warning` because nothing is broken and nothing is
-              stopped, which is what Designsystemet keeps `danger` for. No
-              role: it arrives with the finished answer, and the live region
-              says it then («Svaret er ferdig.» and this sentence, useChat).
+              One quiet line over the answer, with an info icon before it, as
+              Aksel's InlineMessage with status info (Lars, 06.10): no frame
+              and no fill. Over and not under, so it is read before the text
+              it is about.
+
+              Not a Designsystemet component, because it has none for this.
+              `Alert` is the box Lars chose against, and `ValidationMessage`,
+              which looks like this, is feedback on a form field and ties
+              itself to one (`data-field="validation"`). The icon is
+              decoration and the sentence says it all. No role: it arrives
+              with the finished answer, and the live region says it then
+              («Svaret er ferdig.» and this sentence, useChat).
             */}
             {lacksSources(message) ? (
-              <Alert className="ka-no-sources-warning" data-color="warning" data-size="sm">
+              <Paragraph className="ka-no-sources-note" data-size="sm">
+                <InformationSquareIcon aria-hidden className="ka-no-sources-note__icon" />
                 {NO_SOURCES_WARNING}
-              </Alert>
+              </Paragraph>
             ) : null}
 
             {/* The ref is what the search counts marks inside, so it wraps the

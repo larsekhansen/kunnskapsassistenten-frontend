@@ -43,23 +43,28 @@ function warning() {
 }
 
 describe('advarselen når svaret ikke har kilder', () => {
-  it('har samme tekst som den eksisterende klienten', () => {
+  it('er den korte linja Lars valgte', () => {
     expect(NO_SOURCES_WARNING).toBe(
-      'Svaret har ingen kilder fra dokumentgrunnlaget. Kontroller det mot originaldokumentene før du bruker det.',
+      'Svaret har ingen kilder. Kontroller det mot originaldokumentene før du bruker det.',
     );
   });
 
-  it('står i svarkortet, over svaret, når et ferdig svar ikke har kilder', () => {
+  it('står i svarkortet, over svaret, som én linje med et info-ikon og uten boks', () => {
     const { container } = show({ ...answer, sources: [] });
 
-    const alert = warning()?.closest('.ds-alert');
-    expect(alert).toBeTruthy();
-    expect(alert?.getAttribute('data-color')).toBe('warning');
-    expect(alert?.closest('.ka-answer-card')).toBeTruthy();
-    // Before the answer in the reading order, as in the existing client.
+    const line = warning();
+    expect(line?.tagName).toBe('P');
+    expect(line?.classList.contains('ka-no-sources-note')).toBe(true);
+    expect(line?.closest('.ka-answer-card')).toBeTruthy();
+    // The icon is decoration: the sentence says it all.
+    const icon = line?.querySelector('svg');
+    expect(icon?.getAttribute('aria-hidden')).toBe('true');
+    expect(icon?.classList.contains('ka-no-sources-note__icon')).toBe(true);
+    // No box: neither the yellow alert from before nor any other.
+    expect(container.querySelector('.ds-alert')).toBeNull();
+    // Before the answer in the reading order.
     const text = screen.getByText(answer.content);
-    expect(alert!.compareDocumentPosition(text) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(container.querySelectorAll('.ds-alert')).toHaveLength(1);
+    expect(line!.compareDocumentPosition(text) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('står også når kildene aldri kom, ikke bare når de kom tomme', () => {
