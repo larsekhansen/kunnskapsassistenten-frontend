@@ -249,7 +249,7 @@
       }
       .options {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
         gap: 16px;
         align-items: start;
       }
@@ -260,6 +260,13 @@
         border-radius: 8px;
         overflow: hidden;
         display: grid;
+      }
+      .option > a {
+        display: block;
+      }
+      .option > a:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: -3px;
       }
       .option img {
         display: block;
@@ -280,7 +287,7 @@
       }
       .sides {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
         gap: 16px;
         align-items: start;
       }
@@ -668,7 +675,7 @@
             <a href="bilder/2026-10-06-no-sources-option-a-1440.png"
               ><img
                 src="bilder/2026-10-06-no-sources-option-a-1440.png"
-                alt="Svar uten kilder, valg a, på 1440 piksler"
+                alt="Valg a på 1440: en gul boks med advarselen står over overskriften i svarkortet."
                 loading="lazy"
             /></a>
             <figcaption>
@@ -690,7 +697,7 @@
             <a href="bilder/2026-10-06-no-sources-option-b-1440.png"
               ><img
                 src="bilder/2026-10-06-no-sources-option-b-1440.png"
-                alt="Svar uten kilder, valg b, på 1440 piksler"
+                alt="Valg b på 1440: én linje grå tekst står over overskriften i svarkortet."
                 loading="lazy"
             /></a>
             <figcaption>
@@ -704,7 +711,8 @@
               <span
                 >«Svaret har ingen kilder. Kontroller det mot originaldokumentene før du bruker
                 det.» i dempet tekst øverst i kortet, uten ramme eller bakgrunn. Det sies, men det
-                tar lite plass. Kontrasten er ikke målt ennå.</span
+                tar lite plass. Kontrasten er regnet fra fargene i temaet til minst 5,40:1 i lyst og
+                5,72:1 i mørkt, men ikke målt i nettleseren.</span
               >
             </figcaption>
           </figure>
@@ -712,7 +720,7 @@
             <a href="bilder/2026-10-06-no-sources-option-c-1440.png"
               ><img
                 src="bilder/2026-10-06-no-sources-option-c-1440.png"
-                alt="Svar uten kilder, valg c, på 1440 piksler"
+                alt="Valg c på 1440: svarkortet begynner med overskriften, uten noe over."
                 loading="lazy"
             /></a>
             <figcaption>
