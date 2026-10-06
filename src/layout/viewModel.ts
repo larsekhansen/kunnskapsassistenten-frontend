@@ -154,6 +154,12 @@ export type SlotState = {
   /** Collapsed to a single button? */
   collapsed: boolean;
   sizing: SlotSizing;
+  /**
+   * Draw every view in `views` at once, one under the other, instead of the
+   * active one alone. Each gets its own pinned head. Only the trial with the
+   * filters beside the sources sets it (`withFiltersBesideSources`).
+   */
+  stacked?: boolean;
 };
 
 export type Layout = {
@@ -593,6 +599,46 @@ export function withViewMoved(layout: Layout, view: ViewId, target: Slot): Layou
         views: [...to.views, view],
         activeView: view,
         collapsed: false,
+      },
+    },
+  };
+}
+
+/**
+ * The filters over the sources in the secondary sidebar, both drawn at once,
+ * and the threads alone in the primary one. The trial behind the flag
+ * `filters-right-panel` (digdir/kunnskapsassistenten#84): whether a reader
+ * wants the filter and the sources in view together once there is an answer.
+ *
+ * The same views and the same state behind them, only another place: the
+ * filter store and the lock per thread do not know which panel they are in.
+ * Whether the secondary sidebar is open is left as it is. The provider opens
+ * it when the trial starts, and the reader may close it like any other.
+ */
+export function withFiltersBesideSources(layout: Layout): Layout {
+  const source = slotOf(layout, 'filters');
+  if (source === undefined || source === 'secondary-sidebar') return layout;
+
+  const from = layout.slots[source];
+  const remaining: ViewId[] = from.views.filter((id) => id !== 'filters');
+  const to = layout.slots['secondary-sidebar'];
+
+  return {
+    ...layout,
+    slots: {
+      ...layout.slots,
+      [source]: {
+        ...from,
+        views: remaining,
+        activeView: remaining.includes(from.activeView)
+          ? from.activeView
+          : (remaining[0] ?? from.activeView),
+      },
+      'secondary-sidebar': {
+        ...to,
+        // Filters first: drawn on top, and first in the name, «Filter og kilder».
+        views: ['filters', ...to.views.filter((id) => id !== 'filters')],
+        stacked: true,
       },
     },
   };

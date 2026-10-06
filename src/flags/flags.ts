@@ -57,6 +57,13 @@ export const FLAGS = [
       'Når alle eller mange verdier er valgt, står én merkelapp, som «Alle dokumenttyper» eller «12 virksomheter».',
     issue: 'https://github.com/digdir/kunnskapsassistenten/issues/116',
   },
+  {
+    id: 'filters-right-panel',
+    title: 'Filtreringen i høyre panel',
+    description:
+      'Filtreringen står over kildene i høyre panel, så begge synes samtidig. Navigasjonspanelet har bare trådene.',
+    issue: 'https://github.com/digdir/kunnskapsassistenten/issues/84',
+  },
 ] as const satisfies readonly Flag[];
 
 export type FlagId = (typeof FLAGS)[number]['id'];
