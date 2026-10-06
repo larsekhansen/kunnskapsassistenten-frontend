@@ -570,7 +570,8 @@ body {
  * button. In the bar it is the button alone, and the bar draws the surface
  * and the line. 8 px above and below is `--ds-size-2`, the gap
  * Designsystemet puts between a button and its neighbour, so the bar is the
- * 42 px button and 16 px of air: 59 px with the line.
+ * 42 px button and 16 px of air: 58 px, with the line inside it (measured at
+ * 320, 375 and 393).
  */
 .shell[data-compact] > :is(.primary-sidebar, .secondary-sidebar) > .panel {
   padding-block: var(--ds-size-2);
