@@ -640,7 +640,7 @@ body {
   flex-direction: column;
   gap: var(--ds-size-4);
   inline-size: 100%;
-  /* As tall as the links and the colour scheme, and no taller (Lars 06.10). */
+  /* As tall as the links and the colour scheme, and no taller (chosen 06.10). */
   block-size: fit-content;
   margin-block-start: var(--ds-size-6);
   padding-block-start: var(--ds-size-4);

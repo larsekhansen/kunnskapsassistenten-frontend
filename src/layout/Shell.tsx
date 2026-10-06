@@ -617,7 +617,7 @@ function Sidebar({
    *
    * Last in the scrolling region and scrolling with it, after the threads or
    * the filter, and not pinned to the bottom of the panel
-   * (digdir/kunnskapsassistenten#123; Lars, 06.10: «Gjør den non-sticky»).
+   * (digdir/kunnskapsassistenten#123, chosen 06.10).
    * Pinned, it took its height off the list in every state; here it costs
    * nothing until the reader scrolls to it. A short panel has it right under
    * the content rather than pushed down to the bottom.
