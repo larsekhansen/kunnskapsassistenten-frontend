@@ -1,4 +1,5 @@
 import { Dialog, Heading, Link, Paragraph, Switch } from '@digdir/designsystemet-react';
+import { ExternalLinkIcon } from '@navikt/aksel-icons';
 import { useId } from 'react';
 import { FLAGS, setFlag, useFlag } from './flags';
 import './flags.css';
@@ -64,7 +65,11 @@ function FlagSwitch({ flag }: { flag: (typeof FLAGS)[number] }) {
         <>
           {flag.description}{' '}
           <Link href={flag.issue} rel="noreferrer" target="_blank">
-            Issue {issueNumber}
+            Sak {issueNumber}
+            {/* Leaving the app is said in words as well as with the icon, as
+                on the source links (SourceExcerpt.tsx). */}
+            <span className="ds-sr-only"> (åpnes i ny fane)</span>
+            <ExternalLinkIcon aria-hidden />
           </Link>
         </>
       }

@@ -97,7 +97,11 @@ describe('den skjulte menyen for funksjonsflagg', () => {
   it('lenker til issuen flagget gjelder', () => {
     openAt('/#feature-flags');
 
-    const link = screen.getByRole('link', { name: 'Issue 120' });
+    // Norwegian like the rest of the menu, and it says that it opens a new tab.
+    // Chromium names it «Sak 120 (åpnes i ny fane)»; jsdom drops the space
+    // before the sr-only text, hence the optional one.
+    const link = screen.getByRole('link', { name: /^Sak 120 ?\(åpnes i ny fane\)$/u });
+    expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('href')).toBe(
       'https://github.com/digdir/kunnskapsassistenten/issues/120',
     );
