@@ -9,29 +9,28 @@ tenkepanelet med «Tenkte i 7 sekunder», stegene, søkestrengene og detaljene
 under hvert steg. Inne i kortet står «Fremgangsmåte» med «10 treff i 3
 dokumenter» og nøkkelordene.
 
-To lesere vil ha hver sin del av det. Simen, i issue 88 i
-`digdir/kunnskapsassistenten`: «Fremgangsmåte» over svaret, og enklere
-tenkesteg uten tekniske detaljer. Lars, 30.09: «Det tekniske i svarene kan være
-nyttig for feks meg eller andre utviklere som ønsker "verbose" eller
-"debug"-aktige tilbakemeldinger på hva som skjer akkurat nå.»
+To lesere vil ha hver sin del av det. Issue 88 i
+`digdir/kunnskapsassistenten` ber om «Fremgangsmåte» over svaret, og enklere
+tenkesteg uten tekniske detaljer. Meldt 30.09: det tekniske i svarene er
+nyttig for utviklere som vil ha verbose eller debug-aktig tilbakemelding på
+hva som skjer akkurat nå.
 
 Begge har rett for sin leser, og de kan ikke være riktige samtidig på samme
-skjerm. Lars ba om et valg, og om at det ikke skal ta plass: «kanskje egentlig
-bare at jeg kan skrive noe i urlen for å få opp en settings-meny … lag den i
-det samme type designet, men ikke gjør for mye ut av det heller.»
+skjerm. Bestilt 30.09: et valg som ikke tar plass, hentet fram fra adressen,
+i samme design som resten og uten å gjøre mye ut av seg.
 
 Det finnes én innstilling i klienten fra før, mørk modus, og den har ingen
 meny i det hele tatt. Den er en konsollkommando, `window.ka.colorScheme.set`,
 fordi ingen knapp var tegnet (`src/layout/colorScheme.ts`). Det er en
 innstilling for én person som vet at den finnes. Visningsnivået er ikke det:
-Simen og Lars skal begge kunne velge, og en bryter for lys og mørk er allerede
-bestilt som Simens issue 85.
+Begge lesergruppene skal kunne velge, og en bryter for lys og mørk er allerede
+bestilt som issue 85.
 
 ## Beslutning
 
 Svaret har to visningsnivåer, `standard` og `detaljert`, lagret per nettleser
 under `ka.display-level`. Standard tegner ett panel over svaret,
-«Fremgangsmåte», etter Simens skisse i issue 113: stegenes egne setninger under
+«Fremgangsmåte», etter skissen i issue 113: stegenes egne setninger under
 «Tenkte», en linje, og søkeordene under «Nøkkelord som ble brukt i søket».
 Detaljert tegner nøyaktig det som ble vist før. Nivået velges i en modal
 Designsystemet-dialog som bare finnes i siden mens adressen slutter med
@@ -51,7 +50,7 @@ Grunnen til at panelet åpner seg selv over 774 px og ikke under, er målt.
 kolonnen slutter å være en lesebredde mellom to skinner og blir hele vinduet
 (67 + 640 + 67, samme sum som `drawerMaxViewport`). Over den står svarets
 første overskrift på skjermen under panelet; under den ER fremgangsmåten
-skjermen. Simen tegnet det åpent, på desktop, og der er det åpent.
+skjermen. Designet tegner det åpent på desktop, og der er det åpent.
 
 Grunnen til hash og ikke spørring:
 
@@ -94,6 +93,6 @@ Grunnen til hash og ikke spørring:
 - **Det kommer et tredje nivå**, for eksempel et som viser tenkestegene men
   ikke tidene. Radioknappene tar det uten å endre form; det er derfor de er
   radioknapper og ikke en bryter.
-- **Simen vil ha panelet åpent på telefon også.** Da er `ROOM_TO_STAND_OPEN` i
+- **Panelet ønskes åpent på telefon også.** Da er `ROOM_TO_STAND_OPEN` i
   `ProcedurePanel.tsx` én linje å fjerne, og målingene over er det som må veies
   mot ønsket.

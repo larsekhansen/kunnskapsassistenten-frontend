@@ -52,7 +52,7 @@ export async function fetchSession(signal?: AbortSignal): Promise<Session | unde
  *
  * It empties the answer store (`ka.sources.v1`), which keeps what came of the
  * reader's questions per browser and not per user (docs/arkitektur/0005).
- * Lars said yes to this on 5.10. Synchronous, and called from the link's
+ * Decided on 5.10. Synchronous, and called from the link's
  * click, so it is done before the browser follows the link to
  * `/auth/logout`.
  *
