@@ -367,7 +367,7 @@
   <body>
     <main class="page">
       <header>
-        <div class="eyebrow">Rapport · 6. oktober 2026, oppdatert kl. 18:05</div>
+        <div class="eyebrow">Rapport · 6. oktober 2026, oppdatert kl. 19:05</div>
         <h1>Det som gjenstår før klienten erstatter src/apps/web</h1>
         <p class="lede">
           Hva klienten og BFF-en i
@@ -377,11 +377,11 @@
         </p>
         <div class="facts">
           <span>Eksisterende: <code>main</code> 8639267 (25.09)</span>
-          <span>Vår: <code>main</code> 6ce60a1</span>
+          <span>Vår: <code>main</code> bf23152</span>
           <span
             >Sammenslåingen:
             <a href="https://github.com/digdir/kunnskapsassistenten/pull/129">utkast-PR #129</a>
-            (9172aeb)</span
+            (29f6c8d)</span
           >
           <span>Lest i koden. Det som er målt, står med dato.</span>
         </div>
@@ -426,9 +426,14 @@
               her, og i #129). Alt er ute i testmiljøet.
             </li>
             <li>
+              <strong>Gjort i #129 i kveld:</strong> ADR-ene på engelsk i
+              <code>src/decisions</code> som 0004–0008, og én kom-i-gang for prosjektet etter
+              sammenslåingen i <code>src/README.md</code> (7). Feilen i BFF-en er rettet (se
+              <a href="#funnet">Funnet underveis</a>). CI er grønn.
+            </li>
+            <li>
               <strong>Under arbeid:</strong> valg av agent i skrivefeltet, som modellvalget i
-              claude.ai (1), ADR-ene på engelsk i <code>src/decisions</code> og én kom-i-gang for
-              prosjektet etter sammenslåingen (7), og rettingen av feilen i BFF-en i #129.
+              claude.ai (1).
             </li>
             <li>
               <strong>Flyttet til etter sammenslåingen:</strong> lenken til tilbakemelding under
@@ -621,10 +626,11 @@
                 <td><code>docs/arkitektur/0001–0005</code> på norsk, og egne kom-i-gang-sider.</td>
                 <td class="size">L</td>
                 <td>
-                  <span class="pill partly">Under arbeid</span
+                  <span class="pill ok">Gjort</span
                   ><span class="note"
-                    >ADR-ene oversettes til engelsk og legges i <code>src/decisions</code> som
-                    0004–0008. Kom-i-gang skrives på nytt for prosjektet etter sammenslåingen.</span
+                    >I #129: ADR-ene på engelsk i <code>src/decisions</code> som 0004–0008, og
+                    «Komme i gang» i <code>src/README.md</code> skrevet om for prosjektet etter
+                    sammenslåingen. Oppskriften er kjørt trinn for trinn i en fersk klone.</span
                   >
                 </td>
               </tr>
@@ -646,8 +652,9 @@
               <strong>Feil kilder etter ny innlasting bak BFF-en.</strong> I
               <code>sourceStore.ts</code> hopper <code>remember</code> over et tomt sett med kilder.
               Har det siste svaret ingen kilder, får det kildene til svaret før etter ny innlasting.
-              Målt lokalt mot BFF-en i #129, og koden er den samme på <code>main</code> 8639267. Det
-              må rettes i BFF-en.
+              Målt lokalt mot BFF-en i #129, og koden er den samme på <code>main</code> 8639267.
+              Rettet i #129: et tomt sett kilder lagres nå, og en tur som feiler, rører ikke kildene
+              til svaret før.
             </li>
             <li>
               <strong>Et ukjent filterfelt</strong> ga «svarte med feil (400)». Nå får leseren en
@@ -1159,7 +1166,7 @@
       <footer>
         <span
           >Laget 6. oktober 2026 fra koden på <code>main</code> 8639267 i
-          digdir/kunnskapsassistenten, <code>main</code> 6ce60a1 her, og utkast-PR #129 (9172aeb).
+          digdir/kunnskapsassistenten, <code>main</code> bf23152 her, og utkast-PR #129 (29f6c8d).
           «Målt» betyr kjørt mot en lokal backend eller testmiljøet. Alt annet er lest i
           koden.</span
         >

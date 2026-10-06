@@ -13,10 +13,12 @@ føres, står i [README](README.md). PR-numrene uten repo foran er i dette repoe
   [rapporten](2026-10-06-gjenstaar-foer-sammenslaaing.html#gjenstaar)).
 - **I navigasjonspanelet står «← Tråder» til venstre og «Skjul» til høyre**, og
   foten er like høy som innholdet ([#262](https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/262)).
-- **ADR-ene oversettes til engelsk** og legges i `src/decisions` ved
-  sammenslåingen, sammen med de som er der fra før (punkt 7 i
+- **ADR-ene er oversatt til engelsk** og ligger i `src/decisions` i
+  [digdir#129](https://github.com/digdir/kunnskapsassistenten/pull/129) som
+  0004–0008, etter de som var der fra før. Der står også én kom-i-gang for
+  prosjektet etter sammenslåingen, i `src/README.md` (punkt 7 i
   [rapporten](2026-10-06-gjenstaar-foer-sammenslaaing.html#gjenstaar)).
-- **En feil i BFF-en rettes i [digdir#129](https://github.com/digdir/kunnskapsassistenten/pull/129):** et svar uten kilder fikk kildene til
+- **En feil i BFF-en er rettet i [digdir#129](https://github.com/digdir/kunnskapsassistenten/pull/129):** et svar uten kilder fikk kildene til
   svaret før etter ny innlasting, fordi et tomt sett kilder ikke ble lagret.
 - **Lenken til tilbakemelding under hvert svar tas etter sammenslåingen** og
   skal tenkes nytt, fordi den gir mye støy under hvert svar (punkt 2 i
