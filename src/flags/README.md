@@ -17,9 +17,10 @@ sletter dem (`beforeLogout` i `src/api/session.ts`).
 
 ## Flaggene
 
-| Id               | Hva                                                         | Issue                                                                                        |
-| ---------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `mobile-top-row` | Panelene som en rad øverst på telefon, i stedet for skinner | [digdir/kunnskapsassistenten#120](https://github.com/digdir/kunnskapsassistenten/issues/120) |
+| Id                    | Hva                                                                          | Issue                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `mobile-top-row`      | Panelene som en rad øverst på telefon, i stedet for skinner                  | [digdir/kunnskapsassistenten#120](https://github.com/digdir/kunnskapsassistenten/issues/120) |
+| `filters-right-panel` | Filtreringen over kildene i høyre panel, navigasjonspanelet med bare trådene | [digdir/kunnskapsassistenten#84](https://github.com/digdir/kunnskapsassistenten/issues/84)   |
 
 ## Legge til og ta bort
 
