@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { apiMode } from './apiMode';
 import { BffChatClient } from './bff';
 import { createChatClient } from './index';
 import { LiveChatClient } from './live';
@@ -43,5 +44,31 @@ describe('modusen', () => {
     window.__KA_CONFIG__ = { VITE_API_MODE: 'live' };
 
     expect(createChatClient()).toBeInstanceOf(BffChatClient);
+  });
+});
+
+describe('apiMode() og createChatClient', () => {
+  /*
+   * The rule is written out twice: in `createChatClient`, where the build can
+   * fold it, and in `apiMode()`, which the thread actions, the sign-in, the
+   * upload and the corpus read. A bff build where the two disagreed would
+   * ask the BFF and rename threads in the mock, with no «Logg ut».
+   */
+  const clientFor = { bff: BffChatClient, live: LiveChatClient, mock: MockChatClient };
+
+  it.each([
+    { built: 'mock', production: false },
+    { built: 'live', production: false },
+    { built: 'bff', production: false },
+    { built: 'mock', production: true },
+    { built: 'live', production: true },
+    { built: 'bff', production: true },
+    { built: undefined, production: true },
+    { built: undefined, production: false },
+  ] as const)('velger det samme med $built, produksjon $production', ({ built, production }) => {
+    vi.stubEnv('PROD', production);
+    vi.stubEnv('VITE_API_MODE', built);
+
+    expect(createChatClient()).toBeInstanceOf(clientFor[apiMode()]);
   });
 });
