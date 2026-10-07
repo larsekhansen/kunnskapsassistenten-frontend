@@ -402,6 +402,65 @@ test.describe('navigasjonspanelet', () => {
     },
   );
 
+  /*
+   * Nothing under the filter fields moves when the facets come. The skeleton
+   * used to be 200 px where the three fields are 439, so the corpus line and
+   * «Vis mer» jumped 239 px down at 1440 and 235 at 390, and a click aimed at
+   * «Vis mer» while the panel loaded could land on what came there instead.
+   *
+   * The clock is paused before the page loads, so the mock's facets wait until
+   * it is let go: the position is read while the panel is busy, every time,
+   * and not when the race happens to allow it. Measured from the top of the
+   * view, so the drawer sliding in at 390 does not count as a jump.
+   */
+  test(
+    '«Vis mer» står stille når fasettene kommer, på 1440 og 390',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'filterpanelet hopper ikke når fasettene kommer');
+      await page.clock.install({ time: new Date('2026-10-07T08:00:00') });
+
+      const sizes = [
+        { width: 1440, height: 900, pause: '2026-10-07T08:00:01' },
+        { width: 390, height: 844, pause: '2026-10-07T09:00:00' },
+      ];
+      for (const size of sizes) {
+        await page.setViewportSize({ width: size.width, height: size.height });
+        await page.clock.pauseAt(new Date(size.pause));
+        await page.goto('/');
+        if (size.width < 1000) {
+          await page.getByRole('button', { name: 'Vis tråder og filter' }).click();
+        }
+
+        const view = page.locator('.filters-view:has(.filters-view__corpus)');
+        const more = view.locator('.filters-view__corpus').getByRole('button', { name: 'Vis mer' });
+        const top = () =>
+          more.evaluate(
+            (button) =>
+              button.getBoundingClientRect().top -
+              (button.closest('.filters-view')?.getBoundingClientRect().top ?? 0),
+          );
+
+        await expect(more).toBeVisible();
+        await expect(view, `fasettene er holdt igjen på ${size.width}`).toHaveAttribute(
+          'aria-busy',
+          'true',
+        );
+        const loading = await top();
+
+        await page.clock.resume();
+        await expect(view).not.toHaveAttribute('aria-busy', 'true');
+        await expect(facetField(page, 'Dokumenttyper')).toBeVisible();
+        const loaded = await top();
+
+        expect(
+          Math.abs(loaded - loading),
+          `«Vis mer» flyttet seg fra ${loading} til ${loaded} på ${size.width}`,
+        ).toBeLessThanOrEqual(1);
+      }
+    },
+  );
+
   test(
     'søk i tråder filtrerer lista og sier hvor mange treff',
     MOCK,
