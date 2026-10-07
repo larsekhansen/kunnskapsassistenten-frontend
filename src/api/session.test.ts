@@ -149,6 +149,18 @@ describe('the draft kept across a sign-in', () => {
     expect(sessionStorage.getItem(KEY)).toBeNull();
   });
 
+  it('gives it back once when two fields wait for the same answer', async () => {
+    provideDraft(() => 'Utkastet');
+    keepDraft();
+    const put = vi.fn();
+
+    restoreDraft(put, '/threads/conv-1');
+    restoreDraft(put, '/threads/conv-1');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(put).toHaveBeenCalledExactlyOnceWith('Utkastet');
+  });
+
   it('asks /api/me who is signed in when nobody has said yet', async () => {
     sessionStorage.setItem(
       KEY,

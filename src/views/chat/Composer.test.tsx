@@ -112,6 +112,44 @@ describe('Composer, the draft kept across a sign-in', () => {
     expect(sessionStorage.getItem(KEY)).toBeNull();
   });
 
+  /** `/api/me` in bff mode, answering when the test says so. */
+  function meAnswersLater(userId: string) {
+    let answer = () => {};
+    const answered = new Promise<Response>((resolve) => {
+      answer = () => resolve(Response.json({ authEnabled: true, userId, user: { name: 'Samme' } }));
+    });
+    vi.stubEnv('VITE_API_MODE', 'bff');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => answered),
+    );
+    return answer;
+  }
+
+  it('leaves what the reader has written since, when the answer comes late', async () => {
+    keptFor('/threads/conv-1');
+    const answer = meAnswersLater('user-a');
+
+    render(<Field />);
+    fireEvent.change(field(), { target: { value: 'Noe nytt' } });
+    answer();
+
+    await waitFor(() => expect(sessionStorage.getItem(KEY)).toBeNull());
+    expect(field().value).toBe('Noe nytt');
+  });
+
+  it('stops waiting when the field goes, and leaves the draft for the next', async () => {
+    keptFor('/threads/conv-1');
+    const answer = meAnswersLater('user-a');
+
+    const { unmount } = render(<Field />);
+    unmount();
+    answer();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(sessionStorage.getItem(KEY)).not.toBeNull();
+  });
+
   it('says what it holds, so a 401 can keep it', () => {
     noteSignedIn('user-a');
     render(<Field />);
