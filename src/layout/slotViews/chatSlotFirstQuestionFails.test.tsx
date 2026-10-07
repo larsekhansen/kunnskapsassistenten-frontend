@@ -46,13 +46,13 @@ function showFrontPage() {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-/** A BFF whose `/api/ask` answers with the given responses in turn. */
+/** A BFF whose `/api/v2/ask` answers with the given responses in turn. */
 function fakeBff(...asks: (() => Response)[]) {
   const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     const route = `${init?.method ?? 'GET'} ${String(url)}`;
-    if (route === 'POST /api/ask') return (asks.shift() ?? (() => json({}, 500)))();
-    if (route === 'GET /api/capabilities') return json(capabilities);
-    if (route === 'GET /api/conversations') return json({ conversations: [] });
+    if (route === 'POST /api/v2/ask') return (asks.shift() ?? (() => json({}, 500)))();
+    if (route === 'GET /api/v2/capabilities') return json(capabilities);
+    if (route === 'GET /api/v2/conversations') return json({ conversations: [] });
     return json({}, 404);
   });
   vi.stubGlobal('fetch', fetchMock);
