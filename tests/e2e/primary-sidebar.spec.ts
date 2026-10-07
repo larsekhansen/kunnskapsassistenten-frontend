@@ -370,6 +370,13 @@ test.describe('navigasjonspanelet', () => {
       const corpus = page.locator('.filters-view__corpus');
       const detail = corpus.locator('.filters-view__corpus-detail');
       await expect(corpus).toBeVisible();
+      /*
+       * Until the facets are in. The fields load above the line and push it
+       * 239 px down at 1440 × 900 (y 580 to 819), so a click while the panel
+       * is busy can land where the button was: CI on 652cc8c clicked at
+       * y 592 as the facets arrived, and the detail stayed hidden.
+       */
+      await expect(page.locator('.filters-view')).not.toHaveAttribute('aria-busy', 'true');
 
       /*
        * Navnet står på linja, resten ligger bak «Vis mer» (#114, N2 i
