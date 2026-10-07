@@ -174,6 +174,26 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
   }
 
   /*
+   * What Suggestion reports, as values. The summary chip stands for the
+   * values behind it.
+   *
+   * A value of '' is «Ingen treff»: ds-suggestion labels it with the text
+   * typed and gives it no value, and u-combobox chooses on Enter the option
+   * whose label is the text. Text that names no value chose it, and drew a
+   * chip with no value and «1 av 8 valgt» (review of #287). It is not a
+   * choice: nothing changes, and the text stays to be finished. A '' that is
+   * already in the selection was stored before this was fixed (ka.filter.v1),
+   * and goes with the next change.
+   */
+  function choose(items: { value: string }[]) {
+    const values = [
+      ...new Set(items.flatMap((item) => (item.value === SUMMARY_VALUE ? selected : [item.value]))),
+    ];
+    if (values.includes('') && !selected.includes('')) return;
+    change(values.filter((value) => value !== ''));
+  }
+
+  /*
    * «Velg alle» and «Tøm» are rendered on the very state they change, so
    * React takes the button out of the DOM in the same render and focus falls
    * to `document.body`. A keyboard user would be thrown back above the skip
@@ -244,13 +264,7 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
       <Suggestion
         multiple
         selected={selectedItems}
-        onSelectedChange={(items) =>
-          change([
-            ...new Set(
-              items.flatMap((item) => (item.value === SUMMARY_VALUE ? selected : [item.value])),
-            ),
-          ])
-        }
+        onSelectedChange={choose}
         {...screenReaderTexts}
       >
         {/*
@@ -265,7 +279,6 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
         <Suggestion.Toggle />
         <Suggestion.Clear />
         <Suggestion.List data-overscroll="contain" data-autoplacement="false">
-          <Suggestion.Empty>Ingen treff</Suggestion.Empty>
           {facet.values.map((value) => (
             /*
               `label` is what the chip and the filtering use, the children are
@@ -276,6 +289,14 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
               {value.count === undefined ? value.label : `${value.label} (${value.count})`}
             </Suggestion.Option>
           ))}
+          {/*
+            After the values, not before. Enter chooses the FIRST option whose
+            label is the text, and «Ingen treff» carries the text as its label
+            (see `choose`): first in the list, it was chosen even on
+            «Årsrapport» and «2024». Designsystemet hides it by CSS whenever a
+            value is shown, wherever it stands.
+          */}
+          <Suggestion.Empty>Ingen treff</Suggestion.Empty>
         </Suggestion.List>
       </Suggestion>
 
