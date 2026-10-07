@@ -145,6 +145,13 @@ function exactly(text: string): RegExp {
  * «1 av N valgt» on the page said too little: the chip with no value gave it
  * too, and a pick in a second field found the first field's line.
  *
+ * The field's own line then says either «N av M valgt» or, when the value
+ * is all the field has, «Alle N valgt, altså ingen avgrensning» (D16). A
+ * pick in one field narrows the others once their counts come back, which
+ * the panel does not mark as busy: Virksomheter «Nasjonal
+ * kommunikasjonsmyndighet» leaves Dokumenttyper only «Årsrapport (1)». In CI
+ * on 4a39193 the second pick came after that, locally before.
+ *
  * It lived in `primary-sidebar.spec.ts` until three specs needed it.
  */
 export async function chooseFacetValue(
@@ -162,7 +169,9 @@ export async function chooseFacetValue(
 
   const field = input.locator('xpath=ancestor::ds-field');
   await expect(field.locator('ds-suggestion > data', { hasText: exactly(value) })).toHaveCount(1);
-  await expect(field.getByText(/^\d+ av \d+ valgt$/)).toBeVisible();
+  await expect(
+    field.getByText(/^(?:\d+ av \d+ valgt|Alle \d+ valgt, altså ingen avgrensning)$/u),
+  ).toBeVisible();
 
   /*
    * Close the list before handing the page back.
