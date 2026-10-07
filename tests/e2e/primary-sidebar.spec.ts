@@ -112,7 +112,9 @@ test.describe('navigasjonspanelet', () => {
    * chooses the first option whose label is the text. With «Ingen treff»
    * first in the list that was it, even on «2024»: a chip with no value and
    * no text, and «1 av N valgt» (review of #287). `chooseFacetValue` and the
-   * test above go through ArrowDown, so nothing here pressed Enter alone.
+   * test above went through ArrowDown only, so no test pressed Enter alone.
+   * The helper now can (`{ via: 'enter' }`); this test also reads the chip's
+   * value, which the helper does not.
    *
    * `@mock` because the year has to be in the corpus.
    */
