@@ -182,8 +182,10 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
    * whose label is the text. Text that names no value chose it, and drew a
    * chip with no value and «1 av 8 valgt» (review of #287). It is not a
    * choice: nothing changes, and the text stays to be finished. A '' that is
-   * already in the selection was stored before this was fixed (ka.filter.v1),
-   * and goes with the next change.
+   * already in the selection came from before this was fixed, and goes with
+   * the next change: `readStoredFilter` drops a stored one, but a thread
+   * asked with one keeps it in its filter, and «Ny tråd» from the lock
+   * carries that over.
    */
   function choose(items: { value: string }[]) {
     const values = [
