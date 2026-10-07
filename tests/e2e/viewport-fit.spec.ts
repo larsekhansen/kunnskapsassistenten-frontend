@@ -327,13 +327,38 @@ async function closeOverlay(page: Page, overlay: Locator): Promise<void> {
   await settled(page);
 }
 
+/** Below this, `mobile-top-row` puts the two buttons in a bar (`compactMaxViewport`). */
+const TOP_ROW_BELOW = 774;
+
+/** The narrowest size from `width` up: where a flag that stops at `width` is seen to stop. */
+function narrowestFrom(width: number): number {
+  return Math.min(...SIZES.map((size) => size.width).filter((each) => each >= width));
+}
+
+type FlagState = {
+  name: string;
+  on: readonly string[];
+  /**
+   * The sizes where the flag changes the page. Elsewhere it is the page «uten
+   * flagg» measures, and running it again costs a test each and finds nothing.
+   * Left out, every size. The resize runs under every state, since it crosses
+   * the limits.
+   */
+  sizes?: (size: Size) => boolean;
+};
+
 /**
- * The flag states every breakpoint and every resize runs under. A flag that
- * changes the layout adds a line here, and the whole file runs with it on.
+ * The flag states the breakpoints and the resize run under. A flag that
+ * changes the layout adds a line here, with `sizes` when it only acts at some.
  */
-const FLAG_STATES: { name: string; on: readonly string[] }[] = [
+const FLAG_STATES: FlagState[] = [
   { name: 'uten flagg', on: [] },
-  { name: 'mobile-top-row', on: ['mobile-top-row'] },
+  {
+    name: 'mobile-top-row',
+    on: ['mobile-top-row'],
+    sizes: (size) => size.width <= narrowestFrom(TOP_ROW_BELOW),
+  },
+  // Every size: the filters move to the sources' side in the drawer too.
   { name: 'filters-right-panel', on: ['filters-right-panel'] },
 ];
 
@@ -347,9 +372,6 @@ function panelButtons(on: readonly string[]): { primary: string; secondary: stri
     ? { primary: 'Vis tråder', secondary: 'Vis filter og kilder' }
     : { primary: 'Vis tråder og filter', secondary: 'Vis kilder' };
 }
-
-/** Below this, `mobile-top-row` puts the two buttons in a bar (`compactMaxViewport`). */
-const TOP_ROW_BELOW = 774;
 
 /** Turns the flags on before the app reads storage, on every load. */
 async function withFlags(page: Page, on: readonly string[]): Promise<void> {
@@ -395,7 +417,7 @@ async function expectTopRow(page: Page, on: readonly string[], where: string): P
 }
 
 for (const flags of FLAG_STATES) {
-  for (const size of SIZES) {
+  for (const size of SIZES.filter(flags.sizes ?? (() => true))) {
     test.describe(size.name, () => {
       test.use({
         viewport: { width: size.width, height: size.height },
