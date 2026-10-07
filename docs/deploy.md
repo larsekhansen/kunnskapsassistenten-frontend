@@ -26,8 +26,10 @@ misbrukes. Se [Bytte mellom mock og live](#bytte-mellom-mock-og-live).
 | `.github/workflows/deploy.yml` | Bygger, pusher og ruller ut ved hver push til `main`.                              |
 | `.github/workflows/ci.yml`     | Bygger og starter bildet på hver PR, uten å pushe.                                 |
 
-Serveren gjør fire ting: proxyer `/api/*` til backenden med `X-API-Key` påsatt
-(bare i live; i mock svarer `/api/*` 404),
+Serveren gjør fire ting: proxyer klientens kall under `/api/` til backenden med
+`X-API-Key` påsatt (bare i live; i mock svarer `/api/*` 404). Det er
+`POST /api/mcp`, `GET` og `POST /api/conversations` og
+`GET /api/conversations/:id`. Alt annet under `/api/` svarer 404. Den
 serverer `dist/` med SPA-fallback, svarer på `/healthz`, og skriver
 `/config.js` med de variablene klienten skal lese. Bak innloggingen setter den
 også `X-User-Id` fra plattformen; se [Innlogging](#innlogging).
