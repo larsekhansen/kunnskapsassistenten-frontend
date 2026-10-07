@@ -60,11 +60,11 @@ const sse = (...events: unknown[]) =>
 /** A BFF on `fetch`, answering from the fixtures unless a route says otherwise. */
 function fakeBff(routes: Record<string, Route> = {}) {
   const defaults: Record<string, Route> = {
-    'GET /api/capabilities': () => json(capabilities),
-    'GET /api/facets': () => json(facets),
-    'GET /api/conversations': () => json(conversations),
-    [`GET /api/conversations/${CONVERSATION_ID}`]: () => json(conversation),
-    'POST /api/ask': () => streamed(askStream),
+    'GET /api/v2/capabilities': () => json(capabilities),
+    'GET /api/v2/facets': () => json(facets),
+    'GET /api/v2/conversations': () => json(conversations),
+    [`GET /api/v2/conversations/${CONVERSATION_ID}`]: () => json(conversation),
+    'POST /api/v2/ask': () => streamed(askStream),
   };
   const all = { ...defaults, ...routes };
   const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -90,10 +90,10 @@ async function drain(events: AsyncIterable<StreamEvent>): Promise<StreamEvent[]>
   return out;
 }
 
-/** The body of every `POST /api/ask`, in order. */
+/** The body of every `POST /api/v2/ask`, in order. */
 function askBodies(fetchMock: ReturnType<typeof fakeBff>) {
   return fetchMock.mock.calls
-    .filter(([url, init]) => String(url) === '/api/ask' && init?.method === 'POST')
+    .filter(([url, init]) => String(url) === '/api/v2/ask' && init?.method === 'POST')
     .map(([, init]) => JSON.parse(String(init?.body)) as Record<string, unknown>);
 }
 
@@ -165,7 +165,7 @@ describe('BffChatClient.ask, strømmen', () => {
     fakeBff();
     const whole = await drain(client().ask({ query: 'q' }));
     resetBffClient();
-    fakeBff({ 'POST /api/ask': () => streamed(askStream, 7) });
+    fakeBff({ 'POST /api/v2/ask': () => streamed(askStream, 7) });
     const pieces = await drain(client().ask({ query: 'q' }));
 
     const withoutIds = (events: StreamEvent[]) =>
@@ -175,7 +175,7 @@ describe('BffChatClient.ask, strømmen', () => {
 
   it('sier «no-hits» når BFF-en er ferdig uten tekst og uten kilder', async () => {
     fakeBff({
-      'POST /api/ask': () =>
+      'POST /api/v2/ask': () =>
         streamed(sse({ type: 'done', conversationId: 'c1', insufficient: true })),
     });
     const events = await drain(client().ask({ query: 'q', conversationId: 'c1' }));
@@ -186,7 +186,7 @@ describe('BffChatClient.ask, strømmen', () => {
 
   it('viser ikke BFF-ens feilsetning når strømmen ender med error', async () => {
     fakeBff({
-      'POST /api/ask': () =>
+      'POST /api/v2/ask': () =>
         streamed(
           sse(
             { type: 'delta', text: 'Del' },
@@ -209,7 +209,8 @@ describe('BffChatClient.ask, strømmen', () => {
       'The provider stream stalled, or ended without a [DONE] terminator. ' +
       'Raise LLM_STREAM_IDLE_TIMEOUT_MS if a healthy stream legitimately pauses this long.';
     fakeBff({
-      'POST /api/ask': () => streamed(sse({ type: 'error', message: stall, conversationId: 'c1' })),
+      'POST /api/v2/ask': () =>
+        streamed(sse({ type: 'error', message: stall, conversationId: 'c1' })),
     });
     const events = await drain(client().ask({ query: 'q', conversationId: 'c1' }));
     expect(events.at(-1)).toEqual({
@@ -224,7 +225,7 @@ describe('BffChatClient.ask, strømmen', () => {
   });
 
   it('sier at forbindelsen brøt når strømmen stopper uten done eller error', async () => {
-    fakeBff({ 'POST /api/ask': () => streamed(sse({ type: 'delta', text: 'Halvt' })) });
+    fakeBff({ 'POST /api/v2/ask': () => streamed(sse({ type: 'delta', text: 'Halvt' })) });
     const events = await drain(client().ask({ query: 'q', conversationId: 'c1' }));
     expect(events.at(-1)).toMatchObject({
       type: 'error',
@@ -234,7 +235,7 @@ describe('BffChatClient.ask, strømmen', () => {
 
   it('oversetter BFF-ens setning for et for langt spørsmål til sin egen', async () => {
     fakeBff({
-      'POST /api/ask': () => json({ error: 'Spørsmålet er for langt (maks 2000 tegn).' }, 400),
+      'POST /api/v2/ask': () => json({ error: 'Spørsmålet er for langt (maks 2000 tegn).' }, 400),
     });
     const events = await drain(client().ask({ query: 'q' }));
     expect(events).toEqual([
@@ -250,7 +251,7 @@ describe('BffChatClient.ask, strømmen', () => {
   });
 
   it('sier at tråden er borte når BFF-en svarer 404 på et oppfølgingsspørsmål', async () => {
-    fakeBff({ 'POST /api/ask': () => json({ error: 'Fant ikke samtalen.' }, 404) });
+    fakeBff({ 'POST /api/v2/ask': () => json({ error: 'Fant ikke samtalen.' }, 404) });
     const events = await drain(client().ask({ query: 'q', conversationId: 'c1' }));
     expect(events.at(-1)).toEqual({
       type: 'error',
@@ -260,14 +261,14 @@ describe('BffChatClient.ask, strømmen', () => {
   });
 
   it('tar BFF-ens 413 som et for langt spørsmål', async () => {
-    fakeBff({ 'POST /api/ask': () => json({ error: 'Forespørselen er for stor.' }, 413) });
+    fakeBff({ 'POST /api/v2/ask': () => json({ error: 'Forespørselen er for stor.' }, 413) });
     const events = await drain(client().ask({ query: 'q' }));
     expect(events.at(-1)).toMatchObject({ type: 'error', error: { code: 'question-too-long' } });
   });
 
   it('viser statusen, ikke teksten, når feilen i svaret er ukjent', async () => {
     fakeBff({
-      'POST /api/ask': () => json({ error: 'Internal Server Error' }, 500),
+      'POST /api/v2/ask': () => json({ error: 'Internal Server Error' }, 500),
     });
     const events = await drain(client().ask({ query: 'q' }));
     expect(events).toEqual([
@@ -280,7 +281,7 @@ describe('BffChatClient.ask, strømmen', () => {
   });
 
   it('sender leseren til innlogging på 401, og sier «unauthorized»', async () => {
-    fakeBff({ 'POST /api/ask': () => json({ error: 'Ikke logget inn.' }, 401) });
+    fakeBff({ 'POST /api/v2/ask': () => json({ error: 'Ikke logget inn.' }, 401) });
     const onUnauthorized = vi.fn();
     const events = await drain(client({ onUnauthorized }).ask({ query: 'q' }));
     expect(events).toEqual([
@@ -296,7 +297,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
   beforeEach(() => {
     sessionStorage.clear();
     resetDraftSources();
-    // `/api/me` has said who is signed in, as it does when the chat view mounts.
+    // `/api/v2/me` has said who is signed in, as it does when the chat view mounts.
     noteSignedIn('user-a');
     // Where the shell files a new thread until the BFF names it.
     window.history.replaceState(null, '', '/threads/stand-in');
@@ -306,11 +307,11 @@ describe('BffChatClient, utkastet når økta går ut', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('skriver hvem som skrev utkastet, slik /api/me sa det', async () => {
+  it('skriver hvem som skrev utkastet, slik /api/v2/me sa det', async () => {
     resetDraftSources();
     fakeBff({
-      'GET /api/me': () => json({ authEnabled: true, userId: 'user-fra-me', tool: 'ka' }),
-      'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401),
+      'GET /api/v2/me': () => json({ authEnabled: true, userId: 'user-fra-me', tool: 'ka' }),
+      'GET /api/v2/conversations': () => json({ error: 'Ikke innlogget.' }, 401),
     });
     provideDraft(() => 'Et spørsmål under arbeid');
     const bff = client({ onUnauthorized: vi.fn() });
@@ -328,7 +329,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
   it('tar ikke vare på noe før BFF-en har sagt hvem som er logget inn', async () => {
     // Nobody to give it back to: it could be put in front of whoever signs in.
     resetDraftSources();
-    fakeBff({ 'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
+    fakeBff({ 'GET /api/v2/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
     provideDraft(() => 'Et spørsmål under arbeid');
 
     await expect(client({ onUnauthorized: vi.fn() }).listThreads()).rejects.toThrow();
@@ -338,7 +339,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
 
   it('tar vare på spørsmålet når /ask svarer 401, for feltet ble tømt da det ble sendt', async () => {
     window.history.replaceState(null, '', '/threads/conv-1');
-    fakeBff({ 'POST /api/ask': () => json({ error: 'Ikke innlogget.' }, 401) });
+    fakeBff({ 'POST /api/v2/ask': () => json({ error: 'Ikke innlogget.' }, 401) });
     provideDraft(() => '');
     // Read when the browser is sent away, not after: that is when it has to be there.
     let atRedirect: unknown;
@@ -361,7 +362,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
   it('sender et spørsmål som skulle starte en tråd, tilbake til forsiden med spørsmålet', async () => {
     // The stand-in address leads to «Fant ikke tråden» after the sign-in,
     // since the BFF never made the conversation (measured 2026-10-06).
-    fakeBff({ 'POST /api/ask': () => json({ error: 'Ikke innlogget.' }, 401) });
+    fakeBff({ 'POST /api/v2/ask': () => json({ error: 'Ikke innlogget.' }, 401) });
     const onUnauthorized = vi.fn();
 
     await drain(client({ onUnauthorized }).ask({ query: 'Hva skriver DFØ?' }));
@@ -388,9 +389,9 @@ describe('BffChatClient, utkastet når økta går ut', () => {
       },
     });
     fakeBff({
-      'POST /api/ask': () =>
+      'POST /api/v2/ask': () =>
         new Response(held, { headers: { 'Content-Type': 'text/event-stream' } }),
-      'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401),
+      'GET /api/v2/conversations': () => json({ error: 'Ikke innlogget.' }, 401),
     });
     const onUnauthorized = vi.fn();
     const bff = client({ onUnauthorized });
@@ -410,7 +411,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
   });
 
   it('tar vare på teksten i feltet når et annet kall svarer 401', async () => {
-    fakeBff({ 'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
+    fakeBff({ 'GET /api/v2/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
     provideDraft(() => 'Et spørsmål under arbeid');
     const onUnauthorized = vi.fn();
 
@@ -425,7 +426,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
   });
 
   it('lagrer ingenting når feltet er tomt og ingenting er på vei', async () => {
-    fakeBff({ 'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
+    fakeBff({ 'GET /api/v2/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
     provideDraft(() => '');
 
     await expect(client({ onUnauthorized: vi.fn() }).listThreads()).rejects.toThrow();
@@ -456,7 +457,7 @@ describe('BffChatClient.ask, det som sendes', () => {
 
   it('sender ikke filteret når BFF-en sier at backenden ikke kan filtrere', async () => {
     const fetchMock = fakeBff({
-      'GET /api/capabilities': () =>
+      'GET /api/v2/capabilities': () =>
         json({ ...capabilities, capabilities: { ...capabilities.capabilities, filters: false } }),
     });
     await drain(client().ask({ query: 'q', filters: documentType(['Årsrapport']) }));
@@ -506,7 +507,7 @@ describe('BffChatClient, tråden og samtalen', () => {
       () => json({ error: 'Kunne ikke opprette samtale.' }, 502),
       () => streamed(askStream),
     ];
-    fakeBff({ 'POST /api/ask': () => answers.shift()!() });
+    fakeBff({ 'POST /api/v2/ask': () => answers.shift()!() });
     const placeholder = threadFromQuestion('q');
     const created = client().createThread(placeholder);
     let named: Thread | undefined;
@@ -564,7 +565,7 @@ describe('BffChatClient, tråden og samtalen', () => {
     ],
     ['økta er ute', () => json({ error: 'Ikke innlogget.' }, 401)],
   ])('kaster når lista ikke kan leses: %s', async (_, route) => {
-    fakeBff({ 'GET /api/conversations': route });
+    fakeBff({ 'GET /api/v2/conversations': route });
     await expect(client({ onUnauthorized: vi.fn() }).listThreads()).rejects.toThrow();
   });
 
@@ -601,7 +602,7 @@ describe('BffChatClient, tråden og samtalen', () => {
     ],
     ['økta er ute', () => json({ error: 'Ikke innlogget.' }, 401)],
   ])('kaster når samtalen ikke kan leses: %s', async (_, route) => {
-    fakeBff({ [`GET /api/conversations/${CONVERSATION_ID}`]: route });
+    fakeBff({ [`GET /api/v2/conversations/${CONVERSATION_ID}`]: route });
     await expect(client({ onUnauthorized: vi.fn() }).getThread(CONVERSATION_ID)).rejects.toThrow();
   });
 });
@@ -647,7 +648,7 @@ describe('BffChatClient.listFacets', () => {
 
   it('gir ingen fasetter når BFF-en sier at backenden ikke kan filtrere', async () => {
     fakeBff({
-      'GET /api/capabilities': () =>
+      'GET /api/v2/capabilities': () =>
         json({ ...capabilities, capabilities: { ...capabilities.capabilities, filters: false } }),
     });
     expect(await client().listFacets()).toEqual([]);
@@ -656,7 +657,7 @@ describe('BffChatClient.listFacets', () => {
   it('spør på nytt mens BFF-en ikke er ferdig med å prøve backenden', async () => {
     let asked = 0;
     fakeBff({
-      'GET /api/capabilities': () =>
+      'GET /api/v2/capabilities': () =>
         (asked += 1) < 3
           ? json({ capabilities: { ...capabilities.capabilities, filters: false }, settled: false })
           : json(capabilities),
@@ -668,7 +669,7 @@ describe('BffChatClient.listFacets', () => {
   it('husker ikke et svar som ikke var sikkert', async () => {
     let asked = 0;
     fakeBff({
-      'GET /api/capabilities': () => {
+      'GET /api/v2/capabilities': () => {
         asked += 1;
         return json({
           capabilities: { ...capabilities.capabilities, filters: false },
@@ -693,8 +694,8 @@ describe('BffChatClient.listFacets', () => {
 describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
   const fromBff = (routes: Record<string, Route> = {}) =>
     fakeBff({
-      'GET /api/capabilities': () => json(capabilitiesD16),
-      'GET /api/facets': () => json(facetsD16),
+      'GET /api/v2/capabilities': () => json(capabilitiesD16),
+      'GET /api/v2/facets': () => json(facetsD16),
       ...routes,
     });
   const noBuildConfig = () => client({ filterFields: () => undefined });
@@ -732,7 +733,7 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
 
   it('gir ingen filter på en tråd uten', async () => {
     fromBff({
-      [`GET /api/conversations/${CONVERSATION_ID}`]: () =>
+      [`GET /api/v2/conversations/${CONVERSATION_ID}`]: () =>
         json({ ...conversation, filter: undefined }),
     });
     const thread = await noBuildConfig().getThread(CONVERSATION_ID);
@@ -757,7 +758,7 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
   });
 
   it('sier med egne ord at filteret har for mange verdier, når BFF-en nekter', async () => {
-    fromBff({ 'POST /api/ask': () => json(askTooManyValues, 400) });
+    fromBff({ 'POST /api/v2/ask': () => json(askTooManyValues, 400) });
     const events = await drain(
       noBuildConfig().ask({
         query: 'x',
@@ -775,7 +776,7 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
 
   it('sier med egne ord at et valg ikke kan brukes, når BFF-en nekter verdien', async () => {
     fromBff({
-      'POST /api/ask': () =>
+      'POST /api/v2/ask': () =>
         json(
           {
             error: 'Et av valgene i dokumenttyper har tegn eller en lengde søket ikke tar imot.',
@@ -799,11 +800,11 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
   it('sier med egne ord at filteret har et felt som ikke finnes, når BFF-en nekter feltet', async () => {
     // The BFF's own sentence, from `FilterUnknownField` in apps/server/src/facets.ts.
     fromBff({
-      'POST /api/ask': () =>
+      'POST /api/v2/ask': () =>
         json(
           {
             error:
-              'Filteret har feltet «documentType», som ikke finnes. Feltene er «type», som i field i /api/facets.',
+              'Filteret har feltet «documentType», som ikke finnes. Feltene er «type», som i field i /api/v2/facets.',
             code: 'filter-unknown-field',
             field: 'documentType',
           },
@@ -823,7 +824,7 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
   it('husker ikke en tom fasettliste, som også er det en BFF uten Typesense svarer', async () => {
     let asked = 0;
     fromBff({
-      'GET /api/facets': () => ((asked += 1) === 1 ? json({ facets: [] }) : json(facetsD16)),
+      'GET /api/v2/facets': () => ((asked += 1) === 1 ? json({ facets: [] }) : json(facetsD16)),
     });
     const bff = noBuildConfig();
     expect(await bff.listFacets()).toEqual([]);
@@ -837,7 +838,7 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
     try {
       let asked = 0;
       fromBff({
-        'GET /api/capabilities': () =>
+        'GET /api/v2/capabilities': () =>
           (asked += 1) < 14
             ? json({
                 ...capabilitiesD16,
@@ -859,7 +860,7 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
   });
 
   it('gir en feil panelet kan prøve igjen på, når BFF-en ikke svarer i det hele tatt', async () => {
-    fromBff({ 'GET /api/capabilities': () => json({ error: 'nede' }, 502) });
+    fromBff({ 'GET /api/v2/capabilities': () => json({ error: 'nede' }, 502) });
     await expect(noBuildConfig().listFacets()).rejects.toThrow();
   });
 
@@ -867,7 +868,7 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
     vi.useFakeTimers();
     try {
       fromBff({
-        'GET /api/capabilities': () =>
+        'GET /api/v2/capabilities': () =>
           json({
             ...capabilitiesD16,
             capabilities: { ...capabilitiesD16.capabilities, filters: false },
@@ -893,7 +894,7 @@ describe('BffChatClient, felt og korpus fra BFF-en (D16)', () => {
     try {
       let asked = 0;
       fromBff({
-        'GET /api/capabilities': () =>
+        'GET /api/v2/capabilities': () =>
           (asked += 1) < 6
             ? json({
                 ...capabilitiesD16,
@@ -926,10 +927,10 @@ describe('createChatClient', () => {
 });
 
 describe('BffChatClient og agentene', () => {
-  it('henter agentene fra /api/models og standarden fra /api/me', async () => {
+  it('henter agentene fra /api/v2/models og standarden fra /api/v2/me', async () => {
     fakeBff({
-      'GET /api/models': () => json(models),
-      'GET /api/me': () => json({ tool: 'builtin.agent-rag-agent__agent-rag-graph-bundled' }),
+      'GET /api/v2/models': () => json(models),
+      'GET /api/v2/me': () => json({ tool: 'builtin.agent-rag-agent__agent-rag-graph-bundled' }),
     });
 
     const { agents, defaultId } = await client().listAgents();
@@ -938,13 +939,13 @@ describe('BffChatClient og agentene', () => {
     expect(defaultId).toBe('builtin/agent-rag-agent');
   });
 
-  it('har lista uten standard når /api/me feiler, og ingenting når /api/models gjør det', async () => {
-    fakeBff({ 'GET /api/models': () => json(models), 'GET /api/me': () => json({}, 500) });
+  it('har lista uten standard når /api/v2/me feiler, og ingenting når /api/v2/models gjør det', async () => {
+    fakeBff({ 'GET /api/v2/models': () => json(models), 'GET /api/v2/me': () => json({}, 500) });
     const withoutDefault = await client().listAgents();
     expect(withoutDefault.agents).toHaveLength(8);
     expect(withoutDefault.defaultId).toBeUndefined();
 
-    fakeBff({ 'GET /api/models': () => json({ models: [] }) });
+    fakeBff({ 'GET /api/v2/models': () => json({ models: [] }) });
     expect(await client().listAgents()).toEqual({ agents: [] });
   });
 
@@ -962,5 +963,24 @@ describe('BffChatClient og agentene', () => {
     const [chosen, plain] = askBodies(fetchMock);
     expect(chosen?.model).toBe('builtin.fact-checker-agent__fact-checker');
     expect(plain).not.toHaveProperty('model');
+  });
+});
+
+describe('BffChatClient, API-versjonen', () => {
+  it('spør BFF-en under /api/v2/v2, der API-et for denne klienten er', async () => {
+    // `/api` is the format the previous client reads; the BFF serves both
+    // (src/decisions/0009 in digdir/kunnskapsassistenten).
+    const fetchMock = fakeBff();
+    const bff = client();
+
+    await bff.listThreads().catch(() => {});
+    await bff.getThread(CONVERSATION_ID).catch(() => {});
+    await bff.listFacets();
+    await bff.listAgents();
+    await drain(bff.ask({ query: 'q' }));
+
+    const paths = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(paths.length).toBeGreaterThan(5);
+    expect(paths.filter((path) => !path.startsWith('/api/v2/'))).toEqual([]);
   });
 });

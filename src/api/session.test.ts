@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   beforeLogout,
+  fetchSession,
   keepDraft,
   noteQuestionInFlight,
   noteSignedIn,
@@ -223,5 +224,24 @@ describe('the draft kept across a sign-in', () => {
 
     expect(() => keepDraft()).not.toThrow();
     expect(await restored('/threads/conv-1')).toBeUndefined();
+  });
+});
+
+describe('fetchSession', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it('asks the BFF under /api/v2, as the rest of this client does', async () => {
+    vi.stubEnv('VITE_API_MODE', 'bff');
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      Response.json({ authEnabled: true, user: { name: 'Kari' } }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchSession();
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v2/me');
   });
 });

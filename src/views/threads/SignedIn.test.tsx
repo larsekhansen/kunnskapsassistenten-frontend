@@ -101,7 +101,7 @@ describe('fetchSession', () => {
       email: 'kari@digdir.no',
       logoutUrl: '/auth/logout',
     });
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/me');
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v2/me');
   });
 
   it('falls back to the address when the sign-in gave no name', async () => {

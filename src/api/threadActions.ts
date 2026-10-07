@@ -1,5 +1,6 @@
 import type { Thread } from '../model';
 import { deleteMockThread, renameMockThread } from './mock/sessionThreads';
+import { BFF_API } from './bff/api';
 import { resetSignIn, toLogin } from './bff/signIn';
 import { kaEnv } from './runtimeConfig';
 import { keepDraft } from './session';
@@ -135,7 +136,7 @@ export function createThreadActions(): ThreadActions | undefined {
  * its conversations and the thread takes that name (bff/mapping.ts).
  */
 function conversationPath(thread: Thread): string {
-  return `/api/conversations/${encodeURIComponent(thread.conversationId ?? thread.id)}`;
+  return `${BFF_API}/conversations/${encodeURIComponent(thread.conversationId ?? thread.id)}`;
 }
 
 async function send(path: string, init: RequestInit): Promise<void> {
