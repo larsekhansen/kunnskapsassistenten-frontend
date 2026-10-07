@@ -214,6 +214,19 @@ describe('årsfilteret med perioder (year-ranges)', () => {
     expect(seen.at(-1)).toEqual(['2020', '2021', '2022']);
   });
 
+  it('lar teksten stå når Enter trykkes og ingenting passer, som de andre feltene', () => {
+    // Enter chooses the option whose label is the text, and the hint carries
+    // the text as its label with the value ''. That emptied the field.
+    const seen: string[][] = [];
+    render(<Years initial={['2024']} seen={seen} />);
+
+    type('abc');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+
+    expect(seen).toEqual([]);
+    expect(input().value).toBe('abc');
+  });
+
   it('viser hintet bare når ingenting passer', () => {
     const hint =
       'Ikke et år eller en periode. Skriv et år eller en periode, som 2021 eller 2023–2028.';
