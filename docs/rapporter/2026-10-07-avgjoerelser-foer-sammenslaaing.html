@@ -543,9 +543,11 @@
             <strong>Anbefaling: gjør raden til standard under 774 px.</strong>
             <span
               >Det fjerner de fleste ordene som brytes midt i (avgjørelse 4), «agent…» i
-              skrivefeltet, og det meste av høyden avgjørelse 3 koster på telefon. Det som gjenstår
-              med flagget: Tab går fra knappen øverst til venstre gjennom hele svaret før den når
-              knappen øverst til høyre. Det bør rettes før raden blir standard.</span
+              skrivefeltet, og det meste av høyden avgjørelse 3 koster på telefon. Med flagget går
+              Tab fra knappen øverst til venstre gjennom hele svaret før den når knappen øverst til
+              høyre. #276 valgte det med vilje, fordi kildene kommer etter svaret i lesefølgen, og
+              det bryter ikke WCAG 2.4.3. Valget står mellom den rekkefølgen og at begge knappene
+              kommer først.</span
             >
           </div>
         </div>
@@ -557,11 +559,15 @@
             <span class="pill partly">PR #273, godkjent i gjennomgangen</span>
           </div>
           <p>
-            Velgeren for lys, mørk og auto flyttes fra foten i navigasjonspanelet inn i
+            I
+            <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/273"
+              >#273</a
+            >
+            flyttes velgeren for lys, mørk og auto fra foten i navigasjonspanelet inn i
             innstillingene, og foten får lenken «Innstillinger» der velgeren sto. Foten blir 18 px
-            lavere (163 til 145 px på 1440 og 390), og de pikslene går til trådlista. Menyen
-            monteres i skallet, så den virker på alle sider. Det gjør også visningsnivået og valget
-            for foten synlige for alle. ADR 0004 sa at menyen skulle være skjult.
+            lavere (163 til 145 px på 1440 og 390). Menyen monteres i skallet, så den virker på alle
+            sider. Det gjør også visningsnivået og valget for foten synlige for alle. ADR 0004 sa at
+            menyen skulle være skjult.
           </p>
           <div class="pair">
             <figure class="shot">
@@ -592,7 +598,7 @@
                   src="bilder/2026-10-07-settings-after-1440.png"
                   alt="Innstillingene med fargevalget som egen gruppe."
                   width="640"
-                  height="658"
+                  height="634"
                   loading="lazy"
               /></a>
               <figcaption>
@@ -622,13 +628,21 @@
           </p>
           <ul>
             <li>
-              <strong>#277, navnet:</strong> knappen heter «Kopier lenke til tråden (virker bare for
-              deg)».
+              <strong
+                ><a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/277"
+                  >#277</a
+                >, navnet:</strong
+              >
+              knappen heter «Kopier lenke til tråden (virker bare for deg)».
             </li>
             <li>
-              <strong>#278, beskrivelsen:</strong> knappen heter som før. «Virker bare for deg, i
-              denne nettleseren» står som hjelpetekst på knappen og først i kvitteringen etter
-              kopieringen.
+              <strong
+                ><a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/278"
+                  >#278</a
+                >, beskrivelsen:</strong
+              >
+              knappen heter som før. «Virker bare for deg, i denne nettleseren» står som hjelpetekst
+              på knappen og i kvitteringen etter kopieringen.
             </li>
           </ul>
           <div class="table-wrap" tabindex="0" role="group" aria-label="Tabell: høyden på knappen">
@@ -737,7 +751,10 @@
             >), brytes et ord som ikke får plass, midt i og uten bindestrek. Bildet uten raden
             øverst i avgjørelse 1 viser det: «måloppnåels» og «e». Med automatisk orddeling (<code
               >hyphens: auto</code
-            >) blir det «måloppnåel-» og «se».
+            >) deler nettleseren ordet med bindestrek der den har ordlister for norsk. Målt i WebKit
+            (Safari) blir tittelen «NKOM mål-» og «oppnåelse» på 393, to linjer i stedet for tre.
+            Chromium uten ordlister deler ikke norsk, så e2e-testene (Chromium) kan ikke se om
+            orddelingen virker.
           </p>
           <div class="rec">
             <strong
@@ -803,7 +820,7 @@
             navigasjonspanelet bare trådene, og høyre panel har filtrene over kildene. Uten et valgt
             filter er filteret ikke låst etter svaret, så alle kontrollene står der, og kildene
             havner under kanten på 1440. Med et valgt filter står det kort «Avgrenset til …», og
-            kildene står rett under.
+            dokumentene står rett under. Utdragene står under kanten også da.
           </p>
           <div class="pair">
             <figure class="shot">
@@ -850,8 +867,9 @@
               og utkvittert. Kan lukkes.
             </li>
             <li>
-              Årsfilteret med perioder (flagg <code>year-ranges</code>): med ett tall skrevet kommer
-              bare feilteksten, og forslagene kan ikke klikkes. Rettingen er under arbeid.
+              Årsfilteret med perioder (flagg <code>year-ranges</code>): med bare ett siffer skrevet
+              («2») står bare feilteksten i lista, og et klikk på den tømmer feltet. «20», «2024» og
+              «2019-20» gir forslag som kan velges. Rettingen er under arbeid.
             </li>
           </ul>
         </div>
@@ -891,8 +909,9 @@
                 </td>
                 <td>
                   Legg <code>sources</code> til <code>ConversationDetail</code> i pakken, la
-                  klienten importere fra pakken, og slett kopien. Typene pakken ikke har (lista over
-                  agenter og identiteten fra <code>/api/me</code>), legges til i pakken.
+                  klienten importere fra pakken, og slett kopien. De tre typene pakken ikke har
+                  (svaret fra <code>/api/models</code>, svaret fra <code>/api/me</code> og lista
+                  over tråder), legges til i pakken.
                 </td>
                 <td class="size">L</td>
               </tr>
@@ -910,7 +929,9 @@
                 </td>
                 <td>
                   Fjern dem i én commit, med testene som hører til. Klienten har da to moduser: mock
-                  og bff. Dokumentasjonen for testmiljøet forsvinner også, og med den et filnavn med
+                  og bff. Dokumentasjonen for testmiljøet og for å kjøre live lokalt
+                  (<code>deploy.md</code>, <code>deploy-backend.md</code> og
+                  <code>kjoremiljo-og-korpus.md</code>) forsvinner også, og med den et filnavn med
                   personnavn som står der i dag.
                 </td>
                 <td class="size">M</td>
@@ -931,9 +952,9 @@
                 <td class="num">4</td>
                 <td class="feature"><strong>Git-krokene og npm 11</strong></td>
                 <td>
-                  <code>prepare</code> i <code>apps/web</code> legger git-kroker for hele monorepoet
-                  ved <code>npm ci</code>. npm 11 blokkerer installasjonsskript
-                  (<code>allowScripts</code>) for simple-git-hooks og fsevents.
+                  <code>prepare</code> i <code>src/apps/web</code> legger git-kroker for hele
+                  monorepoet ved <code>npm ci</code>. npm 11.19 i CI melder at installasjonsskriptet
+                  til simple-git-hooks ikke er dekket av <code>allowScripts</code>.
                 </td>
                 <td>
                   Avklares med de som eier monorepoet: krokene i rota for hele repoet, eller ingen
@@ -951,14 +972,18 @@
                 <td>
                   Den sammenslåtte appen (BFF-en og klienten) rulles ut slik qa gjør, med innlogging
                   i BFF-en. Da er avgjørelse 5 løst. Dette repoet får en peker til monorepoet og
-                  arkiveres, og digdir#124 lukkes.
+                  arkiveres, og
+                  <a href="https://github.com/digdir/kunnskapsassistenten/issues/124">digdir#124</a>
+                  lukkes.
                 </td>
                 <td class="size">M</td>
               </tr>
               <tr>
                 <td class="num">6</td>
                 <td class="feature"><strong>Et personnavn i ADR 0001 i monorepoet</strong></td>
-                <td>ADR-en er monorepoets egen og nevner en person i et eksempel.</td>
+                <td>
+                  ADR-en er monorepoets egen og nevner en person ved navn som kilde til et sitat.
+                </td>
                 <td>Foreslå en nøytral formulering til de som eier den, eller la den stå.</td>
                 <td class="size">L</td>
               </tr>
@@ -981,13 +1006,24 @@
             er usikkert om kolonnene fungerer godt mellom telefon og desktop.
           </li>
           <li>
-            <strong>Forsøkene bak flagg</strong> avgjøres, og flaggene tas bort: raden øverst
-            (digdir#120), årsfilter med perioder og samlede merkelapper (digdir#115 og #116), og
-            filtrene i høyre panel (digdir#84).
+            <strong>Forsøkene bak flagg</strong> avgjøres, og flaggene tas bort: raden øverst (<a
+              href="https://github.com/digdir/kunnskapsassistenten/issues/120"
+              >digdir#120</a
+            >), årsfilter med perioder og samlede merkelapper (<a
+              href="https://github.com/digdir/kunnskapsassistenten/issues/115"
+              >digdir#115</a
+            >
+            og <a href="https://github.com/digdir/kunnskapsassistenten/issues/116">#116</a>), og
+            filtrene i høyre panel (<a
+              href="https://github.com/digdir/kunnskapsassistenten/issues/84"
+              >digdir#84</a
+            >).
           </li>
           <li>
             <strong>Kildene per svar etter ny innlasting</strong> venter på at backenden lagrer
-            bitene (headless-rag #21).
+            bitene (<a href="https://github.com/digdir/digdir-headless-rag/issues/21"
+              >headless-rag #21</a
+            >).
           </li>
           <li>
             <strong>Innstillingsdialogen</strong> flyttes fra mappa til chatvisningen til skallet,
@@ -1016,75 +1052,147 @@
             </thead>
             <tbody>
               <tr>
-                <td class="num">257</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/257"
+                    >257</a
+                  >
+                </td>
                 <td>Et svar uten kilder får én kort linje med et info-ikon</td>
               </tr>
               <tr>
-                <td class="num">265</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/265"
+                    >265</a
+                  >
+                </td>
                 <td>Valg av agent i skrivefeltet</td>
               </tr>
               <tr>
-                <td class="num">267</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/267"
+                    >267</a
+                  >
+                </td>
                 <td>Foten i navigasjonspanelet ruller med som standard</td>
               </tr>
               <tr>
-                <td class="num">268</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/268"
+                    >268</a
+                  >
+                </td>
                 <td>Ingen personnavn i kode, dokumentasjon og tester</td>
               </tr>
               <tr>
-                <td class="num">269</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/269"
+                    >269</a
+                  >
+                </td>
                 <td>Funksjonsflagg i en skjult meny, <code>#feature-flags</code></td>
               </tr>
               <tr>
-                <td class="num">270</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/270"
+                    >270</a
+                  >
+                </td>
                 <td>Ingenting ruller sidelengs på telefon, med UI-tester på tolv bruddpunkter</td>
               </tr>
               <tr>
-                <td class="num">271</td>
-                <td>Samtalen følger med ned bare når leseren er nederst</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/271"
+                    >271</a
+                  >
+                </td>
+                <td>Samtalen følger med ned også fra nesten nederst, og når leseren sender</td>
               </tr>
               <tr>
-                <td class="num">272</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/272"
+                    >272</a
+                  >
+                </td>
                 <td>Årsfilter med perioder og samlede merkelapper, bak flagg</td>
               </tr>
               <tr>
-                <td class="num">274</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/274"
+                    >274</a
+                  >
+                </td>
                 <td>Filtrene over kildene i høyre panel, bak flagg</td>
               </tr>
               <tr>
-                <td class="num">275</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/275"
+                    >275</a
+                  >
+                </td>
                 <td>«Velg alle» gjelder lista som vises, og legger til</td>
               </tr>
               <tr>
-                <td class="num">276</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/276"
+                    >276</a
+                  >
+                </td>
                 <td>Raden øverst på telefon, bak flagg</td>
               </tr>
               <tr>
-                <td class="num">279</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/279"
+                    >279</a
+                  >
+                </td>
                 <td>Rapporten og beslutningsloggen</td>
               </tr>
               <tr>
-                <td class="num">280</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/280"
+                    >280</a
+                  >
+                </td>
                 <td>Testene for rulling dekker filtrene i høyre panel</td>
               </tr>
               <tr>
-                <td class="num">281</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/281"
+                    >281</a
+                  >
+                </td>
                 <td>Testene for rulling kjører korte animasjoner ferdig og melder lange</td>
               </tr>
               <tr>
-                <td class="num">282</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/282"
+                    >282</a
+                  >
+                </td>
                 <td>En ustabil test venter til filterpanelet er ferdig</td>
               </tr>
               <tr>
-                <td class="num">283</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/283"
+                    >283</a
+                  >
+                </td>
                 <td>Kortere e2e: et kort mocksvar, og enhetstestene i en egen jobb</td>
               </tr>
               <tr>
-                <td class="num">284</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/284"
+                    >284</a
+                  >
+                </td>
                 <td>Flaggene testes bare på bredder der de virker</td>
               </tr>
               <tr>
-                <td class="num">285</td>
+                <td class="num">
+                  <a href="https://github.com/larsekhansen/kunnskapsassistenten-frontend/pull/285"
+                    >285</a
+                  >
+                </td>
                 <td>Filterpanelet hopper ikke lenger når feltene lastes</td>
               </tr>
             </tbody>
@@ -1099,7 +1207,8 @@
       <footer>
         <span
           >Laget 7. oktober 2026 fra koden på <code>main</code> 879f0de her, og utkast-PR #129
-          (0e28261). Høyder og bredder er målt i mock i Chromium. Alt annet er lest i koden.</span
+          (0e28261). Høyder og bredder er målt i mock i Chromium, og orddelingen i WebKit. Alt annet
+          er lest i koden.</span
         >
         <span>Beslutningene bak står i <a href="beslutningslogg.md">beslutningsloggen</a>.</span>
       </footer>
