@@ -2,11 +2,11 @@
 // against a budget. Run after `npm run build`: `node scripts/check-bundle-size.mjs [dist]`.
 //
 // What counts is what `index.html` loads: the entry script and the chunks it
-// preloads. A chunk behind a dynamic `import()` is fetched only when that
-// code runs, which is how the mock and the live client stay out of a bff
-// build (src/api/index.ts). Before that, the one bundle was 520 kB gzipped
-// with both in it. Pulling either back in with a static import goes over the
-// budget, and so does growing by a sixth without anyone deciding to.
+// preloads. A bff build leaves the mock and the live client out, because
+// `createChatClient` (src/api/index.ts) folds away the branches that use them
+// and vite.config.ts lets the bundler drop their modules then. Before that,
+// the bundle was 520 kB gzipped with both in it. Pulling either back in goes
+// over the budget, and so does growing by a sixth without anyone deciding to.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';

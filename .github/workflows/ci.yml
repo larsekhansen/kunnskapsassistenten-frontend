@@ -140,8 +140,10 @@ jobs:
       - name: Build
         run: docker build --tag ka-frontend:ci .
 
-      # Mock, no key, as in the test environment: the container starts, the
-      # server answers and the page is the built client.
+      # The server in mock and without a key: the container starts, the server
+      # answers and the page is the built client. The client in the image is
+      # built for live (Dockerfile), as in the test environment, but with
+      # KA_MODE=mock the server forwards nothing.
       - name: Start it and ask
         run: |
           docker run --detach --rm --name ka --publish 8787:8787 -e KA_MODE=mock ka-frontend:ci
