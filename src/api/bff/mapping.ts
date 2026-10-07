@@ -15,6 +15,7 @@ import { errorFromBackend, errorFromStatus } from '../backendErrors';
 import type { DatasetFilterFields } from '../filterFields';
 import { messagesFromApi, threadFromConversation } from '../live/conversations';
 import { relevanceFromRank, toCitations } from '../live/mcp';
+import { publicUrl } from '../publicUrl';
 import type {
   BffAgentOption,
   BffConversationDetail,
@@ -73,30 +74,6 @@ export function filterBody(
  * could not be looked up. That is `textUnavailable`, which the sources panel
  * says in words rather than drawing a blank.
  */
-/**
- * A source's address, if it is one the panel may put in an `href`.
- *
- * It comes from the backend, which reads it off a document in the corpus, so
- * it is not this app's own address and nothing guarantees its shape. The BFF
- * checks the scheme before it passes it on; this is the client's own check,
- * because the check and the rendering sat in different places and only one of
- * them was ours (the review of #129).
- *
- * `http` and `https` only — a list of what is allowed, so a scheme nobody
- * thought of is refused rather than let through. A source whose address is
- * dropped is still a source: the panel already has words for a document with
- * no public link, which is the normal state for a folder-based corpus.
- */
-function publicUrl(value: string | undefined): string | undefined {
-  if (!value) return undefined;
-  try {
-    const { protocol } = new URL(value);
-    return protocol === 'http:' || protocol === 'https:' ? value : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function sourceDocumentsFrom(sources: BffSource[] | undefined): SourceDocument[] {
   const list = sources ?? [];
   const documents = new Map<string, SourceDocument>();
