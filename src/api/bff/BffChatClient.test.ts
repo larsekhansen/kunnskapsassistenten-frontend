@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyFilterSelection, threadFromQuestion } from '../../model';
-import type { FilterSelection, StreamEvent } from '../../model';
+import type { FilterSelection, StreamEvent, Thread } from '../../model';
 import type { DatasetFilterFields } from '../filterFields';
 import { BffChatClient, resetBffClient } from './BffChatClient';
 import askStream from './fixtures/ask.sse?raw';
@@ -13,7 +13,7 @@ import askTooManyValues from './fixtures/ask-too-many-values.json';
 import capabilitiesD16 from './fixtures/capabilities-d16.json';
 import facetsD16 from './fixtures/facets-d16.json';
 import { activeCorpusKey, corpusOption } from '../corpus';
-import { provideDraft, resetDraftSources } from '../session';
+import { noteSignedIn, provideDraft, resetDraftSources } from '../session';
 
 /**
  * Fixturene er tatt opp fra BFF-en i digdir/kunnskapsassistenten (`8639267`,
@@ -297,12 +297,44 @@ describe('BffChatClient, utkastet når økta går ut', () => {
   beforeEach(() => {
     sessionStorage.clear();
     resetDraftSources();
+    // `/api/v2/me` has said who is signed in, as it does when the chat view mounts.
+    noteSignedIn('user-a');
     // Where the shell files a new thread until the BFF names it.
     window.history.replaceState(null, '', '/threads/stand-in');
   });
 
   afterEach(() => {
     window.history.replaceState(null, '', '/');
+  });
+
+  it('skriver hvem som skrev utkastet, slik /api/v2/me sa det', async () => {
+    resetDraftSources();
+    fakeBff({
+      'GET /api/v2/me': () => json({ authEnabled: true, userId: 'user-fra-me', tool: 'ka' }),
+      'GET /api/v2/conversations': () => json({ error: 'Ikke innlogget.' }, 401),
+    });
+    provideDraft(() => 'Et spørsmål under arbeid');
+    const bff = client({ onUnauthorized: vi.fn() });
+
+    await bff.listAgents();
+    await expect(bff.listThreads()).rejects.toThrow();
+
+    expect(kept()).toEqual({
+      text: 'Et spørsmål under arbeid',
+      path: '/threads/stand-in',
+      user: 'user-fra-me',
+    });
+  });
+
+  it('tar ikke vare på noe før BFF-en har sagt hvem som er logget inn', async () => {
+    // Nobody to give it back to: it could be put in front of whoever signs in.
+    resetDraftSources();
+    fakeBff({ 'GET /api/v2/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
+    provideDraft(() => 'Et spørsmål under arbeid');
+
+    await expect(client({ onUnauthorized: vi.fn() }).listThreads()).rejects.toThrow();
+
+    expect(sessionStorage.getItem('ka.draft.v1')).toBeNull();
   });
 
   it('tar vare på spørsmålet når /ask svarer 401, for feltet ble tømt da det ble sendt', async () => {
@@ -320,7 +352,11 @@ describe('BffChatClient, utkastet når økta går ut', () => {
     );
 
     expect(onUnauthorized).toHaveBeenCalledExactlyOnceWith('/threads/conv-1');
-    expect(atRedirect).toEqual({ text: 'Hva skriver DFØ?', path: '/threads/conv-1' });
+    expect(atRedirect).toEqual({
+      text: 'Hva skriver DFØ?',
+      path: '/threads/conv-1',
+      user: 'user-a',
+    });
   });
 
   it('sender et spørsmål som skulle starte en tråd, tilbake til forsiden med spørsmålet', async () => {
@@ -332,7 +368,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
     await drain(client({ onUnauthorized }).ask({ query: 'Hva skriver DFØ?' }));
 
     expect(onUnauthorized).toHaveBeenCalledExactlyOnceWith('/');
-    expect(kept()).toEqual({ text: 'Hva skriver DFØ?', path: '/' });
+    expect(kept()).toEqual({ text: 'Hva skriver DFØ?', path: '/', user: 'user-a' });
   });
 
   it('sender leseren tilbake til den nye tråden når BFF-en har navngitt den før 401-en', async () => {
@@ -371,7 +407,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
     await asked;
 
     expect(onUnauthorized).toHaveBeenCalledExactlyOnceWith('/threads/conv-new');
-    expect(kept()).toEqual({ text: 'Hva skriver DFØ?', path: '/threads/conv-new' });
+    expect(kept()).toEqual({ text: 'Hva skriver DFØ?', path: '/threads/conv-new', user: 'user-a' });
   });
 
   it('tar vare på teksten i feltet når et annet kall svarer 401', async () => {
@@ -382,7 +418,11 @@ describe('BffChatClient, utkastet når økta går ut', () => {
     await expect(client({ onUnauthorized }).listThreads()).rejects.toThrow();
 
     expect(onUnauthorized).toHaveBeenCalledExactlyOnceWith('/threads/stand-in');
-    expect(kept()).toEqual({ text: 'Et spørsmål under arbeid', path: '/threads/stand-in' });
+    expect(kept()).toEqual({
+      text: 'Et spørsmål under arbeid',
+      path: '/threads/stand-in',
+      user: 'user-a',
+    });
   });
 
   it('lagrer ingenting når feltet er tomt og ingenting er på vei', async () => {
@@ -462,11 +502,27 @@ describe('BffChatClient, tråden og samtalen', () => {
     ]);
   });
 
-  it('createThread gir undefined når spørsmålet feilet før samtalen fantes', async () => {
-    fakeBff({ 'POST /api/v2/ask': () => json({ error: 'Kunne ikke opprette samtale.' }, 502) });
-    const created = client().createThread(threadFromQuestion('q'));
+  it('createThread venter på spørsmålet som lager samtalen når det første feilet før den fantes', async () => {
+    const answers = [
+      () => json({ error: 'Kunne ikke opprette samtale.' }, 502),
+      () => streamed(askStream),
+    ];
+    fakeBff({ 'POST /api/v2/ask': () => answers.shift()!() });
+    const placeholder = threadFromQuestion('q');
+    const created = client().createThread(placeholder);
+    let named: Thread | undefined;
+    void created.then((thread) => (named = thread));
+
     await drain(client().ask({ query: 'q' }));
-    await expect(created).resolves.toBeUndefined();
+    await Promise.resolve();
+    expect(named).toBeUndefined();
+
+    await drain(client().ask({ query: 'q' }));
+    await expect(created).resolves.toEqual({
+      ...placeholder,
+      id: CONVERSATION_ID,
+      conversationId: CONVERSATION_ID,
+    });
   });
 
   it('en tråd åpnet fra adressen før den er lest, fortsettes under sin egen id', async () => {
