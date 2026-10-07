@@ -27,8 +27,8 @@ permissions:
   contents: read
 
 jobs:
-  # The name is the one the team and its scripts look for, so it stays,
-  # although the unit tests have moved to the job below.
+  # Keeps its name, so the earlier runs and reviews still match, although the
+  # unit tests have moved to the job below.
   check:
     name: Lint, tests and e2e
     runs-on: ubuntu-latest
