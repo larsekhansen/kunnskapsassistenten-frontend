@@ -201,20 +201,6 @@ test.describe('navigasjonspanelet', () => {
       ),
     );
 
-  /**
-   * Picks a value and waits for the chip in that field.
-   *
-   * The interaction itself is `chooseFacetValue` in helpers, shared with the
-   * other specs; the extra wait here is what these tests need and the shared
-   * one cannot give — «1 av N valgt» says a value was picked, the chip says
-   * WHICH field picked it, and that distinction is the point of the two tests
-   * below.
-   */
-  async function pickAndSeeChip(page: Page, dimension: string, value: string): Promise<void> {
-    await chooseFacetValue(page, dimension, value);
-    await expect.poll(() => chipTexts(page)).toContain(value);
-  }
-
   test(
     'filtervalget overlever veksling til trådene og tilbake',
     MOCK,
@@ -224,8 +210,8 @@ test.describe('navigasjonspanelet', () => {
       // Two dimensions, not one: a selection kept per field and a selection
       // kept for the panel as a whole fail differently, and one field cannot
       // tell them apart.
-      await pickAndSeeChip(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
-      await pickAndSeeChip(page, 'Dokumenttyper', 'Årsrapport');
+      await chooseFacetValue(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
+      await chooseFacetValue(page, 'Dokumenttyper', 'Årsrapport');
 
       const before = (await chipTexts(page)).sort();
 
@@ -256,7 +242,7 @@ test.describe('navigasjonspanelet', () => {
     async ({ page }, testInfo) => {
       covers(testInfo, 'filtervalget overlever ruteskifte');
 
-      await pickAndSeeChip(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
+      await chooseFacetValue(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
 
       // A route change is the harder case and the one a user actually does:
       // open a thread from the list, then go back to the filter. The provider
@@ -397,7 +383,7 @@ test.describe('navigasjonspanelet', () => {
       await expect(detail).toHaveText(/\d{4}(–\d{4})?$/);
 
       const before = await detail.textContent();
-      await pickAndSeeChip(page, 'Dokumenttyper', 'Årsrapport');
+      await chooseFacetValue(page, 'Dokumenttyper', 'Årsrapport');
       await expect(detail, 'korpuslinja følger korpuset, ikke utvalget').toHaveText(before ?? '');
     },
   );
