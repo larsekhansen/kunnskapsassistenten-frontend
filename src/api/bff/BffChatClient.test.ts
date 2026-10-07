@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyFilterSelection, threadFromQuestion } from '../../model';
-import type { FilterSelection, StreamEvent } from '../../model';
+import type { FilterSelection, StreamEvent, Thread } from '../../model';
 import type { DatasetFilterFields } from '../filterFields';
 import { BffChatClient, resetBffClient } from './BffChatClient';
 import askStream from './fixtures/ask.sse?raw';
@@ -461,11 +461,27 @@ describe('BffChatClient, tråden og samtalen', () => {
     ]);
   });
 
-  it('createThread gir undefined når spørsmålet feilet før samtalen fantes', async () => {
-    fakeBff({ 'POST /api/ask': () => json({ error: 'Kunne ikke opprette samtale.' }, 502) });
-    const created = client().createThread(threadFromQuestion('q'));
+  it('createThread venter på spørsmålet som lager samtalen når det første feilet før den fantes', async () => {
+    const answers = [
+      () => json({ error: 'Kunne ikke opprette samtale.' }, 502),
+      () => streamed(askStream),
+    ];
+    fakeBff({ 'POST /api/ask': () => answers.shift()!() });
+    const placeholder = threadFromQuestion('q');
+    const created = client().createThread(placeholder);
+    let named: Thread | undefined;
+    void created.then((thread) => (named = thread));
+
     await drain(client().ask({ query: 'q' }));
-    await expect(created).resolves.toBeUndefined();
+    await Promise.resolve();
+    expect(named).toBeUndefined();
+
+    await drain(client().ask({ query: 'q' }));
+    await expect(created).resolves.toEqual({
+      ...placeholder,
+      id: CONVERSATION_ID,
+      conversationId: CONVERSATION_ID,
+    });
   });
 
   it('en tråd åpnet fra adressen før den er lest, fortsettes under sin egen id', async () => {
