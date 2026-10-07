@@ -94,7 +94,7 @@ function yearsWithDocuments(values: readonly { value: string; count?: number }[]
 }
 
 /**
- * What the list offers while the reader is still writing, oldest first.
+ * What the list offers while the reader is still writing.
  *
  *   - The text read as a period by `parseYearInput`, when it is one, with or
  *     without documents, as before.
@@ -103,6 +103,10 @@ function yearsWithDocuments(values: readonly { value: string; count?: number }[]
  *   - A start and the beginning of an end: the periods from that start to a
  *     later year with documents whose end begins so, written in full or with
  *     two digits. «2019-2» and «2019-20» are 2019–2020, 2019–2021 and on.
+ *
+ * Years newest first, as the year field without the flag lists them (the
+ * facets come so from the mock and the server). Periods from one start
+ * shortest first, the order their ends are typed in.
  *
  * Empty when nothing fits, which is when the field shows its hint.
  */
@@ -137,7 +141,7 @@ export function suggestPeriods(
     }
   }
 
-  return [...found.values()].sort((a, b) => a.from - b.from || a.to - b.to);
+  return [...found.values()].sort((a, b) => b.from - a.from || a.to - b.to);
 }
 
 /** Every year in a period, in order. */

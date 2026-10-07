@@ -86,8 +86,12 @@ export function YearRangeField({ ref, facet, selected, onChange }: FacetFieldPro
   /*
    * The periods back into years. An option that overlaps a chip, or sits
    * next to it, simply joins it the next time the chips are drawn.
+   *
+   * A value of '' is the hint, chosen by Enter when nothing fits: it is not
+   * a choice, and the text stays to be finished, as in FacetField.
    */
   function change(items: { value: string }[]) {
+    if (items.some((item) => item.value === '')) return;
     const years = new Set<number>();
     for (const item of items) {
       const range = rangeFromKey(item.value);
