@@ -125,7 +125,7 @@ describe('forslag mens leseren skriver', () => {
     },
   );
 
-  it('regner år uten tall som år med dokumenter, som i live', () => {
+  it('regner år uten tall som år med dokumenter, som når et annet felt er valgt i bff og live', () => {
     expect(suggestPeriods('202', [{ value: '2020' }, { value: '2023' }], NOW)).toEqual([
       { from: 2020, to: 2020 },
       { from: 2023, to: 2023 },

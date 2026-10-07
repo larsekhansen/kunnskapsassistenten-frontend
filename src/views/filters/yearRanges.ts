@@ -82,8 +82,8 @@ function lastTwoDigits(year: number): string {
 
 /**
  * The years the facets hold documents for, in order. A year listed with no
- * count holds some as far as anyone knows, as in live mode where nothing is
- * counted.
+ * count holds some as far as anyone knows: in bff and live the counts are
+ * left out once another field is ticked (`facetsFrom`).
  */
 function yearsWithDocuments(values: readonly { value: string; count?: number }[]): number[] {
   const years = values
