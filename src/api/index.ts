@@ -1,30 +1,9 @@
-import { apiMode, type ApiMode } from './apiMode';
 import type { ChatClient } from './chatClient';
 import { BffChatClient } from './bff';
 import { activeCorpusKey } from './corpus';
 import { kaEnv } from './runtimeConfig';
-
-/*
- * The mock and the live client, loaded only in the mode that uses them.
- *
- * A dynamic `import()` is a chunk of its own, fetched when it runs. A bff
- * build therefore carries neither in the JavaScript a reader downloads: not
- * the mock's corpus and summaries, and not the live client, which calls the
- * backend's own API. Top-level `await`, so clients are still built
- * synchronously everywhere else. The tests load both, because they switch
- * mode per test.
- *
- * Nothing either of them imports may import this module back, or the
- * `await` waits for itself.
- */
-const loadAll = import.meta.env?.MODE === 'test';
-const mock = loadAll || apiMode() === 'mock' ? await import('./mock') : undefined;
-const live = loadAll || apiMode() === 'live' ? await import('./live') : undefined;
-
-function loaded<T>(module: T | undefined, mode: ApiMode): T {
-  if (module === undefined) throw new Error(`Klienten for ${mode} er ikke med i dette bygget.`);
-  return module;
-}
+import { LiveChatClient } from './live';
+import { defaultMockSpeed, MockChatClient, mockSpeeds } from './mock';
 
 export type { AskParams, ChatClient } from './chatClient';
 export type { UploadClient, UploadProgress } from './uploadClient';
@@ -64,7 +43,17 @@ export {
  */
 export function createChatClient(): ChatClient {
   const env = kaEnv();
-  const mode = apiMode();
+  /*
+   * The rule in apiMode.ts, written out here so the build can fold it. Vite
+   * puts the build's values in place of `import.meta.env`, the minifier
+   * removes the branches the build does not take, and with them the only use
+   * of the mock and the live client. vite.config.ts lets the bundler drop
+   * their modules then, so a bff build carries neither: not the mock's corpus
+   * and summaries, and not the live client, which calls the backend's own
+   * API. Through `apiMode()` nothing was folded, and the bff bundle stayed
+   * 1 727 kB.
+   */
+  const mode = import.meta.env.VITE_API_MODE ?? (import.meta.env.PROD ? 'bff' : 'mock');
   if (mode === 'bff') {
     const bff = new BffChatClient({ datasetConfigKey: activeCorpusKey });
     // The corpus's name comes from the BFF (docs/arkitektur/0003); ask for it
@@ -77,7 +66,6 @@ export function createChatClient(): ChatClient {
     // is the slow, lifelike one on purpose: a mock that answers instantly
     // cannot show the skeleton, the thinking panel or the streaming, which is
     // most of what there is to look at. The e2e suite sets `fast`.
-    const { defaultMockSpeed, MockChatClient, mockSpeeds } = loaded(mock, mode);
     const speed = env.VITE_MOCK_SPEED ?? defaultMockSpeed;
     return new MockChatClient(mockSpeeds[speed] ?? mockSpeeds[defaultMockSpeed]);
   }
@@ -90,7 +78,6 @@ export function createChatClient(): ChatClient {
   // change while the app runs. The client calls it when it builds a request,
   // so the question goes to whatever is selected then — not to whatever was
   // selected when this factory ran. See src/api/corpus.ts.
-  const { LiveChatClient } = loaded(live, mode);
   return new LiveChatClient({
     tenant: env.VITE_KA_TENANT,
     datasetConfigKey: activeCorpusKey,
