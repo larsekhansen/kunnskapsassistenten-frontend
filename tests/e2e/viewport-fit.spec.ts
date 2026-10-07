@@ -256,7 +256,13 @@ async function settled(page: Page): Promise<void> {
  */
 async function openSidebar(page: Page, name: string): Promise<void> {
   const show = page.getByRole('button', { name, exact: true });
-  if (!(await show.count())) return;
+  if (!(await show.count())) {
+    // Open already. A name that is neither here nor open is a wrong name.
+    await expect(
+      page.getByRole('button', { name: name.replace(/^Vis /, 'Skjul '), exact: true }),
+    ).toBeAttached();
+    return;
+  }
   const controls = await show.getAttribute('aria-controls');
   await show.click();
   if (controls) {
@@ -287,8 +293,7 @@ const FLAG_STATES: { name: string; on: readonly string[] }[] = [
 /**
  * What the buttons that open the two panels are called with these flags on.
  * With `filters-right-panel` the filters move to the sources' side, and the
- * names follow the views (`slotLabel`). `openSidebar` passes a button that is
- * not there, so a wrong name here would open nothing and still be green.
+ * names follow the views (`slotLabel`).
  */
 function panelButtons(on: readonly string[]): { primary: string; secondary: string } {
   return on.includes('filters-right-panel')
