@@ -143,15 +143,35 @@ describe('hovedkolonnen når tråden ikke kan leses', () => {
     expect(greeting()).toBeNull();
   });
 
-  it('leser tråden på nytt ved «Prøv igjen»', async () => {
+  it('leser tråden på nytt ved «Prøv igjen», med fokus i skrivefeltet', async () => {
     failOnce();
     showThread(ID);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Prøv igjen' }));
+    const retry = await screen.findByRole('button', { name: 'Prøv igjen' });
+    retry.focus();
+    fireEvent.click(retry);
 
     const fixtureQuestion = findThread(ID)?.messages.at(0)?.content ?? '';
     expect(await screen.findByText(fixtureQuestion, undefined, { timeout: 5000 })).toBeTruthy();
     expect(screen.queryByText('Klarte ikke å hente tråden.')).toBeNull();
+    // Where the chat view's own «Prøv igjen» sends it, and still there once
+    // the alert for the read has gone with the conversation in place.
+    expect(document.activeElement).toBe(
+      screen.getByRole('textbox', { name: 'Spørsmål til Kunnskapsassistenten' }),
+    );
+  });
+
+  /*
+   * The alert for the read is there only while the address has no thread on
+   * screen. Beside a conversation the chat view has its own, and a second
+   * one in the main column is a second place for an error to be looked for.
+   */
+  it('har bare chatvisningens varselregion når samtalen er lest', async () => {
+    const { container } = showThread(ID);
+
+    const fixtureQuestion = findThread(ID)?.messages.at(0)?.content ?? '';
+    expect(await screen.findByText(fixtureQuestion, undefined, { timeout: 5000 })).toBeTruthy();
+    expect(container.querySelectorAll('[role="alert"]')).toHaveLength(1);
   });
 
   it('lar et spørsmål stilt mens tråden ble lest, stå, også når lesingen feiler', async () => {

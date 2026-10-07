@@ -248,6 +248,21 @@ function ChatSlot({ threadId }: { threadId?: string }) {
     setReadAttempt((attempt) => attempt + 1);
   }
 
+  /**
+   * Where «Prøv igjen» leaves focus when it took the button with it: the
+   * compose field, which is back with the conversation as the read starts
+   * again, and where the chat view's own «Prøv igjen» sends it. Looked up
+   * when it is needed, since the field is the chat view's.
+   */
+  const composerField = useMemo(
+    () => ({
+      get current() {
+        return document.getElementById(COMPOSER_ID);
+      },
+    }),
+    [],
+  );
+
   /*
    * A new name given in the thread list, on this copy of the thread too.
    *
@@ -534,14 +549,19 @@ function ChatSlot({ threadId }: { threadId?: string }) {
   return (
     <ThreadContext value={value}>
       {/*
-        Mounted whether or not the read failed: an alert region only
-        announces what appears inside a region already in the page. See
-        src/components/ErrorState.tsx.
+        Mounted while the address names a thread and none is on screen, so
+        it is in the page before the read can fail: an alert region only
+        announces what appears inside a region already there. See
+        src/components/ErrorState.tsx. Not beside a conversation, which has
+        an alert region of its own in the chat view.
       */}
-      <ErrorState
-        message={unreadable ? 'Klarte ikke å hente tråden.' : undefined}
-        onRetry={unreadable ? readAgain : undefined}
-      />
+      {threadId !== undefined && thread === null && !missing && (
+        <ErrorState
+          message={unreadable ? 'Klarte ikke å hente tråden.' : undefined}
+          onRetry={unreadable ? readAgain : undefined}
+          focusAfterRetry={composerField}
+        />
+      )}
       {missing ? (
         /*
           The page title here and not in the chat view, which is not drawn:
