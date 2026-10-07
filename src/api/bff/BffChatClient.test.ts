@@ -365,7 +365,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
     await expect(created).resolves.toMatchObject({ id: 'conv-new' });
     // The shell moves the thread to its real address once it is named.
     window.history.replaceState(null, '', '/threads/conv-new');
-    await bff.listThreads();
+    await expect(bff.listThreads()).rejects.toThrow();
     release();
     await asked;
 
@@ -378,7 +378,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
     provideDraft(() => 'Et spørsmål under arbeid');
     const onUnauthorized = vi.fn();
 
-    await client({ onUnauthorized }).listThreads();
+    await expect(client({ onUnauthorized }).listThreads()).rejects.toThrow();
 
     expect(onUnauthorized).toHaveBeenCalledExactlyOnceWith('/threads/stand-in');
     expect(kept()).toEqual({ text: 'Et spørsmål under arbeid', path: '/threads/stand-in' });
@@ -388,7 +388,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
     fakeBff({ 'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
     provideDraft(() => '');
 
-    await client({ onUnauthorized: vi.fn() }).listThreads();
+    await expect(client({ onUnauthorized: vi.fn() }).listThreads()).rejects.toThrow();
 
     expect(sessionStorage.getItem('ka.draft.v1')).toBeNull();
   });
@@ -491,6 +491,27 @@ describe('BffChatClient, tråden og samtalen', () => {
     ]);
   });
 
+  /*
+   * A list that cannot be read is an error, not an empty list. `useThreadList`
+   * keeps the last good list when a refresh fails, and shows an error when the
+   * first read does — but only when it is told. Read as `[]`, a 502 after an
+   * answer emptied a good list, and a first read that failed said «Start din
+   * første tråd».
+   */
+  it.each([
+    ['BFF-en svarer 502', () => json({ error: 'Bad gateway' }, 502)],
+    [
+      'nettet er nede',
+      (): Response => {
+        throw new TypeError('Failed to fetch');
+      },
+    ],
+    ['økta er ute', () => json({ error: 'Ikke innlogget.' }, 401)],
+  ])('kaster når lista ikke kan leses: %s', async (_, route) => {
+    fakeBff({ 'GET /api/conversations': route });
+    await expect(client({ onUnauthorized: vi.fn() }).listThreads()).rejects.toThrow();
+  });
+
   it('åpner samtalen med turene, og kildene på siste svar', async () => {
     fakeBff();
     const thread = await client().getThread(CONVERSATION_ID);
@@ -507,6 +528,25 @@ describe('BffChatClient, tråden og samtalen', () => {
   it('gir null for en samtale som ikke finnes', async () => {
     fakeBff();
     expect(await client().getThread('finnes-ikke')).toBeNull();
+  });
+
+  /*
+   * Null is «not there», and the main column says «Fant ikke tråden» for it.
+   * Only a 404 says that. A thread that could not be READ may well exist, and
+   * telling the reader it does not sends them away from a link that works.
+   */
+  it.each([
+    ['BFF-en svarer 500', () => json({ error: 'Intern feil' }, 500)],
+    [
+      'nettet er nede',
+      (): Response => {
+        throw new TypeError('Failed to fetch');
+      },
+    ],
+    ['økta er ute', () => json({ error: 'Ikke innlogget.' }, 401)],
+  ])('kaster når samtalen ikke kan leses: %s', async (_, route) => {
+    fakeBff({ [`GET /api/conversations/${CONVERSATION_ID}`]: route });
+    await expect(client({ onUnauthorized: vi.fn() }).getThread(CONVERSATION_ID)).rejects.toThrow();
   });
 });
 
