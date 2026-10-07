@@ -92,7 +92,7 @@ describe('the BFF’s rename and delete', () => {
     fetchMock.mockImplementation(async () => new Response('{}', { status: 401 }));
 
     await Promise.all([
-      new BffChatClient().listThreads(),
+      expect(new BffChatClient().listThreads()).rejects.toThrow('401'),
       expect(bffThreadActions().rename(thread, 'Nkom 2024')).rejects.toThrow('401'),
     ]);
 
