@@ -19,8 +19,15 @@
  *
  * Here and not in either client, because it is the same rule for both and a
  * second copy of «what may become a link» would drift from the first within
- * the week. The live client must not import from the BFF client, nor the
- * other way round: they are two backends side by side.
+ * the week. Which client it would have gone in is not a free choice either.
+ * The dependency between them runs one way today, from the BFF client to the
+ * live one: `bff/mapping.ts` reads stored messages and chunks with the live
+ * client's own readers, and `BffChatClient` decodes SSE with its decoder,
+ * while nothing under `live/` imports from `bff/`. Putting the rule in the
+ * live client would have said it is the live client's; putting it in the BFF
+ * client would have turned that one direction around. A file of its own says
+ * what is true — the rule is the app's, not either backend's — and leaves the
+ * direction where it was.
  */
 export function publicUrl(value: string | undefined): string | undefined {
   if (!value) return undefined;
