@@ -173,23 +173,24 @@ describe('årsfilteret med perioder (year-ranges)', () => {
     const seen: string[][] = [];
     const { container } = render(<Years seen={seen} />);
 
+    // Newest first, as the year field without the flag.
     type('2');
     expect(offered(container)).toEqual([
-      '2019 (1)',
-      '2020 (2)',
-      '2021 (3)',
-      '2022 (4)',
-      '2023 (5)',
       '2024 (6)',
+      '2023 (5)',
+      '2022 (4)',
+      '2021 (3)',
+      '2020 (2)',
+      '2019 (1)',
     ]);
 
     type('202');
     expect(offered(container)).toEqual([
-      '2020 (2)',
-      '2021 (3)',
-      '2022 (4)',
-      '2023 (5)',
       '2024 (6)',
+      '2023 (5)',
+      '2022 (4)',
+      '2021 (3)',
+      '2020 (2)',
     ]);
 
     choose('2021 (3)');
@@ -211,6 +212,19 @@ describe('årsfilteret med perioder (year-ranges)', () => {
 
     choose('2020–2022 (9)');
     expect(seen.at(-1)).toEqual(['2020', '2021', '2022']);
+  });
+
+  it('lar teksten stå når Enter trykkes og ingenting passer, som de andre feltene', () => {
+    // Enter chooses the option whose label is the text, and the hint carries
+    // the text as its label with the value ''. That emptied the field.
+    const seen: string[][] = [];
+    render(<Years initial={['2024']} seen={seen} />);
+
+    type('abc');
+    fireEvent.keyDown(input(), { key: 'Enter' });
+
+    expect(seen).toEqual([]);
+    expect(input().value).toBe('abc');
   });
 
   it('viser hintet bare når ingenting passer', () => {
