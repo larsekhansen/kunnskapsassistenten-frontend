@@ -316,7 +316,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
     const bff = client({ onUnauthorized: vi.fn() });
 
     await bff.listAgents();
-    await bff.listThreads();
+    await expect(bff.listThreads()).rejects.toThrow();
 
     expect(kept()).toEqual({
       text: 'Et spørsmål under arbeid',
@@ -331,7 +331,7 @@ describe('BffChatClient, utkastet når økta går ut', () => {
     fakeBff({ 'GET /api/conversations': () => json({ error: 'Ikke innlogget.' }, 401) });
     provideDraft(() => 'Et spørsmål under arbeid');
 
-    await client({ onUnauthorized: vi.fn() }).listThreads();
+    await expect(client({ onUnauthorized: vi.fn() }).listThreads()).rejects.toThrow();
 
     expect(sessionStorage.getItem('ka.draft.v1')).toBeNull();
   });
