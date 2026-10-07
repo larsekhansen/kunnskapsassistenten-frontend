@@ -30,7 +30,7 @@ Node 24 eller nyere, som i CI og bildet.
 | Skript                  | Gjør                                                                                             |
 | ----------------------- | ------------------------------------------------------------------------------------------------ |
 | `npm run dev`           | Utviklingsserver                                                                                 |
-| `npm run build`         | `tsc -b` og produksjonsbygg til `dist/`                                                          |
+| `npm run build`         | `tsc -b` og produksjonsbygg til `dist/`, for BFF-en uten `VITE_API_MODE` (`src/api/apiMode.ts`)  |
 | `npm run preview`       | Server produksjonsbygget lokalt                                                                  |
 | `npm run lint`          | oxlint, inkludert `jsx-a11y`-reglene                                                             |
 | `npm run test`          | vitest én gang. `npm run test:watch` for løpende kjøring                                         |

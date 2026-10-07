@@ -136,13 +136,15 @@ describe('/config.js', () => {
   it('skriver bare de variablene som er satt, og aldri nøkkelen', async () => {
     await start({
       apiKey: 'rag_hemmelig_verdi',
-      clientConfig: { VITE_API_MODE: 'live', VITE_KA_TENANT: 'demo' },
+      mode: 'live',
+      clientConfig: { VITE_KA_TENANT: 'demo' },
     });
 
     const body = await (await fetch(`${base}/config.js`)).text();
 
-    expect(body).toContain('"VITE_API_MODE":"live"');
     expect(body).toContain('"VITE_KA_TENANT":"demo"');
+    // The client's mode is its build's (src/api/apiMode.ts), not this server's.
+    expect(body).not.toContain('VITE_API_MODE');
     expect(body).not.toContain('VITE_KA_DATASETS');
     expect(body).not.toContain('rag_hemmelig_verdi');
   });
