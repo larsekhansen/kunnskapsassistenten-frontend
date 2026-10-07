@@ -13,7 +13,7 @@ import type { DatasetFilterFields } from '../filterFields';
 import { FILTER_REFUSED_MESSAGES, errorFromBackend, errorFromStatus } from '../backendErrors';
 import { adoptServerCorpus } from '../corpus';
 import { createSseDecoder } from '../live/sse';
-import { keepDraft, noteQuestionInFlight } from '../session';
+import { keepDraft, noteQuestionInFlight, noteSignedIn } from '../session';
 import type {
   BffAskRequest,
   BffCapabilities,
@@ -514,6 +514,9 @@ export class BffChatClient implements ChatClient {
       this.#json<BffModels>('/models', signal).catch((): BffModels => ({})),
       this.#json<BffMe>('/me', signal).catch((): BffMe => ({})),
     ]);
+    // The same answer says who is signed in, which a draft kept at a 401 is
+    // tied to (session.ts).
+    noteSignedIn(me.userId);
     return agentsFromBff(models.agents, me.tool);
   }
 }

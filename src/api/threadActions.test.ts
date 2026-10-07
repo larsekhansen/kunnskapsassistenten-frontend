@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Thread } from '../model';
 import { BffChatClient, resetBffClient } from './bff/BffChatClient';
 import { mockThreadDetail, mockThreadList, resetMockThreads } from './mock/sessionThreads';
-import { provideDraft, resetDraftSources } from './session';
+import { noteSignedIn, provideDraft, resetDraftSources } from './session';
 import {
   bffThreadActions,
   createThreadActions,
@@ -102,6 +102,7 @@ describe('the BFF’s rename and delete', () => {
   it('keeps what is in the compose field before it goes to the sign-in', async () => {
     sessionStorage.clear();
     resetDraftSources();
+    noteSignedIn('user-a');
     let atRedirect: string | null = null;
     vi.stubGlobal('location', {
       ...window.location,
@@ -120,6 +121,7 @@ describe('the BFF’s rename and delete', () => {
     expect(JSON.parse(atRedirect ?? 'null')).toEqual({
       text: 'Et spørsmål under arbeid',
       path: '/threads/conv-1',
+      user: 'user-a',
     });
   });
 });
