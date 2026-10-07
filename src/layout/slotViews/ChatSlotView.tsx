@@ -426,7 +426,11 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       startedRef.current = real;
       setStarted(real);
       addressesWrittenHere.add(real.id);
-      window.history.replaceState(window.history.state, '', `/threads/${real.id}`);
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `/threads/${encodeURIComponent(real.id)}`,
+      );
       lockNewThread(real.id, () => startedRef.current?.id === real.id);
     },
     [client, lockNewThread],
@@ -496,7 +500,11 @@ function ChatSlot({ threadId }: { threadId?: string }) {
       startedRef.current = created;
       setStarted(created);
       addressesWrittenHere.add(created.id);
-      window.history.replaceState(window.history.state, '', `/threads/${created.id}`);
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `/threads/${encodeURIComponent(created.id)}`,
+      );
 
       /*
        * The id above is a stand-in, and the address it just wrote is a
