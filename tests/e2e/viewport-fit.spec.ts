@@ -303,7 +303,13 @@ async function settled(page: Page): Promise<void> {
  */
 async function openSidebar(page: Page, name: string): Promise<void> {
   const show = page.getByRole('button', { name, exact: true });
-  if (!(await show.count())) return;
+  if (!(await show.count())) {
+    // Open already. A name that is neither here nor open is a wrong name.
+    await expect(
+      page.getByRole('button', { name: name.replace(/^Vis /, 'Skjul '), exact: true }),
+    ).toBeAttached();
+    return;
+  }
   const controls = await show.getAttribute('aria-controls');
   await show.click();
   if (controls) {
@@ -328,7 +334,19 @@ async function closeOverlay(page: Page, overlay: Locator): Promise<void> {
 const FLAG_STATES: { name: string; on: readonly string[] }[] = [
   { name: 'uten flagg', on: [] },
   { name: 'mobile-top-row', on: ['mobile-top-row'] },
+  { name: 'filters-right-panel', on: ['filters-right-panel'] },
 ];
+
+/**
+ * What the buttons that open the two panels are called with these flags on.
+ * With `filters-right-panel` the filters move to the sources' side, and the
+ * names follow the views (`slotLabel`).
+ */
+function panelButtons(on: readonly string[]): { primary: string; secondary: string } {
+  return on.includes('filters-right-panel')
+    ? { primary: 'Vis tråder', secondary: 'Vis filter og kilder' }
+    : { primary: 'Vis tråder og filter', secondary: 'Vis kilder' };
+}
 
 /** Below this, `mobile-top-row` puts the two buttons in a bar (`compactMaxViewport`). */
 const TOP_ROW_BELOW = 774;
@@ -415,13 +433,13 @@ for (const flags of FLAG_STATES) {
 
         await expectTopRow(page, flags.on, 'tråd med svar og kilder');
 
-        await openSidebar(page, 'Vis tråder og filter');
+        await openSidebar(page, panelButtons(flags.on).primary);
         expectFits(await measure(page), 'navigasjonspanelet åpent');
         if (await page.locator('dialog[open]').count()) {
           await closeOverlay(page, page.locator('dialog[open]'));
         }
 
-        await openSidebar(page, 'Vis kilder');
+        await openSidebar(page, panelButtons(flags.on).secondary);
         expectFits(await measure(page), 'kildepanelet åpent');
         if (await page.locator('dialog[open]').count()) {
           await closeOverlay(page, page.locator('dialog[open]'));
