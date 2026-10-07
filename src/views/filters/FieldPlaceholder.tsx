@@ -9,7 +9,8 @@ import { Button, Input, Label, Skeleton } from '@digdir/designsystemet-react';
  * facets came, everything under them — the corpus line, «Vis mer», the
  * documents — moved 239 px down at 1440 and 235 px at 390, and a click aimed
  * at «Vis mer» while the panel loaded could land on whatever came there
- * instead (measured on main 098ea7c; it is how the e2e test on #282 failed).
+ * instead (measured on main 098ea7c; it is how an e2e test failed on main
+ * 652cc8c, #282).
  *
  * So the placeholder is built from what a field is built from, and each part
  * is a Skeleton wrapped around the real thing: Designsystemet sizes a

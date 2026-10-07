@@ -448,15 +448,23 @@ test.describe('navigasjonspanelet', () => {
         );
         const loading = await top();
 
+        // The placeholders are there for their size only: a screen reader
+        // reads no «Velg alle», and the keyboard cannot reach them.
+        await expect(view.getByRole('button', { name: 'Velg alle' })).toHaveCount(0);
+        await expect(view.locator('.field-placeholder').first()).toHaveJSProperty('inert', true);
+
         await page.clock.resume();
         await expect(view).not.toHaveAttribute('aria-busy', 'true');
         await expect(facetField(page, 'Dokumenttyper')).toBeVisible();
         const loaded = await top();
 
-        expect(
-          Math.abs(loaded - loading),
-          `«Vis mer» flyttet seg fra ${loading} til ${loaded} på ${size.width}`,
-        ).toBeLessThanOrEqual(1);
+        // Soft, so a jump at 1440 does not hide one at 390.
+        expect
+          .soft(
+            Math.abs(loaded - loading),
+            `«Vis mer» flyttet seg fra ${loading} til ${loaded} på ${size.width}`,
+          )
+          .toBeLessThanOrEqual(1);
       }
     },
   );
