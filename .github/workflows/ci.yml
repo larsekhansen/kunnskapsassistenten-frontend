@@ -65,6 +65,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      # What a reader downloads before the page starts, against a budget. The
+      # build above names no mode, so it is the bff build (src/api/apiMode.ts).
+      - name: Bundle size
+        run: node scripts/check-bundle-size.mjs
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
