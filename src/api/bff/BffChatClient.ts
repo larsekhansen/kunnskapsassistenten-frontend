@@ -458,36 +458,37 @@ export class BffChatClient implements ChatClient {
     };
   }
 
-  /** The reader's conversations, newest first. Empty on failure, as in live. */
+  /**
+   * The reader's conversations, newest first.
+   *
+   * Throws when they cannot be read. An empty list is an answer — «Start din
+   * første tråd» — and a failure read as one replaced a good list after a
+   * 502, where `useThreadList` keeps the last one and says so.
+   */
   async listThreads(signal?: AbortSignal): Promise<Thread[]> {
-    try {
-      const { conversations } = await this.#json<{ conversations?: BffConversationSummary[] }>(
-        '/conversations',
-        signal,
-      );
-      const corpusKey = this.#corpusKey();
-      return (conversations ?? []).map((summary) => threadFromSummary(summary, corpusKey));
-    } catch {
-      return [];
-    }
+    const { conversations } = await this.#json<{ conversations?: BffConversationSummary[] }>(
+      '/conversations',
+      signal,
+    );
+    const corpusKey = this.#corpusKey();
+    return (conversations ?? []).map((summary) => threadFromSummary(summary, corpusKey));
   }
 
   /**
-   * Null for «not there» and «could not ask», as in live.
+   * Null when the BFF says the conversation is not there (404), which the
+   * main column draws as «Fant ikke tråden». Throws when it could not be read
+   * at all: the thread may well exist, and the reader can try again.
    *
    * With the filter the BFF has locked the thread to, by dimension, so the
    * panel and «Avgrenset til» can say what the answers were asked with.
    */
   async getThread(threadId: string, signal?: AbortSignal): Promise<ThreadDetail | null> {
-    let detail: BffConversationDetail;
-    try {
-      detail = await this.#json<BffConversationDetail>(
-        `/conversations/${encodeURIComponent(threadId)}`,
-        signal,
-      );
-    } catch {
-      return null;
-    }
+    const response = await this.#fetch(`/conversations/${encodeURIComponent(threadId)}`, {
+      signal,
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`/conversations ${response.status}`);
+    const detail = (await response.json()) as BffConversationDetail;
     if (!detail.conversation) return null;
 
     const corpusKey = this.#corpusKey();
