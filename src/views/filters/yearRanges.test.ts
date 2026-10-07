@@ -80,13 +80,13 @@ describe('forslag mens leseren skriver', () => {
   const from2019 = ['2019–2020', '2019–2021', '2019–2022', '2019–2023', '2019–2024'];
 
   it.each([
-    ['2', ['2001', '2019', '2020', '2021', '2022', '2023', '2024']],
-    ['202', ['2020', '2021', '2022', '2023', '2024']],
+    ['2', ['2024', '2023', '2022', '2021', '2020', '2019', '2001']],
+    ['202', ['2024', '2023', '2022', '2021', '2020']],
     ['201', ['2019']],
     ['1', ['1998']],
     // «20» is 2020 written with two digits, and it begins the 2000s.
-    ['20', ['2001', '2019', '2020', '2021', '2022', '2023', '2024']],
-  ])('«%s» gir årene med dokumenter som begynner slik', (text, expected) => {
+    ['20', ['2024', '2023', '2022', '2021', '2020', '2019', '2001']],
+  ])('«%s» gir årene med dokumenter som begynner slik, nyest først', (text, expected) => {
     expect(offered(text)).toEqual(expected);
   });
 
@@ -102,7 +102,7 @@ describe('forslag mens leseren skriver', () => {
     ['23-2', ['2023–2024']],
     // Two digits end within a hundred years of the start: «01» is 2001.
     ['98-0', ['1998–2001']],
-  ])('«%s» gir periodene som slutten kan bli', (text, expected) => {
+  ])('«%s» gir periodene som slutten kan bli, korteste først', (text, expected) => {
     expect(offered(text)).toEqual(expected);
   });
 
@@ -127,8 +127,8 @@ describe('forslag mens leseren skriver', () => {
 
   it('regner år uten tall som år med dokumenter, som når et annet felt er valgt i bff og live', () => {
     expect(suggestPeriods('202', [{ value: '2020' }, { value: '2023' }], NOW)).toEqual([
-      { from: 2020, to: 2020 },
       { from: 2023, to: 2023 },
+      { from: 2020, to: 2020 },
     ]);
   });
 });

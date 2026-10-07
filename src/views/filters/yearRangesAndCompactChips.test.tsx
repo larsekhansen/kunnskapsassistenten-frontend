@@ -173,23 +173,24 @@ describe('årsfilteret med perioder (year-ranges)', () => {
     const seen: string[][] = [];
     const { container } = render(<Years seen={seen} />);
 
+    // Newest first, as the year field without the flag.
     type('2');
     expect(offered(container)).toEqual([
-      '2019 (1)',
-      '2020 (2)',
-      '2021 (3)',
-      '2022 (4)',
-      '2023 (5)',
       '2024 (6)',
+      '2023 (5)',
+      '2022 (4)',
+      '2021 (3)',
+      '2020 (2)',
+      '2019 (1)',
     ]);
 
     type('202');
     expect(offered(container)).toEqual([
-      '2020 (2)',
-      '2021 (3)',
-      '2022 (4)',
-      '2023 (5)',
       '2024 (6)',
+      '2023 (5)',
+      '2022 (4)',
+      '2021 (3)',
+      '2020 (2)',
     ]);
 
     choose('2021 (3)');
