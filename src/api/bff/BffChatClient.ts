@@ -13,7 +13,7 @@ import type { DatasetFilterFields } from '../filterFields';
 import { FILTER_REFUSED_MESSAGES, errorFromBackend, errorFromStatus } from '../backendErrors';
 import { adoptServerCorpus } from '../corpus';
 import { createSseDecoder } from '../live/sse';
-import { keepDraft, noteQuestionInFlight } from '../session';
+import { keepDraft, noteQuestionInFlight, noteSignedIn } from '../session';
 import type {
   BffAskRequest,
   BffCapabilities,
@@ -35,6 +35,7 @@ import {
   threadDetailFromBff,
   threadFromSummary,
 } from './mapping';
+import { resetSignIn, toLogin } from './signIn';
 
 export type BffChatClientOptions = {
   /** Where the BFF's API is. Relative: the BFF serves this client itself. */
@@ -63,22 +64,6 @@ export type BffChatClientOptions = {
    */
   settleDelaysMs?: number[];
 };
-
-let redirecting = false;
-
-/**
- * To the BFF's sign-in, and back to `returnTo`: where the reader was, or where
- * the draft kept for them belongs (session.ts, `keepDraft`).
- *
- * Once per page: several calls fail with 401 at once when a session runs
- * out, and one navigation is enough. Not from `/auth/` itself, which would
- * loop.
- */
-function toLogin(returnTo: string): void {
-  if (redirecting || window.location.pathname.startsWith('/auth/')) return;
-  redirecting = true;
-  window.location.assign(`/auth/login?next=${encodeURIComponent(returnTo)}`);
-}
 
 /**
  * The conversation the questions that follow belong to. Module state for the
@@ -130,7 +115,7 @@ export function resetBffClient(): void {
   settledCapabilities = undefined;
   knownFacets = undefined;
   primed = false;
-  redirecting = false;
+  resetSignIn();
 }
 
 /**
@@ -317,7 +302,8 @@ export class BffChatClient implements ChatClient {
 
   /**
    * The thread as the BFF names it, once the question that makes it has been
-   * asked. See `creation`.
+   * asked. See `creation`. When that question fails before the BFF names a
+   * conversation, this waits for the next question in the thread.
    */
   async createThread(thread: Thread): Promise<Thread | undefined> {
     openConversation = undefined;
@@ -354,12 +340,12 @@ export class BffChatClient implements ChatClient {
       yield* this.#stream(params, conversationId, corpusKey, askedOf, made);
     } finally {
       arrived();
-      if (creating) {
-        // Nothing was made if the BFF never said so. Settling twice is a
-        // no-op, so this only matters for a question that failed first.
-        creating.settle(undefined);
-        if (creation === creating) creation = undefined;
-      }
+      // A question that failed or was stopped before the BFF named a
+      // conversation leaves the thread waiting: it is still a stand-in, and
+      // the next question asked in it, «Prøv igjen» or a new one, is the one
+      // that makes it. Settling here would leave the address on the stand-in
+      // for good.
+      if (named && creation === creating) creation = undefined;
     }
   }
 
@@ -528,6 +514,9 @@ export class BffChatClient implements ChatClient {
       this.#json<BffModels>('/models', signal).catch((): BffModels => ({})),
       this.#json<BffMe>('/me', signal).catch((): BffMe => ({})),
     ]);
+    // The same answer says who is signed in, which a draft kept at a 401 is
+    // tied to (session.ts).
+    noteSignedIn(me.userId);
     return agentsFromBff(models.agents, me.tool);
   }
 }
