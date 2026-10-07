@@ -35,6 +35,7 @@ import {
   threadDetailFromBff,
   threadFromSummary,
 } from './mapping';
+import { BFF_API } from './api';
 
 export type BffChatClientOptions = {
   /** Where the BFF's API is. Relative: the BFF serves this client itself. */
@@ -183,7 +184,7 @@ export class BffChatClient implements ChatClient {
   readonly #settleDelaysMs: number[];
 
   constructor(options: BffChatClientOptions = {}) {
-    this.#basePath = options.basePath ?? '/api';
+    this.#basePath = options.basePath ?? BFF_API;
     this.#corpusKey = options.datasetConfigKey ?? (() => undefined);
     this.#filterFields = options.filterFields ?? filterFieldsFor;
     this.#onUnauthorized = options.onUnauthorized ?? toLogin;

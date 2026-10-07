@@ -38,7 +38,7 @@ describe('the BFF’s rename and delete', () => {
     await bffThreadActions().rename(thread, 'Nkom 2024');
 
     const [path, init] = fetchMock.mock.calls[0] ?? [];
-    expect(path).toBe('/api/conversations/conv-1');
+    expect(path).toBe('/api/v2/conversations/conv-1');
     expect(init?.method).toBe('PUT');
     expect(JSON.parse(String(init?.body))).toEqual({ title: 'Nkom 2024' });
   });
@@ -47,14 +47,14 @@ describe('the BFF’s rename and delete', () => {
     await bffThreadActions().remove(thread);
 
     const [path, init] = fetchMock.mock.calls[0] ?? [];
-    expect(path).toBe('/api/conversations/conv-1');
+    expect(path).toBe('/api/v2/conversations/conv-1');
     expect(init?.method).toBe('DELETE');
   });
 
   it('names the conversation safely in the path', async () => {
     await bffThreadActions().remove({ ...thread, conversationId: 'a/b?c' });
 
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/conversations/a%2Fb%3Fc');
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v2/conversations/a%2Fb%3Fc');
   });
 
   it('fails when the BFF says no, so the list can take the change back', async () => {

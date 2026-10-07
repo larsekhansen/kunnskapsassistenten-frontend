@@ -2,6 +2,7 @@ import { forgetFlags } from '../flags/flags';
 import { forgetStoredFilter } from '../layout/persistence';
 import { forgetAgentChoice } from './agentChoice';
 import { forgetCorpusChoice } from './corpus';
+import { BFF_API } from './bff/api';
 import { forgetAllAnswers } from './live/sourceStore';
 import { kaEnv } from './runtimeConfig';
 
@@ -32,7 +33,7 @@ export async function fetchSession(signal?: AbortSignal): Promise<Session | unde
   if (kaEnv().VITE_API_MODE !== 'bff') return undefined;
 
   try {
-    const response = await fetch('/api/me', { credentials: 'same-origin', signal });
+    const response = await fetch(`${BFF_API}/me`, { credentials: 'same-origin', signal });
     if (!response.ok) return undefined;
     const body = (await response.json()) as {
       authEnabled?: boolean;
