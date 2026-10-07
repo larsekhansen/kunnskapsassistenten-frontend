@@ -317,7 +317,8 @@ export class BffChatClient implements ChatClient {
 
   /**
    * The thread as the BFF names it, once the question that makes it has been
-   * asked. See `creation`.
+   * asked. See `creation`. When that question fails before the BFF names a
+   * conversation, this waits for the next question in the thread.
    */
   async createThread(thread: Thread): Promise<Thread | undefined> {
     openConversation = undefined;
@@ -354,12 +355,12 @@ export class BffChatClient implements ChatClient {
       yield* this.#stream(params, conversationId, corpusKey, askedOf, made);
     } finally {
       arrived();
-      if (creating) {
-        // Nothing was made if the BFF never said so. Settling twice is a
-        // no-op, so this only matters for a question that failed first.
-        creating.settle(undefined);
-        if (creation === creating) creation = undefined;
-      }
+      // A question that failed or was stopped before the BFF named a
+      // conversation leaves the thread waiting: it is still a stand-in, and
+      // the next question asked in it, «Prøv igjen» or a new one, is the one
+      // that makes it. Settling here would leave the address on the stand-in
+      // for good.
+      if (named && creation === creating) creation = undefined;
     }
   }
 
