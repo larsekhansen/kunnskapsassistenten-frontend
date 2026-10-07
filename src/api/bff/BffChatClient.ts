@@ -35,6 +35,7 @@ import {
   threadDetailFromBff,
   threadFromSummary,
 } from './mapping';
+import { resetSignIn, toLogin } from './signIn';
 
 export type BffChatClientOptions = {
   /** Where the BFF's API is. Relative: the BFF serves this client itself. */
@@ -63,22 +64,6 @@ export type BffChatClientOptions = {
    */
   settleDelaysMs?: number[];
 };
-
-let redirecting = false;
-
-/**
- * To the BFF's sign-in, and back to `returnTo`: where the reader was, or where
- * the draft kept for them belongs (session.ts, `keepDraft`).
- *
- * Once per page: several calls fail with 401 at once when a session runs
- * out, and one navigation is enough. Not from `/auth/` itself, which would
- * loop.
- */
-function toLogin(returnTo: string): void {
-  if (redirecting || window.location.pathname.startsWith('/auth/')) return;
-  redirecting = true;
-  window.location.assign(`/auth/login?next=${encodeURIComponent(returnTo)}`);
-}
 
 /**
  * The conversation the questions that follow belong to. Module state for the
@@ -130,7 +115,7 @@ export function resetBffClient(): void {
   settledCapabilities = undefined;
   knownFacets = undefined;
   primed = false;
-  redirecting = false;
+  resetSignIn();
 }
 
 /**

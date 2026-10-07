@@ -1,5 +1,6 @@
 import type { Thread } from '../model';
 import { deleteMockThread, renameMockThread } from './mock/sessionThreads';
+import { resetSignIn, toLogin } from './bff/signIn';
 import { kaEnv } from './runtimeConfig';
 import { keepDraft } from './session';
 
@@ -137,20 +138,6 @@ function conversationPath(thread: Thread): string {
   return `/api/conversations/${encodeURIComponent(thread.conversationId ?? thread.id)}`;
 }
 
-let redirecting = false;
-
-/**
- * To the BFF's sign-in when the session has run out, and back to the page
- * the reader's draft belongs on (session.ts, `keepDraft`) — what the BFF
- * client does on a 401 (BffChatClient.ts, `toLogin`). A copy of
- * its five lines rather than an import, for the reason the file says above.
- */
-function toLogin(returnTo: string): void {
-  if (redirecting || window.location.pathname.startsWith('/auth/')) return;
-  redirecting = true;
-  window.location.assign(`/auth/login?next=${encodeURIComponent(returnTo)}`);
-}
-
 async function send(path: string, init: RequestInit): Promise<void> {
   const response = await fetch(path, { credentials: 'same-origin', ...init });
   // What is in the compose field outlives the sign-in (session.ts).
@@ -178,5 +165,5 @@ const mockThreadActions: ThreadActions = {
 
 /** For tests: forget that a sign-in redirect has been started. */
 export function resetThreadActions(): void {
-  redirecting = false;
+  resetSignIn();
 }
