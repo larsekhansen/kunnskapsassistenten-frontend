@@ -351,6 +351,21 @@ export function Markdown({
       // page the reader is on, so only its text stays.
       a: ({ children: content, href }) =>
         href ? <Link href={href}>{content}</Link> : <>{content}</>,
+      /*
+        An image is never fetched from an answer, and its alt text is drawn as
+        prose instead.
+
+        The browser GETs an `src` as soon as the answer renders, with the
+        session cookie, before anyone has decided to follow anything — so
+        `![x](/auth/logout)` in a corpus document signs the reader out, and
+        again every time the stored answer is reopened (the review of #129,
+        F4). `linkableHref` cannot help here: no click is involved, and an
+        image on another host is a request the reader never asked for either.
+
+        The alt text stays because it is the answer's own words about what it
+        meant to show. Nothing in the corpus produces images today.
+      */
+      img: ({ alt }) => <>{alt ?? ''}</>,
       // A wide table gets its own scroll box, and a scrollable box must be
       // reachable by keyboard and carry a name. Pattern from
       // design/designsystemet/behov-til-komponent.md, question 14. A group

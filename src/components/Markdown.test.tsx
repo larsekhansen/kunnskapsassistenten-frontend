@@ -341,3 +341,28 @@ describe('Markdown runs nothing from the answer text', () => {
     expect(executable(container)).toEqual([]);
   });
 });
+
+/**
+ * An image in an answer is fetched before anyone decides anything.
+ *
+ * Found in the review of #129 (F4): `Markdown` overrode `a` but not `img`, so
+ * `![x](/auth/logout)` became `<img src="/auth/logout">` and the browser sent
+ * the GET with the session cookie as soon as the answer rendered. The BFF
+ * ended the session. The answer is stored, so reopening the thread did it
+ * again. One document in the corpus is enough to write it.
+ */
+describe('Markdown fetches no image from an answer', () => {
+  it('draws an image as its alt text, and fetches nothing', () => {
+    const { container } = render(<Markdown>{'![Logg ut](/auth/logout)'}</Markdown>);
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.textContent).toBe('Logg ut');
+  });
+
+  it('draws nothing at all for an image with no alt text', () => {
+    const { container } = render(<Markdown>{'![](/auth/logout)'}</Markdown>);
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.textContent).toBe('');
+  });
+});
