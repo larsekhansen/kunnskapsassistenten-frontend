@@ -211,19 +211,6 @@
   color: var(--ds-color-neutral-text-subtle);
 }
 
-/* No component uses this class any more; the zone is OwnDocuments.tsx, below. */
-.documents-list__upload {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ds-size-1);
-  padding: var(--ds-size-6) var(--ds-size-4);
-  border: var(--ds-border-width-default) dashed var(--ds-color-neutral-border-subtle);
-  border-radius: var(--ds-border-radius-lg);
-  background: var(--ds-color-neutral-background-tinted);
-  color: var(--ds-color-neutral-text-subtle);
-  text-align: center;
-}
-
 .filters-view[hidden],
 .filters-view__loading[hidden],
 .filters-view__unavailable[hidden],
@@ -234,8 +221,7 @@
 .active-filter__head[hidden],
 .facet-field__label-row[hidden],
 .facet-field__actions[hidden],
-.documents-list[hidden],
-.documents-list__upload[hidden] {
+.documents-list[hidden] {
   display: none;
 }
 

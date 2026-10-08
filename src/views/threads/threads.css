@@ -120,8 +120,6 @@
   flex-wrap: wrap;
   align-items: baseline;
   column-gap: var(--ds-size-2);
-  /* Context inside the link, not a second place to go: no underline. */
-  text-decoration: none;
 }
 
 .threads-view__meta[hidden] {
@@ -141,11 +139,11 @@
 
 /* A link without an underline, as in Designsystemet's sidebar: colour, pointer,
    hover and focus ring say it can be clicked (brukerblikk.spec.ts checks them).
-   No bottom padding: the panel is over its height budget. */
+   Bottom padding only the ring's width, so the inset ring clears the descenders. */
 .threads-view__thread {
   display: flex;
   flex-direction: column;
-  padding: var(--ds-size-1) var(--ds-size-2) 0;
+  padding: var(--ds-size-1) var(--ds-size-2) var(--ds-border-width-focus);
   border-radius: var(--ds-border-radius-md);
   text-decoration: none;
 }
