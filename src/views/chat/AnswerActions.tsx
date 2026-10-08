@@ -22,21 +22,13 @@ type AnswerActionsProps = {
 };
 
 /**
- * What a reader can do with a finished answer: copy it, copy a link to the
- * thread, and search in it.
+ * What a reader can do with a finished answer. **Copying takes the sources
+ * with it**, because an answer pasted without its provenance is the one thing
+ * KA is not for, and the receipt counts what went along.
  *
- * Copying takes the sources with it. An answer pasted into a submission
- * without its provenance is the one thing KA is not for, so the markers stay
- * and a reference list follows them. The receipt counts what went along, because «Svaret er
- * kopiert» would not tell the reader that anything more did.
- *
- * The receipt under the row is rendered empty rather than hidden while there
- * is nothing to say. A live region that is `display: none` is not in the
- * accessibility tree, so the region and its text would appear in the same
- * frame and announce nothing — the same rule
- * `src/components/ErrorState.tsx` is built around.
- *
- * A clarification has its own, shorter row: see `Clarification.tsx`.
+ * The receipt is rendered empty rather than hidden: a live region that is
+ * `display: none` is out of the accessibility tree, and region and text would
+ * then arrive in the same frame and announce nothing.
  */
 export function AnswerActions({
   content,

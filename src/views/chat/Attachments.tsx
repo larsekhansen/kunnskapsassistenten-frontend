@@ -18,15 +18,9 @@ type AttachmentsProps = {
   onRetry: (key: string) => void;
 };
 
-/**
- * The files attached to the question being written. `Chip.Removable`, so the
- * name sits inside a control whose accessible name says what pressing it does
- * rather than naming a noun.
- *
- * A failed file keeps its chip, because one that silently did not attach is
- * worse than one that says why, and progress is announced as well as drawn,
- * since the bar alone tells a screen reader nothing.
- */
+/** The files attached to the question being written. A failed file keeps its
+    chip, because one that silently did not attach is worse than one that says
+    why, and progress is announced as well as drawn. */
 export function Attachments({ items, onRemove, onRetry }: AttachmentsProps) {
   const announcement = useUploadAnnouncement(items);
 
@@ -79,12 +73,9 @@ export function Attachments({ items, onRemove, onRetry }: AttachmentsProps) {
   );
 }
 
-/*
- * Three moments per file and no more: started, ready, failed. NOT one per
- * percent, which is a dozen sentences ending on a stale one. Held as state
- * and written from an effect, because a live region announces a CHANGE and
- * the same sentence recomputed is silence.
- */
+// Three moments per file and no more, NOT one per percent. Held as state and
+// written from an effect, because a live region announces a CHANGE and the
+// same sentence recomputed is silence.
 function useUploadAnnouncement(items: AttachmentView[]): string {
   const [announcement, setAnnouncement] = useState('');
   /** The last thing said about each file, so nothing is said twice. */

@@ -58,16 +58,9 @@ type AnswerMessageProps = {
   foundNothing?: boolean;
 };
 
-/**
- * Four ragged lines standing in for the paragraph on its way; the thread
- * being READ draws the same four (ThreadLoading).
- *
- * **`width` on `variant="text"` is a NUMBER OF CHARACTERS, not a length.**
- * Skeleton repeats that many dashes into `data-text` and never passes width
- * to `style`, so a percentage gives `NaN`, one dash per line and the CSS
- * width instead. Each line needs its own block for the same reason: the text
- * variant is `display: inline`, and a flex child is blockified.
- */
+/** **`width` on `variant="text"` is a NUMBER OF CHARACTERS, not a length**:
+    Skeleton repeats that many dashes into `data-text`, so a percentage gives
+    one dash a line. Each needs its own block, being `display: inline`. */
 const SKELETON_LINE_CHARACTERS = [78, 86, 82, 48];
 
 export function AnswerSkeleton() {

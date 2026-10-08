@@ -48,16 +48,9 @@ function worthShowing(keywords: readonly string[], question?: string): string[] 
   return keywords.filter((keyword) => !sameWords(keyword, question));
 }
 
-/**
- * «Fremgangsmåte»: what the assistant set out to do, in its own words. The
- * standard half of the display level (issue 88), with the same steps the
- * detailed panel draws and nothing else from them — what a step SAYS is the
- * agent's plan read back, what it measured is machinery.
- *
- * The keywords stay, and are why the panel opens itself where there is room:
- * they are what an answer can be checked against, and that should not be
- * behind a click. `chosen` overrides it for the rest of the turn.
- */
+/** «Fremgangsmåte» (issue 88): the same steps as the detailed panel and
+    nothing else from them, since what a step SAYS is the agent's plan and
+    what it measured is machinery. The keywords are why it opens itself. */
 export function ProcedurePanel({ steps, status, retrieval, question }: ProcedurePanelProps) {
   const thinking = status === 'thinking';
   // The reader's own choice outranks the automatic state for the rest of the

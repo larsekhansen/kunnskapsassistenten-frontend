@@ -58,15 +58,10 @@ type ComposerProps = {
 };
 
 /**
- * The compose field: it grows with the text, Enter sends and Shift+Enter
- * makes a new line, and the field and its buttons are one control to a
- * reader, so the frame around them carries the border and the focus ring.
- *
- * **`isComposing` is checked on Enter**, because an input method editor uses
- * Enter to accept a candidate, and sending mid-word is a real bug for anyone
- * typing that way. **The stop button carries the word «Avbryt»**, because a
- * bare square is not obviously «stopp» however good its `aria-label` is, and
- * the label starts with the same word (WCAG 2.5.3).
+ * The compose field and its buttons are one control to a reader, so the frame
+ * carries the border and the ring. **`isComposing` is checked on Enter**: an
+ * input method editor uses Enter to accept a candidate, and sending mid-word
+ * is a real bug for anyone typing that way.
  */
 export function Composer({
   ref,

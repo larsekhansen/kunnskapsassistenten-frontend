@@ -11,58 +11,37 @@ export const COMPOSE_PLACEHOLDER = 'Hva vil du vite mer om?';
 /** Fixed; a follow-up generated from the answer is wanted later. */
 export const CLOSING_QUESTION = 'Er det noe mer jeg kan hjelpe deg med?';
 
-/**
- * Three suggestions on the empty state. They fill the compose field, they do
- * not send.
- *
- * All three name documents only the mock corpus holds, so over any other
- * corpus they invite three questions it cannot answer. See `kickstartersFor`.
- */
+/** Three suggestions on the empty state; they fill the field and do not
+    send. All three name documents only the mock corpus holds, so elsewhere
+    they invite questions it cannot answer. See `kickstartersFor`. */
 export const KICKSTARTERS = [
   'Hva rapporteres om regnskap, kostnader og bevilgning i DSS sine årsrapporter for 2022 og 2023?',
   'Hvilke utfordringer rapporterer Udir om i evaluering om lærerspesialtordningen?',
   'Hva rapporterer Digdir om prioriteringene i tildelingsbrevene fra 2022 og 2023 sammenlignet med årsrapportene?',
 ] as const;
 
-/**
- * The three for a corpus nobody has written suggestions for.
- *
- * About the documents rather than anything in them, because they have to hold
- * over a corpus this code has never seen. Whole questions, not «Hvilke
- * dokumenter finnes om …?» with the subject left to the reader: an unfinished
- * one would work once picked, but it reads as a broken label on the button
- * before it is.
- */
+/** The three for a corpus nobody has written suggestions for: about the
+    documents and not anything in them, since they must hold over a corpus
+    this code has never seen. Whole questions, or the button reads broken. */
 export const GENERAL_KICKSTARTERS = [
   'Hva handler dokumentene i dette korpuset om?',
   'Gi meg en oversikt over de viktigste temaene.',
   'Oppsummer det viktigste i noen få punkter.',
 ] as const;
 
-/*
- * Written out rather than imported, so this module of words stays one;
- * `kickstartersPerCorpus.test.ts` ties the two together. `kudos-pilot` is
- * deliberately NOT here: it is Kudos by name but holds other agencies'
- * reports, and asking these questions over it returns nothing.
- */
+// Written out and not imported, so this module of words stays one;
+// `kickstartersPerCorpus.test.ts` ties them. `kudos-pilot` is deliberately
+// NOT here: Kudos by name, but other agencies' reports.
 const CORPUS_WITH_OWN_KICKSTARTERS = 'mock';
 
-/**
- * The three suggestions to offer over `corpusKey`. Everything else gets the
- * general three, which is the safe direction to be wrong in: a general
- * question over Kudos works, a named question over a corpus without those
- * documents does not.
- */
+/** The three suggestions to offer over `corpusKey`. Everything else gets the
+    general three, which is the safe direction to be wrong in. */
 export function kickstartersFor(corpusKey: string | undefined): readonly string[] {
   return corpusKey === CORPUS_WITH_OWN_KICKSTARTERS ? KICKSTARTERS : GENERAL_KICKSTARTERS;
 }
 
-/**
- * Fixed for now, model generated later.
- *
- * The language is not consistent — one question and two imperatives — but it
- * is the designer's wording, so it stays until someone decides otherwise.
- */
+/** Fixed for now, model generated later. The language is not consistent, but
+    it is the designer's wording, so it stays. */
 export const FOLLOW_UP_QUESTIONS = [
   'Kan du utdype?',
   'Identifiser utfordringer',
@@ -76,36 +55,21 @@ export const FOLLOW_UP_QUESTIONS = [
 /** Under the text of an answer the reader stopped. */
 export const ABORTED_NOTE = 'Svaret ble avbrutt, så kildene bak det kom aldri fram.';
 
-/**
- * The same, for a turn stopped while it was still searching.
- *
- * There is no answer to say anything about — «svaret ble avbrutt» would be
- * about text that never existed — so it names what there was: a search, and a
- * reader who stopped it.
- */
+/** The same, for a turn stopped while it was still searching: there is no
+    answer to say anything about, so it names what there was. */
 export const ABORTED_BEFORE_ANSWER = 'Du stoppet søket før svaret begynte.';
 
-/**
- * Under a turn that failed, once the alert about it is gone — restored from
- * the store, or outlived by a newer question. The card is then the only thing
- * left to say why there is no answer under the question.
- *
- * It says less than the alert did on purpose: which error it was is not
- * written down with the turn, and a note that guessed would be worse.
- */
+/** Under a turn that failed, once its alert is gone. It says less than the
+    alert on purpose: which error it was is not written down with the turn,
+    and a note that guessed would be worse. */
 export const FAILED_NOTE = 'Dette spørsmålet fikk ikke noe svar. Noe gikk galt underveis.';
 
 /** The only action on a stopped answer: ask the same question again. */
 export const REGENERATE = 'Generer på nytt';
 
-/*
- * The agent asking for more before it answers: backend status
- * `needs-clarification` (design/eksisterende/api-for-frontend.md l.208).
- *
- * The wording frames the card as a question to the reader rather than as a
- * failed answer, which is what it is: nothing went wrong, the assistant just
- * needs one more thing.
- */
+// Backend status `needs-clarification`
+// (design/eksisterende/api-for-frontend.md l.208). The wording frames the
+// card as a question and not a failure, because nothing went wrong.
 
 /** The `Tag` at the top of the clarification card. */
 export const CLARIFICATION_TAG = 'Trenger avklaring';
@@ -116,13 +80,9 @@ export const CLARIFICATION_PLACEHOLDER = 'Svar på spørsmålet over …';
 /** What the polite live region says when the clarification arrives. */
 export const CLARIFICATION_ANNOUNCEMENT = 'Kunnskapsassistenten trenger en avklaring.';
 
-/**
- * What the polite region says while the conversation at the address is read.
- *
- * Said through the region the view already keeps in the page: a live region
- * that arrives WITH its text was inserted, not changed, and a screen reader
- * has nothing to announce about it.
- */
+/** What the polite region says while the conversation is read. Through the
+    region the view already keeps in the page: one arriving WITH its text was
+    inserted, not changed, and announces nothing. */
 export const READING_THREAD = 'Henter samtalen';
 
 /** The page title before anything is asked: the conversation is the one «Ny

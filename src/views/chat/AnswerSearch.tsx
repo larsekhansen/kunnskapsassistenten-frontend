@@ -20,14 +20,9 @@ export type AnswerSearchProps = {
   label: string;
 };
 
-/**
- * Search inside one answer, deliberately the same control as the sources
- * panel's so a reader meets one search mechanism and not two.
- *
- * **It does not take Ctrl+F**: the browser's find is the one shortcut every
- * reader already has. The counter is a live region, because `<mark>` is not
- * announced and «2 av 7 treff» is the only sign the search did anything.
- */
+/** Search inside one answer, the same control as the sources panel's. **It
+    does not take Ctrl+F**, and the counter is a live region, because `<mark>`
+    is not announced and the count is the only sign anything happened. */
 export function AnswerSearch({
   query,
   onQueryChange,

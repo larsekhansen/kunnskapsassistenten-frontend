@@ -12,14 +12,10 @@ type AgentPickerProps = {
 };
 
 /**
- * Which agent answers, chosen beside the send button. The button is the
- * agent's name and nothing else, because it is information until you press
- * it, and nothing is drawn at all with fewer than two agents.
- *
- * Designsystemet's `Dropdown` is a list of buttons and not an ARIA menu, on
- * purpose: `role="menu"` without the arrow keys and typeahead of the pattern
- * is worse than none. It has no selected state, so the chosen one says it
- * with `aria-current` and the check is decoration.
+ * Which agent answers. Designsystemet's `Dropdown` is a list of buttons and
+ * not an ARIA menu, on purpose: `role="menu"` without the arrow keys and
+ * typeahead of the pattern is worse than none. It has no selected state, so
+ * the chosen one says it with `aria-current` and the check is decoration.
  */
 export function AgentPicker({ agents, current, onChoose }: AgentPickerProps) {
   const [open, setOpen] = useState(false);

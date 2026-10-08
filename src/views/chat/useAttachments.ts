@@ -2,12 +2,9 @@ import { useCallback, useRef, useState } from 'react';
 import { useUserDocuments } from '../../layout/useUserDocuments';
 import { userDocumentType, type UploadErrorCode, type UserDocument } from '../../model';
 
-/**
- * One file the reader attached to the question being written. A slot of its
- * own, because the document does not exist yet when the chip has to appear —
- * and the pending row is REPLACED under a different id when the client
- * resolves, so an id captured at the start is not the one it ends with.
- */
+/** One file the reader attached. A slot of its own, because the document
+    does not exist yet when the chip appears, and the pending row is REPLACED
+    under a different id when the client resolves. */
 export type Attachment = {
   /** This composer's own key. Stable from the moment the file was picked. */
   key: string;
