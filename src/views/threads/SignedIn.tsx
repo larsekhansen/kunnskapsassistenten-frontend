@@ -8,20 +8,7 @@ export type SignedInProps = {
   session?: Session | null;
 };
 
-/**
- * Who is signed in, and «Logg ut», at the end of the thread list.
- *
- * At the end of the view rather than pinned to the bottom of the panel: a
- * pinned line would cover rows the keyboard scrolls to (WCAG 2.4.11, Focus
- * Not Obscured), and keeping them clear would take a `scroll-padding` on the
- * shell's scrolling region.
- *
- * Nothing without a session: in mock, in live, and behind a BFF with sign-in
- * off.
- *
- * A plain `<a>`, not the router's: `/auth/logout` is a full navigation that
- * ends the session and goes on to Entra.
- */
+/** Who is signed in, and «Logg ut», at the end of the thread list. */
 export function SignedIn({ session: given }: SignedInProps) {
   const [session, setSession] = useState<Session | undefined>(given ?? undefined);
 
@@ -36,6 +23,8 @@ export function SignedIn({ session: given }: SignedInProps) {
 
   if (!session) return null;
 
+  // At the end of the list, not pinned to the panel's bottom, where it would
+  // cover rows the keyboard scrolls to (WCAG 2.4.11, Focus Not Obscured).
   return (
     <div className="threads-view__signed-in">
       <Paragraph data-size="sm" className="threads-view__user" title={session.email}>
@@ -45,11 +34,9 @@ export function SignedIn({ session: given }: SignedInProps) {
           {session.name}
         </span>
       </Paragraph>
-      {/*
-        A middle click opens the link in a new tab and fires only `auxclick`.
-        Only button 1: `auxclick` fires for the right button too, and a context
-        menu is not a logout. «Åpne i ny fane» from that menu fires nothing.
-      */}
+      {/* A plain `<a>`: `/auth/logout` is a full navigation on to Entra. A middle
+          click fires only `auxclick`, which a right click fires too, hence button 1.
+          «Åpne i ny fane» from the context menu fires nothing. */}
       <Link
         href={session.logoutUrl}
         data-size="sm"

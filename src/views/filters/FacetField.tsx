@@ -13,17 +13,11 @@ import { MAX_VALUES_PER_FIELD, SCREEN_READER_TEXTS } from './suggestionField';
 /** What the view may do with a field from outside: put the keyboard in it. */
 export type FacetFieldHandle = { focus: () => void };
 
-/**
- * From how many chosen values the `compact-filter-chips` flag
- * (digdir/kunnskapsassistenten#116) draws one chip instead of one per value.
- * Every value chosen always does.
- */
+/** Chosen values from which `compact-filter-chips` (digdir/kunnskapsassistenten#116) draws
+ * one chip instead of one per value. All chosen always does. */
 const COMPACT_FROM = 6;
 
-/**
- * The value of the one chip that stands for all the chosen values. Not a
- * value any facet can hold: no key the backend sends starts with a null.
- */
+/** The value of the one summary chip; no key the backend sends starts with a null. */
 const SUMMARY_VALUE = '\u0000chosen';
 
 export type FacetFieldProps = {
@@ -35,59 +29,28 @@ export type FacetFieldProps = {
   onChange: (values: string[]) => void;
 };
 
-/**
- * One filter dimension as a multi-select dropdown.
- *
- * Designsystemet's Suggestion with `multiple`. Three things are worth
- * knowing about it:
- *
- *   1. Selected values render as chips inside the field, so there is no
- *      second row of Chip.Removable; both would show every filter twice.
- *   2. The list is locked to the width of the input by an inline style unless
- *      `data-overscroll="contain"` turns that off. It does, and the width
- *      then has to come from our own CSS. The design draws the list wider
- *      than the field, and the labels here are long enough to need it.
- *   3. `autoPlacement` is a dead prop in 1.21.0, destructured and never
- *      used. `data-autoplacement` is the attribute that works.
- *
- * Suggestion.Clear only clears the text the user has typed, not the
- * selection: u-combobox hides it whenever the input is empty. «Tøm» is
- * therefore our own button.
- */
+/** Designsystemet's Suggestion with `multiple`, whose chips show the selection. `data-overscroll`
+ * lifts its inline width lock so our CSS can widen the list; `autoPlacement` is a dead prop in
+ * 1.21.0, `data-autoplacement` works. Its Clear clears only typed text, hence our «Tøm». */
 export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   useImperativeHandle(ref, () => ({ focus: () => inputRef.current?.focus() }), []);
   const total = facet.values.length;
   const chosen = selected.length;
-  /*
-   * Every value the list holds is ticked, which is the rule the question
-   * leaves the field out by (`askedSelection`), so the field and the question
-   * say the same. Not `chosen === total`: the list can hold fewer values than
-   * are ticked. A field where everything is ticked is not sent, so the facets
-   * are counted without it, and a value with no documents under the other
-   * fields can be left out of the list.
-   */
+  // Every listed value ticked, the rule `askedSelection` leaves the field out by. Not
+  // `chosen === total`: a field with all ticked is not sent, so the facets are counted
+  // without it and may list fewer values than are ticked.
   const allChosen = total > 0 && facet.values.every((value) => selected.includes(value.value));
   const dimension = facet.label.toLocaleLowerCase('nb-NO');
 
-  /*
-   * Behind `compact-filter-chips`: with every value or many of them chosen,
-   * one chip says so («Alle dokumenttyper», «12 virksomheter») instead of
-   * hundreds of chips stacked over the panel. Removing it removes them all.
-   *
-   * The cost, while the chip stands: u-combobox ticks an option only when a
-   * chip carries its value, so the list shows no ticks. Choosing a value that
-   * is already chosen changes nothing.
-   */
+  // With all or many chosen, one chip («Alle dokumenttyper», «12 virksomheter»)
+  // instead of hundreds. While it stands the list shows no ticks: u-combobox
+  // ticks only options a chip carries, and choosing a chosen value does nothing.
   const compactFlag = useFlag('compact-filter-chips');
   const compact = compactFlag && chosen > 0 && (allChosen || chosen >= COMPACT_FROM);
 
-  /*
-   * Suggestion must be given `{ label, value }`, not bare strings: a bare
-   * string becomes both the label and the value, and the chip then shows the
-   * key («arsrapport») instead of the name («Årsrapport»). See
-   * `sanitizeItems` in the component.
-   */
+  // `{ label, value }`, not bare strings: Suggestion's `sanitizeItems` makes a
+  // bare string both, and the chip shows the key («arsrapport»), not the name.
   const selectedItems = compact
     ? [{ value: SUMMARY_VALUE, label: allChosen ? `Alle ${dimension}` : `${chosen} ${dimension}` }]
     : selected.map((value) => ({
@@ -95,33 +58,16 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
         label: facet.values.find((candidate) => candidate.value === value)?.label ?? value,
       }));
 
-  /*
-   * Which dimension a chip is removed from, in the chip's own name.
-   *
-   * u-combobox builds a chip's accessible name as `label`, then
-   * `data-sr-remove`: «Årsrapport, Trykk for å fjerne». Three fields hold
-   * chips, and without this nothing says which filter a value is in. Naming
-   * the dimension here puts it where the chip is read rather than in a second
-   * live region.
-   */
+  // u-combobox names a chip `label` + `data-sr-remove` («Årsrapport, Trykk for
+  // å fjerne»). With chips in three fields, the dimension has to be in it.
   const screenReaderTexts = {
     ...SCREEN_READER_TEXTS,
     'data-sr-remove': `Trykk for å fjerne fra ${facet.label.toLocaleLowerCase('nb-NO')}`,
   };
 
-  /*
-   * The dimension name stays the field's Label, and the state goes in the
-   * description under it. Renaming a control as its value changes, as the
-   * Figma sketch does with «Alle valgt», breaks the promise a label makes to
-   * a screen reader user: the name has to stay put.
-   *
-   * Three states, three sentences. An untouched field and one where every
-   * value is picked must not read the same, or the reader cannot tell whether
-   * a filter is set, and «Velg alle» offers what the text already claims.
-   * Both are no restriction, and «Alle valgt» says so: such a field is not
-   * sent (the BFF strikes it, and sending every organisation would break the
-   * limit below for nothing).
-   */
+  // The state goes in the description: a label that changes with the value fails screen
+  // readers. None and all must read differently; all chosen is no restriction and is not sent
+  // (the BFF strikes it, and every organisation would break the limit).
   const state =
     chosen === 0
       ? 'Ingen avgrensning'
@@ -129,26 +75,12 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
         ? `Alle ${total} valgt, altså ingen avgrensning`
         : `${chosen} av ${total} valgt`;
 
-  /*
-   * Over the limit and short of all: a question asked like this would be
-   * turned away. The way out is in the sentence — fewer, or all, which is no
-   * narrowing and is not sent.
-   */
+  // The question would be turned away. The way out is in the message: fewer, or all.
   const overLimit = chosen > MAX_VALUES_PER_FIELD && !allChosen;
 
-  /*
-   * Empties the search text.
-   *
-   * Picking a value from the list leaves the value key in the input —
-   * `u-combobox` only restores what the user typed when the click arrives
-   * through the native datalist path, and it does not here. The list is
-   * filtered on that text, so the next open would show «Ingen treff».
-   * Clearing after every change is what a multi-select should do anyway: the
-   * search is spent once the value is a chip.
-   *
-   * The event is dispatched because both `u-combobox` and Suggestion's own
-   * filtering listen for it; setting `value` alone would leave both stale.
-   */
+  // Picking a value leaves its key in the input (u-combobox restores the typed text only on
+  // the native datalist path), so the next open would show «Ingen treff». Dispatched, because
+  // u-combobox and Suggestion's filtering both go stale on `value` alone.
   function clearQuery() {
     const input = inputRef.current;
     if (!input || input.value === '') return;
@@ -161,21 +93,9 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
     onChange(values);
   }
 
-  /*
-   * What Suggestion reports, as values. The summary chip stands for the
-   * values behind it.
-   *
-   * A value of '' is «Ingen treff»: ds-suggestion labels it with the text
-   * typed and gives it no value, and u-combobox chooses on Enter the option
-   * whose label is the text. Text that names no value would choose it and
-   * draw a chip with no value. It is not a choice: nothing changes, and the
-   * text stays to be finished.
-   *
-   * A '' already in the selection comes from an older filter and goes with
-   * the next change: `readStoredFilter` drops a stored one, but a thread
-   * asked with one keeps it in its filter, and «Ny tråd» from the lock
-   * carries that over.
-   */
+  // '' is «Ingen treff», which u-combobox chooses on Enter (its label is the typed text): not a
+  // choice, so nothing changes. A '' already selected (an older thread's filter, which «Ny tråd»
+  // carries over; `readStoredFilter` drops stored ones) goes with the next change.
   function choose(items: { value: string }[]) {
     const values = [
       ...new Set(items.flatMap((item) => (item.value === SUMMARY_VALUE ? selected : [item.value]))),
@@ -184,18 +104,9 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
     change(values.filter((value) => value !== ''));
   }
 
-  /*
-   * «Velg alle» and «Tøm» are rendered on the very state they change, so
-   * React takes the button out of the DOM in the same render and focus falls
-   * to `document.body`. A keyboard user would be thrown back above the skip
-   * link on every choice (WCAG 2.4.3). The field below the button is where
-   * they are going next, so focus moves there first, while the button still
-   * exists.
-   *
-   * Only from these two buttons. `onSelectedChange` must not focus the
-   * input: the user may be inside the chips, where ArrowLeft and Enter walk
-   * and remove, and pulling focus out would break that.
-   */
+  // «Velg alle» and «Tøm» vanish in the render they cause, so focus moves to the field first,
+  // not to `<body>` (WCAG 2.4.3). Only from the buttons: `onSelectedChange` must not pull focus
+  // out of the chips, where ArrowLeft and Enter walk and remove.
   function changeFromButton(values: string[]) {
     inputRef.current?.focus();
     change(values);
@@ -214,9 +125,7 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
               data-size="sm"
               aria-label={`Velg alle ${facet.label.toLocaleLowerCase('nb-NO')}`}
               onClick={() =>
-                // Adds to the choice and never takes from it: a value ticked
-                // and not in the list now is kept, so «Velg alle» under a
-                // narrowing does not shrink the filter for later.
+                // Adds, never removes: a ticked value not listed now stays.
                 changeFromButton([
                   ...new Set([...selected, ...facet.values.map((value) => value.value)]),
                 ])
@@ -239,13 +148,8 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
         </div>
       </div>
 
-      {/*
-        Over the chips and not after them, where Designsystemet usually puts a
-        validation message: the message only exists when more than a hundred
-        values are ticked, and under a hundred chips it is a scroll away
-        from anyone who could act on it. `ds-field` links it to the input
-        wherever it stands.
-      */}
+      {/* Above the chips, not after: under a hundred chips it would be out of sight.
+          `ds-field` links it to the input wherever it stands. */}
       {overLimit && (
         <ValidationMessage>
           {`Høyst ${MAX_VALUES_PER_FIELD} kan brukes i ett felt, og ${chosen} er valgt. Fjern noen, eller velg alle.`}
@@ -258,11 +162,7 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
         onSelectedChange={choose}
         {...screenReaderTexts}
       >
-        {/*
-          The placeholder names the dimension. With the bare word «Søk», the
-          three fields read as one repeated control even though each has its
-          own <label>.
-        */}
+        {/* Names the dimension: three bare «Søk» read as one repeated control. */}
         <Suggestion.Input
           ref={inputRef}
           placeholder={`Søk i ${facet.label.toLocaleLowerCase('nb-NO')}`}
@@ -271,22 +171,14 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
         <Suggestion.Clear />
         <Suggestion.List data-overscroll="contain" data-autoplacement="false">
           {facet.values.map((value) => (
-            /*
-              `label` is what the chip and the filtering use, the children are
-              what the list shows. Keeping the count out of the label means a
-              chip reads «Årsrapport», not «Årsrapport (1032)».
-            */
+            // The count stays out of `label`, which the chip and the filtering use.
             <Suggestion.Option key={value.value} value={value.value} label={value.label}>
               {value.count === undefined ? value.label : `${value.label} (${value.count})`}
             </Suggestion.Option>
           ))}
-          {/*
-            After the values, not before. Enter chooses the FIRST option whose
-            label is the text, and «Ingen treff» carries the text as its label
-            (see `choose`): first in the list, it would be chosen even on
-            «Årsrapport» or «2024». Designsystemet hides it by CSS whenever a
-            value is shown, wherever it stands.
-          */}
+          {/* After the values: Enter takes the FIRST option labelled with the text,
+              and «Ingen treff» carries the text (see `choose`). CSS hides it
+              whenever a value shows. */}
           <Suggestion.Empty>Ingen treff</Suggestion.Empty>
         </Suggestion.List>
       </Suggestion>

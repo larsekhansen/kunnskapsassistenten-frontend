@@ -11,29 +11,9 @@ export type CorpusLineProps = {
   corpus?: CorpusOption;
 };
 
-/**
- * What the reader is searching, on one line.
- *
- * The whole sentence wraps to two lines in the panel, so only the name stays
- * on screen and the rest goes behind «Vis mer». The name is the half that
- * changes when a reader switches corpus, and the half that says where the
- * answers come from; what is inside a corpus reads the same every time.
- *
- * A button with `aria-expanded` rather than `Details`: a `Details` summary is
- * a block and would start its own line, which is the line this exists to
- * save. The button sits at the end of the name's line, and the detail opens
- * under it.
- *
- * The open state is deliberately not remembered: a reader who opened it once
- * has read it, and the panel starts from the short line again.
- *
- * It does survive a corpus switch, on purpose: a reader who has opened the
- * detail is reading what is in the corpus, which is what changed. The name
- * changes in the same render, so the new text never sits under the old name.
- *
- * The visible words stay «Vis mer», but the accessible name says what of, for
- * a reader who lists the buttons on the page and hears them out of context.
- */
+/** The corpus name, with the rest behind «Vis mer»: the whole sentence wraps to two lines. A
+    button with `aria-expanded`, not `Details`, whose summary would take a line of its own. The
+    open state survives a corpus switch: the reader is reading what just changed. */
 export function CorpusLine({ facets, corpus }: CorpusLineProps) {
   const { source, detail } = corpusLine(facets, corpus);
   const [open, setOpen] = useState(false);
@@ -46,20 +26,9 @@ export function CorpusLine({ facets, corpus }: CorpusLineProps) {
 
         {detail && (
           <>
-            {/*
-              A `Link` around a `button`, and both halves are deliberate.
-
-              The button is the semantics: this opens something on the page,
-              it is not a place to go, and `aria-expanded` belongs on a
-              button. The link is the size: Designsystemet's `Button` is
-              42 px tall at `data-size="sm"` against a 21 px line of text, and
-              would set the height of the row. `Link` draws text, so the
-              control is as tall as the line it sits on, and quieter beside a
-              small muted sentence.
-
-              Nothing of Designsystemet's is overridden; the link styles and
-              the focus ring come from the component.
-            */}
+            {/* `button` for `aria-expanded`; `Link` keeps it as tall as the text, where
+                Designsystemet's `Button` (42 px at `sm`) would set the row's height. The label
+                says what of, for a reader who lists the buttons out of context. */}
             <Link asChild className="filters-view__corpus-toggle">
               <button
                 type="button"
@@ -72,11 +41,7 @@ export function CorpusLine({ facets, corpus }: CorpusLineProps) {
               </button>
             </Link>
 
-            {/*
-              Rendered whether or not it is open, and hidden with `hidden`:
-              `aria-controls` points at it, and an element that is not in the
-              document is one a screen reader cannot follow the pointer to.
-            */}
+            {/* Always rendered: `aria-controls` must point at an element in the document. */}
             <span hidden={!open} id={detailId} className="filters-view__corpus-detail">
               {detail}
             </span>

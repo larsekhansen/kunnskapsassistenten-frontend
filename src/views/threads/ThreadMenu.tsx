@@ -11,23 +11,10 @@ export type ThreadMenuProps = {
   ref?: Ref<HTMLButtonElement>;
 };
 
-/**
- * «Endre navn» and «Slett» for one thread, behind a button on its row.
- *
- * Designsystemet's `Dropdown`, a list of buttons and not an ARIA menu, as
- * Designsystemet recommends: two actions with Tab between them read plainly,
- * and a `role="menu"` without the arrow keys and typeahead of the pattern
- * would be worse than none.
- *
- * Beside the row and not inside it. The row is a link over its whole width,
- * and a button inside a link is invalid markup and two controls in one tab
- * stop.
- *
- * Controlled, because a press inside the list does not close it: the
- * popover only closes on its trigger, outside, or Escape. A list left open
- * would float over the rename field the action just opened.
- */
+/** «Endre navn» and «Slett», beside the row: a button inside its link is invalid. */
 export function ThreadMenu({ thread, onRename, onDelete, ref }: ThreadMenuProps) {
+  // Controlled: a press in the list does not close Designsystemet's popover,
+  // which would then float over the rename field.
   const [open, setOpen] = useState(false);
 
   function choose(action: () => void) {
@@ -37,10 +24,7 @@ export function ThreadMenu({ thread, onRename, onDelete, ref }: ThreadMenuProps)
 
   return (
     <Dropdown.TriggerContext>
-      {/*
-        The title is in the name: «Flere valg» alone on every row is a control
-        a screen reader user cannot tell apart from the next.
-      */}
+      {/* The title is in the name, so a screen reader can tell the rows apart. */}
       <Dropdown.Trigger
         ref={ref}
         variant="tertiary"
@@ -59,6 +43,8 @@ export function ThreadMenu({ thread, onRename, onDelete, ref }: ThreadMenuProps)
         placement="bottom-end"
         data-size="sm"
       >
+        {/* Buttons, not `role="menu"`, as Designsystemet recommends: a menu role
+            without the arrow keys and typeahead of the pattern is worse than none. */}
         <Dropdown.List>
           <Dropdown.Item>
             <Dropdown.Button onClick={() => choose(onRename)}>
