@@ -47,6 +47,8 @@ export type ApiMessage = {
   tags?: string[] | null;
   /** The create call's `filter-value`, on a message of its own (role null); null on turns. */
   filterValue?: unknown;
+  /** The BFF's mark for a turn stored as failed, sent with no text (`/api/v2`). */
+  failed?: boolean | null;
 };
 
 /**
@@ -168,13 +170,15 @@ export function messagesFromApi(
 ): Message[] {
   const turns = (messages ?? [])
     .filter((message) => message.role === 'user' || message.role === 'assistant')
-    .filter((message) => (message.text ?? '').trim() !== '')
+    .filter((message) => (message.text ?? '').trim() !== '' || message.failed === true)
     .map((message) => {
       const sources = sourcesFromChunks(message.chunks, corpusKey);
       const role = message.role === 'user' ? ('user' as const) : ('assistant' as const);
       // The stored failure text was never written for a reader; `status: 'error'` makes the chat
       // draw its own sentence instead (`FAILED_NOTE`).
-      const failed = role === 'assistant' && STORED_FAILURE.test(message.text ?? '');
+      const failed =
+        role === 'assistant' &&
+        (message.failed === true || STORED_FAILURE.test(message.text ?? ''));
       return {
         id: message.id,
         role,

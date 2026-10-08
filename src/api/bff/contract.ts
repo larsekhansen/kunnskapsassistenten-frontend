@@ -97,6 +97,8 @@ export interface BffMessage {
   role: 'user' | 'assistant' | 'system';
   text: string;
   created: number;
+  /** A turn the backend stored as failed (digdir/digdir-headless-rag#22); the text is empty. */
+  failed?: boolean;
 }
 
 /** `GET /api/conversations/:id`. */

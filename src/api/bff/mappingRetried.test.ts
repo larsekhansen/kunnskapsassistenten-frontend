@@ -23,3 +23,41 @@ describe('threadDetailFromBff, et svar som ble prøvd på nytt', () => {
     expect(thread.messages[1]?.sources?.length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * `/api/v2` sends a turn the backend stored as failed as `failed: true` with no
+ * text, instead of the backend's English error sentence.
+ */
+describe('threadDetailFromBff, en tur BFF-en har merket som feilet', () => {
+  const detail = (messages: BffConversationDetail['messages']): BffConversationDetail => ({
+    conversation: { id: 'c1', topic: 'Måloppnåelse i Nkom', created: 1791472252182 },
+    messages,
+  });
+  const asked = { id: 'q1', role: 'user' as const, text: 'Hva skriver Nkom?', created: 1 };
+  const failed = { id: 'a1', role: 'assistant' as const, text: '', created: 2, failed: true };
+
+  it('står som feilet, og forsvinner ikke fordi teksten er tom', () => {
+    const thread = threadDetailFromBff(detail([asked, failed]));
+
+    expect(thread.messages.map((message) => [message.role, message.status])).toEqual([
+      ['user', 'complete'],
+      ['assistant', 'error'],
+    ]);
+  });
+
+  it('tas ut når det samme spørsmålet ble stilt igjen', () => {
+    const thread = threadDetailFromBff(
+      detail([
+        asked,
+        failed,
+        { ...asked, id: 'q2', created: 3 },
+        { id: 'a2', role: 'assistant', text: 'Nkom skriver at målene er nådd.', created: 4 },
+      ]),
+    );
+
+    expect(thread.messages.map((message) => [message.role, message.status])).toEqual([
+      ['user', 'complete'],
+      ['assistant', 'complete'],
+    ]);
+  });
+});
