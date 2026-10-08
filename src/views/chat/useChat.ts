@@ -17,11 +17,9 @@ import {
   NO_SOURCES_WARNING,
 } from './text';
 
-/**
- * The documents one question is asked with: ids for the wire, names for the
- * reader's own message. Both, because a name looked up afterwards goes
- * missing the day the reader removes the file.
- */
+/** The documents one question is asked with: ids for the wire, names for the
+    thread. Both, because a name looked up later goes missing when the reader
+    removes the file. */
 export type AskAttachments = { ids: string[]; names: string[] };
 
 /** Where the current turn is. Drives the skeleton, the stop button and the error. */
@@ -44,11 +42,9 @@ function lastQuestionIn(messages: Message[]): string | undefined {
   return messages.findLast((message) => message.role === 'user')?.content;
 }
 
-/**
- * The conversation without the turn «Generer på nytt» replaces: only the
- * last, and only when it failed or was stopped. Older stopped turns survive a
- * reload, and asking the newest question again is no reason to delete them.
- */
+// The conversation without the turn «Generer på nytt» replaces: only the
+// last, and only when it failed or was stopped. Older stopped turns survive a
+// reload, and asking the newest question again is no reason to delete them.
 function withoutTurnBeingRetried(messages: Message[]): Message[] {
   const last = messages.at(-1);
   const replacing =
@@ -59,43 +55,27 @@ function withoutTurnBeingRetried(messages: Message[]): Message[] {
 export type UseChat = {
   messages: Message[];
   status: ChatStatus;
-  /**
-   * Why the turn failed, set only when status is 'error'. The code and not
-   * the sentence: the case decides heading, text and whether «Prøv igjen» is
-   * offered at all, and that mapping belongs to the view (errorText.ts).
-   */
+  /** Why the turn failed, set only when status is 'error'. The code and not
+      the sentence: the mapping belongs to the view (errorText.ts). */
   error: ChatError | null;
-  /**
-   * What the polite live region should say at this moment. Here and not in
-   * the view, because only this loop knows when a paragraph finished; driven
-   * by rendering it stutters once per token.
-   */
+  /** What the polite live region should say now. Here and not in the view,
+      because only this loop knows when a paragraph finished. */
   announcement: string;
-  /**
-   * The filter each answer was asked under, by message id. What the reader
-   * chose at the time, not what is selected now: a second question under a
-   * different filter must not rewrite the first answer's line.
-   */
+  /** The filter each answer was asked under, by message id: what the reader
+      chose then, not what is selected now. */
   appliedFilters: Record<string, FilterSelection>;
-  /**
-   * The answers whose search came back empty, by message id. A fact about the
-   * turn rather than something read back out of its words, which would break
-   * the moment the wording changed.
-   */
+  /** The answers whose search came back empty, by message id. A fact about
+      the turn, not something read back out of its words. */
   noHitsAnswers: ReadonlySet<string>;
-  /**
-   * The documents each question was asked with, by the QUESTION's id. Names
-   * and not ids, since the thread draws them — and kept here, because a
-   * document removed tomorrow must not rewrite yesterday's question.
-   */
+  /** The documents each question was asked with, by the QUESTION's id. Names,
+      since the thread draws them, and kept, so a document removed tomorrow
+      does not rewrite yesterday's question. */
   attachmentsByMessage: Record<string, string[]>;
   send: (question: string, attachments?: AskAttachments) => void;
   /** Stop the generation and keep what has arrived. */
   cancel: () => void;
-  /**
-   * Ask the last question again, in place of the answer that did not make it.
-   * «Prøv igjen» and «Generer på nytt» are the same move.
-   */
+  /** Ask the last question again, in place of the answer that did not make
+      it. «Prøv igjen» and «Generer på nytt» are the same move. */
   retry: () => void;
 };
 
@@ -125,15 +105,9 @@ export function useChat(
 ): UseChat {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
 
-  /*
-   * The stored thread arrives after this hook has mounted, so its messages
-   * are ADOPTED in FRONT of the session rather than replacing it, matched by
-   * id because the live turn and the stored one can be the same turn.
-   *
-   * Adjusted while rendering, since an effect would draw the empty
-   * conversation once first, and compared on what the messages ARE:
-   * `initialMessages` defaults to a fresh `[]`, so a reference check loops.
-   */
+  // The stored thread arrives after this hook has mounted, so its messages
+  // are ADOPTED in FRONT of the session, matched by id. Compared on what they
+  // ARE: `initialMessages` defaults to a fresh `[]`, so a ref check loops.
   const threadSignature =
     initialMessages.length === 0 ? '' : `${initialMessages.length}:${initialMessages.at(-1)?.id}`;
   const [adopted, setAdopted] = useState(threadSignature);
@@ -159,26 +133,17 @@ export function useChat(
   const lastQuestionRef = useRef<string | null>(null);
   const lastAttachmentsRef = useRef<AskAttachments | undefined>(undefined);
 
-  /*
-   * The conversation for handlers that must read it without being rebuilt by
-   * it: `messages` changes on every token, so `retry` as a dependency hands
-   * the composer a new callback per word. Written in an effect, which is
-   * settled long before a click reads it.
-   */
+  // For handlers that must read the conversation without being rebuilt by
+  // it: `messages` changes on every token, so as a dependency it hands the
+  // composer a new `retry` per word.
   const messagesRef = useRef(messages);
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
-  /*
-   * Switching corpus lets go of the conversation: its answers cite documents
-   * that only exist in the old one, and continuing would mix two document
-   * sets with nothing on screen saying which is which. The draft stays.
-   *
-   * Emptied while rendering, since an effect would draw the old conversation
-   * once under the new corpus; the refs go in the effect below, because a ref
-   * written during render is a change React cannot see.
-   */
+  // Switching corpus lets go of the conversation: its answers cite documents
+  // that only exist in the old one. The draft stays. Emptied while rendering,
+  // since an effect would draw the old conversation under the new corpus.
   const [corpusInUse, setCorpusInUse] = useState(corpusKey);
   if (corpusKey !== corpusInUse) {
     setCorpusInUse(corpusKey);
@@ -208,28 +173,20 @@ export function useChat(
     );
   }, []);
 
-  /**
-   * End a turn: mark the answer, or drop it if nothing ever arrived — an
-   * empty `<li>` tells a screen reader the assistant answered when it did
-   * not. A stopped turn stays whatever phase it was in, because its card is
-   * what says it was stopped.
-   */
+  // End a turn: mark the answer, or drop it if nothing arrived — an empty
+  // `<li>` tells a screen reader the assistant answered when it did not. A
+  // stopped turn stays, because its card is what says it was stopped.
   const settleAnswer = useCallback(
     (id: string, status: SettledStatus, settled?: { createdAt?: string; corpusKey?: string }) => {
-      /*
-       * Stamped here and NOT when the placeholder was made: stamping at both
-       * ends gives one answer two times, a whole answer apart. The `done`
-       * frame's own time wins where there is one, so the message and the
-       * stored turn are the same string.
-       */
+      // Stamped here and NOT when the placeholder was made, which gives one
+      // answer two times a whole answer apart. The `done` frame's own time
+      // wins, so the message and the stored turn are the same string.
       const settledAt = settled?.createdAt ?? new Date().toISOString();
       setMessages((current) => {
         const answer = current.find((message) => message.id === id);
-        /*
-         * The thinking panel counts as something to show: dropping a failed
-         * turn on `content.length === 0` alone takes «Jeg søker i
-         * dokumentene» with it, on the one path where it is worth most.
-         */
+        // The thinking panel counts as something to show: dropping on
+        // `content.length === 0` alone takes «Jeg søker i dokumentene» with
+        // it, on the one path where it is worth most.
         const hasNothingToShow =
           answer !== undefined &&
           answer.content.length === 0 &&
@@ -242,11 +199,9 @@ export function useChat(
             ? {
                 ...message,
                 createdAt: settledAt,
-                /*
-                 * Which corpus answered, from the frame that ended the
-                 * stream; the store would answer «which is selected now».
-                 * `undefined` means «not known», never «the default corpus».
-                 */
+                // Which corpus answered, from the frame that ended the
+                // stream; the store answers «which is selected now».
+                // `undefined` is «not known», never «the default corpus».
                 ...(settled?.corpusKey === undefined ? {} : { corpusKey: settled.corpusKey }),
                 status,
               }
@@ -259,10 +214,9 @@ export function useChat(
 
   const run = useCallback(
     async (question: string, answerId: string, attachments?: string[]) => {
-      // Only the newest turn may write status, announcement or error. The
-      // abort of the turn before it is handled a tick later, and without this
-      // guard it says «Genereringen ble avbrutt.» over the new turn and takes
-      // the stop button away from a generation that is still running.
+      // Only the newest turn may write status, announcement or error: the
+      // abort of the one before it lands a tick later and would say
+      // «Genereringen ble avbrutt.» over a generation that is still running.
       const turn = (turnRef.current += 1);
       const isCurrentTurn = () => turnRef.current === turn;
 
@@ -386,13 +340,9 @@ export function useChat(
                 return;
               }
 
-              /*
-               * Not a failure: an answer with an empty source list
-               * (API-bestilling A16), so the turn finishes rather than fails
-               * and the empty `sources` stops the panel waiting for excerpts
-               * that are not coming. It arrives as an `error` event because
-               * that is the frame ending a stream with no content.
-               */
+              // Not a failure but an answer with an empty source list
+              // (API-bestilling A16), so the turn finishes and the panel
+              // stops waiting for excerpts that are not coming.
               if (event.error.code === 'no-hits') {
                 patchAnswer(answerId, (message) => ({
                   ...message,
@@ -499,11 +449,9 @@ export function useChat(
   const cancel = useCallback(() => abortRef.current?.abort(), []);
 
   const retry = useCallback(() => {
-    /*
-     * The ref is empty for a conversation restored from the store, since
-     * nothing was sent in this browser session. The question is in the thread
-     * either way, or «Generer på nytt» on a restored turn does nothing.
-     */
+    // The ref is empty for a conversation restored from the store. The
+    // question is in the thread either way, or «Generer på nytt» on a
+    // restored turn does nothing.
     const question = lastQuestionRef.current ?? lastQuestionIn(messagesRef.current);
     if (!question) return;
 
