@@ -14,13 +14,11 @@ export type RenameThreadProps = {
  * In the row rather than in a dialog: the name is short, the reader is
  * looking at the row, and a dialog would cover the list they are naming a
  * thread in. «Lagre» and «Avbryt» are on screen, and not only Enter and
- * Escape, because a keyboard shortcut nobody can see is not an interface —
- * the keys work as well, for whoever expects them.
+ * Escape, because a keyboard shortcut nobody can see is not an interface.
  *
- * A blur does nothing. Saving on blur, as a click elsewhere, would rename the
- * thread to whatever half a name was typed when the reader went to check
- * something; cancelling on blur would throw away a name they were about to
- * save. The field waits for one of the two buttons.
+ * A blur does nothing. Saving on blur would rename the thread to whatever
+ * half a name was typed when the reader went to check something; cancelling
+ * on blur would throw away a name they were about to save.
  */
 export function RenameThread({ thread, onSave, onCancel }: RenameThreadProps) {
   const [title, setTitle] = useState(thread.title);

@@ -1,8 +1,7 @@
 import type { Thread } from '../../model';
 
 /**
- * Period grouping for the thread list, decided 2026-09-11
- * (design/svar-skjema.md, answer 6):
+ * Period grouping for the thread list:
  *
  *   I dag · Siste 7 dager · Siste 30 dager · the month before by name
  *   (e.g. juli) · the month before that · … · earlier years as «2025»
@@ -13,7 +12,7 @@ import type { Thread } from '../../model';
  */
 
 export type ThreadGroup = {
-  /** Stable within one render; used as the React key and for the heading id. */
+  /** Stable within one render; used as the React key. */
   id: string;
   /** Norwegian, user-visible. */
   title: string;
@@ -22,9 +21,8 @@ export type ThreadGroup = {
 
 /**
  * Month names in Norwegian, written out rather than taken from
- * `toLocaleDateString`. The list is nine words long, it never changes, and
- * hardcoding it makes the grouping independent of which ICU data the browser
- * or the build agent happens to ship.
+ * `toLocaleDateString`, so the grouping does not depend on which ICU data the
+ * browser or the build agent happens to ship.
  */
 const MONTHS_NB = [
   'januar',
@@ -87,12 +85,11 @@ function bucketFor(date: Date, now: Date): { id: string; title: string } {
  */
 export function groupThreads(threads: Thread[], now: Date = new Date()): ThreadGroup[] {
   /*
-   * The id breaks a tie, and a tie is not hypothetical: the mock fixtures are
-   * stamped from the same clock, and a real backend can write two threads in
-   * the same millisecond. `Array.prototype.sort` is stable, so without a
-   * tiebreak the order is the order the caller happened to pass — which is
-   * one thing in the list and another after a refetch, and the list would
-   * swap two rows for no reason the reader can see.
+   * The id breaks a tie, and ties happen: the mock fixtures are stamped from
+   * the same clock, and a backend can write two threads in the same
+   * millisecond. `Array.prototype.sort` is stable, so without a tiebreak the
+   * order is whatever the caller passed, and a refetch could swap two rows
+   * for no reason the reader can see.
    */
   const newestFirst = [...threads].sort(
     (a, b) =>

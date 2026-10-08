@@ -36,27 +36,25 @@ function keyOf({ dimension, value }: ChosenValue): string {
  *
  * A filter stored on the thread still narrows every question, whether or not
  * the facets can be fetched: the key is missing and the server answers with
- * an empty list, or Typesense is down and it answers 502. Until now the panel
- * then said «Filtrering er ikke tilgjengelig ennå» or «Klarte ikke å hente
- * filtrene» and nothing else, so the reader could neither see the narrowing
- * nor get rid of it (#4 in the trial of the backend, #170). The same goes for
- * one dimension when the facets come back without it.
+ * an empty list, or Typesense is down and it answers 502. Without this block
+ * the reader could neither see the narrowing nor get rid of it. The same
+ * goes for one dimension when the facets come back without it.
  *
- * Without a field the values cannot be changed — there is nothing to choose
- * among — but they can be removed, and that is all this offers.
+ * Without a field the values cannot be changed (there is nothing to choose
+ * among), but they can be removed, and that is all this offers.
  *
  * `Chip.Removable`, one per value, is Designsystemet's own «active filter that
- * can be removed» (chip.md). A field shows its own values as chips inside the
+ * can be removed». A field shows its own values as chips inside the
  * Suggestion, and this shows only the ones no field does, so no value is ever
- * drawn twice (behov-til-komponent.md, «Velg én av to»).
+ * drawn twice.
  *
- * The chips carry the value alone, with no dimension name, and that is not a
- * shortcut: without facets there is neither the dimension's label nor the
- * value's to look up. The value IS the word the reader ticked — `facetsFrom`
- * and the mock both set `label` to the value (see filterSummary.ts in the chat
- * view) — so it is shown as it is, in the panel's dimension order. That is
- * word for word the «Avgrenset til: Årsrapport · 2024» line over the answer,
- * which is why the heading says the same.
+ * The chips carry the value alone, with no dimension name: without facets
+ * there is neither the dimension's label nor the value's to look up. The
+ * value IS the word the reader ticked (`facetsFrom` and the mock both set
+ * `label` to the value; see filterSummary.ts in the chat view), so it is
+ * shown as it is, in the panel's dimension order. That is word for word the
+ * «Avgrenset til: Årsrapport · 2024» line over the answer, which is why the
+ * heading says the same.
  *
  * The view mounts this only while there is something to show, so the block
  * and its section come and go together, and the last removal unmounts it.
@@ -82,7 +80,7 @@ export function ActiveFilter({
   /*
    * A chip that is pressed removes itself, and focus would fall to `<body>`,
    * above the skip link (WCAG 2.4.3). The next chip is where the reader was
-   * heading, and the one before is the fallback when they took the last — the
+   * heading, and the one before is the fallback when they took the last, the
    * same order as «Dine dokumenter» (OwnDocuments.tsx). When none is left,
    * this is unmounted, and the cleanup below takes over.
    */
@@ -94,8 +92,8 @@ export function ActiveFilter({
   }, [selection]);
 
   /*
-   * Every way the block goes away: the last chip or «Tøm» — the view then has
-   * nothing to show here — or the facets arriving, when Typesense is back and
+   * Every way the block goes away: the last chip or «Tøm» (the view then has
+   * nothing to show here), or the facets arriving, when Typesense is back and
    * the refetch a removal started succeeded. A reader standing on a chip
    * would be dropped on `<body>`, in the last case with no action of their
    * own to explain it.
@@ -164,7 +162,7 @@ export function ActiveFilter({
         Two sentences for two situations. Without facets the fields may come
         back, so «før filtrene kan hentes» is true. With fields on screen it
         is not: the facets are here, this dimension is not among them, and no
-        wait will change that (KA CC, bør 1 on #177).
+        wait will change that.
       */}
       <Paragraph data-size="sm" variant="long">
         {hasFields
@@ -176,12 +174,12 @@ export function ActiveFilter({
         {chosen.map((item) => (
           /*
             `data-wrap`: an organisation's name is the information, and the
-            chip's default ellipsis would cut it — the same call the chips
+            chip's default ellipsis would cut it, the same call the chips
             inside the fields make (filters.css).
 
             The accessible name says what pressing does, because the cross is
             a pseudo-element with no text and the chip would otherwise read
-            as the value alone (chip.md, «Tilgjengelighet»).
+            as the value alone.
           */
           <Chip.Removable
             key={keyOf(item)}

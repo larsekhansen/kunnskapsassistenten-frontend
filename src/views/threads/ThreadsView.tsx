@@ -38,10 +38,8 @@ const NEW_THREAD = '\u0000new-thread';
  * by period.
  *
  * The view fetches what it renders, so the shell mounts it without wiring.
- * Data comes from the ChatClient, which is the mock until the live client
- * exists. `useThreadList` reads it again when the conversation on screen
- * moves, so a thread the reader starts while the list is open appears in it
- * without a detour through another view.
+ * `useThreadList` reads again when the conversation on screen moves, so a
+ * thread started while the list is open appears in it.
  */
 export function ThreadsView({
   siblingViews,
@@ -55,17 +53,14 @@ export function ThreadsView({
   // src/layout/openThreadContext.ts.
   const openThreadId = useOpenThread();
   /*
-   * Which corpus a thread was asked of, for the rows — and only when there is
-   * more than one to tell apart. With a single corpus the label would be the
-   * same word under every row in the list, which is noise rather than
-   * information, and the panel pays for it in height.
+   * Which corpus a thread was asked of, only when there is more than one to
+   * tell apart: with one, the same word under every row is noise, and the
+   * panel pays for it in height.
    *
-   * The WHOLE label, not the short name the corpus line above uses: the row
-   * and the chooser name the same corpora, and a reader who picked «Kudos,
-   * 938 dokumenter (mock)» should find those words again under the thread. It
-   * costs a second line when the label is long — see `.threads-view__meta` in
-   * threads.css, which wraps — and that cost belongs to whoever writes the
-   * label in `VITE_KA_DATASETS`.
+   * The whole label, not the corpus line's short name, so the reader finds
+   * the words they picked in the chooser again under the thread. A long label
+   * wraps to a second line (`.threads-view__meta` in threads.css); its length
+   * is set by whoever writes the labels in `VITE_KA_DATASETS`.
    */
   const { options, choosable } = useCorpus();
   const corpusLabel = (key?: string) =>
@@ -79,19 +74,15 @@ export function ThreadsView({
   const startNewThread = useNewThread();
 
   /*
-   * And the panel goes to the filters (issue 75, round 2). A new
-   * thread starts from the whole corpus, and the filter view is where the
-   * reader narrows it before the first question; the thread list has nothing
-   * new to show until that question is asked.
+   * And the panel goes to the filters: a new thread starts from the whole
+   * corpus, the filter view is where the reader narrows it before the first
+   * question, and the thread list has nothing new to show until then.
    *
-   * The same plain click `useNewThread` acts on, and only that: a click that
-   * opens a new tab leaves this page as it was, the panel included. Only
-   * when the slot holds the filters as well, since `onShowView` switches
-   * between the views of one slot.
-   *
-   * Focus stays with the compose field, which is what the click asked for.
-   * The filter view takes focus on a switch only when it was dropped; see
-   * FiltersView.
+   * Only on the plain click `useNewThread` acts on: a click that opens a new
+   * tab leaves this page as it was, the panel included. Only when the slot
+   * holds the filters, since `onShowView` switches between the views of one
+   * slot. Focus stays with the compose field; the filter view takes focus on
+   * a switch only when it was dropped (FiltersView).
    */
   function newThread(event: MouseEvent<HTMLAnchorElement>) {
     startNewThread(event);
@@ -140,10 +131,11 @@ export function ThreadsView({
    * user pressed and dropped focus on the body. The shell says whether a user
    * asked for this view or the page merely opened on it, so this never fires
    * ahead of the skip link. See SlotViewProps.
+   *
+   * Runs on mount only: the flag is set by the button that switches away from
+   * a view, which is in the other view, so it does not flip while this one is
+   * mounted.
    */
-  // The flag is settled before this view mounts and does not flip while it is
-  // mounted: the button that switches away from a view is the only one that
-  // sets it, and it is in the OTHER view. So this runs on mount and no later.
   useEffect(() => {
     if (switchedByUser) filterRef.current?.focus();
   }, [switchedByUser]);
@@ -151,17 +143,16 @@ export function ThreadsView({
   const loading = !failed && !threads;
   /*
    * Known to be empty, as opposed to not known yet. Only then does «Ny tråd»
-   * become «Start din første tråd»; while the list loads, or when it could
-   * not be fetched, it stays «Ny tråd», since a new thread works whether or
-   * not the list does.
+   * become «Start din første tråd»: a new thread works whether or not the
+   * list loaded.
    */
   const empty = threads?.length === 0;
   /*
-   * The search goes with the field. A list that empties while a query stands
-   * — the last thread deleted mid-search — hides the field, and the query
-   * would otherwise come back invisibly with the next thread and filter it
-   * away. Adjusted during render, as React has it for state that follows a
-   * change in what was handed in.
+   * The search goes with the field. A list that empties under a query (the
+   * last thread deleted mid-search) hides the field, and the query would
+   * come back invisibly with the next thread and filter it away. Adjusted
+   * during render, as React recommends for state that follows a change in
+   * what was handed in.
    */
   if (empty && query !== '') setQuery('');
   const trimmed = query.trim().toLocaleLowerCase('nb-NO');
@@ -191,10 +182,9 @@ export function ThreadsView({
     actions.rename(thread, title).catch(() => {
       /*
        * Back to the old title only if the row still shows the one this call
-       * sent, the rule the rename store keeps for the heading
-       * (threadActions.ts). Renamed again in the meantime, the row is the
-       * later rename's, and there is nothing to put back or to tell the
-       * reader.
+       * sent, the rule the rename store in threadActions.ts keeps for the
+       * heading. Renamed again since, the row is the later rename's, and
+       * there is nothing to put back or to tell the reader.
        */
       let putBack = false;
       change((list) =>
@@ -217,20 +207,18 @@ export function ThreadsView({
 
   /*
    * A deletion, the same way: the row goes at once, and comes back if the
-   * backend says no.
+   * backend says no. It is put back by id, and the list sorts itself by
+   * `updatedAt`, so it lands where it was.
    *
-   * Focus goes to the next row's menu — where a reader clearing out old
-   * threads is heading — then the one before, and to «Start din første tråd»
-   * when the list is empty. The row is put back by id, and the list sorts
-   * itself by `updatedAt`, so it lands where it was.
+   * Focus goes to the next row's menu, where a reader clearing out old
+   * threads is heading, then the one before, and to «Start din første tråd»
+   * when the list is empty.
    *
-   * The thread on screen is left for a new one, since there is nothing to
-   * show for it any more. If the delete then fails, the row is back in the
-   * list and one click away. By the «Ny tråd» count as well as the address:
-   * a thread started on `/` is still `/` to the router, so the navigation
-   * alone left the deleted conversation on screen, and the next question
-   * went to it. Only the count, not the rest of «Ny tråd»: focus stays in
-   * the list and the filter as it is.
+   * The thread on screen is left for a new one, by the «Ny tråd» count as
+   * well as the address: a thread started on `/` is still `/` to the router,
+   * so navigating alone would leave the deleted conversation on screen and
+   * send the next question to it. Only the count, not the rest of «Ny tråd»:
+   * focus stays in the list, and the filter as it is.
    */
   function remove(thread: Thread) {
     if (!actions) return;
@@ -264,11 +252,9 @@ export function ThreadsView({
   return (
     <div className="threads-view" aria-busy={loading || undefined}>
       {/*
-        The way in to filtering. The slot tells the view which other views it
-        holds, so the button appears only when there is somewhere to go.
-        Conditional rendering, not Tabs: this is navigation between two modes,
-        not two views that exist side by side. See
-        design/designsystemet/behov-til-komponent.md.
+        Only when the slot holds the filter view. Conditional rendering, not
+        Tabs: this is navigation between two modes, not two views that exist
+        side by side.
       */}
       {siblingViews.includes('filters') && (
         <Button
@@ -283,23 +269,16 @@ export function ThreadsView({
       )}
 
       {/*
-        No `aria-current` here, and that is the same distinction the rows
-        below make: «Ny tråd» is an ACTION, and marking it as the current page
-        told a screen reader user that the button they are about to press is
-        the page they are already on. The thread rows are places, and they are
-        marked (answer 7).
+        No `aria-current`: «Ny tråd» is an action, and marking it as the
+        current page tells a screen reader user that the button they are about
+        to press is the page they are on. The thread rows are places, and they
+        are marked.
 
-        Over an empty list it is «Start din første tråd», and it is alone
-        there (issue 82, round 2): «Ingen tråder ennå» and the sentence
-        under it said twice what the button says once. The same link with
-        other words rather than a second link further down, so it stands
-        exactly where «Ny tråd» stands — lower down, it had the hit count's
-        empty region and one more gap over it, 48 px under «Filtrer
-        dokumenter» against 24. And focus has one element to go to when the
-        last thread is deleted.
-
-        A screen reader loses nothing it needs without the heading. The
-        panel's level 2, «Tidligere tråder», still follows, and «første» says
+        Over an empty list it is «Start din første tråd», alone: an empty-state
+        message would say twice what the button says once. The same link with
+        other words, not a second link further down, so it stands where «Ny
+        tråd» stands and focus has one element to go to when the last thread is
+        deleted. The hidden level 2 heading still follows, and «første» says
         the list is empty.
       */}
       <Button asChild>
@@ -310,13 +289,10 @@ export function ThreadsView({
       </Button>
 
       {/*
-        «Tidligere tråder» is gone from the screen (decided 23.09): the panel is
-        a list of threads, the search field says «Søk i tråder», and the
-        groups under it name themselves. It stays for a screen reader, and
-        that is measured rather than kept out of habit — the group headings
-        are level 3, so without a level 2 over them the panel jumps from the
-        page's h1 to h3 and a reader moving by headings loses the step that
-        says what the list under it is.
+        Hidden on screen: the search field says «Søk i tråder», and the groups
+        name themselves. Kept for a screen reader: the group headings are level
+        3, and without a level 2 over them the panel jumps from the page's h1
+        to h3, losing the step that says what the list is.
       */}
       <Heading level={2} data-size="xs" className="ds-sr-only">
         Tidligere tråder
@@ -327,10 +303,9 @@ export function ThreadsView({
         Search.Clear work, since that button is type="reset". Submitting
         does nothing because the list filters as the user types.
 
-        Not drawn over a list known to be empty (KA CC on #197, the same
-        thought as issue 82): there is nothing to search, and «Start
-        din første tråd» should stand alone. While the list loads, or could
-        not be fetched, it stays, as «Ny tråd» does.
+        Not drawn over a list known to be empty: there is nothing to search,
+        and «Start din første tråd» should stand alone. While the list loads,
+        or could not be fetched, it stays, as «Ny tråd» does.
       */}
       {!empty && (
         <search className="threads-view__search">
@@ -351,10 +326,9 @@ export function ThreadsView({
       {/*
         The hit count, and the loading message under it, are both rendered
         permanently with their text coming and going. A live region only
-        announces content that appears inside a region that already existed,
-        so mounting the region together with its text — which is what a
-        `{trimmed && …}` around it did — said nothing on the first search.
-        ErrorState keeps its alert container for the same reason.
+        announces content that appears inside a region that already exists,
+        so mounting the region together with its text says nothing on the
+        first search. ErrorState keeps its alert container for the same reason.
       */}
       <Paragraph asChild data-size="sm">
         <output id={searchStatusId} className="threads-view__search-status">
@@ -395,14 +369,9 @@ export function ThreadsView({
       {groups.map((group) => (
         <section key={group.id} className="threads-view__group">
           {/*
-            The heading on its own, without `PanelHeader` (decided 23.09):
-            bigger, in the default text colour, and without the box that
-            component draws around a panel's top. It is a label over a group
-            of rows, not the head of a panel — the panel's head is the row
-            above with «Skjul tråder og filter» in it.
-
-            Level 3 unchanged: the semantics are the same as before, and it is
-            only the size and the wrapper that moved.
+            A plain heading, not `PanelHeader`: it labels a group of rows and
+            is not the head of a panel, which is the row above with «Skjul
+            tråder og filter» in it.
           */}
           <Heading level={3} data-size="xs" className="threads-view__group-title">
             {group.title}
@@ -422,9 +391,7 @@ export function ThreadsView({
                       {/*
                         Its own component because it measures itself: a title
                         cut off at one line shows the whole row again on hover
-                        and on focus, and a title that fits does not. The row
-                        is the whole link — title, time and corpus. See
-                        ThreadLink.tsx.
+                        and on focus.
                       */}
                       <ThreadLink
                         thread={thread}

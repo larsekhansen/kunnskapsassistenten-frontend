@@ -23,7 +23,8 @@ import {
 const HINT = 'Skriv et år eller en periode, som 2021 eller 2023–2028';
 
 /**
- * The year filter as periods, behind the `year-ranges` flag (#115).
+ * The year filter as periods, behind the `year-ranges` flag
+ * (digdir/kunnskapsassistenten#115).
  *
  * The same field as `FacetField` — Designsystemet's Suggestion with
  * `multiple`, the same label row, «Velg alle», «Tøm» and the limit — with two
@@ -39,8 +40,8 @@ const HINT = 'Skriv et år eller en periode, som 2021 eller 2023–2028';
  *   2. The chips are periods. The selection is still a list of years — that
  *      is what the backend takes — and the chips are that list drawn by
  *      `toRanges`: years in a row are one chip, a gap starts the next. A chip
- *      is removed as one; taking one year out of the middle of a period is
- *      not in this round.
+ *      is removed as one; one year cannot be taken out of the middle of a
+ *      period.
  */
 export function YearRangeField({ ref, facet, selected, onChange }: FacetFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -166,19 +167,17 @@ export function YearRangeField({ ref, facet, selected, onChange }: FacetFieldPro
           {/*
             The options or the hint, never both. u-datalist decides whether the
             empty option shows when the input event arrives, before React has
-            drawn the options, so with both in the list the hint stood over
-            the options it was wrong about (measured in Chromium).
+            drawn the options, so with both in the list the hint would stand
+            over the options it is wrong about.
 
             The hint is an option too, with an empty value: a click on it
-            empties the field. While a year was half typed («2», «202») it was
-            all the list held, and a click there took the text away instead
-            of choosing anything (measured on main 879f0de). So it is only
-            there when nothing fits.
+            empties the field instead of choosing anything. That is another
+            reason it is only there when nothing fits.
 
             The `label` of the period the text reads as is the text as typed.
             Enter in the field chooses the option whose label is what the
             field holds, as it does in the other fields when a value's name
-            is typed in full — so «23-28» and Enter is 2023–2028. The others
+            is typed in full, so «23-28» and Enter is 2023–2028. The others
             are labelled as they read. What the reader sees and hears is the
             children: the period written out, and its documents.
           */}

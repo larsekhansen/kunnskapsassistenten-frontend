@@ -14,20 +14,18 @@ export type ThreadMenuProps = {
 /**
  * «Endre navn» and «Slett» for one thread, behind a button on its row.
  *
- * Designsystemet's `Dropdown`, which is a list of buttons and not an ARIA
- * menu, and that is the recommendation rather than a shortcut: two actions
- * with Tab between them read plainly, and a `role="menu"` without the arrow
- * keys and typeahead of the pattern would be worse than none (dropdown.md,
- * «Tilgjengelighet»).
+ * Designsystemet's `Dropdown`, a list of buttons and not an ARIA menu, as
+ * Designsystemet recommends: two actions with Tab between them read plainly,
+ * and a `role="menu"` without the arrow keys and typeahead of the pattern
+ * would be worse than none.
  *
  * Beside the row and not inside it. The row is a link over its whole width,
  * and a button inside a link is invalid markup and two controls in one tab
- * stop (ThreadLink.tsx).
+ * stop.
  *
  * Controlled, because a press inside the list does not close it: the
- * popover only closes on its trigger, outside, or Escape. An action that
- * leaves the list open would leave it floating over the rename field it just
- * opened.
+ * popover only closes on its trigger, outside, or Escape. A list left open
+ * would float over the rename field the action just opened.
  */
 export function ThreadMenu({ thread, onRename, onDelete, ref }: ThreadMenuProps) {
   const [open, setOpen] = useState(false);
@@ -40,9 +38,8 @@ export function ThreadMenu({ thread, onRename, onDelete, ref }: ThreadMenuProps)
   return (
     <Dropdown.TriggerContext>
       {/*
-        The title is in the name. «Flere valg» on every row is one control a
-        screen reader user cannot tell apart from the next (the same reason
-        «Fjern» carries the file name in OwnDocuments).
+        The title is in the name: «Flere valg» alone on every row is a control
+        a screen reader user cannot tell apart from the next.
       */}
       <Dropdown.Trigger
         ref={ref}

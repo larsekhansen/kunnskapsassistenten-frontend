@@ -11,21 +11,16 @@ export type SignedInProps = {
 /**
  * Who is signed in, and «Logg ut», at the end of the thread list.
  *
- * At the END of the view, and not pinned to the bottom of the panel, which is
- * where chat apps usually put it. A pinned line would sit over the list, and
- * a row the keyboard moves to can scroll in under it: the browser scrolls a
- * focused element into view without knowing what is pinned, and a row hidden
- * under the line is the thing WCAG 2.4.11 (Focus Not Obscured) forbids.
- * Keeping the rows clear would take a `scroll-padding` on the panel's own
- * scrolling region, which belongs to the shell. Here it is where the tab
- * order already ends, after the last thread.
+ * At the end of the view rather than pinned to the bottom of the panel: a
+ * pinned line would cover rows the keyboard scrolls to (WCAG 2.4.11, Focus
+ * Not Obscured), and keeping them clear would take a `scroll-padding` on the
+ * shell's scrolling region.
  *
- * Nothing at all without a session — in mock, in live and behind a BFF with
- * sign-in turned off (session.ts).
+ * Nothing without a session: in mock, in live, and behind a BFF with sign-in
+ * off.
  *
- * «Logg ut» is a link and not a button: it goes to `/auth/logout`, which ends
- * the session and sends the browser on to Entra. It is a navigation, and a
- * full one, so it is an `<a>` and not the router's.
+ * A plain `<a>`, not the router's: `/auth/logout` is a full navigation that
+ * ends the session and goes on to Entra.
  */
 export function SignedIn({ session: given }: SignedInProps) {
   const [session, setSession] = useState<Session | undefined>(given ?? undefined);
@@ -51,12 +46,9 @@ export function SignedIn({ session: given }: SignedInProps) {
         </span>
       </Paragraph>
       {/*
-        `beforeLogout` empties what this browser kept of the reader's answers.
-        A click, Enter and Ctrl- or Cmd-click all fire `click`; a middle click
-        that opens the link in a new tab fires only `auxclick` (KA CC on #243).
-        Only the middle button: `auxclick` fires for the right button too, and
-        a context menu is not a logout. «Åpne i ny fane» from that menu fires
-        nothing here, and is the server's to handle behind the BFF.
+        A middle click opens the link in a new tab and fires only `auxclick`.
+        Only button 1: `auxclick` fires for the right button too, and a context
+        menu is not a logout. «Åpne i ny fane» from that menu fires nothing.
       */}
       <Link
         href={session.logoutUrl}

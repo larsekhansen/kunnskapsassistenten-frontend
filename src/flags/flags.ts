@@ -2,18 +2,17 @@
  * Feature flags: experiments that can be tried side by side and taken out
  * again once a choice is made.
  *
- * Not settings. A setting (`#innstillinger`) is a choice that stays, like how
- * much of the answer's making to show. A flag is a trial of something that is
- * not decided yet, such as the panels as a row at the top on a phone (#120),
- * and every flag here is meant to be removed: either the trial becomes the
- * way the app works, or it goes.
+ * Not settings. A setting (`#innstillinger`) is a choice that stays. A flag
+ * is a trial of something that is not decided yet, and every flag here is
+ * meant to be removed: either the trial becomes the way the app works, or it
+ * goes.
  *
  * Every flag is off unless this browser has turned it on, in the hidden menu
  * (`#feature-flags`) or with a link (`?flagg=<id>`, see `flagLink.ts`).
  *
  * Shaped like `src/layout/footerMode.ts`: a module store read through
  * `useSyncExternalStore`, the same storage guard, and a value read once and
- * kept so the snapshot is stable. One stored object for all flags rather than
+ * kept so the snapshot is stable. One stored list for all flags rather than
  * one key each, so «Logg ut» has one key to remove and a flag taken out of
  * the list leaves nothing behind that anything reads.
  */

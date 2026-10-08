@@ -14,37 +14,25 @@ export type CorpusLineProps = {
 /**
  * What the reader is searching, on one line.
  *
- * The whole sentence — «Dokumenter fra Kudos: 938 dokumenter, årsrapporter,
- * …» — wrapped to two lines in a 327 px panel and took 63 px of a filter head
- * that measured 179 at 1440. The panel is over its height budget, and this is
- * N2 in hoydebudsjett-forslag-2026-09-21: keep the name, put the rest behind
- * «Vis mer».
- *
- * The name is the right half to keep, and that follows from #103 and #106
- * rather than from taste: it is the half that CHANGES when a reader switches
- * corpus, and the half that says where the answers come from (brukerreiser
- * punkt 11). What is inside a corpus is the same sentence every time it is
- * read.
+ * The whole sentence wraps to two lines in the panel, so only the name stays
+ * on screen and the rest goes behind «Vis mer». The name is the half that
+ * changes when a reader switches corpus, and the half that says where the
+ * answers come from; what is inside a corpus reads the same every time.
  *
  * A button with `aria-expanded` rather than `Details`: a `Details` summary is
- * a block and would start its own line, which is the 32 px this exists to
- * save. The button sits at the end of the name's line instead, and the detail
- * opens under it.
+ * a block and would start its own line, which is the line this exists to
+ * save. The button sits at the end of the name's line, and the detail opens
+ * under it.
  *
- * The state is not remembered — deliberately, and it is in the brief. A
- * reader who opened it once has read it; reopening the panel tomorrow starts
- * from the short line again, which is the line the height budget assumes.
+ * The open state is deliberately not remembered: a reader who opened it once
+ * has read it, and the panel starts from the short line again.
  *
- * It does survive a corpus switch, and that is a choice rather than an
- * oversight (KA CC, #114): a reader who has opened the detail is reading what
- * is in the corpus, and that is exactly the question they are asking again
- * when they pick another one. Closing it would hide the answer at the moment
- * it changed. The name above it changes in the same render, so nothing claims
- * the new text belongs to the old corpus.
+ * It does survive a corpus switch, on purpose: a reader who has opened the
+ * detail is reading what is in the corpus, which is what changed. The name
+ * changes in the same render, so the new text never sits under the old name.
  *
- * The visible words stay «Vis mer» — the line beside them says what of — but
- * the accessible name says it too, for a reader who lists the buttons on the
- * page and hears them out of context (KA CC, #114).
+ * The visible words stay «Vis mer», but the accessible name says what of, for
+ * a reader who lists the buttons on the page and hears them out of context.
  */
 export function CorpusLine({ facets, corpus }: CorpusLineProps) {
   const { source, detail } = corpusLine(facets, corpus);
@@ -64,15 +52,13 @@ export function CorpusLine({ facets, corpus }: CorpusLineProps) {
               The button is the semantics: this opens something on the page,
               it is not a place to go, and `aria-expanded` belongs on a
               button. The link is the size: Designsystemet's `Button` is
-              42 px tall at `data-size="sm"` against a 21 px line of text, so
-              a real button set the height of the row and ate most of what
-              this change exists to save (measured: head 158 px with it,
-              139 without). `Link` draws text, so the control is as tall as
-              the line it sits on — and quieter beside a small muted sentence
-              than a filled grey button was.
+              42 px tall at `data-size="sm"` against a 21 px line of text, and
+              would set the height of the row. `Link` draws text, so the
+              control is as tall as the line it sits on, and quieter beside a
+              small muted sentence.
 
-              Nothing of Designsystemet's is overridden to get there; the link
-              styles and the focus ring come from the component.
+              Nothing of Designsystemet's is overridden; the link styles and
+              the focus ring come from the component.
             */}
             <Link asChild className="filters-view__corpus-toggle">
               <button

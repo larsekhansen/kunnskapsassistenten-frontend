@@ -12,14 +12,13 @@ export type DeleteThreadDialogProps = {
 /**
  * «Slette tråden?», before a deletion that cannot be undone.
  *
- * What dialog.md prescribes for exactly this case in KA: modal, closed only
- * by a close request and not by a click on the backdrop, focus on «Avbryt»,
- * and the delete button in `danger`. The focus is set from here rather than
- * with `autoFocus`, which the linter forbids (jsx-a11y) and which
- * Designsystemet only honours at the end of an opening animation — so not
- * at all under `prefers-reduced-motion` (dialog.md, «Kjente begrensninger»). Closing it any other way — Escape, the
- * close button — is «Avbryt», the safe choice («Å lukke uten å velge skal
- * utløse det tryggeste alternativet»).
+ * Modal, closed only by a close request and not by a click on the backdrop,
+ * focus on «Avbryt», and the delete button in `danger`. Closing it any other
+ * way (Escape, the close button) is «Avbryt», the safe choice.
+ *
+ * The focus is set from here rather than with `autoFocus`, which the linter
+ * forbids (jsx-a11y) and which Designsystemet only honours at the end of an
+ * opening animation, so not at all under `prefers-reduced-motion`.
  *
  * Rendered permanently, with `open` following the thread, so the element is
  * there to animate and to take focus the moment one is asked about.

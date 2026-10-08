@@ -20,10 +20,7 @@ const TYPE_LABEL = { pdf: 'PDF', docx: 'DOCX' } as const;
 /**
  * The reader's own documents: a place to drop files, and what they dropped.
  *
- * It was a picture of a feature until now — a dashed box saying upload was
- * not ready — and the box is the same shape, but the flow behind it is real
- * (#117). What it cannot be is honest by accident: in live mode there is no
- * upload endpoint at all (API-bestilling A3), and then the zone says so
+ * In live mode there is no upload endpoint at all, and then the zone says so
  * instead of taking a file and refusing it a moment later.
  */
 export function OwnDocuments() {
@@ -38,11 +35,10 @@ export function OwnDocuments() {
    * Where the keyboard goes when the button it was on removes itself.
    *
    * A control that disappears because of its own action takes the tab order
-   * with it to `<body>`, which is above the skip link (WCAG 2.4.3) — the same
-   * trap that cost #3 four findings, and what KA CC measured here with a real
-   * Tab and Enter. The row below is where the reader was heading, the row
-   * above is the fallback when they removed the last one, and the picker is
-   * what is left when the list is empty.
+   * with it to `<body>`, which is above the skip link (WCAG 2.4.3). The row
+   * below is where the reader was heading, the row above is the fallback when
+   * they removed the last one, and the picker is what is left when the list
+   * is empty.
    *
    * In an effect rather than after `await remove(...)`, because the button to
    * focus does not exist until React has drawn the list without the row that
@@ -90,7 +86,7 @@ export function OwnDocuments() {
    * that appears together with its text is never announced, which is why
    * `ErrorState` keeps its container too.
    *
-   * It says the transitions and not the percentages — «Laster opp», «er
+   * It says the transitions and not the percentages: «Laster opp», «er
    * lastet opp», and the reason it failed. A number that moves twenty
    * times would say the same thing twenty times, and drown the one line
    * that matters.
@@ -119,18 +115,18 @@ export function OwnDocuments() {
 
   if (unavailable !== undefined) {
     /*
-     * Nowhere to upload to yet, drawn the way the design has it (30.09): a box of
-     * its own with «Kommer snart» over the heading, and a zone that looks
-     * switched off — neutral, tinted, a thin grey dash, and no hover. A
+     * Nowhere to upload to yet, drawn the way the design has it: a box of its
+     * own with «Kommer snart» over the heading, and a zone that looks
+     * switched off (neutral, tinted, a thin grey dash, and no hover). A
      * dashed box that lights up under the pointer says «drop here».
      *
      * No picker at all, and so no label either: there is no control for it
      * to name. A control that cannot work is worse than none; it invites the
      * one action the service cannot do, and the reader finds out by failing.
      *
-     * The text keeps its full colour. What says «switched off» is the zone,
-     * the icon and the missing hover, not a faded sentence nobody can read
-     * (KA CC, 30.09: at least 4.5:1).
+     * The text keeps its full colour, at least 4.5:1. What says «switched
+     * off» is the zone, the icon and the missing hover, not a faded sentence
+     * nobody can read.
      *
      * The tag comes first, as it is drawn, and that is also the reading
      * order: it is a note about the whole box. A reader who jumps straight to
@@ -170,19 +166,17 @@ export function OwnDocuments() {
     <section className="documents-list own-documents">
       <div className="own-documents__heading">
         {/*
-          Level 4, a sibling of «Fra Kudos», and the same `2xs` as that one:
-          the spec draws one column with «Dokumenter» over both sources
-          (brukerblikk, funn 12).
+          Level 4, a sibling of «Fra <korpus>», and the same `2xs` as that
+          one: the spec draws one column with «Dokumenter» over both sources.
         */}
         <Heading level={4} data-size="2xs">
           Dine dokumenter
         </Heading>
 
         {/*
-          The Tag came back with the thing it was about. It was taken out
-          because it promised something new directly above a box saying
-          upload did not work (brukerblikk, funn 13) — so it is drawn only
-          where upload actually works, which is this branch.
+          Only where upload actually works, which is this branch: above a
+          box saying upload does not work, «Ny» would promise something new
+          that is not there.
         */}
         <Tag data-color="info" data-size="sm">
           Ny
@@ -190,8 +184,8 @@ export function OwnDocuments() {
       </div>
 
       {/*
-        Designsystemet's own composition, from file-upload.md: the field
-        carries the label and the descriptions, the icon is decorative, and
+        Designsystemet's own composition for FileUpload: the field carries
+        the label and the descriptions, the icon is decorative, and
         the «button» is a span because the real control is the file input
         that CSS lays over the whole surface. A real button inside the click
         surface would be a second tab stop that does nothing.
@@ -235,30 +229,28 @@ export function OwnDocuments() {
  * What to say out loud about an upload, as it changes.
  *
  * Three moments, and only three: a file was taken in, a file is there, a file
- * was refused. The percentage in the row is not one of them — it changes
- * twenty times in a second and a half, and a live region that repeated it
- * would bury the one sentence a reader needs (WCAG 4.1.3 asks for the status,
- * not for every frame of it).
+ * was refused. The percentage in the row is not one of them: it changes many
+ * times a second, and a live region that repeated it would bury the one
+ * sentence a reader needs (WCAG 4.1.3 asks for the status, not for every
+ * frame of it).
  *
- * Derived from the documents rather than from the picker, and that is
- * deliberate: the compose field uploads too (#3), and a reader who attached a
- * file down there should hear the same thing as one who dropped it up here.
+ * Derived from the documents rather than from the picker: the compose field
+ * uploads too, and a reader who attached a file there should hear the same
+ * thing as one who dropped it here.
  *
  * The first render says nothing. Documents restored from the store on load
- * are not news, and announcing «er lastet opp» for three files nobody just
- * touched would be a lie about what is happening now.
+ * are not news.
  */
 function useUploadAnnouncement(documents: UserDocument[]): string {
   const [seen, setSeen] = useState<Map<string, UserDocumentStatus> | undefined>(undefined);
   const [announcement, setAnnouncement] = useState('');
 
   /*
-   * Adjusted during render, not in an effect. This is React's own pattern for
-   * a value that follows a change in what was handed in: the comparison is
-   * against the previous list, and setting state here re-renders before
-   * anything is drawn rather than after — an effect would draw the new row
-   * first and say it afterwards, and the lint rule about cascading renders is
-   * about exactly that.
+   * Adjusted during render, not in an effect, React's own pattern for a value
+   * that follows a change in what was handed in: setting state here
+   * re-renders before anything is drawn. An effect would draw the new row
+   * first and say it afterwards, which is what the lint rule about cascading
+   * renders is about.
    */
   const now = new Map(documents.map((document) => [document.id, document.status]));
 
@@ -307,14 +299,11 @@ function DocumentRow({
           row in a panel that is already over its height budget, and the
           reader can see that it is there.
 
-          The progress is a number in that line and not a bar, although
-          `UserDocument.progress` was made a number «because the design draws
-          a bar» (#117). Two reasons, and both are about this panel: a bar is
-          a row of its own in a column that is already over budget, and the
-          upload it draws lasts about a second and a half — long enough to
-          read four words, too short to watch a bar fill. The number is also
-          what the live region says, so the eye and the ear get the same
-          thing. When a real backend reports slow uploads of large files, this
+          The progress is a number in that line and not a bar, although the
+          design draws one: a bar is a row of its own in a column that is
+          already over budget, and an upload here lasts about a second and a
+          half, long enough to read four words, too short to watch a bar
+          fill. When a real backend reports slow uploads of large files, this
           is the line to revisit.
         */}
         <Paragraph data-size="xs" className="own-documents__meta">

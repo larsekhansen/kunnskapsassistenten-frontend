@@ -7,14 +7,12 @@ import type { AnswerSources, Thread } from '../../model';
 /**
  * The thread list, kept in step with the conversation on screen.
  *
- * `ThreadsView` fetched once on mount, and that was wrong the moment the list
- * could be open while somebody asked a question: the thread they had just
- * made was not in the list until they switched to the filter view and back
- * (measured by KA CC on #63). The list is a view of the same conversations
- * the chat view is writing, so it has to re-read them when they change.
+ * The list can be open while somebody asks a question, and it is a view of
+ * the same conversations the chat view is writing, so it re-reads them when
+ * they change.
  *
  * Nothing polls. The shell already says everything needed to know that
- * something changed — see `conversationRevision` below — so a refresh happens
+ * something changed (see `conversationRevision` below), so a refresh happens
  * on the render where it happened and not a second later.
  */
 export type ThreadList = {
@@ -43,15 +41,14 @@ export type ThreadList = {
  *
  *   The answers that have stopped streaming, which is when a turn has been
  *   written down and the thread's `updatedAt` has moved. Streaming answers
- *   are deliberately left out: the row would be re-read once per token and
- *   nothing about it would differ.
+ *   are left out: the row would be re-read once per token and nothing about
+ *   it would differ.
  *
- * The sources are used as a clock rather than as data — the list draws none
- * of them. It is the only thing the shell holds that moves when an answer
- * lands, and `answers` is the honest half of it: it carries one entry per
- * answer with its status, so it says «a turn settled» without the list having
- * to know anything about what was in it. If the chat view ever stops
- * reporting its answers this stops ticking, and the list would then want a
+ * The sources are used as a clock rather than as data; the list draws none
+ * of them. They are the only thing the shell holds that moves when an answer
+ * lands, and `answers` has one entry per answer with its status, so it says
+ * «a turn settled» without the list knowing what was in it. If the chat view
+ * stops reporting its answers this stops ticking, and the list then needs a
  * signal of its own from the shell.
  */
 export function conversationRevision(

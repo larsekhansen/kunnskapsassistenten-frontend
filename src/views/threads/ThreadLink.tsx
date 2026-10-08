@@ -31,26 +31,21 @@ type Anchor = { top: number; left: number };
  * One thread's row: the title on one line, and under it when it was last
  * touched and which corpus it was asked of.
  *
- * THE WHOLE ROW IS THE LINK (decided 23.09). The time and the corpus used to
- * sit beside it, outside the link, so the bottom half of every row was dead
- * to the pointer. They are inside it now, and the name is still the title
- * alone: `aria-labelledby` points at the title span, so a screen reader says
- * «NKOM måloppnåelse, lenke» and not «NKOM måloppnåelse 14:32 Kudos, 938
- * dokumenter (mock)» — a name that changes as the clock moves and that nobody
- * can ask for by voice. That is the reason the two were kept out of the link
- * in #67 and #106, and it still holds; only the click surface changed.
+ * The whole row is the link, so the pointer hits it wherever it lands, but
+ * the name is the title alone: `aria-labelledby` points at the title span, so
+ * a screen reader says «NKOM måloppnåelse, lenke» and not a name with the
+ * time and corpus in it, which changes as the clock moves and that nobody can
+ * ask for by voice.
  *
- * One line, always, with an ellipsis (decided 23.09). `Thread.title` is the
- * reader's own question until a backend writes a real title, so an untitled
- * thread was the one row that took two lines where «NKOM måloppnåelse» took
- * one. The whole title stays in the DOM and is read by a screen reader; what
- * is cut is only what is drawn.
+ * One line, always, with an ellipsis: `Thread.title` is the reader's own
+ * question until a backend writes a real title, and an untitled thread would
+ * otherwise be the one row that takes two lines. The whole title stays in the
+ * DOM for a screen reader; only what is drawn is cut.
  *
  * What is cut comes back on hover and on focus, as a box that may hang over
- * the panel's edge — see {@link RowOverlay}. It replaces the `title`
- * attribute the row used to carry: a native tooltip cannot be styled, cannot
- * hold the metadata line, and is read as a description after the name a
- * screen reader has just said.
+ * the panel's edge (see {@link RowOverlay}). Not the `title` attribute: a
+ * native tooltip cannot be styled, cannot hold the metadata line, and is read
+ * as a description after the name a screen reader has just said.
  */
 export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
   const titleId = useId();
@@ -69,22 +64,16 @@ export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
      * An ellipsis leaves the element's own box at one line and the content
      * wider. The pixel of slack is for sub-pixel text widths, which round the
      * two apart on a row where nothing is hidden.
-     *
-     * Width rather than height now that the row is one line: the question is
-     * no longer whether a third line fell off, but whether the end of the
-     * sentence did.
      */
     const measure = () => setClipped(element.scrollWidth - element.clientWidth > 1);
     measure();
 
     /*
-     * Again when the web font has arrived.
-     *
-     * Inter is loaded from altinncdn, and `document.fonts.status` is still
-     * `loading` while these rows first measure themselves — so the first
-     * answer is about the fallback face, whose metrics are not Inter's. A row
-     * that fits in the fallback and not in Inter kept its tooltip off, and
-     * the reader had no way to the rest of the question (KA CC on #80).
+     * Again when the web font has arrived. Inter is loaded from altinncdn and
+     * is often still loading when these rows first measure themselves, so
+     * the first answer is about the fallback face. A row that fits in the
+     * fallback and not in Inter would get no box, and the reader no way to
+     * the rest of the question.
      *
      * `document.fonts` is absent in jsdom, so this is read as optional.
      */
@@ -109,11 +98,11 @@ export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
       observer.disconnect();
     };
     /*
-     * `current` is in here for a reason a resize cannot cover: the open row is
-     * drawn semibold (see threads.css), which makes the same title about 6 px
-     * wider without changing the box it is drawn in. `ResizeObserver` watches
-     * the box, so it stays silent through exactly the change that can push
-     * the end of a title out of sight. Measured by KA CC on #80.
+     * `current` is in here for a change a resize cannot catch: the open row is
+     * drawn semibold (threads.css), which makes the same title wider without
+     * changing its box. `ResizeObserver` watches the box, so it stays silent
+     * through exactly the change that can push the end of a title out of
+     * sight.
      */
   }, [thread.title, current]);
 
@@ -121,7 +110,7 @@ export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
     const row = rowRef.current;
     // Only when something is actually hidden. A box that repeats a title the
     // reader can already see whole promises them the rest and hands them the
-    // same sentence — the rule the `title` attribute followed before it.
+    // same sentence.
     if (!row || !clipped) return;
 
     const box = row.getBoundingClientRect();
@@ -131,14 +120,14 @@ export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
   const hide = useCallback(() => setAnchor(undefined), []);
 
   /*
-   * The pointer left the row — or the box — but not necessarily the pair.
+   * The pointer left the row or the box, but not necessarily the pair.
    *
-   * The box hangs past the row's right edge, and moving out there is moving
-   * off the row: with a plain `pointerleave` the box shut itself while the
-   * pointer was standing on it, which is the classic failure of WCAG 1.4.13
-   * «hoverable» (KA CC on #160). `relatedTarget` is where the pointer went,
-   * so the two elements can be treated as one surface — and it is read
-   * rather than timed, so nothing depends on how fast anybody moves.
+   * The box hangs past the row's edge, and moving out there is moving off the
+   * row: with a plain `pointerleave` the box would shut while the pointer is
+   * on it, the classic failure of WCAG 1.4.13 «hoverable». `relatedTarget` is
+   * where the pointer went, so the two elements can be treated as one surface,
+   * and it is read rather than timed, so nothing depends on how fast anybody
+   * moves.
    *
    * `null` means it left for somewhere with no element under it, the window
    * included. That is a leave.
@@ -147,9 +136,9 @@ export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
     /*
      * `instanceof Node` and not a cast: `relatedTarget` is typed as an
      * element but is not always one. It is `null` when the pointer left for
-     * nowhere, and in jsdom it is a bare object — which `Node.contains`
+     * nowhere, and in jsdom it is a bare object, which `Node.contains`
      * rejects with a TypeError, so a cast would throw inside the handler and
-     * leave the box open for ever (measured while writing the test below).
+     * leave the box open for ever.
      */
     const to = event.relatedTarget;
     const node = to instanceof Node ? to : null;
@@ -161,16 +150,14 @@ export function ThreadLink({ thread, current, corpusLabel }: ThreadLinkProps) {
     <>
       <Link asChild data-size="sm" className="threads-view__thread">
         {/*
-          `aria-current="page"` — not the colour — is what makes the open
-          thread available to a screen reader, and the style hangs off the
-          same attribute so the two can never drift.
+          `aria-current="page"`, not the colour, is what makes the open thread
+          available to a screen reader, and the style hangs off the same
+          attribute so the two can never drift.
 
-          It came from `NavLink`, which reads the router's location, until
-          2026-09-15. That missed the commonest way in: a conversation the
-          reader starts on `/` gets its address from `history.replaceState`,
-          which the router never sees, so the thread they had just made stayed
-          unmarked until a reload (KA CC). The shell knows which conversation
-          is on screen however the address got there; see openThreadContext.ts.
+          From the shell, not `NavLink`: a conversation started on `/` gets
+          its address from `history.replaceState`, which the router never
+          sees. The shell knows which conversation is on screen however the
+          address got there; see openThreadContext.ts.
         */}
         <RouterLink
           ref={rowRef}
@@ -229,21 +216,19 @@ export type RowOverlayProps = {
 /**
  * The row again, whole, across the panel's edge.
  *
- * INSIDE the link, and that is the whole trick: `position: fixed` takes it
- * out of the panel's scrolling box — which clips its children, and crossing
- * that edge is the one thing this box exists to do — while the DOM keeps it
- * a descendant of the row. So a click on the box is a click on the row, with
- * middle-click and «open in new tab» included, and nothing has to re-state
- * where the row goes. It was a portal on `document.body` until KA CC measured
- * #160: the box covered the row and swallowed the click.
+ * Inside the link, and that is the whole trick: `position: fixed` takes it
+ * out of the panel's scrolling box, which clips its children, while the DOM
+ * keeps it a descendant of the row. So a click on the box is a click on the
+ * row, middle-click and «open in new tab» included, and nothing has to
+ * re-state where the row goes. A portal on `document.body` would cover the
+ * row and swallow the click.
  *
- * It is anchored at the row's own top-left corner and painted in the row's
+ * It is anchored at the row's own top start corner and painted in the row's
  * hover surface and radius, so it reads as the row growing rather than as a
  * second thing appearing elsewhere.
  *
- * `aria-hidden`, and that is not a shortcut: the whole title is already in
- * the row's DOM and is already the link's accessible name, so a screen reader
- * has it. Saying it again here would read the same sentence twice.
+ * `aria-hidden`: the whole title is already the link's accessible name, and
+ * saying it again here would read the same sentence twice.
  *
  * WCAG 1.4.13 (content on hover or focus):
  *
@@ -254,10 +239,8 @@ export type RowOverlayProps = {
  *   or Escape. Nothing times it out.
  *   Hoverable — the box takes the pointer, and the row treats the two as one
  *   surface: a move from the row onto the box is not a leave, and neither is
- *   the way back. It had `pointer-events: none` until KA CC measured #160:
- *   the part that hangs past the panel edge is NOT over the row, so the
- *   pointer going there ended the hover and shut the box the reader was
- *   reading.
+ *   the way back. No `pointer-events: none`: the part past the panel edge is
+ *   not over the row, so the pointer going there would end the hover.
  *
  * It is anchored to a place in the window rather than to the row, so a scroll
  * or a resize moves the row out from under it. Both close it.
@@ -265,13 +248,10 @@ export type RowOverlayProps = {
 export function RowOverlay({ anchor, onDismiss, onPointerLeave, ref, children }: RowOverlayProps) {
   useEffect(() => {
     /*
-     * Escape closes the box, and ONLY the box.
-     *
-     * In drawer mode the panel is a `dialog`, and the same key press is the
-     * dialog's own close request: one Escape closed the box AND the drawer,
-     * and moved focus to «Vis tråder og filter» (KA CC on #160). 1.4.13 asks
-     * for a way to dismiss the box WITHOUT moving either, and in the drawer
-     * there was none.
+     * Escape closes the box, and only the box. In drawer mode the panel is a
+     * `dialog`, and the same key press is the dialog's own close request,
+     * which would close the drawer too and move focus; 1.4.13 asks for a way
+     * to dismiss the box without moving either.
      *
      * `preventDefault` in the capture phase, before the dialog gets the key,
      * is the order the platform uses itself: a popover inside a dialog closes
@@ -304,9 +284,8 @@ export function RowOverlay({ anchor, onDismiss, onPointerLeave, ref, children }:
       /*
        * The row's own size scale. Designsystemet's `data-size` rescales the
        * font and spacing tokens for everything under it, and the row is `sm`:
-       * without this the box drew the same title at 14 px against the row's
-       * 16 and the time at 12 against 11, so the box was narrower than the
-       * text it exists to show and never reached the panel edge (measured).
+       * without this the box draws the text at another size than the row, and
+       * comes out narrower than the text it exists to show.
        */
       data-size="sm"
       style={{

@@ -50,8 +50,8 @@ import './filters.css';
 
 /**
  * What the panel says when the filter is changed in a thread that is going on
- * and not locked (issue 90). The first two sentences are also what a
- * screen reader is told when it appears.
+ * and not locked: the note's first two sentences, and what a screen reader is
+ * told when it appears.
  */
 const CHANGED_IN_THREAD =
   'Du har endret filteret i en tråd som er i gang. Nye spørsmål i tråden bruker det nye filteret.';
@@ -75,8 +75,8 @@ export type FiltersViewProps = Pick<SlotViewProps, 'siblingViews' | 'onShowView'
 /**
  * The document filter: what the answer is allowed to build on.
  *
- * This is where a first-time user lands (answer 1), so it is the view that
- * has to be legible without any prior state.
+ * This is where a first-time user lands, so it is the view that has to be
+ * legible without any prior state.
  *
  * The selection is not kept here. The chat view has to ask its question
  * against the same narrowing, and two views may not import each other, so the
@@ -111,15 +111,14 @@ export function FiltersView({
   const chosen = ownChoice ?? selection;
 
   /*
-   * A thread that is going on, and what its filter was when it came on screen
-   * (issue 90).
+   * A thread that is going on, and what its filter was when it came on screen.
    *
    * A locked thread cannot have its filter changed: the fields are not drawn.
    * One that is not — started without a filter, or in a mode that keeps none
-   * — could, and nothing said that the next question would be asked with
-   * something the answers above were not. So a change from what the filter
-   * was when the thread came on screen says so, with the same way out the
-   * lock has: «Ny tråd». Changing it back takes the note away.
+   * — can, and the next question is then asked with something the answers
+   * above were not. So a change from what the filter was when the thread came
+   * on screen says so, with the same way out the lock has: «Ny tråd».
+   * Changing it back takes the note away.
    *
    * «When it came on screen» and not «what its questions were asked with»,
    * which an unlocked thread does not keep. A thread started here comes on
@@ -139,12 +138,12 @@ export function FiltersView({
    * conversation, the drawer out of the way and the keyboard in the compose
    * field, as the thread list's — and the reader's filter kept, which is the
    * difference. `useNewThread` empties it, because a new thread from the list
-   * starts from the whole corpus (issue 114); from here the reader has just
-   * said which filter they want, and is starting over to use it.
+   * starts from the whole corpus; from here the reader has just said which
+   * filter they want, and is starting over to use it.
    *
-   * A plain link to `/` did not do it. The chat slot keys `/` on «Ny tråd»
-   * being pressed, so for a thread started on this page the address changed
-   * and the conversation and the lock stayed (measured in live, 05.10).
+   * Not a plain link to `/`: the chat slot keys `/` on «Ny tråd» being
+   * pressed, so for a thread started on this page only the address would
+   * change, and the conversation and the lock would stay.
    */
   const startNewThread = useNewThread();
   function newThread(event: MouseEvent<HTMLAnchorElement>) {
@@ -169,9 +168,8 @@ export function FiltersView({
    * removed from a filter that has no field to show it in (ActiveFilter).
    *
    * The region already exists and already announces «Henter filtre»; this
-   * reuses it rather than adding a second one, which is what the brief asks
-   * and what a panel with two announcers would get wrong anyway — two regions
-   * mean two voices and no order between them.
+   * reuses it rather than adding a second one: two regions mean two voices
+   * and no order between them.
    *
    * The switch itself is silent on screen: the panel is redrawn and the
    * address goes to `/`, neither of which a screen reader reads out. Without
@@ -227,12 +225,10 @@ export function FiltersView({
   /*
    * Whether the corpus needs a fetch of its own.
    *
-   * It used to get one for free: the selection started empty, so the first
-   * conditional fetch WAS the unconditional one. #39 restores a saved filter
-   * before this view mounts, and with one saved the first fetch is already
-   * narrowed — `corpus` was then never set and the line fell back to
-   * «Dokumenter fra Kudos» alone, on exactly the reload where the user had
-   * most reason to want it. KA CC's follow-up on #34.
+   * With an empty selection the first conditional fetch IS the unconditional
+   * one. But a saved filter is restored before this view mounts, and with one
+   * saved the first fetch is already narrowed: without a fetch of its own,
+   * `corpus` is never set and the line falls back to the corpus name alone.
    *
    * Read once, at mount, because that is the question: was the selection
    * empty when this view opened? Later changes cannot make the first fetch
@@ -245,17 +241,13 @@ export function FiltersView({
   /*
    * The corpus the facets on screen were counted from.
    *
-   * They were counted once, when the page loaded, and then stayed: after a
-   * switch «Virksomheter» still offered Kudos's 259 values and «Vis mer»
-   * still said 938 documents, until a reload put it right (KA CC on #131).
-   * The reader could pick a value the corpus does not have, and it went with
-   * the question.
-   *
-   * Dropped rather than left standing while the new ones load: the old values
-   * belong to the other corpus, and a field that offers them is the bug. The
-   * fields go to skeleton for one request, which is what they do on a reload
-   * anyway. A selection change still keeps its counts on screen — see the
-   * fetch below; that is the same corpus and only a narrowing.
+   * On a switch the facets are dropped rather than left standing while the
+   * new ones load: the old values belong to the other corpus, and a reader
+   * could pick one the new corpus does not have and send it with the
+   * question. The fields go to skeleton for one request, which is what they
+   * do on a reload anyway. A selection change still keeps its counts on
+   * screen — see the fetch below; that is the same corpus and only a
+   * narrowing.
    *
    * Adjusted during render rather than in an effect, so the browser never
    * paints the other corpus's numbers: React re-runs the component with the
@@ -317,11 +309,11 @@ export function FiltersView({
   // sets it, and it is in the OTHER view. So this runs on mount and no later.
   //
   // Only when focus really was dropped. «Ny tråd» in the thread list switches
-  // here too (issue 75, round 2), and the focus that click asked for
-  // is the compose field's, which the chat slot takes in an effect of its
-  // own in the same commit. Whichever of the two effects runs first, the
-  // field keeps it: taken first, it is not on the body when this runs; taken
-  // second, it simply moves on from here.
+  // here too, and the focus that click asked for is the compose field's,
+  // which the chat slot takes in an effect of its own in the same commit.
+  // Whichever of the two effects runs first, the field keeps it: taken first,
+  // it is not on the body when this runs; taken second, it simply moves on
+  // from here.
   useEffect(() => {
     const dropped = document.activeElement === null || document.activeElement === document.body;
     if (switchedByUser && dropped) backRef.current?.focus();
@@ -330,9 +322,9 @@ export function FiltersView({
   /*
    * The counts are conditional on the other dimensions: picking one
    * organisation changes how many documents each year has, and leaves that
-   * organisation's own list alone. That is the backend's rule and #33 built
-   * it; this is the caller, and without it the dropdowns showed the whole
-   * corpus no matter what the user had chosen.
+   * organisation's own list alone. That is the backend's rule; this is the
+   * caller, and without it the dropdowns show the whole corpus no matter what
+   * the user has chosen.
    *
    * Refetched on every change of the selection, and `facets` is deliberately
    * NOT cleared first: the fields stay on screen with the old counts until
@@ -340,11 +332,11 @@ export function FiltersView({
    * The cleanup aborts the previous request, so two answers cannot arrive out
    * of order and leave the counts from a selection the user has moved past.
    *
-   * An answer also clears the error. Only «Prøv igjen» used to, and it was the
-   * only way the selection could change while the error stood — until the
-   * active filter could be removed without a field (ActiveFilter). A removal
-   * refetches too, and when that one succeeds the fields are back; an alert
-   * saying they could not be fetched may not stand above them.
+   * An answer also clears the error, not only «Prøv igjen»: the active
+   * filter can be removed without a field (ActiveFilter) while the error
+   * stands. A removal refetches too, and when that one succeeds the fields
+   * are back; an alert saying they could not be fetched may not stand above
+   * them.
    */
   useEffect(() => {
     if (given) return;
@@ -366,8 +358,8 @@ export function FiltersView({
      * `active` is in here for its side effect and not because the fetch reads
      * it: the corpus travels on the wire from the store, which the client
      * reads when it builds the request (src/api/corpus.ts), so a switch
-     * changes the answer to the same call. Without it the facets kept the
-     * corpus they were first counted from.
+     * changes the answer to the same call. Without it the facets would keep
+     * the corpus they were first counted from.
      */
   }, [client, given, attempt, selection, active]);
 
@@ -378,9 +370,9 @@ export function FiltersView({
    *
    * A failure here is deliberately silent: the effect above owns `failed`,
    * and it is asking the same endpoint. Losing this one alone costs the
-   * numbers in one sentence, which then says «Dokumenter fra Kudos» — the
-   * same thing it says in live mode. That is a worse sentence, not a broken
-   * panel, and an error region about it would be.
+   * numbers in one sentence, which then reads as it does in live mode. That
+   * is a worse sentence, not a broken panel, and an error region about it
+   * would be.
    */
   useEffect(() => {
     if (given || !needsOwnCorpusFetch) return;
@@ -408,9 +400,9 @@ export function FiltersView({
    *   - The region, when there are no facets. It holds «Filtrering er ikke
    *     tilgjengelig ennå», which says what the panel is now.
    *
-   * The region used to be the target in all three, and after a 502 or with
-   * fields on screen it was empty by then: 0 × 0, with the focus ring cut
-   * away (WCAG 2.4.7; KA CC, kan 1 on #177).
+   * Not the region in all three: after a failed fetch, or with fields on
+   * screen, it is empty by then, 0 × 0, and the focus ring is cut away
+   * (WCAG 2.4.7).
    */
   useLayoutEffect(() => {
     if (!activeFilterLostFocus.current) return;
@@ -424,8 +416,8 @@ export function FiltersView({
   // The announcement goes too. The live region says «Henter filtre» while the
   // retry loads and falls back to the announcement when it is done, and a
   // region whose text changes back is read again: «Fjernet fra filteret:
-  // 2024» a second time, with nothing removed — and the corpus message the
-  // same way (KA CC, kan 2 on #177). It was news once, and it was told.
+  // 2024» a second time, with nothing removed, and the corpus message the
+  // same way. It was news once, and it was told.
   const retry = useCallback(() => {
     setFacets(undefined);
     setFailed(false);
@@ -439,18 +431,14 @@ export function FiltersView({
         The top of the panel, pinned while the facets and the documents scroll
         under it: «Filtrering», and the corpus chooser when there is one.
 
-        Anything the reader can reach up here goes IN the head, and that is
-        the lesson from #55 rather than a preference. The «Tråder»
-        button is the first thing in the tab order here; left below a pinned
-        head it keeps that place, the browser scrolls it to the top of the
-        region when it takes focus, and it arrives underneath — clicks land on
-        the head and the focus ring is invisible. Anything the reader can
-        reach either goes IN the head or stays clear of it, and the way out of
-        this view is not something to make them scroll for.
+        Anything the reader can reach up here goes IN the head or stays clear
+        of it. A control left below a pinned head is scrolled to the top of
+        the region when it takes focus and arrives underneath: clicks land on
+        the head and the focus ring is invisible.
 
-        The «Filtrering» heading comes with it because it names what the
-        button leads away from, and a heading that scrolled off while its own
-        controls stayed would read as a heading for the wrong thing.
+        The «Filtrering» heading comes with the controls because a heading
+        that scrolled off while its own controls stayed would read as a
+        heading for the wrong thing.
 
         The box is the shell's; see src/layout/viewHeadContext.ts.
       */}
@@ -460,17 +448,15 @@ export function FiltersView({
 
         It belongs to the panel and not to what is in it: it says which of the
         two views the panel shows, the way «Skjul tråder og filter» beside it
-        says whether the panel is open at all. Sitting in the view head it
-        also cost 48 px of a head that took 137 of the scrolling window, and
-        the panel scrolls at every width we draw — N1 in
-        design/hoydebudsjett-forslag-2026-09-21.md, decided on 21.09.
+        says whether the panel is open at all. In the view head it would also
+        take height from a scrolling window the panel never has enough of.
 
         Written first in this view so the tab order matches what the reader
         sees: the head row is drawn above the scrolling region, and a portal
         moves the DOM but not the order the browser tabs in. See PanelHead.
 
         On a rail there is no room for a second control, and `PanelHead` draws
-        nothing there — so the rail is exactly as it was.
+        nothing there.
       */}
       {siblingViews.includes('threads') && (
         <PanelHead>
@@ -496,12 +482,10 @@ export function FiltersView({
           the first filter rather than a fact about documents. `Select` and not
           `Suggestion`: one value, a handful of options, and the native
           dropdown is the one control a reader already knows on every
-          platform (select.md).
+          platform.
 
-          Its description used to be the corpus line. The line has moved
-          under the divider (issue 76), and the options already say
-          what each corpus is — «Kudos, 938 dokumenter» — so the field stands
-          without one.
+          No description: the options already say what each corpus is —
+          «Kudos, 938 dokumenter».
 
           Only locally and in mock: a deployment with one corpus, as the test
           environment has in bff mode, draws no chooser at all (corpus.ts).
@@ -548,8 +532,8 @@ export function FiltersView({
 
       {/*
         The note for a thread that is not locked, where the lock would have
-        stood, and with the same way out (issue 90). Designsystemet's
-        info alert: it is something to know, not something that went wrong.
+        stood, and with the same way out. Designsystemet's info alert: it
+        is something to know, not something that went wrong.
         It is not a live region; the panel's own region says it, from
         `change`, so it is said once and not again on every render.
       */}
@@ -621,7 +605,7 @@ export function FiltersView({
 
       {!locked &&
         facets?.map((facet, index) => {
-          /* Behind `year-ranges` (#115): the year field takes periods. */
+          /* Behind `year-ranges`: the year field takes periods. */
           const Field = facet.dimension === 'year' && yearRanges ? YearRangeField : FacetField;
           return (
             <Field
@@ -637,27 +621,23 @@ export function FiltersView({
       {/*
         The line, and everything under it is about documents: which corpus,
         the ones behind the answer, and the reader's own. Everything over it
-        narrows the search. The filters come first, as the design has it
-        (issue 76, 30.09), and the line is the break between the two — the
-        one place in the panel with more air than between two fields. See
+        narrows the search. The line is the break between the two — the one
+        place in the panel with more air than between two fields. See
         `.filters-view__divider`.
       */}
       <Divider className="filters-view__divider" />
 
       {/*
-        What the answers are built on. «Kudos» used to appear nowhere the
-        first-time user could see it, and nothing said how much there is or
-        which years it covers (brukerreiser, punkt 11).
+        What the answers are built on: which corpus, how much there is, and
+        which years it covers.
 
         Read off the UNCONDITIONAL facets — see `corpus` above — so it follows
-        the corpus rather than the user's own narrowing, and it says
-        «Dokumenter fra Kudos» on its own while they load and in live mode,
-        where there is no facet aggregation to read.
+        the corpus rather than the user's own narrowing, and it names only
+        the corpus while they load and in live mode, where there is no facet
+        aggregation to read.
 
-        No longer pinned in the head. It was, so that «3 av 6 valgt» said
-        three of six of what (brukerblikk runde 2, funn 4); the design moved
-        it down with the documents, and the fields still say what they narrow
-        in their own labels.
+        Not in the pinned head: the fields say what they narrow in their own
+        labels.
       */}
       <div className="filters-view__documents">
         <CorpusLine facets={corpus} corpus={option} />
@@ -666,23 +646,14 @@ export function FiltersView({
           The documents the answer builds on, under the corpus they come
           from and over the reader's own.
 
-          This reverses brukerblikk runde 2, funn 4, and on purpose: that put
-          the list above the facets so its first row was visible in a 900 px
-          window with nothing scrolled. The sketch of 30.09 puts the
-          filters first, and after an answer the first row now starts at
-          y = 919 in a 1440 × 900 window (mock, with the corpus chooser), so
-          the reader scrolls to it.
-
-          Answer 2 still holds: the facets keep their full size, since this
-          panel is the only place filtering lives.
+          Below the filters on purpose, even though the reader then scrolls
+          to the first row after an answer: the facets keep their full size,
+          since this panel is the only place filtering lives.
         */}
         <KudosDocuments documents={documents} />
       </div>
 
-      {/*
-        Last: upload does not exist anywhere in the stack yet (API-bestilling
-        A3), so nothing in it changes with the answer.
-      */}
+      {/* Last: nothing in it changes with the answer. */}
       <OwnDocuments />
     </div>
   );

@@ -7,8 +7,8 @@
 /**
  * Norwegian screen reader strings for the multi-select.
  *
- * Measured, not guessed: with `lang="nb"` and Designsystemet 1.21.0, only the
- * clear and toggle buttons get Norwegian names. Everything u-combobox writes
+ * With `lang="nb"` and Designsystemet 1.21.0, only the clear and toggle
+ * buttons get Norwegian names. Everything u-combobox writes
  * for the selected values stays English — the chip container is announced as
  * «Selected», the input's `aria-description` as «No selected», and a chip as
  * «…, Press to remove». In a service that has to be Norwegian all the way
@@ -31,10 +31,8 @@ export const SCREEN_READER_TEXTS = {
 /**
  * The most values one field can be narrowed to.
  *
- * The backend's rule and not ours: headless-rag #15 takes 1 to 100 values per
- * field, and the BFF answers more with `400 filter-too-many-values` instead of
- * cutting the list without a word, as it used to
- * (design/_briefs/bygg/form-d16-filtre-2026-09-29.md). The reader is told
- * here, before the question, rather than by an error after it.
+ * The backend's rule and not ours: headless-rag takes 1 to 100 values per
+ * field, and the BFF answers more with `400 filter-too-many-values`. The
+ * reader is told here, before the question, rather than by an error after it.
  */
 export const MAX_VALUES_PER_FIELD = 100;

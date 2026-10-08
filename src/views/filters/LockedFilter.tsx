@@ -15,14 +15,13 @@ export type LockedFilterProps = {
  *
  * Every question in a locked conversation is asked with the filter it was
  * started with: the BFF ignores the one the client sends, and in live the
- * client sends the lock (src/layout/filterContext.ts, `locked`; issue
- * 90). The fields would let the reader
- * change a filter that changes nothing, so they are not drawn: this says what
- * the thread is narrowed to, and where to go to choose something else.
+ * client sends the lock (src/layout/filterContext.ts, `locked`). The fields
+ * would let the reader change a filter that changes nothing, so they are not
+ * drawn: this says what the thread is narrowed to, and where to go to choose
+ * something else.
  *
  * `Tag`, not `Chip`: these cannot be removed or changed, and a Chip is a
- * control (chip.md, «Statiske, ikke-fjernbare merkelapper: Tag»). In a list,
- * so a screen reader says how many there are (tag.md).
+ * control. In a list, so a screen reader says how many there are.
  *
  * The values alone, in the panel's dimension order, for the reason
  * ActiveFilter gives: the value is the word the reader ticked, and it is

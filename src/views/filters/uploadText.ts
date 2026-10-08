@@ -1,19 +1,6 @@
 import { MAX_UPLOAD_BYTES, type UploadErrorCode } from '../../model';
 
 /**
- * What to say about an upload that did not work, in Norwegian.
- *
- * One table for two places, and that is the point. A refused file in the list
- * and a drop zone that is switched off in live mode are the same four causes
- * — `useUserDocuments` reports both as an {@link UploadErrorCode} for exactly
- * this reason (asked for by #2, 21.09) — and two tables would drift into
- * saying different things about one cause.
- *
- * `unavailable` is not a failure the reader caused or can retry: there is no
- * upload endpoint at all (API-bestilling A3). It says so instead of «noe gikk
- * galt», which would send them off looking for a mistake they did not make.
- */
-/**
  * The limit in words, written once.
  *
  * Mebibytes, because `MAX_UPLOAD_BYTES` is 20 × 1024 × 1024 and the number a
@@ -34,14 +21,25 @@ const UPLOAD_ERROR_TEXT: Record<UploadErrorCode, string> = {
  * What the zone says where there is nowhere to upload to yet.
  *
  * Not the `unavailable` sentence above, which is a refusal: nothing was tried
- * here, so there is nothing to refuse. It is the design's wording (30.09), and it
- * is word for word what the compose field's paper clip says (#3,
- * src/views/chat/attachmentText.ts): one missing feature, one sentence,
- * wherever the reader meets it (KA CC, 30.09). Two views may not import each
- * other, so if it changes, it changes in both places.
+ * here, so there is nothing to refuse. It is word for word what the compose
+ * field's paper clip says (src/views/chat/attachmentText.ts): one missing
+ * feature, one sentence, wherever the reader meets it. Two views may not
+ * import each other, so if it changes, it changes in both places.
  */
 export const UPLOAD_COMING_TEXT = 'Snart kan du laste opp dokumenter her';
 
+/**
+ * What to say about an upload that did not work, in Norwegian.
+ *
+ * One table for two places: a refused file in the list and a drop zone that
+ * is switched off in live mode are the same four causes, and
+ * `useUserDocuments` reports both as an {@link UploadErrorCode} so that two
+ * tables cannot drift into saying different things about one cause.
+ *
+ * `unavailable` is not a failure the reader caused or can retry: there is no
+ * upload endpoint at all. It says so instead of «noe gikk galt», which would
+ * send them off looking for a mistake they did not make.
+ */
 export function uploadErrorText(code: UploadErrorCode): string {
   return UPLOAD_ERROR_TEXT[code];
 }

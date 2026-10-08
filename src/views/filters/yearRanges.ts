@@ -2,10 +2,11 @@
  * Years as periods: the text a reader types, and the set of chosen years
  * drawn as ranges. Pure, so every form the field understands is a unit test.
  *
- * Behind the `year-ranges` flag (#115). The filter is still a list of years —
- * that is what the backend takes, and nothing about the request changes. The
- * periods are only how the field reads and draws that list: three years in a
- * row are one chip, «2022–2024», and a gap makes two.
+ * Behind the `year-ranges` flag (digdir/kunnskapsassistenten#115). The
+ * filter is still a list of years, which is what the backend takes, and
+ * nothing about the request changes. The periods are only how the field reads
+ * and draws that list: three years in a row are one chip, «2022–2024», and a
+ * gap makes two.
  */
 
 import { currentYear } from '../../../shared/years.ts';
@@ -15,8 +16,8 @@ export type YearRange = { from: number; to: number };
 
 /*
  * Between the two years: a hyphen, an en or em dash, or «til», with or
- * without spaces. Open periods («fra 2015», «til 2010») are not read in this
- * round, so «til» only counts between two years.
+ * without spaces. Open periods («fra 2015», «til 2010») are not read, so
+ * «til» only counts between two years.
  */
 const RANGE = /^(\d{2}|\d{4})\s*(?:-|–|—|til)\s*(\d{2}|\d{4})$/u;
 const SINGLE = /^(\d{2}|\d{4})$/u;
@@ -97,7 +98,7 @@ function yearsWithDocuments(values: readonly { value: string; count?: number }[]
  * What the list offers while the reader is still writing.
  *
  *   - The text read as a period by `parseYearInput`, when it is one, with or
- *     without documents, as before.
+ *     without documents.
  *   - Digits that begin a year: the years with documents that begin with
  *     them. «2» is every year from 2000 on, «202» the 2020s.
  *   - A start and the beginning of an end: the periods from that start to a
