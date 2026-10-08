@@ -6,18 +6,9 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 're
 const SLACK = 80;
 
 /**
- * Keeps the main column at its bottom while an answer arrives, if that is
- * where the reader already was, and returns whether it is there, which is
- * what «Bla til nederst» is drawn from. One hook for both, because two cannot
- * agree on the same growth and the button then flickers all answer long.
- *
- * **Only scrolling UP lets go.** The scroll event for a jump this hook makes
- * arrives a frame later, by which time the answer may have grown, so a rule
- * asking only «is it at the bottom» lets go there and leaves the answer
- * behind. And only while an answer is on its way: other growth is a thread
- * opening, where jumping to the bottom takes the reader off what they came
- * to read. Instant rather than smooth, since a smooth scroll restarted every
- * frame never arrives.
+ * Keeps the main column at its bottom while an answer arrives, if the reader
+ * was there, and returns whether it is — one hook, because two cannot agree.
+ * **Only scrolling UP lets go**: this hook's own jump reports a frame late.
  */
 export function useFollowAnswer(
   container: RefObject<HTMLElement | null>,

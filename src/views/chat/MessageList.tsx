@@ -31,12 +31,8 @@ type MessageListProps = {
 
 /**
  * The conversation, as an ordered list because the order is the meaning. Who
- * said what is carried by text and not by colour or side, through a hidden
- * span rather than a heading, which would compete with the answer's own.
- *
- * It owns which answer the search strip belongs to: the strip is pinned to
- * the top of the column and a region has one, so that cannot live inside each
- * answer. This file is also the choice between the three kinds of turn.
+ * said what is carried by text in a hidden span, not by colour or side, and
+ * this file owns which answer the pinned search strip belongs to.
  */
 export function MessageList({
   messages,

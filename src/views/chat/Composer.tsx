@@ -58,10 +58,9 @@ type ComposerProps = {
 };
 
 /**
- * The compose field and its buttons are one control to a reader, so the frame
- * carries the border and the ring. **`isComposing` is checked on Enter**: an
- * input method editor uses Enter to accept a candidate, and sending mid-word
- * is a real bug for anyone typing that way.
+ * The field and its buttons are one control to a reader, so the frame carries
+ * the border and the ring. **`isComposing` is checked on Enter**: an input
+ * method editor uses it to accept a candidate, and sending mid-word is a bug.
  */
 export function Composer({
   ref,

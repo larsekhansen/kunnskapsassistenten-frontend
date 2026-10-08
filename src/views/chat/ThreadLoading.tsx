@@ -6,13 +6,9 @@ import { AnswerSkeleton } from './AnswerMessage';
 const QUESTION_CHARACTERS = 46;
 
 /**
- * The conversation at the address, while it is being read. NOT the front page
- * greeting: three suggestions on a route naming a conversation the reader
- * already chose are an offer to start over.
- *
- * Hidden from a screen reader, which cannot read a shape; the view's own
- * polite region says it in words (`READING_THREAD`). The compose field stays,
- * because a question asked here belongs to the thread in the address.
+ * The conversation at the address while it is read, and NOT the front page
+ * greeting, which offers to start over. Hidden from a screen reader, which
+ * cannot read a shape; the view's region says it (`READING_THREAD`).
  */
 export function ThreadLoading() {
   return (

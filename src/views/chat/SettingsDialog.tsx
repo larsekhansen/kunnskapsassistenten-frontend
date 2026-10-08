@@ -45,14 +45,9 @@ const FOOTER_OPTIONS: { value: FooterMode; label: string; description: string }[
 ];
 
 /**
- * The hidden settings menu: one `Dialog` and a `Fieldset` of radios per
- * setting, which takes another setting without changing shape.
- *
- * **Opened by `#innstillinger`** and not by a query: a hash never reaches the
- * server, never changes the route, and never travels in a pasted link, so
- * sharing a thread does not hand the next person a settings dialog. Radios
- * and not a switch, because the next level is a third one. Modal, since the
- * dialog covers the whole reading area at this width.
+ * The hidden settings menu, **opened by `#innstillinger`** and not a query: a
+ * hash never reaches the server, never changes the route and never travels in
+ * a pasted link. Radios and not a switch, because a third level is coming.
  */
 export function SettingsDialog({ level, footerMode, onClose }: SettingsDialogProps) {
   const headingId = useId();

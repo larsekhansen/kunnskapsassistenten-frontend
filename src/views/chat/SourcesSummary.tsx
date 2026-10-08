@@ -11,15 +11,9 @@ type SourcesSummaryProps = {
 };
 
 /**
- * «Kilder brukt i svaret» (issue 113): one row per document, where the `[n]`
- * markers are the per-excerpt view. A title opens the panel on that
- * document's first cited excerpt; one the answer never cited is plain text.
- *
- * «Utdrag 1–2» under each title says which markers point into it, or «2.»
- * here and «[2]» in the answer are two numbers for different things. **The
- * native list numbers stay rather than Figma's circles**: Designsystemet puts
- * a zero-width character in `li::before` against a VoiceOver bug, and drawing
- * a circle there knocks the fix out.
+ * «Kilder brukt i svaret» (issue 113): one row per document, saying which
+ * `[n]` point into it. **The native list numbers stay, not Figma's circles**:
+ * Designsystemet puts a zero-width character in `li::before` for VoiceOver.
  */
 export function SourcesSummary({ documents, onSelectSource }: SourcesSummaryProps) {
   if (documents.length === 0) return null;

@@ -11,12 +11,9 @@ type KickstartersProps = {
 };
 
 /**
- * Three ready-made questions on the empty state. A row each, not a chip,
- * because they are long; picking one fills the field and leaves the caret
- * there, since a kickstarter starts the question and does not ask it.
- *
- * A plain div and not a labelled section, which would be a landmark, and
- * three buttons are not worth one.
+ * Three ready-made questions on the empty state, a row each because they are
+ * long. Picking one fills the field and leaves the caret there. A plain div
+ * and not a labelled section, which would be a landmark.
  */
 export function Kickstarters({ onPick, questions }: KickstartersProps) {
   return (

@@ -87,13 +87,10 @@ export type UseChat = {
  *   streaming  tokens arriving
  *   error      the turn failed; `error` carries the code
  *
- * **Two `error` codes do not mean failure, and the code checks the code and
- * not the event type.** `aborted` keeps the partial answer and goes back to
- * idle, under a status of its own because a stopped answer has no sources and
- * offers to run again. `no-hits` settles as `complete`: the search ran and
- * found nothing, which is an answer with an empty source list.
- *
- * Only one turn counts at a time; see `turnRef` in `run`.
+ * **Two `error` codes do not mean failure, so the code checks the code and
+ * not the event type:** `aborted` keeps the partial answer and goes to idle
+ * under a status of its own, `no-hits` settles as `complete`. Only one turn
+ * counts at a time; see `turnRef` in `run`.
  */
 export function useChat(
   client: ChatClient,

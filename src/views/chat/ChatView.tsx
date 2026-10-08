@@ -478,13 +478,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
 }
 
 /**
- * The chat: the greeting, the conversation and the compose field. Mounted in
- * the `main` slot by the shell, which carries the page's level 1 heading.
- *
- * **It must not key itself.** `thread` is undefined until the client answers,
- * so a key of `thread?.id ?? 'new'` remounts the session a moment after
- * mount and throws away whatever the compose field was holding. The remount
- * that key would be for already happens in `ChatSlotView`.
+ * The chat, mounted in the `main` slot by the shell. **It must not key
+ * itself**: `thread` is undefined until the client answers, so a key on it
+ * remounts the session and throws away the draft. `ChatSlotView` keys it.
  */
 export function ChatView(props: ChatViewProps) {
   return <ChatSession {...props} />;

@@ -12,10 +12,9 @@ type AgentPickerProps = {
 };
 
 /**
- * Which agent answers. Designsystemet's `Dropdown` is a list of buttons and
- * not an ARIA menu, on purpose: `role="menu"` without the arrow keys and
- * typeahead of the pattern is worse than none. It has no selected state, so
- * the chosen one says it with `aria-current` and the check is decoration.
+ * Which agent answers. A `Dropdown` of buttons and not an ARIA menu, which
+ * without arrow keys and typeahead is worse than none; it has no selected
+ * state, so the chosen one says so with `aria-current`.
  */
 export function AgentPicker({ agents, current, onChoose }: AgentPickerProps) {
   const [open, setOpen] = useState(false);
