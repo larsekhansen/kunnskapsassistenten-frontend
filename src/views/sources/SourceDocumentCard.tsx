@@ -10,11 +10,7 @@ import { documentSubtitle, isOwnDocument, OWN_DOCUMENT_NO_LINK } from './origin'
 type SourceDocumentCardProps = {
   /** Named `source`, not `document`: the DOM global is used in this view. */
   source: SourceDocument;
-  /**
-   * What the card calls the document: its title, and its number when another
-   * document in the answer has the same title. From `distinctTitles`, which
-   * «Kilder brukt i svaret» under the answer uses too, so the two say the same.
-   */
+  /** From `distinctTitles`, so it matches «Kilder brukt i svaret» under the answer. */
   name: string;
   /** What to call the corpus, or undefined when nothing names it. */
   corpusName: string | undefined;
@@ -25,10 +21,7 @@ type SourceDocumentCardProps = {
   currentHit?: SearchHit;
   /** `citationNumber` of the excerpt a `[n]` marker in the answer points at. */
   activeCitationNumber?: number;
-  /**
-   * Moves focus back to the marker the reader came from. Handed on only to the
-   * excerpt that marker points at, which the card already works out.
-   */
+  /** Back to the marker; handed on only to the excerpt that marker points at. */
   onReturnToAnswer?: () => void;
 };
 

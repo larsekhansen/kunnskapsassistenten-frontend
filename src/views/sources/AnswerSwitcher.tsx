@@ -1,10 +1,7 @@
 import { Button, Paragraph } from '@digdir/designsystemet-react';
 
 type AnswerSwitcherProps = {
-  /**
-   * «Kilder til svar 2 av 3», built by the view, because the live region that
-   * announces it is in the view and the two have to be one string.
-   */
+  /** Built by the view, so the live region there says the same string. */
   label: string;
   /** Zero-based position in the thread's answers; the user reads it one-based. */
   index: number;

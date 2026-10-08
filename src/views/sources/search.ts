@@ -1,10 +1,8 @@
 import type { SourceDocument } from '../../model';
 import type { SearchableItem } from '../../components';
 
-/**
- * The search (`src/components/textSearch.ts`) takes flat text with ids; this is
- * where the view says what a document is.
- */
+// The search (`src/components/textSearch.ts`) takes flat text; this says what a
+// document is.
 
 /**
  * Everything the search can look inside: the excerpt text. The heading is not

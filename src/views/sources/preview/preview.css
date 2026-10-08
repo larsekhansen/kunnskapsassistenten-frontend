@@ -1,7 +1,4 @@
-/*
- * Dev-only styling for the preview harness. It stands in for the shell so the
- * panel is reviewed at a realistic width. Not part of the production bundle.
- */
+/* Dev only: stands in for the shell, so the panel is reviewed at its real width. */
 
 .preview {
   display: flex;

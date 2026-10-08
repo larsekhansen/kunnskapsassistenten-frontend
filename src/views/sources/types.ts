@@ -6,19 +6,10 @@ import type { AnswerSources, SourceDocument } from '../../model';
  * sources. The nonce makes a second click on the same `[n]` count.
  */
 export type SourcesViewProps = Partial<SlotViewProps> & {
-  /**
-   * Every answer with sources, oldest first. `undefined` is loading, and `[]` is
-   * a thread with no answers.
-   */
+  /** Answers with sources, oldest first. `undefined` is loading; `[]` is none. */
   answers?: readonly AnswerSources[];
-  /**
-   * The newest answer's sources, read only without `answers`. `undefined` is
-   * loading, and `[]` is no sources yet.
-   */
+  /** The newest answer's sources, without `answers`. `undefined` is loading. */
   documents?: SourceDocument[];
-  /**
-   * The answer the activated marker sits in. Without it, the marker is resolved
-   * against the answer on screen.
-   */
+  /** The answer the activated marker is in; without it, the one on screen. */
   activeCitationMessageId?: string;
 };

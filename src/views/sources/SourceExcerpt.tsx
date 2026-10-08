@@ -23,12 +23,7 @@ type SourceExcerptProps = {
   currentHit?: SearchHit;
   /** True while this is the excerpt a `[n]` marker in the answer points at. */
   active: boolean;
-  /**
-   * Moves focus back to the marker the reader came from, when there is one.
-   *
-   * Absent for an excerpt the reader opened themselves: a way back to a place
-   * they never came from is a control that does nothing.
-   */
+  /** Back to the marker the reader came from; absent when they opened it themselves. */
   onReturnToAnswer?: () => void;
 };
 

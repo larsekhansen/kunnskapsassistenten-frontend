@@ -7,10 +7,8 @@ import { SourcesView } from '../SourcesView';
 import { kudosMarkdownSources } from './kudosExcerpts';
 import './preview.css';
 
-/**
- * Dev only: loading, empty and collapsed, which the app cannot be steered into
- * by hand, in the shell's structure (`<aside>`, button, `hidden` wrapper).
- */
+// Dev only: loading, empty and collapsed, which the app cannot be steered into
+// by hand, in the shell's structure.
 type PreviewState =
   | 'ready'
   | 'eget-dokument'
@@ -36,12 +34,8 @@ const STATE_LABELS: Record<PreviewState, string> = {
   'kudos-markdown': 'Utdrag fra Kudos',
 };
 
-/**
- * The same sources, with the last excerpt stripped of its `citationNumber`.
- *
- * The model allows it — the search finds more than the answer cites — and the
- * mock fixtures never produce it, so this is the only way to see that path.
- */
+// The last excerpt without its `citationNumber`: the model allows it, and the
+// mock never produces it.
 const uncitedSources = fixtures.nkomSources.map((source, index) =>
   index < fixtures.nkomSources.length - 1
     ? source
@@ -51,10 +45,7 @@ const uncitedSources = fixtures.nkomSources.map((source, index) =>
       },
 );
 
-/**
- * Numbers the excerpts from 1, as an answer does. Every answer starts its own
- * count, so two answers both have a `[1]`, pointing at different documents.
- */
+// Numbers from 1 per answer, as answers do, so two answers both have a `[1]`.
 function renumbered(sources: SourceDocument[]): SourceDocument[] {
   let next = 1;
   return sources.map((source) => ({
@@ -111,11 +102,7 @@ function answersFor(state: PreviewState): readonly AnswerSources[] | undefined {
   }
 }
 
-/**
- * A source from a file the reader uploaded, built by
- * `fixtures.userDocumentSource` as `MockChatClient` builds it, so the harness
- * shows the real shape.
- */
+// An uploaded file's source, built by `fixtures.userDocumentSource` as the mock does.
 const ownDocument: SourceDocument = fixtures.userDocumentSource(
   {
     id: 'doc-egen',
@@ -140,10 +127,7 @@ const renumberedCorpus: SourceDocument[] = (() => {
   }));
 })();
 
-/**
- * `?kilde=3` mounts the view with a citation already set: the case where the
- * view must not move focus, since the reader did not just do anything.
- */
+// `?kilde=3`: a citation set on mount, where the view must not move focus.
 type PreviewCitation = { number: number; nonce: number; messageId?: string };
 
 function citationFromUrl(): PreviewCitation | undefined {
@@ -151,10 +135,7 @@ function citationFromUrl(): PreviewCitation | undefined {
   return Number.isInteger(value) && value > 0 ? { number: value, nonce: 0 } : undefined;
 }
 
-/**
- * The slot's two widths, as `viewModel.ts` declares them: 432 preferred, 336
- * when the window is short of room. They are two layouts, not one stretched.
- */
+// The slot's two widths in `viewModel.ts`: two layouts, not one stretched.
 const WIDTH_LABELS = { wide: '432 px', narrow: '336 px' } as const;
 
 type PreviewWidth = keyof typeof WIDTH_LABELS;
@@ -262,11 +243,8 @@ export function PreviewPanel() {
 
         <div id={contentId} hidden={collapsed} className="preview__aside-content">
           <SourcesView
-            /*
-              Remounts when the fixture set changes: the view remembers which
-              answer the reader stepped to, which is right in the app and
-              misleading when the harness swaps one thread for another.
-            */
+            // Remounts per fixture set: the view remembers which answer the
+            // reader stepped to, which misleads when the harness swaps threads.
             key={state}
             answers={answers}
             collapsed={collapsed}

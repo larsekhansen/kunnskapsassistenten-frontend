@@ -1,17 +1,13 @@
 import type { Excerpt, SourceDocument } from '../../model';
 
-/**
- * Excerpts as plain text: Marker's markdown from a PDF, stripped rather than
- * rendered, since the search counts hits by offsets in this string. Only ever
- * drawn as a text node, so not a sanitiser; tags go because they are noise.
- */
+// Excerpts as plain text: Marker's markdown, stripped rather than rendered,
+// since the search counts hits by offsets in this string. Only drawn as a text
+// node, so not a sanitiser; tags go because they are noise.
 
 const HEADING_SEPARATOR = ' › ';
 
-/**
- * Backslash escapes become noncharacters (U+FDD0 on) until the end, so an escaped
- * `*` or `|` is never read as markup. Not private-use: Kudos has some in its text.
- */
+// Backslash escapes become noncharacters (U+FDD0 on) until the end, so an
+// escaped `*` or `|` is never markup. Not private-use: Kudos has some in its text.
 const ESCAPABLE = '\\`*_{}[]()#+-.!|"\'~<>';
 const ESCAPED = /\\([\\`*_{}[\]()#+\-.!|"'~<>])/g;
 const PLACEHOLDER_BASE = 0xfdd0;
@@ -160,10 +156,8 @@ const TABLE_ROW = /^\|.*\|$/;
 /** `|---|:---:|`, the line under a table's header. */
 const TABLE_DELIMITER = /^\|?(?:\s*:?-+:?\s*\|)*\s*:?-+:?\s*\|?$/;
 
-/**
- * One row as one line, cells joined by « · ». Empty rows and trailing cells go;
- * an empty cell before a filled one is «–», so the columns keep their place.
- */
+// One row as one line, cells joined by « · ». Empty rows and trailing cells go;
+// an empty cell before a filled one is «–», so the columns keep their place.
 function tableRow(line: string): string | undefined {
   const cells = line
     .slice(1, -1)

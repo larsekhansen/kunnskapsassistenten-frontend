@@ -1,7 +1,5 @@
-/*
- * The sources view. Outside every layer, like global.css, so it beats layered
- * CSS without !important; every value is a --ds-* token.
- */
+/* Outside every layer, like global.css, so it beats layered CSS without
+   !important. Every value is a --ds-* token. */
 
 .sources-view {
   display: flex;
@@ -12,29 +10,20 @@
   /* The cards answer to the panel's width, not the window's: the slot shrinks,
      and the view can move to another slot. */
   container: sources / inline-size;
-  /*
-   * A long compound noun in a document title is wider than the card, which
-   * clips. `break-word` rather than `anywhere`: it breaks only a word that
-   * cannot fit on a line of its own, and leaves the min-content width alone.
-   */
+  /* A long compound noun is wider than the card. `break-word`, unlike
+     `anywhere`, leaves the min-content width alone. */
   overflow-wrap: break-word;
 }
 
-/*
- * Author CSS sits outside every layer, so `display: flex` above beats the
- * browser's own `[hidden] { display: none }` and the panel would stay on
- * screen while the button said it was hidden. See CONTRIBUTING.
- */
+/* Unlayered, `display: flex` above beats the browser's `[hidden]` rule, so it
+   is written out. See CONTRIBUTING. */
 .sources-view[hidden] {
   display: none;
 }
 
 /* Which answer's sources are on screen */
 
-/*
- * Laid out like the hit counter below it on purpose: both are a status with
- * previous and next beside it, and should look like the same idea.
- */
+/* Laid out like the hit counter, so the two rows read as the same idea. */
 .sources-answer-switcher {
   display: flex;
   flex-wrap: wrap;
@@ -92,10 +81,8 @@
   gap: var(--ds-size-6);
 }
 
-/*
- * Figma's `document` (node 1549-46119). Each block draws its own border, since
- * head and body differ; Figma's spacing needs 410 px, so narrower gets less.
- */
+/* Figma's `document` (node 1549-46119). Each block draws its own border, since
+   head and body differ; Figma's spacing needs 410 px, so narrower gets less. */
 .source-document {
   --ka-document-head-padding: var(--ds-size-3);
   --ka-document-body-padding: var(--ds-size-3);
@@ -154,11 +141,7 @@
   color: var(--ds-color-neutral-text-subtle);
 }
 
-/*
- * «Les dokumentet på Kudos», and the page link in an excerpt: the words, then
- * Figma's icon for leaving the app. Designsystemet's link gives a last icon
- * its gap and its size; this keeps the two on one line and at the start.
- */
+/* The words, then the icon for leaving the app, on one line and at the start. */
 .source-link {
   display: inline-flex;
   align-items: center;
@@ -167,10 +150,8 @@
 
 /* Excerpts */
 
-/*
- * Figma's `chunk`. Heading and summary share one grid cell to make Figma's one
- * row, since `::details-content` is missing from browsers in `.browserslistrc`.
- */
+/* Figma's `chunk`. Heading and summary share a grid cell for Figma's one row:
+   `::details-content` is missing in browsers in `.browserslistrc`. */
 .source-excerpt {
   /* The row's height: the summary's, and so the heading's box over it. */
   --ka-excerpt-row: var(--ds-size-10);
@@ -219,11 +200,8 @@
   --dsc-details-padding: 0 var(--ds-size-2);
   /* Figma's toggle is a tertiary button in the accent colour. */
   --dsc-details-summary-color: var(--ds-color-accent-text-subtle);
-  /*
-   * No surface of its own, so it takes the box's: white, and the accent one
-   * when a marker in the answer points here. The hover surface stays, because
-   * the summary is still a control.
-   */
+  /* The box's surface shows through, accent when a marker points here; the
+     hover surface stays, since the summary is a control. */
   --dsc-details-background: transparent;
   --dsc-details-summary-background: transparent;
   --dsc-details-summary-background--open: transparent;
@@ -262,10 +240,7 @@
   color: var(--ds-color-neutral-text-default);
 }
 
-/*
-  The quote keeps the chunk's paragraphs, list items and table rows as line
-  breaks (readableText.ts), and this is what draws them.
-*/
+/* Draws the line breaks readableText.ts keeps. */
 .source-excerpt__quote {
   white-space: pre-line;
 }
@@ -282,10 +257,7 @@
   color: var(--ds-color-neutral-text-subtle);
 }
 
-/*
-  Not a quote: the panel saying the passage could not be fetched. Italic and
-  subtle keeps it apart from the document's text without a second colour.
-*/
+/* Not a quote: italic and subtle set it apart without a second colour. */
 .source-excerpt__quote--unavailable {
   font-style: italic;
   color: var(--ds-color-neutral-text-subtle);

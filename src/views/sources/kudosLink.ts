@@ -1,7 +1,5 @@
-/**
- * Kudos' document page has no per-page anchors; only the PDF address honours
- * `#page=N`. So a label says «Les side N» only for such an address.
- */
+// Kudos' document page has no page anchors; only the PDF address honours
+// `#page=N`, so only such an address gets «Les side N».
 
 /** True when this address opens the named page, not just the document. */
 export function reachesPage(kudosUrl: string, page: number): boolean {

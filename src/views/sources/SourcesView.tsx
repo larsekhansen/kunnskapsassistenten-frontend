@@ -17,10 +17,8 @@ import { buildSearchIndex } from './search';
 import type { SourcesViewProps } from './types';
 import './sources.css';
 
-/**
- * `scrollTo` leaves the keyboard where it is (search, «Neste»); `scrollToAndFocus`
- * is for a move the reader asked for, so a screen reader reads the excerpt.
- */
+// `scrollTo` leaves the keyboard where it is; `scrollToAndFocus` is for a move
+// the reader asked for, so a screen reader reads the excerpt.
 function reducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
@@ -59,11 +57,8 @@ function excerptOfHit(sources: SourceDocument[], hit: SearchHit | undefined): Ex
 /** Stands in for a message id while the shell still holds one flat list. */
 const LEGACY_ANSWER_ID = 'siste-svar';
 
-/**
- * The `[n]` marker to return focus to. The focused one if it matches, since the
- * same number can stand twice; otherwise any match, since Safari does not focus
- * a link on click.
- */
+// The `[n]` marker to return focus to: the focused one if it matches, since a
+// number can stand twice, or else any match, since Safari does not focus links.
 function markerFor(citationNumber: number): HTMLElement | null {
   const href = `#${excerptDomId(citationNumber)}`;
   const focused = document.activeElement;
@@ -73,10 +68,8 @@ function markerFor(citationNumber: number): HTMLElement | null {
   return document.querySelector<HTMLElement>(`a[href="${href}"]`);
 }
 
-/**
- * Where a marker stood. react-markdown can mount the answer's paragraphs again
- * and swap the marker for an equal one, so its container, href and index are kept.
- */
+// Where a marker stood: react-markdown can swap it for an equal one, so its
+// container, href and index are kept too.
 type MarkerPlace = {
   element: HTMLElement;
   scope: Element | null;
@@ -101,10 +94,7 @@ function markerAt(place: MarkerPlace): HTMLElement | null {
   return equal[place.index] ?? equal[0] ?? null;
 }
 
-/**
- * Both props as one shape. `undefined` is «nothing is known yet», and `[]` is
- * «nothing has been asked».
- */
+// One shape for both props. `undefined` is «not known yet», `[]` «nothing asked».
 function normaliseAnswers(
   answers: readonly AnswerSources[] | undefined,
   documents: SourceDocument[] | undefined,
@@ -311,10 +301,8 @@ export function SourcesView({
     setCurrentHitIndex(0);
   }
 
-  /**
-   * Opens every excerpt with a hit, or the counter means nothing. Scrolls but
-   * does not focus, so the reader keeps typing in the field.
-   */
+  // Opens every excerpt with a hit, or the counter means nothing; scrolls
+  // without focus, so the reader keeps typing.
   function changeQuery(next: string) {
     const nextHits = findHits(searchIndex, next);
     const first = excerptOfHit(documentList, nextHits[0]);

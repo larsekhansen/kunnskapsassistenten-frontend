@@ -17,10 +17,7 @@ export function noAnswerYet(corpusName: string): SourcesEmptyState {
   };
 }
 
-/**
- * Per status, without `streaming`, which is loading and not empty. The texts
- * say only what the frontend can see.
- */
+// Per status, without `streaming`, which is loading; only what the frontend sees.
 const BY_STATUS: Record<Exclude<MessageStatus, 'streaming'>, SourcesEmptyState> = {
   complete: {
     title: 'Ingen kilder til dette svaret',
@@ -41,20 +38,14 @@ const BY_STATUS: Record<Exclude<MessageStatus, 'streaming'>, SourcesEmptyState> 
   },
 };
 
-/**
- * Markers but no stored excerpts: in live mode the backend keeps the
- * conversation but not the chunks.
- */
+// Markers, but no stored excerpts: live keeps the conversation, not the chunks.
 const NOT_STORED: SourcesEmptyState = {
   title: 'Kildene er ikke lagret for denne samtalen',
   description:
     'Svaret viser til utdrag, men de ble ikke lagret sammen med samtalen. Still spørsmålet på nytt for å få et svar med kilder du kan åpne.',
 };
 
-/**
- * No markers, from a store that keeps no sources, such as the BFF, so whether
- * there were sources is unknown. See `Message.sourcesNotStored`.
- */
+// No markers, from a store that keeps no sources (the BFF): unknown, not none.
 const NOT_KEPT: SourcesEmptyState = {
   title: NOT_STORED.title,
   description:

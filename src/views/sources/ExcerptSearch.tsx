@@ -3,12 +3,7 @@ import { useId } from 'react';
 import { MIN_QUERY_LENGTH } from '../../components';
 
 type ExcerptSearchProps = {
-  /**
-   * The element this field is described by: the Kudos disclaimer.
-   *
-   * Passed in rather than owned here, because the disclaimer is drawn outside
-   * the sticky head while the field is inside it. See `CorpusDisclaimer`.
-   */
+  /** The disclaimer's id: it is drawn outside the sticky head, the field inside. */
   descriptionId: string;
   query: string;
   onQueryChange: (query: string) => void;

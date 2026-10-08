@@ -1,7 +1,5 @@
-/**
- * Ids the model does not define; `excerptDomId` is in `src/model/source.ts`.
- * `excerpt-n` stays English, or links readers have copied would break.
- */
+// `excerptDomId` is in `src/model/source.ts`. It stays `excerpt-n`, or links
+// readers have copied would break.
 
 /** The id of a document card. */
 export function documentDomId(documentId: string): string {
