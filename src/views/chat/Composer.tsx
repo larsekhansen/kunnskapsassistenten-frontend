@@ -27,16 +27,11 @@ import type { Attachments as AttachmentsState } from './useAttachments';
 import type { ChatStatus } from './useChat';
 
 type ComposerProps = {
-  /**
-   * The sticky area around the field. The chat view measures it, to keep that
-   * much of the conversation clear of it, and asks it where focus is before
-   * moving the caret into the field.
-   */
+  /** The sticky area around the field. The chat view measures it and asks it
+      where focus is before moving the caret into the field. */
   ref?: Ref<HTMLDivElement>;
-  /**
-   * What stands over the area, above the field, and moves with it:
-   * «Bla til nederst». First in the tab order of the area, before the field.
-   */
+  /** What stands over the area and moves with it: «Bla til nederst». First
+      in the tab order, before the field. */
   above?: ReactNode;
   /** So a kickstarter can put the caret in the field after filling it. */
   fieldRef?: RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
@@ -46,14 +41,9 @@ type ComposerProps = {
   onChange: (value: string) => void;
   onSubmit: () => void;
   onCancel: () => void;
-  /**
-   * The send button, which is the stop button while an answer is on its way.
-   *
-   * One ref for both, because it is one element to the browser: React keeps
-   * the same `<button>` and swaps its label and handler, which is why focus
-   * survives the change. The chat view needs to recognise it by identity when
-   * a failure takes it out from under the reader — see `ChatView`.
-   */
+  /** The send button, which is the stop button mid-answer. One ref, because
+      it is one `<button>` to the browser, and `ChatView` recognises it by
+      identity when a failure takes it out from under the reader. */
   sendRef?: RefObject<HTMLButtonElement | null>;
   status: ChatStatus;
   /** Show the fixed follow-up suggestions under the field. */
@@ -62,49 +52,21 @@ type ComposerProps = {
   onFollowUp: (question: string) => void;
   /** The files this question is being written with. */
   attachments: AttachmentsState;
-  /**
-   * The agent choice, beside the send button. Absent where there is nothing
-   * to choose. See AgentPicker.
-   */
+  /** The agent choice, beside the send button. Absent where there is nothing
+      to choose. */
   agentPicker?: ReactNode;
 };
 
 /**
- * The compose field.
+ * The compose field: it grows with the text, Enter sends and Shift+Enter
+ * makes a new line, and the field and its buttons are one control to a
+ * reader, so the frame around them carries the border and the focus ring.
  *
- * The field grows with the text, scrolls once it reaches the limit, and
- * wraps its lines: `field-sizing: content` plus a `max-height` in chat.css,
- * one line of CSS instead of a ResizeObserver that is always one frame
- * behind.
- *
- * Enter sends and Shift+Enter makes a new line. Designsystemet has nothing
- * for this, so it is written here. `isComposing` is checked because an input
- * method editor uses Enter to accept a candidate, and sending the question
- * mid-word would be a real bug for anyone typing that way.
- *
- * The field and the two buttons are one control to a reader, so the frame
- * around them carries the border and the focus ring, and the textarea inside
- * gives up its own. The ring is Designsystemet's, not a hand-drawn one.
- *
- * The icons carry no size of their own. `Button` already sizes what it holds
- * (`--ds-icon-size`), and a size written here would be a raw length that does
- * not follow the size mode.
- *
- * The stop button carries the word «Avbryt» next to its icon: a bare square
- * is not obviously «stopp» to anyone looking at the screen, however good its
- * `aria-label` is. The label is longer than the visible text — it says which
- * generation is being stopped — and starts with the same word, which is what
- * WCAG 2.5.3 asks for.
- *
- * The field carries the page's skip-link target and says, twice, how to reach
- * it with the keyboard: a small hint for anyone looking at it, and a
- * description on the field itself for anyone who is not. Two texts rather than
- * one because they are read in different ways — see text.ts.
- *
- * Attachments are in scope but there is no upload endpoint
- * (API-bestilling A3), so the paperclip is inert. It keeps its focus and says
- * so rather than disappearing, and `aria-disabled` keeps it reachable for a
- * keyboard user, which `disabled` would not.
+ * **`isComposing` is checked on Enter**, because an input method editor uses
+ * Enter to accept a candidate, and sending mid-word is a real bug for anyone
+ * typing that way. **The stop button carries the word «Avbryt»**, because a
+ * bare square is not obviously «stopp» however good its `aria-label` is, and
+ * the label starts with the same word (WCAG 2.5.3).
  */
 export function Composer({
   ref,
@@ -125,18 +87,9 @@ export function Composer({
   const busy = status === 'pending' || status === 'streaming';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /*
-   * What the reader had written when the session ran out (api/session.ts).
-   *
-   * The field says how its text can be read, so a 401 can keep it before the
-   * browser leaves for sign-in. The latest value is in a ref because the 401
-   * reads it outside any render.
-   *
-   * When the field arrives, a draft kept for this page is put back, once,
-   * when the BFF has said that the one signed in is the one who wrote it
-   * (`restoreDraft`). Only into an empty field, and it is not sent: the
-   * reader came back to sign in, not to ask, and decides that themselves.
-   */
+  // What the reader had written when the session ran out (api/session.ts).
+  // The ref is because the 401 reads the value outside any render; the draft
+  // comes back only into an empty field, and is never sent for the reader.
   const latestValue = useRef(value);
   useEffect(() => {
     latestValue.current = value;
@@ -155,35 +108,18 @@ export function Composer({
   // on the parent, so a boolean flickers the hint off every time the pointer
   // crosses the field or a chip.
   const [dragDepth, setDragDepth] = useState(0);
-  /*
-   * What to say when attaching cannot work here at all. Its own line rather
-   * than a chip: a chip stands for a file the reader picked, and in this case
-   * no file was ever taken. It stays until the reader picks something that
-   * does work, because a sentence that vanished on the next render would be
-   * one nobody had time to read.
-   */
+  // What to say when attaching cannot work at all. Its own line and not a
+  // chip, which stands for a file the reader picked; it stays until the
+  // reader does something, or nobody has time to read it.
   const [refusal, setRefusal] = useState('');
   const { unavailable } = attachments;
   // Generated, not a constant: two chat views in two slots would otherwise
   // share one id and the description would describe the wrong field.
   const descriptionId = useId();
 
-  /**
-   * The one way a question leaves this field.
-   *
-   * Every way of sending goes through here — Enter, the send button, a
-   * follow-up chip — because the rule about attachments is about SENDING and
-   * not about one control. On the send button's `disabled` alone, Enter walks
-   * straight past it: the question goes, the file still uploading does not,
-   * and nothing says so.
-   *
-   * It refuses rather than queues, and **nothing is sent when the upload
-   * finishes**: the reader presses again. Queueing would send a question
-   * seconds after the reader stopped watching, with no way to call it back,
-   * and a question that leaves on its own is a question nobody chose to send
-   * at that moment. The wait is a second or two with the bar in plain sight,
-   * and the message goes as soon as the waiting does (see below).
-   */
+  // Every way of sending comes through here — Enter, the send button, a
+  // follow-up chip — because the attachment rule is about SENDING and not
+  // about one control. It refuses rather than queues, and never sends later.
   function trySubmit(send: () => void) {
     if (busy) return;
     if (attachments.busy) {
@@ -195,21 +131,9 @@ export function Composer({
     send();
   }
 
-  /*
-   * The wait message goes when there is nothing left to wait for.
-   *
-   * A refusal outlives its reason if nobody takes it away, and then the live
-   * region keeps telling the reader to wait for a file that is ready.
-   *
-   * Worked out while rendering rather than cleared in an effect. The message
-   * is not a fact of its own — it is «is anything still uploading» read
-   * aloud — so it follows that state in the same paint, and there is no
-   * render where the page says wait and the bar is gone.
-   *
-   * Only that one. The `unavailable` sentence is not waiting for anything:
-   * it is true for as long as the service has no endpoint, so it stays until
-   * something the reader does replaces it.
-   */
+  // The wait message goes when there is nothing left to wait for, worked out
+  // while rendering: it is «is anything still uploading» read aloud. Only
+  // that one; the `unavailable` sentence waits for nothing.
   const shownRefusal = refusal === WAIT_FOR_UPLOADS && !attachments.busy ? '' : refusal;
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -327,14 +251,9 @@ export function Composer({
               */}
               <input
                 accept={UPLOAD_ACCEPT}
-                /*
-                 * `display: none` and not `ds-sr-only`: the input is the
-                 * mechanism, the button is the control. Screen-reader-only
-                 * keeps it in the accessibility tree, where it is a second,
-                 * nameless file control beside the named one — axe called it,
-                 * and it was right. A hidden input still opens the picker when
-                 * clicked.
-                 */
+                /* `display: none` and not `ds-sr-only`, which leaves it in
+                   the accessibility tree as a second, nameless file control.
+                   A hidden input still opens the picker when clicked. */
                 className="ka-composer__file-input"
                 multiple
                 onChange={(event) => {
@@ -450,11 +369,9 @@ export function Composer({
 }
 
 /**
- * Whether what is being dragged is files at all.
- *
- * Dragging selected text across the page fires the same events, and a compose
- * field that lit up every time someone dragged a word would be lying about
- * what it was about to do.
+ * Whether what is being dragged is files at all: dragging selected text fires
+ * the same events, and a field that lit up for a dragged word would be lying
+ * about what it was about to do.
  */
 function hasFiles(event: DragEvent<HTMLDivElement>): boolean {
   return [...event.dataTransfer.types].includes('Files');
