@@ -30,14 +30,9 @@ type AnswerMessageProps = {
   onSelectSource: (citationNumber: number, messageId: string) => void;
   /** Ask the stopped question again, in place of the answer that was cut off. */
   onRegenerate: () => void;
-  /**
-   * Whether the search strip belongs to THIS answer right now.
-   *
-   * Held by the list rather than by each answer, because the strip is drawn
-   * in the shell's view-head and there is one of those per region. Two
-   * answers searching at once would be two heads in one place; see
-   * `MessageList`.
-   */
+  /** Whether the search strip belongs to THIS answer right now. Held by the
+      list, because the strip is drawn in the shell's view-head and there is
+      one of those per region. */
   searchOpen: boolean;
   /** What is typed in the strip. One strip, one query. */
   searchQuery: string;
@@ -47,50 +42,31 @@ type AnswerMessageProps = {
   onCloseSearch: () => void;
   /** «Søk i svar 2 av 3» — which answer the pinned strip is searching. */
   searchLabel: string;
-  /**
-   * The turn the error alert below the conversation is about, if any.
-   *
-   * A failed turn keeps its thinking panel, so it outlives the alert — and
-   * then its own card has to say why there is no answer under the question.
-   * While the alert IS about this turn it says it better and with a way on,
-   * so the card stays quiet rather than saying the same thing twice.
-   */
+  /** The turn the error alert is about, if any. A failed turn outlives its
+      alert and must then say for itself why there is no answer; while the
+      alert is up, the card stays quiet rather than repeating it. */
   liveErrorId?: string;
-  /**
-   * The line over the answer: what it was narrowed to, where it came from, or
-   * both. Absent means the whole corpus the reader is standing in, which
-   * needs no line. Built by `answerScopeText`, which owns the wording.
-   */
+  /** The line over the answer: what it was narrowed to, where it came from,
+      or both. Absent is the whole corpus, which needs no line. */
   narrowedTo?: string;
-  /**
-   * The reader's own question, for «Fremgangsmåte» to recognise a search word
-   * that is only the question over again. Absent where nothing asked it — a
-   * thread read back with no question before the answer. See ProcedurePanel.
-   */
+  /** The reader's own question, for «Fremgangsmåte» to recognise a search
+      word that is only the question over again. See ProcedurePanel. */
   question?: string;
-  /**
-   * The search behind this answer came back empty.
-   *
-   * The answer is then the notice saying so, and what a finished answer
-   * offers onward does not apply: «Er det noe mer jeg kan hjelpe deg med?»
-   * invites a follow-up to an answer that found nothing. What the notice
-   * itself says — loosen the filter, ask in other words — is the way on.
-   */
+  /** The search behind this answer came back empty, so the answer is the
+      notice saying so and what a finished answer offers onward does not
+      apply. */
   foundNothing?: boolean;
 };
 
 /**
- * Four ragged lines standing in for the paragraph on its way. Exported
- * because the conversation being READ draws the same four; see ThreadLoading.
+ * Four ragged lines standing in for the paragraph on its way; the thread
+ * being READ draws the same four (ThreadLoading).
  *
- * `width` on `variant="text"` is a NUMBER OF CHARACTERS, not a length:
- * Skeleton writes `data-text={'-'.repeat(Number(width) || 1)}` and never
- * passes width to `style`. A percentage makes `Number()` return NaN, every
- * line falls back to a single dash, and the CSS width takes over.
- *
- * Each line sits in its own block, because Skeleton's text variant is
- * `display: inline` and the dashes only decide the width while it stays that
- * way. Made a flex item it is blockified and its own `width: 100%` wins.
+ * **`width` on `variant="text"` is a NUMBER OF CHARACTERS, not a length.**
+ * Skeleton repeats that many dashes into `data-text` and never passes width
+ * to `style`, so a percentage gives `NaN`, one dash per line and the CSS
+ * width instead. Each line needs its own block for the same reason: the text
+ * variant is `display: inline`, and a flex child is blockified.
  */
 const SKELETON_LINE_CHARACTERS = [78, 86, 82, 48];
 
@@ -108,15 +84,8 @@ export function AnswerSkeleton() {
 
 /**
  * One assistant turn: what the agent did, what it answered, and what the
- * reader can do with it.
- *
- * It is its own component because it holds state: the search inside the
- * answer belongs to one answer and not to the thread, and a thread of ten
- * answers has ten independent searches.
- *
- * «Tenker …» sits above the card and «Fremgangsmåte» inside it, and they do
- * not overlap: the first is what the agent did, step by step, the second is
- * what the search found. Neither repeats the other.
+ * reader can do with it. Its own component because it holds state — a thread
+ * of ten answers has ten independent searches.
  */
 export function AnswerMessage({
   message,
@@ -147,35 +116,24 @@ export function AnswerMessage({
   const failedQuietly = message.status === 'error' && message.id !== liveErrorId;
   // A failed turn with nothing in it gets no card: an empty bordered box
   // above the error says nothing. A stopped one gets one whatever phase it
-  // was stopped in — the card is what says it was stopped and offers to run
-  // it again.
+  // was in, because the card is what says it was stopped.
   const showCard = !empty || streaming || aborted || failedQuietly;
 
-  /*
-   * How much of the assistant's own work this answer shows. `standard` draws
-   * «Fremgangsmåte» over the answer and nothing technical; `detaljert` draws
-   * the thinking panel and the hit count. See displayLevel.ts and issue 88.
-   */
+  // How much of the assistant's own work this answer shows: «Fremgangsmåte»
+  // at `standard`, the thinking panel and hit count at `detaljert`. See
+  // displayLevel.ts and issue 88.
   const detailed = useDisplayLevel() === 'detaljert';
 
   const searching = searchOpen;
   const query = searchQuery;
-  /*
-   * Held still between renders, and that is not polish: `Markdown` memoises
-   * `components` on exactly these two. Arriving new on every render, every
-   * component in `components` changes identity, React reads them as different
-   * component types, and react-markdown mounts the whole answer again — which
-   * swaps out the very marker node a click just moved focus into.
-   */
+  // Held still between renders, and not as polish: `Markdown` memoises
+  // `components` on these two, so new ones per render remount the whole
+  // answer and swap out the marker node a click just moved focus into.
   const citations = useMemo(() => citationTargets(message.sources ?? []), [message.sources]);
 
-  /*
-   * Through a ref, not as a dependency. The shell's own `showCitation` stands
-   * still, but as a dependency the whole answer would rest on every parent in
-   * between remembering to do the same — one inline `onSelectSource` in the
-   * chain and the markers are swapped out again, with nothing in this file
-   * looking any different.
-   */
+  // Through a ref, not as a dependency: otherwise the whole answer rests on
+  // every parent in the chain memoising its callback, and one inline
+  // `onSelectSource` swaps the markers out again.
   const selectSource = useRef(onSelectSource);
   useEffect(() => {
     selectSource.current = onSelectSource;
@@ -190,13 +148,9 @@ export function AnswerMessage({
   const searchToggleRef = useRef<HTMLButtonElement>(null);
   const { hitCount, currentIndex, step } = useAnswerHits(answerRef, searching ? query : '');
 
-  /**
-   * Closing puts focus back on the button that opened it.
-   *
-   * The strip is gone by the time this has run, so a keyboard user standing
-   * in the field would otherwise land on `<body>` — at the top of the
-   * document, a whole page from the answer they were reading (WCAG 2.4.3).
-   */
+  // Closing puts focus back on the button that opened it: the strip is gone
+  // by the time this has run, and a keyboard user in the field would land on
+  // `<body>`, a whole page from the answer they were reading (WCAG 2.4.3).
   function closeSearch() {
     onCloseSearch();
     searchToggleRef.current?.focus();
@@ -257,12 +211,9 @@ export function AnswerMessage({
           <ThinkingPanel
             status={streaming && empty ? 'thinking' : 'done'}
             steps={steps}
-            // The measured wait, and not the sum of what the steps reported.
-            // The stream writes it down while it happens (`useChat`), and it
-            // has to be handed over or the panel falls back to the sum — which
-            // is «Tenkte i 2 sekunder» live and «Tenkte i 4 sekunder» after a
-            // reload, for a turn that has not changed. See `Message.thoughtMs`.
-            // The clarification path already passed it; this one did not.
+            // The measured wait, not the sum of what the steps reported: it
+            // has to be handed over, or the panel falls back to the sum and
+            // the same unchanged turn reports two numbers.
             thoughtMs={message.thoughtMs}
           />
         ) : (
