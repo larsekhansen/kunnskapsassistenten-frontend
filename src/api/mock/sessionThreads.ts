@@ -1,5 +1,5 @@
 import type { ThreadCertainty } from '../chatClient';
-import type { Message, Thread, ThreadDetail } from '../../model';
+import { withoutRetriedAttempts, type Message, type Thread, type ThreadDetail } from '../../model';
 
 /**
  * This tab's conversations, so a reload keeps them as a backend with a thread
@@ -187,7 +187,7 @@ export function mockThreadDetail(id: string, fixture: ThreadDetail | null): Thre
     ...base,
     updatedAt: stored.thread.updatedAt,
     ...(stored.renamed ? { title: stored.thread.title, titleFromQuestion: false } : {}),
-    messages: [...base.messages, ...stored.messages],
+    messages: withoutRetriedAttempts([...base.messages, ...stored.messages]),
   };
 }
 
