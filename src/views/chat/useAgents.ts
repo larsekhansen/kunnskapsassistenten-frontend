@@ -16,14 +16,9 @@ export type AgentChoice = {
 };
 
 /**
- * The agents for the choice in the compose field, and which one is chosen.
- *
- * Fetched per view and not kept between them. Behind the BFF, listing the
- * agents is also what makes it accept a `model` at all (`BffModels`), so a
- * list from before a restart of the BFF would offer choices it then ignores.
- *
- * A kept choice that is no longer in the list falls back to the default
- * without being forgotten: an agent that comes back is still the reader's.
+ * The agents for the choice in the compose field. Fetched per view, because
+ * behind the BFF listing them is what makes it accept a `model` at all. A
+ * stored choice that has left the list falls back without being forgotten.
  */
 export function useAgents(client: ChatClient): AgentChoice {
   const [list, setList] = useState<AgentList>({ agents: [] });

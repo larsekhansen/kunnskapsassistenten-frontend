@@ -58,10 +58,11 @@ type ComposerProps = {
 };
 
 /**
- * The compose field and its buttons are one control to a reader, so the frame
- * carries the border and the ring. **`isComposing` is checked on Enter**: an
- * input method editor uses Enter to accept a candidate, and sending mid-word
- * is a real bug for anyone typing that way.
+ * The field and its buttons are one control to a reader, so the frame carries
+ * the border and the ring. **`isComposing` is checked on Enter**: an input
+ * method editor uses it to accept a candidate, and sending mid-word is a bug.
+ * The stop button carries «Avbryt» beside its icon, because a bare square is
+ * not obviously «stopp» and the name must contain the visible text (2.5.3).
  */
 export function Composer({
   ref,

@@ -38,13 +38,9 @@ function StepQueries({ id, queries }: { id: string; queries: string[] }) {
 }
 
 /**
- * «Tenker …»: what the agent is doing while the search takes its time,
- * without which a long search is a blank card. It knows the steps and whether
- * the answer has started, and renders the agent's own words as they came.
- *
- * Open while it thinks and shut when the answer starts, with `chosen`
- * outranking both for the rest of the turn. It announces nothing: the view's
- * own region says once that the assistant is searching (useChat).
+ * «Tenker …»: the agent's own words while the search takes its time. Open
+ * while it thinks, shut when the answer starts, `chosen` outranking both. It
+ * announces nothing; the view's region says it once (useChat).
  */
 export function ThinkingPanel({ steps, status, thoughtMs }: ThinkingPanelProps) {
   const thinking = status === 'thinking';

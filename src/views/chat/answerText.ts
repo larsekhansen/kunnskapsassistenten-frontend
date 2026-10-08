@@ -11,9 +11,8 @@ const BLOCK_SYNTAX = /^(#{1,6}\s+|[-*]\s+|\d+\.\s+|>\s?)/;
 
 /**
  * Markdown stripped to what a reader would paste into a document. The `[1]`
- * markers go by default, since on their own they point at a panel the
- * clipboard cannot carry; `keepCitations` is for the case where it does
- * ({@link answerWithSources}). Table rows become tab separated.
+ * markers go by default, since alone they point at a panel the clipboard
+ * cannot carry; `keepCitations` is for when it does. Tables go tab separated.
  */
 export function answerAsPlainText(markdown: string, keepCitations = false): string {
   return markdown
@@ -45,10 +44,9 @@ export function announcedText(markdown: string): string {
 }
 
 /**
- * The reference list under a copied answer, Norwegian APA-like, with every
- * part dropped when the corpus does not have it. One line per CITED EXCERPT
- * and not per document, because `[n]` points at an excerpt and two from the
- * same report are on different pages.
+ * The reference list under a copied answer, Norwegian APA-like, with each
+ * part dropped when the corpus lacks it. One line per CITED EXCERPT and not
+ * per document: two excerpts from one report are on different pages.
  */
 export function referenceList(documents: SourceDocument[]): string[] {
   return documents
@@ -73,15 +71,9 @@ export function referenceList(documents: SourceDocument[]): string[] {
 const REFERENCE_HEADING = 'Kilder';
 
 /**
- * What «Kopier svaret» puts on the clipboard.
- *
- * The answer with its `[n]` markers intact, then the references they point
- * at: the one thing that moves an answer out of KA must not move it out
- * without its provenance, which is precisely what KA is for.
- *
- * With nothing behind the answer — a stopped turn, a corpus that returned
- * nothing — it falls back to today's clean text, markers and all removed.
- * Markers pointing at a list that is not there would be worse than no markers.
+ * What «Kopier svaret» puts on the clipboard: the answer with its `[n]` and
+ * the references under it, since an answer must not leave KA without its
+ * provenance. With no sources it falls back to clean text.
  */
 export function answerWithSources(markdown: string, documents: SourceDocument[] = []): string {
   const references = referenceList(documents);

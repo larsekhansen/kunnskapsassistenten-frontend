@@ -23,12 +23,8 @@ type AnswerActionsProps = {
 
 /**
  * What a reader can do with a finished answer. **Copying takes the sources
- * with it**, because an answer pasted without its provenance is the one thing
- * KA is not for, and the receipt counts what went along.
- *
- * The receipt is rendered empty rather than hidden: a live region that is
- * `display: none` is out of the accessibility tree, and region and text would
- * then arrive in the same frame and announce nothing.
+ * with it**, and the receipt counts what went along; it is rendered empty
+ * rather than hidden, or the live region announces nothing.
  */
 export function AnswerActions({
   content,

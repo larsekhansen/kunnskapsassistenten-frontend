@@ -23,32 +23,8 @@ export type AnswerHits = {
 
 /**
  * The search hits inside one rendered answer: how many, and which one the
- * reader is standing on.
- *
- * Counted from the DOM rather than from the markdown, and that is the whole
- * idea. `Markdown` renders an answer through react-markdown, so the text the
- * reader sees is not the string that went in: headings lose their `#`, bold
- * loses its stars, a `[3]` becomes a link. Counting matches in the markdown
- * source would give a number that does not match the highlights on screen —
- * and the counter's only job is to describe those highlights.
- *
- * So `Markdown` marks every match, purely and in document order, and this
- * reads them back with `querySelectorAll`, which returns them in exactly that
- * order. Reading order is a question about the rendered document, and the
- * rendered document is what answers it.
- *
- * The current hit is marked with a `data-current` attribute set here rather
- * than rendered, because which mark is current is a fact about the rendered
- * order and not about any one block of markdown.
- *
- * Which is why it is re-applied after EVERY render and not only when the
- * index changes. The chat view re-renders on scroll — `useFollowAnswer`
- * watches the main column — and the smooth scroll to a hit is itself
- * scrolling, so the render that follows takes the attribute with it while an
- * effect guarded by dependencies sits still.
- * Scrolling is the one thing that stays behind a dependency list: an effect
- * that scrolled on every render would take the page away from a reader who
- * had just scrolled it themselves.
+ * reader stands on. Counted from the DOM and not the markdown, because the
+ * counter's job is to describe the highlights actually on screen.
  */
 export function useAnswerHits(
   containerRef: RefObject<HTMLElement | null>,
