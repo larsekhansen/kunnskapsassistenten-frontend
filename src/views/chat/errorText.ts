@@ -19,19 +19,18 @@ type ChatErrorText = {
 /**
  * What the chat says when a turn fails, one entry per case.
  *
- * «Noe gikk galt» said the same thing whether the language model was down,
- * the corpus was down, the request timed out or the key was rejected — four
- * situations that need four different things from the reader
- * (design/brukerreiser-2026-09-15.md, punkt 12; retningslinje 1 promises a
- * word about what happened). So the text is looked up from the code rather
- * than written by whoever caught the failure, and every case reads the same
- * whether it came from the mock, from an HTTP status or from the backend.
+ * One «Noe gikk galt» says the same thing whether the language model is
+ * down, the corpus is down, the request timed out or the key was rejected —
+ * four situations that need four different things from the reader. So the
+ * text is looked up from the code rather than written by whoever caught the
+ * failure, and every case reads the same whether it came from the mock, from
+ * an HTTP status or from the backend.
  *
- * Two sentences, as the brief asks: what happened, and what the reader can do
- * about it. Where the retry button is the answer to the second, the sentence
- * says something the button cannot — that the question and the filter are
- * untouched, that a narrower question is faster — rather than repeating the
- * label one line above it (brukerblikk 2026-09-15, finding 9).
+ * Two sentences: what happened, and what the reader can do about it. Where
+ * the retry button is the answer to the second, the sentence says something
+ * the button cannot — that the question and the filter are untouched, that a
+ * narrower question is faster — rather than repeating the label one line
+ * above it.
  *
  * `aborted` and `no-hits` are not in here, and the `Exclude` is what makes the
  * compiler say so if either is ever routed this way. A stopped answer is the
@@ -108,9 +107,8 @@ export const GENERIC_CHAT_ERROR = BY_CODE.unknown.what;
  * It guards the one sentence this view does not write itself: a `message` on
  * the error, from the layer that caught it. `ErrorState` draws the message
  * and the retry button one line apart, so a sentence ending in «Prøv igjen.»
- * asks for exactly what the button under it does (brukerblikk 2026-09-15,
- * finding 9), and a backend is in no position to know what sits under its
- * text.
+ * asks for exactly what the button under it does — and a backend is in no
+ * position to know what sits under its text.
  */
 const RETRY_PROMPT = /\s*Prøv igjen(?: om litt)?\s*[.!…]*\s*$/iu;
 

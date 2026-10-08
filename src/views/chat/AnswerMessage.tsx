@@ -50,12 +50,10 @@ type AnswerMessageProps = {
   /**
    * The turn the error alert below the conversation is about, if any.
    *
-   * A failed turn keeps its thinking panel now, so it stays on screen after
-   * the alert has gone — restored from the store, or pushed up by a question
-   * asked since. Then nothing under the question says why there is no answer,
-   * and the card says it instead. While the alert IS about this turn, it says
-   * it better and with a way on, so the card stays quiet rather than saying
-   * the same thing twice.
+   * A failed turn keeps its thinking panel, so it outlives the alert — and
+   * then its own card has to say why there is no answer under the question.
+   * While the alert IS about this turn it says it better and with a way on,
+   * so the card stays quiet rather than saying the same thing twice.
    */
   liveErrorId?: string;
   /**
@@ -73,33 +71,26 @@ type AnswerMessageProps = {
   /**
    * The search behind this answer came back empty.
    *
-   * Then the answer is the notice saying so, and the two things a finished
-   * answer offers onward do not apply: «Er det noe mer jeg kan hjelpe deg
-   * med?» invites a follow-up to an answer that found nothing, and the fixed
-   * suggestions under the field are hidden for the same reason (KA CC,
-   * 2026-09-15). What the notice itself says — loosen the filter, ask in
-   * other words — is the way on from here.
+   * The answer is then the notice saying so, and what a finished answer
+   * offers onward does not apply: «Er det noe mer jeg kan hjelpe deg med?»
+   * invites a follow-up to an answer that found nothing. What the notice
+   * itself says — loosen the filter, ask in other words — is the way on.
    */
   foundNothing?: boolean;
 };
 
 /**
- * Four ragged lines standing in for the paragraph on its way (answer 32).
- *
- * Exported because the conversation being READ uses the same four lines: an
- * answer on its way and an answer being fetched are the same shape, and two
- * sets of ragged lines side by side would be two guesses at the same thing.
- * See ThreadLoading.
+ * Four ragged lines standing in for the paragraph on its way. Exported
+ * because the conversation being READ draws the same four; see ThreadLoading.
  *
  * `width` on `variant="text"` is a NUMBER OF CHARACTERS, not a length:
  * Skeleton writes `data-text={'-'.repeat(Number(width) || 1)}` and never
  * passes width to `style`. A percentage makes `Number()` return NaN, every
- * line falls back to a single dash, and the CSS width takes over — four
- * identical full-width bars instead of a block of text.
+ * line falls back to a single dash, and the CSS width takes over.
  *
  * Each line sits in its own block, because Skeleton's text variant is
  * `display: inline` and the dashes only decide the width while it stays that
- * way. Made a flex item it is blockified, and its own `width: 100%` wins.
+ * way. Made a flex item it is blockified and its own `width: 100%` wins.
  */
 const SKELETON_LINE_CHARACTERS = [78, 86, 82, 48];
 
@@ -119,9 +110,9 @@ export function AnswerSkeleton() {
  * One assistant turn: what the agent did, what it answered, and what the
  * reader can do with it.
  *
- * It is its own component because it holds state — the search inside the
- * answer (brukerreiser punkt 13) belongs to one answer and not to the
- * thread, and a thread of ten answers has ten independent searches.
+ * It is its own component because it holds state: the search inside the
+ * answer belongs to one answer and not to the thread, and a thread of ten
+ * answers has ten independent searches.
  *
  * «Tenker …» sits above the card and «Fremgangsmåte» inside it, and they do
  * not overlap: the first is what the agent did, step by step, the second is
@@ -155,42 +146,35 @@ export function AnswerMessage({
   // Failed, and the alert is no longer speaking for it.
   const failedQuietly = message.status === 'error' && message.id !== liveErrorId;
   // A failed turn with nothing in it gets no card: an empty bordered box
-  // above the error says nothing. A stopped one gets one whatever phase it was
-  // stopped in — the card is what says it was stopped and offers to run it
-  // again (#4, funn A).
+  // above the error says nothing. A stopped one gets one whatever phase it
+  // was stopped in — the card is what says it was stopped and offers to run
+  // it again.
   const showCard = !empty || streaming || aborted || failedQuietly;
 
   /*
    * How much of the assistant's own work this answer shows. `standard` draws
    * «Fremgangsmåte» over the answer and nothing technical; `detaljert` draws
-   * the thinking panel and the hit count, which is what everyone saw before
-   * the level existed. See displayLevel.ts and issue 88.
+   * the thinking panel and the hit count. See displayLevel.ts and issue 88.
    */
   const detailed = useDisplayLevel() === 'detaljert';
 
   const searching = searchOpen;
   const query = searchQuery;
   /*
-   * Both are held still between renders, and that is not polish.
-   *
-   * `Markdown` memoises `components` on exactly these two. Arriving new on
-   * every render, every component in `components` changed identity, React
-   * read them as different component types, and react-markdown mounted the
-   * whole answer again. Measured by #4 against the pod: one click on a
-   * marker removed four marker nodes and added four new ones, and focus lost
-   * its target, because the node it stood in was gone.
+   * Held still between renders, and that is not polish: `Markdown` memoises
+   * `components` on exactly these two. Arriving new on every render, every
+   * component in `components` changes identity, React reads them as different
+   * component types, and react-markdown mounts the whole answer again — which
+   * swaps out the very marker node a click just moved focus into.
    */
   const citations = useMemo(() => citationTargets(message.sources ?? []), [message.sources]);
 
   /*
-   * Through a ref, not as a dependency.
-   *
-   * The shell's own `showCitation` already stands still, but then the whole
-   * answer rests on every parent between it and here remembering the same.
-   * One `onSelectSource={(n) => ...}` somewhere in the chain, and the markers
-   * are swapped out again — with nothing in this file looking any different.
-   * The ref takes that possibility away: the function is the same for as
-   * long as the answer is.
+   * Through a ref, not as a dependency. The shell's own `showCitation` stands
+   * still, but as a dependency the whole answer would rest on every parent in
+   * between remembering to do the same — one inline `onSelectSource` in the
+   * chain and the markers are swapped out again, with nothing in this file
+   * looking any different.
    */
   const selectSource = useRef(onSelectSource);
   useEffect(() => {
@@ -223,13 +207,11 @@ export function AnswerMessage({
       {/*
         The search strip, pinned to the top of the answer column.
 
-        It used to sit at the bottom of this card, and the card scrolls: one
-        «Neste treff» and the strip was under the sticky compose field, so the
-        reader was typing in a field they could not see and the hit counter —
-        the whole point of having a counter — stood behind the composer's
-        buttons (brukerblikk 3, funn 1). The shell owns a place at the top of
-        the region for exactly this; see layout/viewHeadContext.ts, which
-        names this case.
+        Not at the bottom of this card, because the card scrolls: one «Neste
+        treff» and the strip would sit under the sticky compose field, with
+        the reader typing in a field they cannot see and the hit counter
+        behind the composer's buttons. The shell owns a place at the top of
+        the region for exactly this; see layout/viewHeadContext.ts.
 
         Written first in the view on purpose. React sends events through the
         portal along the React tree while the browser tabs the DOM, so a head
@@ -309,17 +291,15 @@ export function AnswerMessage({
 
             {/*
               One quiet line over the answer, with an info icon before it, as
-              Aksel's InlineMessage with status info (chosen 06.10): no frame
-              and no fill. Over and not under, so it is read before the text
-              it is about.
+              Aksel's InlineMessage with status info: no frame and no fill.
+              Over and not under, so it is read before the text it is about.
 
-              Not a Designsystemet component, because it has none for this.
-              `Alert` is the box that was chosen against, and `ValidationMessage`,
-              which looks like this, is feedback on a form field and ties
-              itself to one (`data-field="validation"`). The icon is
-              decoration and the sentence says it all. No role: it arrives
-              with the finished answer, and the live region says it then
-              («Svaret er ferdig.» and this sentence, useChat).
+              Not a Designsystemet component, because it has none for this:
+              `Alert` is a box, and `ValidationMessage`, which looks like
+              this, is feedback on a form field and ties itself to one. The
+              icon is decoration and the sentence says it all. No role, since
+              it arrives with the finished answer and the live region says it
+              then (useChat).
             */}
             {lacksSources(message) ? (
               <Paragraph className="ka-no-sources-note" data-size="sm">
@@ -360,9 +340,9 @@ export function AnswerMessage({
 
             {/*
               The hit count and the search words, inside the card under the
-              answer. Detailed only: at standard the procedure above the
-              answer has already said what the answer was built on, in the
-              words a reader has seen before (issue 88).
+              answer. Detailed only: at standard the procedure above has
+              already said what the answer was built on, in plainer words
+              (issue 88).
             */}
             {detailed && message.retrieval && !streaming ? (
               <RetrievalPanel retrieval={message.retrieval} />
@@ -386,10 +366,10 @@ export function AnswerMessage({
             ) : null}
 
             {/*
-              The documents the answer rests on, under it and over the closing
-              question, as issue 113 draws it. Only once the answer is
-              done: the sources arrive in the last frame, and a list that grew
-              while the text was still being written would move under it.
+              The documents the answer rests on, under it and over the
+              closing question. Only once the answer is done: the sources
+              arrive in the last frame, and a list that grew while the text
+              was still being written would move under it.
             */}
             {complete && !empty && !foundNothing ? (
               <SourcesSummary documents={message.sources ?? []} onSelectSource={activateCitation} />
@@ -427,12 +407,12 @@ export function AnswerMessage({
             sharing yet. What the reader wants is the answer they stopped, so
             the row is the one way onward.
 
-            The same row on a turn that failed and has outlived its alert. The
-            alert carried «Prøv igjen» while it was up; once it is gone, a
+            The same row on a turn that failed and has outlived its alert.
+            The alert carried «Prøv igjen» while it was up; once it is gone, a
             restored failure would be the one turn in the thread with no way
             on at all. `retry` finds the question in the conversation when the
-            session that asked it is gone (#76), so the button works in a
-            reloaded tab.
+            session that asked it is gone, so the button works in a reloaded
+            tab.
           */}
           {aborted || failedQuietly ? (
             <Card.Block>

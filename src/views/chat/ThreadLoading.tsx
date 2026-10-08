@@ -13,12 +13,10 @@ const QUESTION_CHARACTERS = 46;
 /**
  * The conversation at the address, while it is being read.
  *
- * What stood here was the front page: «Hei 👋 Hva lurer du på?» and three
- * suggestions, on a route that names a conversation the reader has already
- * chosen — while the filter panel beside it drew skeletons and said it was
- * loading (brukerblikk 8, funn 2). The waiting was never the problem; the
- * greeting was. A reader who opened a thread is not being welcomed to a new
- * one, and three suggestions are an offer to start over.
+ * NOT the front page greeting: a reader who opened a thread is not being
+ * welcomed to a new one, and three suggestions on a route that names a
+ * conversation they already chose are an offer to start over. The waiting is
+ * not the problem; the greeting is.
  *
  * So the shape of what is coming stands here instead: one question and one
  * answer. It is the same skeleton the answer being written uses, because it
@@ -26,9 +24,9 @@ const QUESTION_CHARACTERS = 46;
  *
  * Hidden from a screen reader, which cannot read a shape. What the lines say
  * in grey is said in words by the view's own polite region, which is already
- * in the page and empty — see `READING_THREAD`. An `output` here said the
- * same thing and arrived with its text already in it, so there was no change
- * for a screen reader to announce (KA CC on #156).
+ * in the page and empty — see `READING_THREAD`. An `output` here would arrive
+ * with its text already in it, and an inserted region is not a change a
+ * screen reader announces.
  *
  * The compose field stays. A question asked while this is on screen belongs
  * to the thread in the address and is filed under it (#149, #153), and the

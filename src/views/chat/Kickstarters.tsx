@@ -2,7 +2,7 @@ import { Button, Heading } from '@digdir/designsystemet-react';
 import { FileTextIcon } from '@navikt/aksel-icons';
 
 type KickstartersProps = {
-  /** Fills the compose field. It deliberately does not send (answer 40). */
+  /** Fills the compose field. It deliberately does not send. */
   onPick: (question: string) => void;
   /**
    * The three to offer, chosen by the caller.
@@ -17,7 +17,7 @@ type KickstartersProps = {
 /**
  * Three ready-made questions on the empty state, for the corpus on screen.
  *
- * Each row is a tertiary Button (answer 40), not a chip: these are long,
+ * Each row is a tertiary Button, not a chip: these are long,
  * corpus-specific questions, and a row can hold one. The follow-up
  * suggestions under an answer are chips, because they are short.
  *

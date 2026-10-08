@@ -8,10 +8,9 @@ type AnswerTimeProps = {
 /**
  * When the answer came, in the action row under it.
  *
- * «Den jeg kjørte før møtet på tirsdag» was unanswerable inside a
- * conversation: the thread list got a time on every row (#34), and the answer
- * the reader was actually looking at had none (brukerreiser 2026-09-15,
- * punkt 3).
+ * «Den jeg kjørte før møtet på tirsdag» is unanswerable inside a
+ * conversation when only the thread list carries times and the answer the
+ * reader is looking at does not.
  *
  * The same `threadTime` the list uses, so a thread that says «fredag» in the
  * list does not say something else once it is open. That is why the helper
@@ -25,9 +24,8 @@ type AnswerTimeProps = {
  * A turn that came back as `needs-clarification` gets one, in the same words:
  * «Svaret kom» is the moment the assistant replied, and it replied — with a
  * question rather than an answer, but at a time the reader can refer to.
- * Without it a restored conversation that ended in a clarification had a
- * hole, when every row in the thread list says when (the conductor,
- * 2026-09-16).
+ * Without it a restored conversation that ended in a clarification has a
+ * hole, when every row in the thread list says when.
  *
  * Restored answers show the time they were given, not the time they were
  * loaded: `createdAt` is written when the turn happens and stored with it

@@ -47,16 +47,12 @@ const FOOTER_OPTIONS: { value: FooterMode; label: string; description: string }[
 ];
 
 /**
- * The hidden settings menu.
+ * The hidden settings menu: reachable by typing something in the address, in
+ * the same design as the rest, and kept small.
  *
- * Asked for 30.09: a settings menu reachable by typing something in the
- * address, in the same design as the rest, kept small — more settings are
- * expected later.
- *
- * So: one Designsystemet `Dialog`, a `Fieldset` of radios per setting, and
- * nothing else. It held one setting when it was built and took the second
- * without changing shape — which is the whole reason it is a menu and not a
- * console command like `window.ka.colorScheme`.
+ * One Designsystemet `Dialog`, a `Fieldset` of radios per setting, and
+ * nothing else. It takes another setting without changing shape, which is the
+ * whole reason it is a menu and not a console command.
  *
  * **Opened by `#innstillinger`** and not by a query, because a hash never
  * reaches the server, never changes the route, and never travels in a link

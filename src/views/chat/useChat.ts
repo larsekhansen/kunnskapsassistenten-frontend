@@ -50,13 +50,10 @@ function lastQuestionIn(messages: Message[]): string | undefined {
 /**
  * The conversation without the turn «Generer på nytt» is about to replace.
  *
- * Only the last one, and only when it is an answer that did not make it. It
- * used to be every failed or stopped answer in the thread, which was the same
- * thing back when a thread could hold at most one: a stopped turn was not
- * stored, so the only one that could exist was the live one. Now that a
- * stopped turn survives a reload, an older one can be sitting further up —
- * and running the newest question again is no reason to delete a turn the
- * reader stopped last week.
+ * Only the last one, and only when it is an answer that did not make it. A
+ * stopped turn survives a reload, so an older failed or stopped answer can be
+ * sitting further up — and running the newest question again is no reason to
+ * delete a turn the reader stopped last week.
  */
 function withoutTurnBeingRetried(messages: Message[]): Message[] {
   const last = messages.at(-1);
@@ -78,7 +75,7 @@ export type UseChat = {
    */
   error: ChatError | null;
   /**
-   * What the polite live region should say at this moment (answer 33).
+   * What the polite live region should say at this moment.
    *
    * It lives here rather than in the view because only this loop knows when a
    * paragraph finished and when the turn ended. A live region driven by
@@ -119,7 +116,7 @@ export type UseChat = {
    */
   attachmentsByMessage: Record<string, string[]>;
   send: (question: string, attachments?: AskAttachments) => void;
-  /** Stop the generation and keep what has arrived (answer 34). */
+  /** Stop the generation and keep what has arrived. */
   cancel: () => void;
   /**
    * Ask the last question again, in place of the answer that did not make
@@ -131,10 +128,6 @@ export type UseChat = {
 
 /**
  * The chat state machine: messages in, one streamed answer at a time.
- *
- * Streaming is built in rather than added later, because it changes how the
- * answer is rendered — which is why the build order says to do step 3 and
- * step 5 together (design/skal-dette-implementeres.md).
  *
  *   idle       nothing in flight
  *   pending    question sent, no token yet — this is what the skeleton shows
@@ -170,45 +163,24 @@ export function useChat(
   const [messages, setMessages] = useState<Message[]>(initialMessages);
 
   /*
-   * The thread can arrive after the view has mounted, and usually does:
+   * The stored thread usually arrives after this hook has mounted:
    * `ChatSlotView` draws the chat straight away and fills `thread` in when
-   * the client answers, so on `/threads/:id` this hook starts with no
-   * messages and the conversation lands a moment later.
+   * the client answers. The messages are ADOPTED rather than replacing the
+   * session, so a reader who has already asked something at this address
+   * keeps what they asked, and the stored turns are laid in FRONT of it,
+   * which is the order the two happened in.
    *
-   * It used to land by remounting — the view keyed itself on the thread id,
-   * so `undefined → id` replaced the whole session. That is how the restored
-   * conversation got in, and it is also why anything the reader had typed
-   * while it loaded was thrown away with it, and why CI went red on main
-   * (the remount fell in the middle of a test's keystrokes; two different
-   * assertions, one cause). So the messages are adopted instead.
-   *
-   * A reader who has already asked something at this address keeps what they
-   * asked. The stored conversation is laid in FRONT of it rather than instead
-   * of it: both are real, and the order is the one they happened in — the
-   * saved turns are older than the question asked while they loaded.
-   *
-   * It used to be dropped outright (`if (messages.length === 0)`), which is
-   * the hole KA CC found in #66: ask something on `/threads/:id` before
-   * `getThread` answers, and the conversation that was already there never
-   * arrived. Only the turn in flight was protected, and protecting it did not
-   * require throwing the rest away.
-   *
-   * By id, so nothing lands twice. The live turn and the stored one can be
-   * the same turn — the mock writes a finished answer into the store under
-   * the id it just streamed (`recordMockTurn`), so a thread that resolves
-   * after the answer settled carries it back. What is already on screen wins;
-   * only ids the conversation has not seen are prepended.
+   * Matched by id, so nothing lands twice: the live turn and the stored one
+   * can be the same turn — the mock writes a finished answer into the store
+   * under the id it just streamed — and what is already on screen wins.
    *
    * Adjusted while rendering the change rather than in an effect, which is
    * React's own answer to «a prop changed and state has to follow»: an effect
    * would draw the empty conversation once first.
    *
-   * Compared on what the messages ARE and not on the identity of the array
-   * that carries them. `initialMessages` has a default of `[]`, which is a
-   * fresh array on every call, so a reference check said «a new thread» every
-   * render and looped. Length plus the last id is enough: a thread that has
-   * grown or been replaced differs, and the same thread handed over twice
-   * does not.
+   * Compared on what the messages ARE, not on the identity of the array that
+   * carries them. `initialMessages` defaults to `[]`, a fresh array on every
+   * call, so a reference check says «a new thread» every render and loops.
    */
   const threadSignature =
     initialMessages.length === 0 ? '' : `${initialMessages.length}:${initialMessages.at(-1)?.id}`;
@@ -256,25 +228,18 @@ export function useChat(
    * A thread belongs to the corpus it was started in — its answers cite
    * documents that only exist there — so continuing it against another one
    * would produce a conversation whose citations point into two different
-   * document sets, with nothing on screen saying which is which. The thread
-   * list would draw one corpus for a thread that has two (KA CC on #131).
+   * document sets, with nothing on screen saying which is which.
    *
-   * Everything goes: the messages, the backend conversation the next question
-   * would have continued, and what each answer was asked under. The draft
-   * does not, because it is not part of the conversation — it is a question
-   * the reader is still writing, and it is as good a question of the new
-   * corpus as of the old (see `ChatView`, which holds it).
+   * Everything goes except the draft, which is not part of the conversation:
+   * it is a question the reader is still writing, and as good a question of
+   * the new corpus as of the old.
    *
    * What the READER sees is emptied while rendering, the same way the thread
-   * below is adopted: an effect would draw the old conversation once under
-   * the new corpus first.
-   *
-   * What the reader does not see — the backend conversation, the question a
-   * retry would repeat, the turn in flight — is let go in the effect under
-   * it. Those are refs, and a ref read or written during render is a value
-   * React cannot see changing. It costs nothing here: the only thing that
-   * reads them is a question, and a question comes from a click or a
-   * keystroke, long after effects have run.
+   * below is adopted — an effect would draw the old conversation once under
+   * the new corpus first. The refs behind it are let go in the effect under
+   * this instead, because a ref written during render is a value React cannot
+   * see changing; nothing reads them before the next question, which comes
+   * from a click long after effects have run.
    */
   const [corpusInUse, setCorpusInUse] = useState(corpusKey);
   if (corpusKey !== corpusInUse) {
@@ -314,13 +279,8 @@ export function useChat(
    * assistant that answered nothing. The alert says what became of a failed
    * turn, and carries the way onward.
    *
-   * A stopped one is the exception, and it is the whole of #4's funn A: the
-   * reader pressed stop while «Tenker …» was still running, and the turn
-   * vanished — no «Generer på nytt», and a sources panel back to «Kildene
-   * vises her når du har stilt et spørsmål» for someone who had just asked
-   * something. Stopping the same answer one second later, after the first
-   * word, left both. So a stopped turn stays whatever phase it was in, and
-   * the card says it was stopped and offers to run it again.
+   * A stopped one is the exception: it stays whatever phase it was in, and
+   * its card is what says it was stopped and offers to run it again.
    */
   const settleAnswer = useCallback(
     (id: string, status: SettledStatus, settled?: { createdAt?: string; corpusKey?: string }) => {
@@ -330,11 +290,10 @@ export function useChat(
        * — that is what a reader refers back to, and it is what the turn is
        * written down with.
        *
-       * Stamping it at both ends is what made one answer carry two times:
-       * the placeholder was made when the question was sent and the stored
-       * copy when the turn was recorded, a whole answer apart. «14:32» on
-       * screen, «14:32:15» after a reload (KA CC on #71). Nothing draws the
-       * time until the turn settles, so moving it costs nothing on screen.
+       * Stamping it at both ends gives one answer two times, a whole answer
+       * apart: the placeholder when the question was sent, the stored copy
+       * when the turn was recorded. Nothing draws the time until the turn
+       * settles, so there is no cost to stamping it only here.
        *
        * The `done` frame's own time wins when there is one, so the message
        * and the stored turn are the same string and not merely the same
@@ -351,18 +310,14 @@ export function useChat(
          * svarte:» tells a screen reader that the assistant answered, when it
          * did not.
          *
-         * What the agent DID is something to show. A failed turn used to be
-         * dropped on `content.length === 0` alone, and it took the thinking
-         * panel with it: «Tenker …» and «Jeg søker i korpuset» were on screen
-         * while the question ran, and the moment the error card arrived the
-         * reader had the question, the error, and nothing about what was tried
-         * — on the one path where that is worth most (brukerblikk 4, funn 3).
-         * A successful answer keeps its panel; this is the only path that
-         * cleared its own trace.
+         * What the agent DID is something to show, so the thinking panel
+         * counts: dropping a failed turn on `content.length === 0` alone
+         * takes «Jeg søker i dokumentene» with it, and leaves the reader with
+         * the question, the error and nothing about what was tried — on the
+         * one path where that is worth most.
          *
          * A stopped turn stays whatever phase it was stopped in, panel or no
-         * panel, because its card is what says it was stopped and offers to run
-         * it again (#4, funn A).
+         * panel, because its card is what says it was stopped.
          */
         const hasNothingToShow =
           answer !== undefined &&
@@ -438,9 +393,9 @@ export function useChat(
 
       /*
        * When the thinking started, so how long it took can be written down
-       * rather than worked out afterwards (brukerblikk runde 2, funn 5). The
-       * stream is where the two ends of that interval actually are: the first
-       * step arriving, and the first word of the answer.
+       * rather than worked out afterwards. The stream is where the two ends
+       * of that interval actually are: the first step arriving, and the first
+       * word of the answer.
        */
       let thinkingStartedAt: number | undefined;
 
@@ -664,14 +619,11 @@ export function useChat(
   const retry = useCallback(() => {
     /*
      * The question to ask again. The ref holds it while the session that
-     * asked it is still open, and a restored conversation has no ref to hold
-     * anything: nothing was sent in this browser session, so it is null.
-     *
-     * That mattered the day a stopped turn started surviving a reload. The
-     * card came back with «Generer på nytt» on it, as it should — and the
-     * button did nothing at all, because this returned on the first line. The
-     * question is in the thread either way, which is where it is read from
-     * when the ref is empty.
+     * asked it is still open; a conversation restored from the store has no
+     * ref to hold anything, since nothing was sent in this browser session.
+     * The question is in the thread either way, which is where it is read
+     * from when the ref is empty — without that, «Generer på nytt» on a
+     * restored turn does nothing at all.
      */
     const question = lastQuestionRef.current ?? lastQuestionIn(messagesRef.current);
     if (!question) return;

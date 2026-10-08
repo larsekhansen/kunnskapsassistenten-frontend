@@ -14,11 +14,9 @@ function hitSummary({ hitCount, documentCount }: RetrievalDetails): string {
 /**
  * «Fremgangsmåte»: how the assistant searched.
  *
- * Figma draws a collapsible bar with an open/close chevron of its own; this
- * is a `Details`, which gives the disclosure role, `aria-expanded` and
- * keyboard operation for free. Three components in the design build that
- * switch by hand (`chunk`, `blackbox` and `expandable`), and all three are
- * one `Details` in code.
+ * A `Details`, which gives the disclosure role, `aria-expanded` and keyboard
+ * operation for free; the design builds that switch by hand in three
+ * components, and all three are one `Details` in code.
  *
  * Two deliberate departures from Figma:
  *
@@ -38,11 +36,11 @@ function hitSummary({ hitCount, documentCount }: RetrievalDetails): string {
  * token Details uses for its own chevron. Nothing here sits inside a Button,
  * so nothing else would size it.
  *
- * Frontend placeholder in v1 (answer 11), open by default, because what makes
- * an answer checkable should not be behind a click. The keywords are plain
- * Tags: they are not clickable (answer 13). They wrap rather than run out
- * through the side of the card, which is what `ka-tag--wrapping` is for —
- * Tag is `width: max-content` with nothing stopping it.
+ * Open by default, because what makes an answer checkable should not be
+ * behind a click. The keywords are plain Tags, not chips: they are not
+ * clickable. They wrap rather than run out through the side of the card,
+ * which is what `ka-tag--wrapping` is for — Tag is `width: max-content` with
+ * nothing stopping it.
  */
 export function RetrievalPanel({ retrieval }: RetrievalPanelProps) {
   return (

@@ -42,11 +42,10 @@ export type AnswerHits = {
  * order and not about any one block of markdown.
  *
  * Which is why it is re-applied after EVERY render and not only when the
- * index changes. Measured in the browser 2026-09-15: stepping to hit 2 set
- * the attribute, and it was gone a moment later. The chat view re-renders on
- * scroll — `useFollowAnswer` watches the main column — and the smooth scroll to
- * the hit is itself scrolling, so the render that followed took the attribute
- * with it while the effect that sets it sat still on unchanged dependencies.
+ * index changes. The chat view re-renders on scroll — `useFollowAnswer`
+ * watches the main column — and the smooth scroll to a hit is itself
+ * scrolling, so the render that follows takes the attribute with it while an
+ * effect guarded by dependencies sits still.
  * Scrolling is the one thing that stays behind a dependency list: an effect
  * that scrolled on every render would take the page away from a reader who
  * had just scrolled it themselves.
@@ -95,9 +94,8 @@ export function useAnswerHits(
   return {
     hitCount,
     currentIndex,
-    // `stepHit` stops at the ends rather than wrapping (brukerblikk
-    // 2026-09-15, funn 11), and it is the sources panel's own: one search
-    // mechanism, not two.
+    // `stepHit` stops at the ends rather than wrapping, and it is the
+    // sources panel's own: one search mechanism, not two.
     step: (step) => setCurrentIndex((current) => stepHit(hitCount, current, step)),
   };
 }

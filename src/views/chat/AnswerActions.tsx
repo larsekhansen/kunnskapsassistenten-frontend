@@ -16,7 +16,7 @@ type AnswerActionsProps = {
    * copied text, and the `[n]` markers are kept so they point at something.
    */
   sources?: SourceDocument[];
-  /** Opens or closes the search inside this answer (brukerreiser punkt 13). */
+  /** Opens or closes the search inside this answer. */
   onToggleSearch?: () => void;
   searchOpen?: boolean;
   /** Where focus goes when the search strip closes. */
@@ -24,15 +24,12 @@ type AnswerActionsProps = {
 };
 
 /**
- * What a reader can do with a finished answer: copy it (answer 15), copy a
- * link to the thread (answer 16), and search in it. «Bla til nederst»
- * (answer 17) used to be here too, once per answer; it is one control for the
- * whole column now, over the compose field (issue, runde 3, ekstra 5).
+ * What a reader can do with a finished answer: copy it, copy a link to the
+ * thread, and search in it.
  *
  * Copying takes the sources with it. An answer pasted into a submission
- * without its provenance is the one thing KA is not for (reise 13, 14 and 20
- * in design/brukerreiser-2026-09-15.md), so the markers stay and a reference
- * list follows them. The receipt counts what went along, because «Svaret er
+ * without its provenance is the one thing KA is not for, so the markers stay
+ * and a reference list follows them. The receipt counts what went along, because «Svaret er
  * kopiert» would not tell the reader that anything more did.
  *
  * The receipt under the row is rendered empty rather than hidden while there
@@ -81,7 +78,7 @@ export function AnswerActions({
       </Button>
 
       {/*
-        The reader's own way into a long answer (brukerreiser punkt 13). The
+        The reader's own way into a long answer. The
         browser's Ctrl+F is left alone on purpose — it is the one find every
         reader already has, and a page that takes it away to offer its own has
         made things worse. `aria-expanded` is what says the strip below

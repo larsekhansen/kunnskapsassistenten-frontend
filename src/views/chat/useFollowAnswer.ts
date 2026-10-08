@@ -4,44 +4,38 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 're
  * How close to the end still counts as «at the bottom», in CSS pixels: a line
  * of the answer and half a wheel step.
  *
- * Near enough that a reader would take it for the bottom (chosen 06.10, for
- * digdir/kunnskapsassistenten#126), and then the column follows what the
- * reader sends as it follows what arrives. Measured in the column at 1440 ×
- * 900 and 390 × 844, the same on both: a line of the answer is 30.6 px, a
- * wheel step 100 px in Chromium and an arrow key 40 px. A reader who stops
- * half a step short has the last line under the edge and sees the end of the
- * text above it. It was 24, and 30 short of the bottom a question went 372 px
- * below the edge with «Bla til nederst» showing.
+ * Near enough that a reader would take it for the bottom, so the column
+ * follows what the reader sends as it follows what arrives. The numbers
+ * behind it: a line of the answer is about 31 px, a wheel step 100 px in
+ * Chromium and an arrow key 40 px, so a reader who stops half a step short
+ * still has the last line under the edge. A much smaller slack leaves a
+ * question hundreds of pixels below the edge with «Bla til nederst» showing.
  */
 const SLACK = 80;
 
 /**
  * Keeps the main column at its bottom while an answer arrives, if that is
- * where the reader already was — and leaves it alone otherwise (runde 3,
- * ekstra 4). Returns whether the column is at its bottom, which is
- * what «Bla til nederst» is drawn from (answer 17): a control that does
- * nothing is worse than no control.
+ * where the reader already was, and leaves it alone otherwise. Returns
+ * whether the column is at its bottom, which is what «Bla til nederst» is
+ * drawn from: a control that does nothing is worse than no control.
  *
- * One hook for both, and that is measured. The button had a hook of its own
- * that watched the same growth, and it saw each new paragraph a moment before
- * this one took the column down to it: the button came and went 90 times in
- * three answers at 1440 × 900, and 226 times at 390 × 844, while the column
- * never left the bottom. Here the column is moved first and measured after,
- * and a column that is being held counts as at the bottom.
+ * One hook for both, because two cannot agree. A separate hook for the button
+ * watches the same growth and sees each new paragraph a moment before this
+ * one takes the column down to it, so the button flickers dozens of times per
+ * answer while the column never leaves the bottom. Here the column is moved
+ * first and measured after, and a column being held counts as at the bottom.
  *
- * «Where the reader was» is decided by the reader's own scrolling, and by
- * nothing else. Measured in the scroll events, before the answer grows, and
- * kept while it grows: a column that grew by a paragraph is no longer at its
- * bottom, but the reader who was there is still following. Scrolling up
- * lets go, and reaching the bottom again takes hold.
+ * «Where the reader was» is decided by the reader's own scrolling and by
+ * nothing else: measured in the scroll events, before the answer grows, and
+ * kept while it grows. A column that grew by a paragraph is no longer at its
+ * bottom, but the reader who was there is still following. Scrolling up lets
+ * go, and reaching the bottom again takes hold.
  *
- * Only UP lets go, and that is measured rather than tidy. The scroll event
- * for a jump this hook makes arrives a frame later, and an answer can grow
- * by a paragraph in between: the event then finds the column 31 px short of
- * a bottom that has moved, and a rule that only asked «is it at the bottom»
- * let go there. From the front page at 1920 × 1080 the second answer was
- * left behind at 364 of 1268. A reader who means to leave scrolls up; a
- * column that moved down and fell short was following.
+ * Only UP lets go. The scroll event for a jump this hook makes arrives a
+ * frame later, and an answer can grow by a paragraph in between: the event
+ * then finds the column short of a bottom that has moved, and a rule asking
+ * only «is it at the bottom» would let go there and leave the answer behind.
+ * A reader who means to leave scrolls up.
  *
  * Only while an answer is on its way. Growth at any other time is somebody
  * opening a thread, or a panel in it, and a column that went to the bottom

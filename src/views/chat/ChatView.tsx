@@ -62,10 +62,10 @@ export type ChatViewProps = {
  *
  * An answer whose sources have not arrived counts as zero and not as a state
  * of its own, because zero is what the shell stores for it — `AnswerSources`
- * carries an array and never `undefined`. Saying «venter» on this side of the
- * comparison and reading `[]` on the other made the two never agree, so the
- * view reported on every render, which re-rendered the shell, which ran the
- * view again. The suite hung rather than failed.
+ * carries an array and never `undefined`. Saying «venter» on this side and
+ * reading `[]` on the other makes the two never agree, and the view then
+ * reports on every render, which re-renders the shell, which runs the view
+ * again.
  */
 function sourcesSignature(documents: number, status: string, corpusKey?: string): string {
   return `${status}:${documents}:${corpusKey ?? ''}`;
@@ -86,18 +86,14 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
 
   /*
    * Which corpus is being searched, for the three suggestions on the empty
-   * state. They were three Kudos questions over every corpus, including 351
-   * Wikipedia articles that can answer none of them (brukerblikk 5, funn 2).
+   * state: a suggestion naming documents the corpus does not hold invites a
+   * question it cannot answer.
    *
    * Read here rather than in `Kickstarters`, so the suggestions stay a value
    * handed down and the leaf stays a leaf. `useCorpus` navigates when the
-   * corpus is SET, so it needs a router — which this view has under the shell,
-   * and which the leaf would otherwise have to be given in every preview and
-   * unit test that draws a greeting.
-   *
-   * It switches on its own: `useCorpus` reads the store through
-   * `useSyncExternalStore`, so choosing another corpus re-renders this view
-   * with the new key and the list changes in the same paint.
+   * corpus is SET, so it needs a router — which this view has under the
+   * shell, and which the leaf would otherwise need in every preview and unit
+   * test that draws a greeting.
    */
   const { active: corpusKey } = useCorpus();
 
@@ -147,8 +143,7 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
        * `corpusDisplayNameFor` answers «standardkorpuset» for a key it does
        * not know, which is a sentence about a default rather than about this
        * answer — and a live backend that picked the dataset itself sends a
-       * key nobody here has a name for (KA CC bør 1 på #138, same check as
-       * #139). No name, no line.
+       * key nobody here has a name for. No name, no line.
        */
       const from = answer?.corpusKey;
       const elsewhere =
@@ -164,10 +159,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
    * «Henter samtalen», through the polite region at the bottom of this view.
    *
    * That region is mounted, empty, from the first render, so putting words in
-   * it is a CHANGE — which is the thing a screen reader announces. The
-   * loading state used to carry an `output` of its own, and that element
-   * arrived with its text already in it: nothing changed, so there was
-   * nothing to announce (KA CC on #156).
+   * it is a CHANGE — which is the thing a screen reader announces. An element
+   * that arrives with its text already in it was inserted, not changed, and a
+   * screen reader has nothing to report about it.
    *
    * Set from an effect rather than during render, for the same reason: the
    * first commit puts the empty region in the page, and the text lands in the
@@ -233,12 +227,11 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
    * stops that much short of the bottom; see `--ka-composer-block-size` in
    * chat.css.
    *
-   * A margin on the conversation and not `scroll-padding` on the scroller,
-   * which is what this was. The padding applied to the field too, and the
-   * field is inside the band the padding keeps clear: every keystroke asked
-   * the browser to bring the caret out from behind the field, and the column
-   * moved 49 px per key towards the bottom (runde 3, ekstra 1). The
-   * margin is on what the field can hide, and not on the field.
+   * A margin on the conversation and NOT `scroll-padding` on the scroller:
+   * the padding applies to the field too, and the field is inside the band it
+   * keeps clear, so every keystroke asks the browser to bring the caret out
+   * from behind the field and the column walks towards the bottom one key at
+   * a time. The margin goes on what the field can hide, not on the field.
    *
    * Measured rather than written down: the field grows with the question
    * (`field-sizing: content`) and the follow-up chips come and go, so the
@@ -283,10 +276,10 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   //
   // One entry per answer, under the answer's own message id. A thread has
   // several answers and each numbers its excerpts from 1, so a single flat
-  // list made `[2]` in the first answer open the second answer's excerpt two
-  // — it looked right and was not (#4, brukerreiser punkt 5). The status
-  // travels with it, because an empty `documents` means four different
-  // things and only the answer knows which.
+  // list makes `[2]` in the first answer open the second answer's excerpt
+  // two — it looks right and is not. The status travels with it, because an
+  // empty `documents` means four different things and only the answer knows
+  // which.
   const {
     answers: reported,
     setAnswerSources,
@@ -297,18 +290,14 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   /*
    * What the shell is holding, against what this thread has to report.
    *
-   * Compared against the shell's own state and not against a memo of what was
-   * sent, which is the fix for brukerblikk runde 2, funn 1: a reloaded
-   * conversation came back with its answer, its markers and its sources in
-   * `sessionStorage`, and both side panels still said «Kildene vises her når
-   * du har stilt et spørsmål». A `useRef` of what had already been sent
-   * cannot know that something emptied the shell afterwards — and several
-   * things may, since leaving a thread, a route with no conversation and this
-   * view's own unmount all clear it. Whatever the order was on the day, the
-   * view had said its piece once and would not say it again.
+   * Compared against the shell's own state and NOT against a memo of what
+   * was sent. A `useRef` of what has already been sent cannot know that
+   * something emptied the shell afterwards — leaving a thread, a route with
+   * no conversation and this view's own unmount all clear it — and the view
+   * would then have said its piece once and never say it again.
    *
-   * Reading the shell instead makes that impossible to get wrong: whatever
-   * empties it, the next render sees the gap and fills it. Reporting changes
+   * Reading the shell makes that impossible to get wrong: whatever empties
+   * it, the next render sees the gap and fills it. Reporting changes
    * `answers`, which runs this again, and the second pass finds nothing to do
    * — so it settles rather than loops.
    *
@@ -379,13 +368,11 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
         ...(message.sourcesNotStored ? { sourcesNotStored: true } : {}),
         /*
          * Which corpus answered. The panel names the corpus the ANSWER came
-         * from and not the one the chooser stands on: open a Kudos thread
-         * while the chooser says Wikipedia and the disclaimer said «fra
-         * Kudos» over a Wikipedia source, or the other way round (KA CC on
-         * #129). It arrives with the frame that ends the stream, so it is
-         * undefined while the answer is still writing — and that is why it
-         * is part of the signature below, or the panel would never hear
-         * about it.
+         * from and not the one the chooser stands on, or a thread opened
+         * while the chooser sits elsewhere gets a disclaimer naming the wrong
+         * corpus. It arrives with the frame that ends the stream, so it is
+         * undefined while the answer is still writing — which is why it is
+         * part of the signature, or the panel would never hear about it.
          */
         ...(message.corpusKey === undefined ? {} : { corpusKey: message.corpusKey }),
       });
@@ -397,13 +384,12 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
    * thread, so unmount is exactly that moment — and an empty dependency list
    * is what makes «unmount» mean unmount.
    *
-   * Through a ref, because the alternative is a trap. With
+   * Through a ref, because the alternative is a trap: with
    * `[clearAnswerSources]` the effect re-runs whenever that function changes
-   * identity, and re-running an effect means running its cleanup first: the
+   * identity, and re-running an effect runs its cleanup first — so the
    * sources would be wiped on an ordinary re-render rather than on the way
-   * out. The shell memoises the callback today, so nothing has gone wrong
-   * yet; measured here 2026-09-15 against a provider that does not, and it
-   * was an endless clear-and-report between the two effects.
+   * out. The shell memoises the callback today; against a provider that does
+   * not, the two effects clear and report each other endlessly.
    */
   const clearOnUnmount = useRef(clearAnswerSources);
   useEffect(() => {
@@ -422,8 +408,8 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
    * assistant to say more about nothing, and «Identifiser utfordringer» is a
    * question about documents that were never found. The advice the answer
    * already carries — loosen the filter, ask in other words — is the way on
-   * from here, and three buttons that lead back to the same nothing are in
-   * its way (the conductor, 2026-09-15).
+   * from here, and three buttons leading back to the same nothing are in its
+   * way.
    *
    * Read off the last message and not off the thread: an earlier answer that
    * did find something is still worth following up, right up until this one
@@ -433,10 +419,10 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   const foundNothing = lastMessage !== undefined && noHitsAnswers.has(lastMessage.id);
 
   /**
-   * The same head on both routes (brukerblikk 2026-09-15, finding 5). A
-   * thread opened from the list brings its title; a conversation started on
-   * `/` has none until the client names it, and then the question stands in.
-   * See threadHeading.ts for why a stand-in is heard and not seen.
+   * The same head on both routes. A thread opened from the list brings its
+   * title; a conversation started on `/` has none until the client names it,
+   * and then the question stands in. See threadHeading.ts for why a stand-in
+   * is heard and not seen.
    */
   const heading = threadHeading(thread, messages);
   const pageName = threadPageTitle(thread, messages);
@@ -511,13 +497,12 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   useComposerShortcut(fieldRef);
 
   /*
-   * The hidden settings menu. `#innstillinger` in the address opens it, and
-   * nothing else does — without the hash nobody can see that it is there,
-   * which is what was asked for on 30.09.
+   * The hidden settings menu: `#innstillinger` in the address opens it, and
+   * nothing else does.
    *
-   * The hash and not a query: it never reaches the server, it never changes
-   * which route is showing, and it does not travel in a link somebody pastes
-   * into a ticket. See SettingsDialog.tsx.
+   * The hash and not a query, because it never reaches the server, never
+   * changes which route is showing, and does not travel in a link somebody
+   * pastes into a ticket. See SettingsDialog.tsx.
    */
   const { hash } = useLocation();
   const navigate = useNavigate();
@@ -527,7 +512,7 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   const flagsOpen = hash === FEATURE_FLAGS_HASH;
   useFlagLink();
   const displayLevel = useDisplayLevel();
-  // Issue 123, read here only to hand the dialog the choice on screen.
+  // Read here only to hand the dialog the choice on screen.
   const footerMode = useFooterMode();
 
   /*
@@ -537,21 +522,18 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
    * and when the turn fails it becomes the send button again — disabled,
    * because the field is empty. A reader who clicked it is still standing on
    * it at this moment and lands on `<body>` one frame later, when the browser
-   * takes focus off a control that has just been switched off. Traced in the
-   * built app, 2026-09-15: «Avbryt genereringen» at 210 ms, «Send spørsmålet»
-   * with the alert already up at 5091 ms, `<body>` at 5107 ms.
+   * takes focus off a control that has just been switched off.
    *
-   * So «is focus lost» cannot be asked of `document.activeElement` alone —
+   * So «is focus lost» cannot be asked of `document.activeElement` alone:
    * asked here it is still the button, and one frame later it is too late.
-   * That one button counts as lost too, and it is compared by identity: the
-   * reasoning is about the control that changed meaning under the reader, so
-   * «a button in the composer» was too wide a net. It caught the paperclip,
-   * which changes nothing when a turn fails and has every right to keep the
-   * focus a reader put on it (KA CC on #59).
+   * That one button counts as lost too, and it is compared by identity —
+   * «a button in the composer» is too wide a net, because it catches the
+   * paperclip, which changes nothing when a turn fails and has every right to
+   * keep the focus a reader put on it.
    *
    * Where focus goes is «Prøv igjen», which is the one thing to do next, and
    * the compose field when the error offers no retry — a rejected key does
-   * not, and the reader's way on is to write to someone (#4, funn B).
+   * not, and the reader's way on is to write to someone.
    *
    * The compose field itself is left alone. Enter leaves the caret there, and
    * a reader who is typing must not have it taken away.
@@ -592,11 +574,11 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
         what is on its way, and — only when the address names nothing — the
         greeting.
 
-        The conversation wins over the loading shape, and that is the point of
-        the order rather than an accident of it: a question asked while the
-        thread is being read is already on screen (#149), and drawing
-        skeletons over it would take the reader's own words away while they
-        waited for older ones.
+        The conversation wins over the loading shape, and that is the point
+        of the order rather than an accident of it: a question asked while the
+        thread is being read is already on screen, and drawing skeletons over
+        it would take the reader's own words away while they waited for older
+        ones.
       */}
       {messages.length > 0 ? (
         <MessageList
@@ -620,8 +602,8 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
         <Welcome
           kickstarters={kickstartersFor(corpusKey)}
           onPickKickstarter={(question) => {
-            // Fills the field, does not send (answer 40). The caret goes with
-            // it, so the reader can edit before asking.
+            // Fills the field, does not send. The caret goes with it, so the
+            // reader can edit before asking.
             setDraft(question);
             focusField();
           }}
@@ -703,10 +685,10 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
       </p>
 
       {/*
-        The hidden settings menu, opened by `#innstillinger` in the address
-        (decided 30.09). It lives here rather than in the shell because the one
-        setting it holds is this view's, and a menu with one setting belongs
-        next to it until there is a second. See SettingsDialog.tsx.
+        The hidden settings menu, opened by `#innstillinger` in the address.
+        It lives here rather than in the shell because the one setting it
+        holds is this view's, and a menu with one setting belongs next to it
+        until there is a second. See SettingsDialog.tsx.
 
         Mounted only while the address asks for it, unlike the delete dialog
         in the threads view: that one is permanent so it can animate and take
@@ -739,21 +721,17 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
  * heading, as Figma draws it: «Kunnskapsassistenten» on top, the thread title
  * under it.
  *
- * **It does not key itself.** It used to: `key={props.thread?.id ?? 'new'}`,
- * so that moving between threads started from that thread's messages instead
- * of carrying the previous conversation across. The trouble is that `thread`
- * is undefined until the client has answered, so on `/threads/:id` the key
- * went `'new'` → the id a moment after mount, and the session remounted with
- * everything the compose field was holding. Type while the thread is loading
- * and the text was gone. In CI, which is slower, the remount landed in the
- * middle of a test's keystrokes and `chat.spec` went red on main.
+ * **It does not key itself**, and must not. `thread` is undefined until the
+ * client has answered, so a key of `props.thread?.id ?? 'new'` goes from
+ * `'new'` to the id a moment after mount, and the session remounts with
+ * everything the compose field was holding — type while the thread loads and
+ * the text is gone.
  *
- * The remount it was for already happens above: `ChatSlotView` renders
- * `<ChatSlot key={threadId}>` off the route, so a real thread change replaces
- * this whole subtree, and the preview passes a key of its own. Keying here as
- * well only added the one transition the route never makes — from «no thread»
- * to «this thread» — which is not a change of conversation at all. It is the
- * same conversation arriving.
+ * The remount that key would be for already happens above: `ChatSlotView`
+ * renders `<ChatSlot key={threadId}>` off the route, so a real thread change
+ * replaces this whole subtree. Keying here only adds the transition the route
+ * never makes, from «no thread» to «this thread» — which is the same
+ * conversation arriving, not a different one.
  *
  * Which is also why the route is not read here instead: a view takes a
  * `ThreadDetail` and never a route (see slotViews/ChatSlotView.tsx), and the

@@ -27,16 +27,13 @@ export type AnswerSearchProps = {
 };
 
 /**
- * Search inside one answer (design/brukerreiser-2026-09-15.md, punkt 13).
+ * Search inside one answer.
  *
- * The sources panel has had a search with a hit counter and previous/next
- * since PR #26, and the answer beside it had nothing — so a reader looking for
- * one number in a long answer had the browser's own find or nothing. This is
- * the same control, in the answer's action row, and deliberately the same
- * shape: `Search` with `Search.Clear`, a live counter, «Forrige» and «Neste»
- * that stop at the ends rather than wrapping (brukerblikk 2026-09-15, funn
- * 11), and `aria-disabled` rather than `disabled` so stepping never drops the
- * keyboard out of the control.
+ * Deliberately the same control as the one in the sources panel, so a reader
+ * meets one search mechanism and not two: `Search` with `Search.Clear`, a
+ * live counter, «Forrige» and «Neste» that stop at the ends rather than
+ * wrapping, and `aria-disabled` rather than `disabled` so stepping never
+ * drops the keyboard out of the control.
  *
  * It does not take Ctrl+F. The browser's find is the one keyboard shortcut
  * every reader already has, and a page that swallows it takes away a working

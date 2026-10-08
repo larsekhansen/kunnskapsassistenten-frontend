@@ -7,15 +7,14 @@ type ScrollToBottomProps = {
 };
 
 /**
- * «Bla til nederst», once for the whole column (runde 3, ekstra 5).
+ * «Bla til nederst», once for the whole column.
  *
- * It was a button in every answer's action row, which put one in each chat
- * block and none where the reader was when they wanted it: halfway up a long
- * answer, the row with the button is at the end of that answer, below the
- * fold. It now stands over the compose field and moves with it, so it is in
- * the same place wherever the reader is in the conversation.
+ * Not one per answer: a button in each action row is never where the reader
+ * is when they want it, since halfway up a long answer that row is at the end
+ * of the answer, below the fold. This one stands over the compose field and
+ * moves with it, so it is in the same place wherever the reader is.
  *
- * Drawn only when there is something below (answer 17), by the chat view.
+ * Drawn only when there is something below, by the chat view.
  *
  * `detail` is 0 for a click the keyboard made, and a screen reader's click is
  * made the same way. That is how the chat view knows to hand the focus on.

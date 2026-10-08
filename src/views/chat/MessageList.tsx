@@ -12,7 +12,7 @@ type MessageListProps = {
   /**
    * A `[n]` marker was activated. The message id goes with the number: each
    * answer numbers its excerpts from 1, so the number alone does not say
-   * which excerpt (#4, brukerreiser punkt 5).
+   * which excerpt.
    */
   onSelectSource: (citationNumber: number, messageId: string) => void;
   /** Ask the stopped question again, in place of the answer that was cut off. */
@@ -52,20 +52,18 @@ type MessageListProps = {
  * brings its own headings from the model, and a heading per message on top of
  * those would give the page two competing outlines.
  *
- * It also owns which answer the search strip belongs to, and that is not a
- * detail of bookkeeping. The strip is drawn in the shell's view-head, pinned
- * to the top of the column, and a region has one of those — so «which answer
- * is being searched» is a fact about the conversation and cannot live inside
- * each answer. Before it moved, every answer held its own and two could be
- * open at once; now opening one closes the other, which is also what a single
- * pinned strip looks like to a reader.
+ * It also owns which answer the search strip belongs to. The strip is drawn
+ * in the shell's view-head, pinned to the top of the column, and a region has
+ * one of those — so «which answer is being searched» is a fact about the
+ * conversation and cannot live inside each answer. Opening one closes the
+ * other, which is what a single pinned strip looks like to a reader.
  *
  * Three kinds of turn, and this file is the choice between them. A question
- * is a paragraph in a box at the end of the line. A turn that came back as `needs-clarification` is a question
- * to the reader and not an answer, so the sender line says «spurte» and the
- * card is `Clarification`. Everything else is an answer, and `AnswerMessage`
- * draws it — it holds state of its own, which is why it is a component and
- * not another branch in here.
+ * is a paragraph in a box at the end of the line. A turn that came back as
+ * `needs-clarification` is a question to the reader and not an answer, so the
+ * sender line says «spurte» and the card is `Clarification`. Everything else
+ * is an answer, and `AnswerMessage` draws it — it holds state of its own,
+ * which is why it is a component and not another branch in here.
  */
 export function MessageList({
   messages,
@@ -113,12 +111,10 @@ export function MessageList({
               <span className="ds-sr-only">Du skrev:</span>
               {/*
                 The reader's words in a box of their own, at the end of the
-                line, in the size the answer is written in (issue
-                117). Set larger and bare above the answer, as Figma had it,
-                the question read as a heading over the card. A box at the
-                far side is what other chats do and what a reader already
-                knows: ChatGPT, Gemini, Copilot and Claude all draw the
-                reader that way, and the answer across the column.
+                line, in the size the answer is written in (issue 117). Set
+                larger and bare above the answer, the question reads as a
+                heading over the card. A box at the far side is what other
+                chats do and what a reader already knows.
 
                 Designsystemet has no chat message, and `Card` is the box it
                 does have: tinted, and in the one blue the app uses.
@@ -145,7 +141,7 @@ export function MessageList({
         //
         // «Tenkte i N sekunder» does apply, and stays: the agent searched
         // before it asked back, and how long it spent is the same fact here
-        // as over an answer (the conductor, 2026-09-15).
+        // as over an answer.
         if (message.status === 'needs-clarification') {
           const clarificationSteps = thinkingWithoutAnswer(message.thinkingSteps, message.content);
           return (

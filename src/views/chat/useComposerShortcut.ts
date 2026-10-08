@@ -6,16 +6,16 @@ export const COMPOSER_SHORTCUT_KEY = '/';
 /**
  * Ctrl+/ — Cmd+/ on a Mac — puts the caret in the compose field.
  *
- * The field is tab stop 22 of 38 on a thread page, for the thing a reader
- * does most often (reise 7 and 15 in design/brukerreiser-2026-09-15.md). The
- * mnemonic is GitHub's and Slack's, so it is one fewer thing to learn.
+ * The field is deep in the tab order on a thread page, for the thing a
+ * reader does most often. The mnemonic is GitHub's and Slack's, so it is one
+ * fewer thing to learn.
  *
  * **The modifier is not decoration.** A shortcut bound to a single character
  * key is WCAG 2.1.4 Character Key Shortcuts, level A, and has to be
- * switchable, remappable, or limited to a focused component — the plain `/`
- * this started as was none of those (KA CC, 2026-09-15). A shortcut that
- * needs a modifier is outside 2.1.4 altogether, and the skip link straight to
- * the field is the primary route in any case.
+ * switchable, remappable, or limited to a focused component, and a plain `/`
+ * is none of those. A shortcut that needs a modifier is outside 2.1.4
+ * altogether, and the skip link straight to the field is the primary route in
+ * any case.
  *
  * Shift is allowed through rather than rejected, and that is the whole reason
  * this is written out: on a Norwegian keyboard `/` IS Shift+7, so `shiftKey`

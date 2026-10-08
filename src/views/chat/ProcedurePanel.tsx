@@ -167,7 +167,7 @@ export function ProcedurePanel({ steps, status, retrieval, question }: Procedure
 
         {/*
           The words the search actually ran on, with the rule above them that
-          the design draws. Plain Tags: they are not clickable (answer 13), and
+          the design draws. Plain Tags: they are not clickable, and
           they wrap inside themselves rather than running out through the side
           of the panel — see `ka-tag--wrapping`.
 

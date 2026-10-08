@@ -4,20 +4,15 @@ import type { Message, Thread } from '../../model';
  * The `h2` over a conversation: the thread title, and whether it is worth
  * looking at.
  *
- * The same conversation looked like two different pages depending on how the
- * reader got there: `/threads/:id` drew the thread title as an `h2` with the
- * question under it, `/` drew no heading at all, so the first heading in the
- * column was the answer's own `h3` (brukerblikk 2026-09-15, finding 5). The
- * head is the same on both routes now.
+ * The head is the same on both routes, so the same conversation does not
+ * look like two different pages depending on how the reader got there.
  *
  * Until a thread has a title of its own, the first sentence of the first
- * question stands in. That title is the question again, and the question is
- * right under it, so the conductor settled it on 2026-09-15: a title that
- * only repeats the question is visually hidden. The heading stays in the
- * document, so the outline a screen reader walks is the same on both routes
- * and in both states; it is the second copy on screen that goes. A real title
- * — from the backend, or generated later from more than the first sentence —
- * is shown with the question under it, as Figma draws it.
+ * question stands in — and a title that only repeats the question right under
+ * it is visually hidden. The heading stays in the document, so the outline a
+ * screen reader walks is the same on both routes and in both states; it is
+ * the second copy on screen that goes. A real title is shown with the
+ * question under it, as Figma draws it.
  *
  * Whether a title is the question over again is the thread's own answer, not
  * something guessed from the text: `titleFromQuestion` is set by whoever made
@@ -94,11 +89,9 @@ export function threadHeading(
  *
  * The heading's title, except that a title which is the question over again
  * is cut to its first sentence, the way the stand-in is. A thread made from a
- * question stores the whole question as its title, so the same conversation
- * was «Hva sier årsrapporten om tilsyn» while it was being asked and «Hva
- * sier årsrapporten om tilsyn? Og om frekvenser.» after going back to it:
- * measured in the browser, from the front page and back from «Onboarding».
- * A title of its own is used as it is.
+ * question stores the WHOLE question as its title, so without the cut the
+ * same conversation gets one tab title while it is being asked and a longer
+ * one after going back to it. A title of its own is used as it is.
  */
 export function threadPageTitle(
   thread: Pick<Thread, 'title' | 'titleFromQuestion'> | undefined,

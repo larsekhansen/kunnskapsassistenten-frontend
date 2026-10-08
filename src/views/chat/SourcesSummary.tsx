@@ -12,40 +12,30 @@ type SourcesSummaryProps = {
 
 /**
  * «Kilder brukt i svaret»: the documents the answer is built on, under the
- * answer, as a way into the sources panel (issue 113, Figma
- * 1712:36955).
+ * answer, as a way into the sources panel (issue 113).
  *
  * One row per document and not per excerpt. The `[n]` markers in the text are
- * the per-excerpt view, and the panel is the full one. This is the short list
- * a reader takes in at the end of the answer: which reports it rests on.
+ * the per-excerpt view and the panel is the full one; this is the short list
+ * a reader takes in at the end of the answer.
  *
  * A title opens the panel on that document's first cited excerpt, by the same
- * route a `[n]` marker takes. The panel then switches to this answer's
- * sources, scrolls to the excerpt, opens it and puts the focus there, with
- * «Tilbake til svaret» and Escape as the way back. A document whose excerpts
- * the answer never cited has no number to go to, and its title is text.
+ * route a `[n]` marker takes. A document whose excerpts the answer never
+ * cited has no number to go to, and its title is text.
  *
- * Numbered by document with the list's own numbers, and with a line under
- * each title: «Utdrag 1–2» says which markers in the text point into it.
- * Without that line, «2.» in this list and «[2]» in the answer are two numbers
- * for different things. `List.Ordered` is a real `<ol>`, so a screen reader
- * says how many documents there are and where in the list it is. Figma draws
- * the numbers in circles; the native ones stay, because `list.md` documents a
- * zero-width character Designsystemet puts in `li::before` against a VoiceOver
- * bug, and a circle drawn there would knock the fix out.
+ * Numbered by document, with «Utdrag 1–2» under each title to say which
+ * markers point into it — without that line, «2.» here and «[2]» in the
+ * answer are two numbers for different things. `List.Ordered` is a real
+ * `<ol>`, so a screen reader says how many documents there are. The native
+ * numbers stay rather than Figma's circles: Designsystemet puts a zero-width
+ * character in `li::before` against a VoiceOver bug, and drawing a circle
+ * there would knock the fix out.
  *
- * This replaced «Snarveier til dokumentene» at the top of the sources panel,
- * the same list once per panel (issue 113): here it stands by the
- * answer it belongs to, where the reader meets it first.
+ * Open from the start, as Figma draws it, and it can afford to be: it stands
+ * under the answer and pushes nothing the reader came for, unlike
+ * «Fremgangsmåte» above it.
  *
- * Open from the start, as Figma draws it. «Fremgangsmåte» opens only where
- * there is room, because it stands above the answer and would push it out of
- * sight on a phone. This stands under the answer and pushes nothing the reader
- * came for. The reader's own toggle is `Details`' own, uncontrolled.
- *
- * A document icon and not Figma's robot. Figma has the robot from
- * «Fremgangsmåte» here too, and every line in this list is a quote from a
- * document, not something the model made — the panel says so above its list.
+ * A document icon and not Figma's robot, because every line in this list is a
+ * quote from a document and not something the model made.
  */
 export function SourcesSummary({ documents, onSelectSource }: SourcesSummaryProps) {
   if (documents.length === 0) return null;

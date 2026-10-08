@@ -56,9 +56,9 @@ type ComposerProps = {
    */
   sendRef?: RefObject<HTMLButtonElement | null>;
   status: ChatStatus;
-  /** Show the fixed follow-up suggestions under the field (answer 29). */
+  /** Show the fixed follow-up suggestions under the field. */
   showFollowUps?: boolean;
-  /** A follow-up fills the field and sends it (answer 28). */
+  /** A follow-up fills the field and sends it. */
   onFollowUp: (question: string) => void;
   /** The files this question is being written with. */
   attachments: AttachmentsState;
@@ -72,10 +72,10 @@ type ComposerProps = {
 /**
  * The compose field.
  *
- * The field grows with the text, scrolls once it reaches the limit, and wraps
- * its lines (answer 54). That is `field-sizing: content` plus a `max-height`
- * in chat.css — one line of CSS instead of a ResizeObserver that is always
- * one frame behind.
+ * The field grows with the text, scrolls once it reaches the limit, and
+ * wraps its lines: `field-sizing: content` plus a `max-height` in chat.css,
+ * one line of CSS instead of a ResizeObserver that is always one frame
+ * behind.
  *
  * Enter sends and Shift+Enter makes a new line. Designsystemet has nothing
  * for this, so it is written here. `isComposing` is checked because an input
@@ -90,21 +90,20 @@ type ComposerProps = {
  * (`--ds-icon-size`), and a size written here would be a raw length that does
  * not follow the size mode.
  *
- * The stop button carries the word «Avbryt» next to its icon. A bare square
+ * The stop button carries the word «Avbryt» next to its icon: a bare square
  * is not obviously «stopp» to anyone looking at the screen, however good its
- * `aria-label` is (brukerblikk 2026-09-15, finding 10). The label stays
- * longer than the visible text — it says which generation is being stopped —
- * and starts with the same word, which is what WCAG 2.5.3 asks for.
+ * `aria-label` is. The label is longer than the visible text — it says which
+ * generation is being stopped — and starts with the same word, which is what
+ * WCAG 2.5.3 asks for.
  *
  * The field carries the page's skip-link target and says, twice, how to reach
  * it with the keyboard: a small hint for anyone looking at it, and a
  * description on the field itself for anyone who is not. Two texts rather than
  * one because they are read in different ways — see text.ts.
  *
- * Attachments are in scope (answer 53) but there is no upload endpoint
+ * Attachments are in scope but there is no upload endpoint
  * (API-bestilling A3), so the paperclip is inert. It keeps its focus and says
- * «Vedlegg kommer» rather than disappearing, because a control that is coming
- * is worth knowing about — and `aria-disabled` keeps it reachable for a
+ * so rather than disappearing, and `aria-disabled` keeps it reachable for a
  * keyboard user, which `disabled` would not.
  */
 export function Composer({
@@ -174,11 +173,9 @@ export function Composer({
    *
    * Every way of sending goes through here — Enter, the send button, a
    * follow-up chip — because the rule about attachments is about SENDING and
-   * not about one control. It was on the send button's `disabled` alone, and
-   * Enter walked straight past it: the question went, the file that was still
-   * uploading did not, and nothing said so (KA CC on #125). That is the
-   * silent drop the rule exists to prevent, arriving through the door the
-   * rule was not on.
+   * not about one control. On the send button's `disabled` alone, Enter walks
+   * straight past it: the question goes, the file still uploading does not,
+   * and nothing says so.
    *
    * It refuses rather than queues, and **nothing is sent when the upload
    * finishes**: the reader presses again. Queueing would send a question
@@ -201,9 +198,8 @@ export function Composer({
   /*
    * The wait message goes when there is nothing left to wait for.
    *
-   * A refusal outlives its reason if nobody takes it away: it stood in the
-   * live region six seconds after the upload had finished, telling a reader
-   * to wait for a file that was ready (KA CC on #125, runde 2).
+   * A refusal outlives its reason if nobody takes it away, and then the live
+   * region keeps telling the reader to wait for a file that is ready.
    *
    * Worked out while rendering rather than cleared in an effect. The message
    * is not a fact of its own — it is «is anything still uploading» read
@@ -291,10 +287,9 @@ export function Composer({
           placeholder={placeholder}
           ref={fieldRef}
           rows={1}
-          /* The shortcut for anyone using a pointer. It used to be a line of
-             grey text under the field; the footer is one line now, and the
-             hint belongs on the thing it acts on. Screen readers get the
-             spelled-out version through `aria-describedby`. */
+          /* The shortcut for anyone using a pointer; the hint belongs on the
+             thing it acts on. Screen readers get the spelled-out version
+             through `aria-describedby`. */
           title={shortcutHint()}
           value={value}
         />
@@ -302,11 +297,11 @@ export function Composer({
         {/*
           The two controls on a row of their own, under the field.
 
-          They sat beside it, and the box had grown tall enough that the
-          placeholder stood indented at the top with a button pinned low on
-          either side (issue 79). On a row of their own the field
-          takes the full width of the box, and the reader's text starts
-          where the paperclip starts and ends where the send button ends.
+          Beside the field, in a box tall enough to write in, the placeholder
+          stands indented at the top with a button pinned low on either side
+          (issue 79). On a row of their own the field takes the full width of
+          the box, and the reader's text starts where the paperclip starts and
+          ends where the send button ends.
         */}
         <div className="ka-composer__controls">
           {/*
@@ -314,12 +309,7 @@ export function Composer({
             for it, so the paperclip is left out rather than drawn switched
             off (the review of #129).
 
-            It stood there until now, with «Snart kan du laste opp dokumenter
-            her» written on it, because a control that is coming is worth
-            knowing about (issue 79). That argument has run out: the promise
-            has been in production since September, and the sentence takes
-            room in the sticky bottom that the answer could have had. A
-            reader who drops a file on the field is still told honestly why
+            A reader who drops a file on the field is still told honestly why
             it did not attach — that is the one way left to try, and nothing
             invites it.
           */}
@@ -402,12 +392,9 @@ export function Composer({
               className="ka-composer__send"
               disabled={value.trim().length === 0}
               icon
-              /*
-               * Through `trySubmit`, like every other way of sending. The
-               * button used to be `disabled` while a file was uploading, which
-               * stopped the click and said nothing about why — and did not stop
-               * Enter at all.
-               */
+              /* Through `trySubmit`, like every other way of sending:
+                 `disabled` would stop the click, say nothing about why, and
+                 not stop Enter at all. */
               onClick={() => trySubmit(onSubmit)}
               ref={sendRef}
             >
@@ -438,25 +425,18 @@ export function Composer({
       ) : null}
 
       {/*
-        One line, and only the disclaimer on it.
-        «Kunnskapsassistenten kan gjøre feil» is what the design puts with the
-        field in all four chatInput variants. The shortcut used to share the
-        line and wrapped it onto two on both measured widths, which cost 24 px
-        of the sticky bottom on every screen to say something a reader needs
-        once (høydebudsjett 2026-09-21, H3).
-
-        It is not gone: it is on the field as a tooltip, on the field as a
-        description for screen readers, and in the skip link that does the
+        One line, and only the disclaimer on it. The shortcut sharing the line
+        wraps it onto two at every width worth measuring, which costs the
+        sticky bottom 24 px on every screen to say something a reader needs
+        once — and it is not gone: it is on the field as a tooltip, as a
+        description for screen readers, and in the skip link that makes the
         same jump.
 
-        Under the box, where issue 79 draws it, which turns round
-        the «above» from issue 89. Last in the sticky area rather than just
-        under the frame, with the follow-up questions between the two, which
-        is the order of issue-89a: the area is pinned to the bottom and grows
-        upwards, so the last line is the one that never moves. Follow-ups
-        come with every answer and attachments with every file, and a
-        standing sentence that moved a row each time is one nobody would
-        read twice.
+        Under the box, where issue 79 draws it, and last in the sticky area
+        rather than just under the frame: the area is pinned to the bottom and
+        grows upwards, so the last line is the one that never moves. Follow-ups
+        come with every answer and attachments with every file, and a standing
+        sentence that moved a row each time is one nobody would read twice.
       */}
       <Paragraph className="ka-composer__disclaimer" data-size="sm">
         {DISCLAIMER}

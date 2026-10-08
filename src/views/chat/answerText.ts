@@ -3,8 +3,8 @@ import type { SourceDocument } from '../../model';
 /**
  * The answer as text rather than as markup.
  *
- * Two places need the answer without its markup: the clipboard («Kopier
- * svaret», answer 15) and the live region that follows a streaming answer.
+ * Two places need the answer without its markup: the clipboard and the live
+ * region that follows a streaming answer.
  * `Markdown` renders; it does not read back, so this is the small amount of
  * text handling that stays here. It deliberately does no block parsing and no
  * component mapping — that is `src/components/Markdown.tsx` and only there.
@@ -101,9 +101,8 @@ const REFERENCE_HEADING = 'Kilder';
  * What «Kopier svaret» puts on the clipboard.
  *
  * The answer with its `[n]` markers intact, then the references they point
- * at. Reise 13, 14 and 20 in brukerreiser-2026-09-15.md: the one thing that
- * moves an answer out of KA moved it out without its provenance, which is
- * precisely what KA is for.
+ * at: the one thing that moves an answer out of KA must not move it out
+ * without its provenance, which is precisely what KA is for.
  *
  * With nothing behind the answer — a stopped turn, a corpus that returned
  * nothing — it falls back to today's clean text, markers and all removed.

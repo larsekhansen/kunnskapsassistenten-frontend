@@ -25,15 +25,15 @@ export function filterSummaryText(selection: FilterSelection): string | undefine
  * The line over one answer: what it was narrowed to, and where it came from.
  *
  * Two different facts, so they are drawn as two: the facets are what the
- * READER ticked, the corpus is where the answer was retrieved. Running them
- * into one list made «Kudos · Årsrapport · 2023» read as three things the
- * reader had chosen, and one of them was not (KA CC kan 4 på #138).
+ * READER ticked, the corpus is where the answer was retrieved. Run into one
+ * list, «Kudos · Årsrapport · 2023» reads as three things the reader chose,
+ * and one of them was not.
  *
- * The chat column drew no corpus name at all until now, and for one corpus it
- * should not: a word that never varies over every answer is a word without
- * information in it. It is named in exactly one case, and that is the case
- * this exists for — an answer retrieved from somewhere other than where the
- * chooser stands now, which is what an old thread opened from the list is.
+ * With one corpus the name is left out: a word that never varies over every
+ * answer carries no information. It is named in exactly one case, which is
+ * the case this exists for — an answer retrieved from somewhere other than
+ * where the chooser stands now, which is what an old thread opened from the
+ * list is.
  *
  * `answerCorpusName` is looked up from the ANSWER's key, never from the
  * choice. A name read from the chooser would be the bug wearing the fix's

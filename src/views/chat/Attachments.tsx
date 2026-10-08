@@ -95,15 +95,13 @@ export function Attachments({ items, onRemove, onRetry }: AttachmentsProps) {
  *
  * Three moments per file and no more: it started, it is ready, it failed.
  *
- * It used to speak on every whole percent, which is eighteen sentences for
- * one 1,5-second upload — a region still reading «12 %» while the file has
- * been ready for a second. Worse, the last of them was «0 %»: between the
- * store swapping the pending row for the finished document and this slot
- * learning about it, there is a render with no row to read a number from, and
- * the fallback nought was announced as though the upload had started over
- * (KA CC on #125). Saying less is not a workaround for that render — a
- * percentage nobody can act on was never worth a sentence — but it does take
- * the wrong number out of the reader's ear. Same as #2 landed in #124.
+ * NOT one per whole percent: that is a dozen sentences for a short upload,
+ * with the region still reading «12 %» after the file is ready. Worse, the
+ * last of them is «0 %» — between the store swapping the pending row for the
+ * finished document and this slot learning about it there is a render with no
+ * row to read a number from, and the fallback nought announces as though the
+ * upload had started over. A percentage nobody can act on was never worth a
+ * sentence.
  *
  * Held as state and written from an effect rather than computed during
  * render, because a live region announces a CHANGE: the same sentence

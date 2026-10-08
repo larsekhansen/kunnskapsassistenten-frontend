@@ -20,7 +20,7 @@ import { ChatView } from '../ChatView';
  * It is also what the accessibility snapshot is taken against.
  */
 
-/** A client that fails, so the error state can be looked at (answer 35). */
+/** A client that fails, so the error state can be looked at. */
 const failingClient: ChatClient = {
   async *ask(): AsyncIterable<StreamEvent> {
     await new Promise((resolve) => setTimeout(resolve, 600));

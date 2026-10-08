@@ -19,7 +19,7 @@
 
 .ka-chat {
   --ka-chat-content-max-width: 728px; /* content in Figma 1530:44994 */
-  --ka-composer-max-height: 274px; /* chatInput LongText, answer 54 */
+  --ka-composer-max-height: 274px; /* chatInput LongText in Figma */
   /* What the greeting and the compose area are each set in from the free
      room between them. The same on both sides; see `.ka-chat-greeting`. */
   --ka-chat-room-inset: var(--ds-size-3);
@@ -54,11 +54,6 @@
  * there is nothing to spare, as on a phone, the margin is 0 and the air is
  * those 44 px — the least the page gives, so the air can never be what makes
  * the start screen scroll.
- *
- * This was 60 px on a desktop window (the design, 30.09, about 4rem), from before
- * the greeting was centred. Kept, it put 48 px more over «Hei» than under the
- * suggestions, and with the Kudos suggestions on 1280 × 720 it was what made
- * the page scroll by 35.
  */
 .ka-chat-greeting {
   display: flex;
@@ -72,9 +67,8 @@
 
 /*
  * A little air over «Forslag», on top of the 32 px gap the column already
- * puts between it and the greeting. About 1rem on a desktop window (the
- * design, 30.09), which is `--ds-size-4` exactly, and half of it on a phone — same
- * `vw` reasoning as the greeting above.
+ * puts between it and the greeting: `--ds-size-4` on a desktop window and
+ * half of it on a phone, the same `vw` reasoning as the greeting above.
  */
 .ka-kickstarters {
   display: flex;
@@ -97,8 +91,8 @@
 }
 
 /*
- * A kickstarter is a tertiary Button (answer 40), but it holds a full
- * question, so it has to wrap and read as a row rather than as a label.
+ * A kickstarter is a tertiary Button, but it holds a full question, so it has
+ * to wrap and read as a row rather than as a label.
  */
 .ka-kickstarter {
   inline-size: 100%;
@@ -135,8 +129,8 @@
 
 /*
  * The reader's own question: a box at the end of the line, and the answer
- * across the column under it (issue 117). Plain and larger than the
- * answer, as Figma drew it, it read as a heading over the answer card.
+ * across the column under it (issue 117). Plain and larger than the answer,
+ * the way Figma first drew it, it reads as a heading over the answer card.
  *
  * Three things tell the two apart, so none of them carries it alone: the
  * side, the tinted blue ground, and the width — the question stops short of
@@ -171,8 +165,6 @@
  * Tag says filtering belongs to Chip precisely because chips are pressed and
  * removed — and this one is a statement about a question that has already
  * been asked. Set a step in from the card edge, over the answer it framed.
- * It used to line up with the reader's question, which stood in the same
- * place; the question is a box at the far side now (issue 117).
  */
 .ka-filter-summary {
   margin: 0;
@@ -181,7 +173,6 @@
   font-size: var(--ds-font-size-minus-1);
 }
 
-/* Why a stopped answer has no sources under it. */
 /*
  * The two notes a turn draws about itself when there is no answer to draw:
  * one for a turn the reader stopped, one for a turn that failed and has
@@ -213,9 +204,9 @@
   gap: var(--ds-size-2);
   color: var(--ds-color-text-subtle);
   overflow-wrap: break-word;
-  /* stylelint-disable-next-line plugin/browser-compat -- uprefikset
-     `hyphens` kom i Safari 17; 16 har den bare som `-webkit-hyphens`. Der
-     deles ordet av `overflow-wrap` over i stedet, uten bindestrek. */
+  /* stylelint-disable-next-line plugin/browser-compat -- unprefixed
+     `hyphens` arrived in Safari 17; 16 has it only as `-webkit-hyphens`.
+     There `overflow-wrap` above breaks the word instead, without a hyphen. */
   hyphens: auto;
 }
 
@@ -244,7 +235,7 @@
   margin: 0;
 }
 
-/* -------------------------------------------------- tråden som hentes */
+/* ------------------------------------------------- the thread being read */
 
 /*
  * The shape of the conversation being read: one question, one answer. Same
@@ -291,13 +282,12 @@
   font-size: var(--ds-font-size-minus-1);
 }
 
-/* ---------------------------------------------------------- fremgangsmåte */
+/* --------------------------------------------------------------- procedure */
 
 /*
- * «Fremgangsmåte» over the answer at the standard display level (issue 88,
- * drawn in issue 113). It draws the same steps as the detailed panel
- * — the rules below name both — so switching level changes what a step SAYS
- * and never where it sits.
+ * «Fremgangsmåte» over the answer at the standard display level (issue 88).
+ * It draws the same steps as the detailed panel — the rules below name both
+ * — so switching level changes what a step SAYS and never where it sits.
  */
 .ka-procedure {
   inline-size: 100%;
@@ -347,7 +337,7 @@
   list-style: none;
 }
 
-/* ------------------------------------------------------ kilder i svaret */
+/* ------------------------------------------------- sources in the answer */
 
 /*
  * «Kilder brukt i svaret» under the answer (issue 113, Figma
@@ -407,9 +397,9 @@
 .ka-sources-summary__list {
   margin: 0;
   overflow-wrap: break-word;
-  /* stylelint-disable-next-line plugin/browser-compat -- uprefikset
-     `hyphens` kom i Safari 17; 16 har den bare som `-webkit-hyphens`. Der
-     deles ordet av `overflow-wrap` over i stedet, uten bindestrek. */
+  /* stylelint-disable-next-line plugin/browser-compat -- unprefixed
+     `hyphens` arrived in Safari 17; 16 has it only as `-webkit-hyphens`.
+     There `overflow-wrap` above breaks the word instead, without a hyphen. */
   hyphens: auto;
 }
 
@@ -425,7 +415,7 @@
   color: var(--ds-color-neutral-text-subtle);
 }
 
-/* ------------------------------------------------------------ innstillinger */
+/* ----------------------------------------------------------------- settings */
 
 /*
  * Space between two settings in the hidden menu, for the same reason as the
@@ -494,9 +484,9 @@
   position: absolute;
   inset-inline-start: 0;
   /* Centres the dot on the first line, whatever the size mode. */
-  /* stylelint-disable-next-line plugin/browser-compat -- `lh` kom i Safari
-     16.4. I 16.0–16.3 faller erklæringen bort og prikken står litt høyere på
-     første linje. Rent kosmetisk. */
+  /* stylelint-disable-next-line plugin/browser-compat -- `lh` arrived in
+     Safari 16.4. In 16.0–16.3 the declaration is dropped and the dot sits a
+     little high on the first line. Cosmetic only. */
   inset-block-start: calc((1lh - var(--ds-size-2)) / 2);
   block-size: var(--ds-size-2);
   inline-size: var(--ds-size-2);
@@ -520,9 +510,10 @@
 }
 
 /*
- * «Søkte etter:» og søkestrengene på samme linje, som én setning som brytes.
- * `baseline` og ikke `center`: lead-in-teksten og teksten inne i taggene skal
- * stå på samme grunnlinje, ellers flyter ordet over eller under chipene.
+ * «Søkte etter:» and the search strings on one line, as a single sentence
+ * that wraps. `baseline` and not `center`, so the lead-in and the text inside
+ * the tags sit on the same baseline; otherwise the word floats above or below
+ * the chips.
  */
 .ka-thinking__queries {
   display: flex;
@@ -567,7 +558,7 @@
 /*
  * A keyword the agent searched on can be a long phrase, and Tag is
  * `width: max-content` with no upper bound — a long one grew straight out
- * through the side of the card. Seen 2026-09-15.
+ * through the side of the card.
  *
  * The group already wraps between tags; this lets a single tag wrap inside
  * itself as well. `anywhere` rather than `break-word` because the worst case
@@ -641,15 +632,10 @@
 }
 
 /*
- * Search inside one answer (brukerreiser punkt 13). A strip under the action
- * row, in the same Card.Block, so it reads as belonging to the answer above
- * rather than to the conversation.
- */
-/*
- * The strip lives in the shell's view-head now, pinned to the top of the
- * answer column (brukerblikk 3, funn 1). `.view-head` brings the surface, the
- * rule under it and the padding, so there is no margin to add here — one at
- * the top would push the strip off the line the head draws.
+ * Search inside one answer. The strip lives in the shell's view-head, pinned
+ * to the top of the answer column. `.view-head` brings the surface, the rule
+ * under it and the padding, so there is no margin to add here — one at the
+ * top would push the strip off the line the head draws.
  */
 .ka-answer-search {
   display: block;
@@ -734,17 +720,16 @@
    *
    * `--ka-main-padding-block-end` is the shell's own, declared in global.css
    * and set on `.main`, which is the scroller both of these are measured
-   * against. It used to be a copy of the value here, and a copy is a promise
-   * that two files will be edited together — which is exactly what did not
-   * happen when the padding moved off the scroller on 21.09 (#193).
+   * against. It is read from there and never copied: a copy is a promise that
+   * two files will be edited together.
    */
   inset-block-end: calc(var(--ka-main-padding-block-end) * -1);
   margin-block-end: calc(var(--ka-main-padding-block-end) * -1);
   /*
    * The shell's own end padding and no more, because the disclaimer stands
-   * under the box now (issue 79) and the air is on both sides of it —
-   * see `.ka-composer__disclaimer`. The box keeps its 3rem of air to the
-   * bottom (the design, 30.09): 84 px on a desktop window, with the line in it.
+   * under the box (issue 79) and the air is on both sides of it — see
+   * `.ka-composer__disclaimer`. The box keeps its 3rem of air to the bottom,
+   * the line included.
    *
    * It has to be at least this much, because the padding has a second job:
    * it is what fills the pull-down above. Anything less than the shell's end
@@ -767,10 +752,10 @@
  * behind it. `--ka-composer-block-size` is measured by the chat view.
  *
  * The field and what is in it are left out, and that is the point of doing
- * it here rather than with `scroll-padding` on the scroller. The padding held
- * for the field as well, the field sits in the band it keeps clear, and every
- * keystroke scrolled the column 49 px further down to bring the caret out
- * from behind itself (runde 3, ekstra 1).
+ * it here rather than with `scroll-padding` on the scroller. The padding
+ * holds for the field as well, the field sits in the band it keeps clear, and
+ * then every keystroke scrolls the column further down to bring the caret out
+ * from behind itself.
  */
 .ka-chat * {
   scroll-margin-block-end: var(--ka-composer-block-size, 0);
@@ -782,9 +767,9 @@
 }
 
 /*
- * «Bla til nederst», over the field and in the middle of it (runde 3,
- * ekstra 5). In the sticky area, so it moves with the field and stays in one
- * place wherever the reader is in the conversation.
+ * «Bla til nederst», over the field and in the middle of it. In the sticky
+ * area, so it moves with the field and stays in one place wherever the reader
+ * is in the conversation.
  *
  * Out of the flow, so it costs the area no height and nothing under it moves
  * when it comes and goes. Over the fade above the field, with the air of a
@@ -817,9 +802,9 @@
  *
  * Without it the card's white surface stops dead where the field begins,
  * mid-sentence and sometimes just under a heading, and that reads as «the
- * card is cut off» rather than «there is more further down» (brukerblikk
- * 2026-09-15, finding 6). The ground fades in over the last few lines
- * instead, so the text dissolves into the field.
+ * card is cut off» rather than «there is more further down». The ground
+ * fades in over the last few lines instead, so the text dissolves into the
+ * field.
  *
  * It sits above the sticky box and moves with it, and takes no pointer
  * events: the answer under the fade is still text you can select.
@@ -838,12 +823,12 @@
  * Two rows: the field across the top, the paperclip and the send button under
  * it, one at each end.
  *
- * The three were on one row, which cost less height (høydebudsjett
- * 2026-09-21, H1) and read badly once the box was tall enough to write in:
- * the placeholder stood indented at the top and a button hung low on either
- * side, with nothing lining up (issue 79). Two rows cost the 48 px
- * back and buy an edge the eye can follow — the field runs the full width of
- * the box, its text starts over the paperclip and ends over the send button.
+ * On one row the three cost less height, but they read badly once the box
+ * was tall enough to write in: the placeholder stood indented at the top and
+ * a button hung low on either side, with nothing lining up (issue 79). Two
+ * rows cost 48 px and buy an edge the eye can follow — the field runs the
+ * full width of the box, its text starts over the paperclip and ends over the
+ * send button.
  */
 .ka-composer {
   /*
@@ -873,11 +858,11 @@
  */
 .ka-composer:focus-within {
   box-shadow: var(--dsc-focus-boxShadow);
-  /* stylelint-disable-next-line plugin/browser-compat -- MDN fører `outline`
-     som delvis implementert før Safari 16.4: ringen følger ikke
-     `border-radius`, så den blir rektangulær rundt et avrundet felt. Den er
-     der, den er synlig, og fokuskravet er dermed oppfylt — det er formen som
-     avviker. */
+  /* stylelint-disable-next-line plugin/browser-compat -- MDN lists `outline`
+     as partly implemented before Safari 16.4: the ring does not follow
+     `border-radius`, so it is rectangular around a rounded field. It is
+     there and it is visible, so the focus requirement is met; only the shape
+     differs. */
   outline: var(--dsc-focus-outline);
   outline-offset: var(--ds-border-width-focus);
 }
@@ -902,15 +887,15 @@
  * every keystroke in every other browser.
  */
 .ka-composer__field textarea {
-  /* stylelint-disable-next-line plugin/browser-compat -- Firefox mangler den
-     fortsatt, og avsnittet over sier hvorfor det er greit: feltet blir én rad
-     der, men ruller og sender som ellers. */
-  field-sizing: content; /* grows with the content, answer 54 */
+  /* stylelint-disable-next-line plugin/browser-compat -- Firefox still lacks
+     it, and the note above says why that is fine: the field is one row there,
+     but it scrolls and sends as it does everywhere else. */
+  field-sizing: content; /* grows with the content */
   max-block-size: var(--ka-composer-max-height);
   overflow-y: auto;
-  /* stylelint-disable-next-line plugin/browser-compat -- iOS Safari har ingen
-     `resize`, og det er uten betydning her: verdien er `none`, og et felt
-     uten dradhåndtak er nøyaktig det iOS gir fra før. */
+  /* stylelint-disable-next-line plugin/browser-compat -- iOS Safari has no
+     `resize`, which does not matter here: the value is `none`, and a field
+     with no drag handle is exactly what iOS gives already. */
   resize: none; /* the height follows the text; a drag handle would fight it */
   border: 0;
   background: transparent;
@@ -923,9 +908,8 @@
   padding-block: var(--ds-size-1);
   padding-inline: var(--ka-composer-glyph-inset) 0;
   /*
-   * About three lines to write in, 90 px on a Mac at 1440 × 900 (the design,
-   * 30.09). `--ds-size-22` is 88 px at the `md` size mode and the nearest step
-   * on the scale.
+   * About three lines to write in. `--ds-size-22` is 88 px at the `md` size
+   * mode, which is the nearest step on the scale to what the design asks for.
    *
    * The principle is «room for a real question, never at the cost of a short
    * screen», so the middle term is `dvh` and the floor is two lines: a laptop
@@ -943,10 +927,10 @@
 
 .ka-composer__field textarea:focus-visible {
   box-shadow: none;
-  /* stylelint-disable-next-line plugin/browser-compat -- samme oppføring som
-     over, men her er verdien `none`. Å fjerne en ring virker i alle
-     versjoner; advarselen gjelder formen på en ring som tegnes, og her
-     tegnes ingen. */
+  /* stylelint-disable-next-line plugin/browser-compat -- the same entry as
+     above, but the value here is `none`. Removing a ring works in every
+     version; the warning is about the shape of a ring that is drawn, and
+     none is drawn here. */
   outline: none;
 }
 
@@ -1032,16 +1016,16 @@
 
 /*
  * The agent choice: the name as text beside the send button, no frame and no
- * fill (decided 06.10). The margin puts it next to the send button and away
- * from the paperclip in a row that is `space-between`. A long name, such as
+ * fill. The margin puts it next to the send button and away from the
+ * paperclip in a row that is `space-between`. A long name, such as
  * «digdir/altinn-docs-tuned», ends in an ellipsis rather than pushing the
  * send button off a phone; the whole name is in the list.
  */
 .ka-agent-picker__trigger {
   /*
-   * Tighter than a button with a fill: with no frame, the padding is only
-   * room to press, and on a phone the row has 206 px for three controls. At
-   * the full padding the name was «ag…» at 390.
+   * Tighter than a button with a fill: with no frame the padding is only
+   * room to press, and on a phone the row has about 206 px for three
+   * controls, where the full padding cuts the name down to two letters.
    */
   --dsc-button-padding: var(--ds-size-1) var(--ds-size-2);
   --dsc-button-gap: var(--ds-size-1);
@@ -1054,10 +1038,10 @@
 }
 
 /*
- * The paperclip keeps its size beside the agent's name. The rule further down
- * lets it shrink, for the sentence it carries where uploading is not there;
- * the icon on its own went down to 9 px on a phone (measured at 390) while
- * the name kept all of its width.
+ * The paperclip keeps its size beside the agent's name. The rule further
+ * down lets it shrink, for the sentence it carries where uploading is not
+ * there; without this the icon alone is squeezed to a few pixels on a phone
+ * while the name keeps all of its width.
  */
 .ka-composer__attach[data-icon] {
   flex-shrink: 0;
