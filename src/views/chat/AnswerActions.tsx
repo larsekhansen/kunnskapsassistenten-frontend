@@ -67,13 +67,9 @@ export function AnswerActions({
         Kopier lenke til tråden
       </Button>
 
-      {/*
-        The reader's own way into a long answer. The
-        browser's Ctrl+F is left alone on purpose — it is the one find every
-        reader already has, and a page that takes it away to offer its own has
-        made things worse. `aria-expanded` is what says the strip below
-        belongs to this button.
-      */}
+      {/* The reader's own way into a long answer; the browser's Ctrl+F is
+          left alone on purpose. `aria-expanded` is what says the strip below
+          belongs to this button. */}
       {onToggleSearch ? (
         <Button
           aria-expanded={searchOpen ?? false}
@@ -88,12 +84,8 @@ export function AnswerActions({
         </Button>
       ) : null}
 
-      {/*
-        When the answer came, after the things a reader can do with it: the
-        row is what to do first, and when it was is a fact about it. Outside
-        every button, so it never joins one's accessible name — the same
-        reason the thread list keeps it beside the link rather than inside.
-      */}
+      {/* When the answer came, after the things a reader can do with it.
+          Outside every button, so it never joins one's accessible name. */}
       <AnswerTime createdAt={createdAt} />
 
       <p aria-live="polite" className="ka-answer-actions__receipt">

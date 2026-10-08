@@ -89,22 +89,13 @@ export const READING_THREAD = 'Henter samtalen';
    tråd» starts, and the thread list calls it that too. */
 export const NEW_THREAD_TITLE = 'Ny tråd';
 
-/*
- * The keyboard shortcut to the compose field, which is deep in the tab order
- * on a thread page for the thing a reader does most often.
- *
- * Ctrl and not the bare key: a single character key shortcut is WCAG 2.1.4,
- * level A, and this one could not be switched off. See useComposerShortcut.ts.
- */
+// The shortcut to the compose field, which is deep in the tab order. Ctrl
+// and not the bare key: a single character key shortcut is WCAG 2.1.4, level
+// A, and this one could not be switched off. See useComposerShortcut.ts.
 
-/**
- * A small hint by the field, for anyone looking at the screen.
- *
- * It names the modifier the reader's own keyboard has; both work everywhere,
- * since the handler takes `ctrlKey` or `metaKey`. A function and not a
- * constant, because the answer depends on the machine and a module constant
- * would be read before a test could say otherwise.
- */
+/** A small hint by the field, naming the modifier the reader's own keyboard
+    has. A function and not a constant, because the answer depends on the
+    machine and a constant is read before a test can say otherwise. */
 export function shortcutHint(): string {
   // `userAgentData` is not in Safari or Firefox, and the user agent string is
   // what is left. It is only choosing a word, so a wrong guess costs a reader
@@ -113,21 +104,14 @@ export function shortcutHint(): string {
   return `Trykk ${apple ? 'Cmd' : 'Ctrl'} + / for å hoppe hit`;
 }
 
-/**
- * The same thing for a screen reader, on the field itself. The key is spelled
- * out rather than shown as the character: «/» is «skråstrek» in some voices
- * and silence in others, and a shortcut nobody can hear the name of is not
- * one.
- */
+/** The same for a screen reader. The key is spelled out and not shown as the
+    character: «/» is «skråstrek» in some voices and silence in others. */
 export const SHORTCUT_DESCRIPTION =
   'Trykk Ctrl og skråstrek, eller Cmd og skråstrek, for å flytte skrivemerket hit fra hvor som helst på siden.';
 
-/*
- * A search that found nothing is not an error: it is an answer with an empty
- * source list (API-bestilling A16), so it is drawn as an answer and not as an
- * alert with «Prøv igjen». Two versions, because only one is honest at a
- * time: a reader who has not touched the filter cannot loosen it.
- */
+// Not an error but an answer with an empty source list (API-bestilling A16),
+// so it is drawn as an answer. Two versions, because only one is honest at a
+// time: a reader who has not touched the filter cannot loosen it.
 
 /** The reader had narrowed the corpus, so the filter is the first thing to try. */
 export const NO_HITS_FILTERED = [

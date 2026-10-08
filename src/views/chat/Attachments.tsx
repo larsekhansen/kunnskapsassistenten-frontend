@@ -42,11 +42,8 @@ export function Attachments({ items, onRemove, onRetry }: AttachmentsProps) {
               {item.status === 'uploading' ? ` ${Math.round(item.progress)} %` : null}
             </Chip.Removable>
 
-            {/*
-              The reason, outside the chip. Inside it would join the button's
-              accessible name, and «Fjern vedlegget rapport.pdf Filen er
-              større enn 20 MB» is a name nobody can ask for by voice.
-            */}
+            {/* The reason, outside the chip: inside, it joins the button's
+                accessible name, which nobody can then ask for by voice. */}
             {item.status === 'failed' && item.errorCode ? (
               <span className="ka-attachments__error">{uploadErrorText(item.errorCode)}</span>
             ) : null}

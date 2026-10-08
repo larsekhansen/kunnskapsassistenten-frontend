@@ -66,9 +66,8 @@ export function useAnswerHits(
     setCurrentIndex(0);
   }
 
-  // No dependency list on purpose: see the note above. Both `setState` calls
-  // are no-ops when the value has not changed, so a render that changed
-  // nothing settles here rather than looping.
+  // No dependency list on purpose; see above. Both `setState` calls are
+  // no-ops when the value has not changed, so it settles rather than loops.
   // oxlint-disable-next-line exhaustive-deps
   useEffect(() => {
     const marks = markElements(containerRef.current);

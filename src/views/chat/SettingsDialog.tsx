@@ -45,31 +45,14 @@ const FOOTER_OPTIONS: { value: FooterMode; label: string; description: string }[
 ];
 
 /**
- * The hidden settings menu: reachable by typing something in the address, in
- * the same design as the rest, and kept small.
+ * The hidden settings menu: one `Dialog` and a `Fieldset` of radios per
+ * setting, which takes another setting without changing shape.
  *
- * One Designsystemet `Dialog`, a `Fieldset` of radios per setting, and
- * nothing else. It takes another setting without changing shape, which is the
- * whole reason it is a menu and not a console command.
- *
- * **Opened by `#innstillinger`** and not by a query, because a hash never
- * reaches the server, never changes the route, and never travels in a link
- * somebody pastes into a ticket — a reader who shares the address of a thread
- * does not hand the next person a settings dialog. Closing it takes the hash
- * back out, so the browser's back button is not the only way out.
- *
- * Radios and not a switch: there are two levels now and the next one is a
- * third, and a switch that has to become a list later is a control that gets
- * redrawn. The choice applies on the spot rather than behind a «Lagre» —
- * there is nothing to undo, and the answer behind the dialog is already
- * drawn the new way when it is closed.
- *
- * Modal. The dialog covers the whole reading area at this width, so a
- * non-modal one would leave a reader tabbing into an answer they cannot see.
- *
- * Mounted only while the hash is there, so a page nobody asked it of holds no
- * trace of it at all. The chat view does that; this component is open by the
- * time it exists.
+ * **Opened by `#innstillinger`** and not by a query: a hash never reaches the
+ * server, never changes the route, and never travels in a pasted link, so
+ * sharing a thread does not hand the next person a settings dialog. Radios
+ * and not a switch, because the next level is a third one. Modal, since the
+ * dialog covers the whole reading area at this width.
  */
 export function SettingsDialog({ level, footerMode, onClose }: SettingsDialogProps) {
   const headingId = useId();

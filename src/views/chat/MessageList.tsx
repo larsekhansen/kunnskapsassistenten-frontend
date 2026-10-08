@@ -128,10 +128,9 @@ export function MessageList({
             liveErrorId={liveErrorId}
             message={message}
             narrowedTo={filterSummary?.(message.id)}
-            /* What this answer is an answer to. «Fremgangsmåte» drops a search
-               word that is the question over again — see ProcedurePanel. The
-               list is the one place that knows: an answer carries no question,
-               and the turn before it is right here. */
+            /* What this answer is an answer to, for «Fremgangsmåte». The
+               list is the one place that knows: an answer carries no
+               question, and the turn before it is right here. */
             question={questionBefore(messages, index)}
             onCloseSearch={closeSearch}
             onRegenerate={onRegenerate}

@@ -460,11 +460,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
         {announcement || loadingNotice}
       </p>
 
-      {/*
-        Mounted only while the address asks for it, so a page nobody asked it
-        of holds no trace of it. `replace`, so closing leaves no history step
-        that Back walks straight into again.
-      */}
+      {/* Mounted only while the address asks for it, so a page nobody asked
+          it of holds no trace. `replace`, so closing leaves no history step
+          that Back walks straight into again. */}
       {settingsOpen ? (
         <SettingsDialog
           footerMode={footerMode}

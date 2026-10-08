@@ -637,11 +637,9 @@
    frame and the textarea inside gives up its own. */
 .ka-composer:focus-within {
   box-shadow: var(--dsc-focus-boxShadow);
-  /* stylelint-disable-next-line plugin/browser-compat -- MDN lists `outline`
-     as partly implemented before Safari 16.4: the ring does not follow
-     `border-radius`, so it is rectangular around a rounded field. It is
-     there and it is visible, so the focus requirement is met; only the shape
-     differs. */
+  /* stylelint-disable-next-line plugin/browser-compat -- before Safari 16.4
+     the ring does not follow `border-radius`, so it is rectangular around a
+     rounded field. Visible either way, so the focus requirement is met. */
   outline: var(--dsc-focus-outline);
   outline-offset: var(--ds-border-width-focus);
 }
@@ -680,18 +678,16 @@
      the middle so a phone gets what its address bar leaves, and a floor of
      two lines. It still grows to `--ka-composer-max-height`. */
   /* stylelint-disable-next-line plugin/browser-compat -- `dvh` landed in
-     Safari 15.4 and Chrome 108. Where it is missing the declaration is
-     dropped and the field falls back on Designsystemet's own minimum, which
-     is exactly where it stood before. */
+     Safari 15.4 and Chrome 108; where it is missing the declaration is
+     dropped and the field falls back on Designsystemet's own minimum. */
   min-block-size: clamp(var(--ds-size-12), 10dvh, var(--ds-size-22));
 }
 
 .ka-composer__field textarea:focus-visible {
   box-shadow: none;
   /* stylelint-disable-next-line plugin/browser-compat -- the same entry as
-     above, but the value here is `none`. Removing a ring works in every
-     version; the warning is about the shape of a ring that is drawn, and
-     none is drawn here. */
+     above, but the value is `none`: removing a ring works in every version,
+     and the warning is about the shape of a ring that is drawn. */
   outline: none;
 }
 

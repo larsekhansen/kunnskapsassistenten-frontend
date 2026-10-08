@@ -45,12 +45,9 @@ export type Attachments = {
   clear: () => void;
 };
 
-/**
- * The files attached to the question being written, which is not «Dine
- * dokumenter»: a document survives the thread, this empties when the question
- * is sent. A file refused before it reached the client still gets a chip,
- * because one that silently did not attach is worse than one that says why.
- */
+/** The files THIS question is asked with, which is not «Dine dokumenter»: a
+    document survives the thread, this empties when the question is sent. A
+    refused file still gets a chip, or it did not attach silently. */
 export function useAttachments(): Attachments {
   const { documents, upload, unavailable } = useUserDocuments();
   const [items, setItems] = useState<Attachment[]>([]);
@@ -157,12 +154,9 @@ function newKey(): string {
   return `a-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/**
- * What to draw for one slot. Before `upload` resolves the bar comes from the
- * shared list, matched on name and size rather than on an id: the pending id
- * is the store's own and is thrown away when the row is replaced. Two files
- * agreeing on both are the same file twice, so the ambiguity is not one.
- */
+/** What to draw for one slot. Before `upload` resolves the bar comes from
+    the shared list, matched on name and size: the pending id is the store's
+    own and is thrown away when the row is replaced. */
 function view(attachment: Attachment, documents: UserDocument[]): AttachmentView {
   if (attachment.errorCode) {
     return {
