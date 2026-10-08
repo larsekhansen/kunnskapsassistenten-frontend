@@ -42,12 +42,9 @@ export type ChatViewProps = {
   /** The thread to show. Absent means a new conversation. */
   thread?: ThreadDetail;
   /**
-   * The address names a conversation that has not been read yet.
-   *
-   * Absent `thread` means two different things and this is what tells them
-   * apart: an untouched front page, and a thread on its way. The view cannot
-   * work it out — it takes a `ThreadDetail` and never a route — so whoever
-   * knows the address says so. See `slotViews/ChatSlotView.tsx`.
+   * The address names a conversation that has not been read yet. Absent
+   * `thread` otherwise means two things at once: an untouched front page, and
+   * a thread on its way. The view never sees the route, so the caller says.
    */
   loading?: boolean;
   /** Which backend to talk to. Defaults to whatever `createChatClient` picks. */
@@ -55,17 +52,11 @@ export type ChatViewProps = {
 };
 
 /**
- * What the shell has been told about one answer, as one comparable string.
- *
- * The status and how many documents; nothing else changes what the sources
- * panel draws, and everything else changes on every token.
- *
- * An answer whose sources have not arrived counts as zero and not as a state
- * of its own, because zero is what the shell stores for it — `AnswerSources`
- * carries an array and never `undefined`. Saying «venter» on this side and
- * reading `[]` on the other makes the two never agree, and the view then
- * reports on every render, which re-renders the shell, which runs the view
- * again.
+ * What the shell has been told about one answer, as one comparable string:
+ * the status and how many documents, since nothing else changes what the
+ * sources panel draws and everything else changes on every token. Sources
+ * that have not arrived count as zero, because zero is what the shell stores
+ * — any other value here never agrees with it, and the two loop.
  */
 function sourcesSignature(documents: number, status: string, corpusKey?: string): string {
   return `${status}:${documents}:${corpusKey ?? ''}`;
@@ -85,15 +76,10 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   const { selection } = useFilterSelection();
 
   /*
-   * Which corpus is being searched, for the three suggestions on the empty
-   * state: a suggestion naming documents the corpus does not hold invites a
-   * question it cannot answer.
-   *
-   * Read here rather than in `Kickstarters`, so the suggestions stay a value
-   * handed down and the leaf stays a leaf. `useCorpus` navigates when the
-   * corpus is SET, so it needs a router — which this view has under the
-   * shell, and which the leaf would otherwise need in every preview and unit
-   * test that draws a greeting.
+   * Which corpus is searched, for the suggestions on the empty state: one
+   * naming documents the corpus does not hold invites a question it cannot
+   * answer. Read here and not in `Kickstarters`, which would then need a
+   * router in every preview and test that draws a greeting.
    */
   const { active: corpusKey } = useCorpus();
 
@@ -119,15 +105,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
 
   /**
    * «Avgrenset til …» over one answer: which corpus, and what was narrowed.
-   *
-   * The corpus is named only when the answer came from a different one than
-   * the chooser stands on now — which is what happens when a thread is opened
-   * from the list while the reader is standing somewhere else. Naming it
-   * always would put a word that never varies over every answer in a
-   * deployment with one corpus.
-   *
-   * From the ANSWER's key, never from the choice: a name read from the
-   * chooser is the bug this was written to fix.
+   * The corpus is named only when the answer came from another one than the
+   * chooser stands on now, and always from the ANSWER's key — a name read
+   * from the chooser belongs to a different answer.
    */
   const filterSummary = useCallback(
     (messageId: string) => {
@@ -136,14 +116,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
       const applied = appliedFilters[messageId] ?? thread?.filter ?? emptyFilterSelection;
       const answer = messages.find((message) => message.id === messageId);
       /*
-       * Named only when the answer came from a corpus this deployment knows
-       * AND it is not the one the chooser stands on.
-       *
-       * `corpusOption` is the first half and it is not ceremony:
-       * `corpusDisplayNameFor` answers «standardkorpuset» for a key it does
-       * not know, which is a sentence about a default rather than about this
-       * answer — and a live backend that picked the dataset itself sends a
-       * key nobody here has a name for. No name, no line.
+       * `corpusOption` is not ceremony: `corpusDisplayNameFor` answers
+       * «standardkorpuset» for a key it does not know, which says something
+       * about a default rather than about this answer. No name, no line.
        */
       const from = answer?.corpusKey;
       const elsewhere =
@@ -156,53 +131,32 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   );
 
   /*
-   * «Henter samtalen», through the polite region at the bottom of this view.
-   *
-   * That region is mounted, empty, from the first render, so putting words in
-   * it is a CHANGE — which is the thing a screen reader announces. An element
-   * that arrives with its text already in it was inserted, not changed, and a
-   * screen reader has nothing to report about it.
-   *
-   * Set from an effect rather than during render, for the same reason: the
-   * first commit puts the empty region in the page, and the text lands in the
-   * next one.
-   *
-   * Only while the skeleton is what is on screen. Ask something in the gap
-   * and the turn has its own things to say — «Henter svar.», then the answer
-   * — and they are about what the reader just did.
+   * «Henter samtalen», through the polite region this view already keeps in
+   * the page. A region that arrives WITH its text was inserted, not changed,
+   * and a screen reader announces nothing — so the words are set from an
+   * effect, one commit after the empty region. Only while the skeleton is on
+   * screen: a question asked in the gap has its own things to say.
    */
   const readingThread = loading === true && messages.length === 0;
   const [noticeSaid, setNoticeSaid] = useState(false);
   useEffect(() => {
     // Nothing to undo when it stops: `loadingNotice` below reads
-    // `readingThread` too, so the words leave with the same render that
-    // replaces the skeleton.
+    // `readingThread` too.
     if (!readingThread) return;
-    /*
-     * A beat after the region is in the page, and not in the same commit.
-     * Deriving this during render would put the words in the region as it was
-     * inserted, which is what a screen reader has nothing to announce about —
-     * it is the change it reports, not the content it finds. The timer is the
-     * change.
-     */
+    // The timer is what makes the words a change rather than content the
+    // region was inserted with.
     const timer = setTimeout(() => setNoticeSaid(true));
     return () => clearTimeout(timer);
   }, [readingThread]);
   /*
-   * Read back through `readingThread` as well, so the words LEAVE in the same
-   * render that replaces the skeleton with the conversation. Only their
-   * arrival has to wait for an effect; a region still saying «Henter
-   * samtalen» under a conversation that has landed says something that is no
-   * longer true.
+   * Read through `readingThread` as well, so the words LEAVE in the render
+   * that replaces the skeleton. Only their arrival waits for an effect.
    */
   const loadingNotice = readingThread && noticeSaid ? READING_THREAD : '';
 
   const [draft, setDraft] = useState('');
-  /*
-   * The documents the question being written is asked with. Held here beside
-   * the draft, because the two are one unsent question: they are sent
-   * together and emptied together.
-   */
+  // The documents the question being written is asked with. Beside the
+  // draft, because the two are one unsent question.
   const attachments = useAttachments();
   const rootRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
@@ -214,28 +168,16 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   // that changes meaning under the reader when a turn fails.
   const sendRef = useRef<HTMLButtonElement>(null);
 
-  // The main slot owns the scroll, and the shell hands it over. A view must
-  // not go looking for it: the day chat is moved to another slot, a search up
-  // the DOM finds the wrong element or nothing.
+  // The shell hands the scroller over; a view must not go looking for it, or
+  // moving chat to another slot finds the wrong element.
   const { ref: scrollRef, scrollToBottom } = useMainScroll();
 
   /*
-   * The compose field is sticky and opaque, so anything the browser scrolls
-   * to can land underneath it — a citation link or an action button reached
-   * by Tab ends up behind the field, which is WCAG 2.4.11. Everything in the
-   * conversation gets a `scroll-margin` of the field's height, so the browser
-   * stops that much short of the bottom; see `--ka-composer-block-size` in
-   * chat.css.
-   *
-   * A margin on the conversation and NOT `scroll-padding` on the scroller:
-   * the padding applies to the field too, and the field is inside the band it
-   * keeps clear, so every keystroke asks the browser to bring the caret out
-   * from behind the field and the column walks towards the bottom one key at
-   * a time. The margin goes on what the field can hide, not on the field.
-   *
-   * Measured rather than written down: the field grows with the question
-   * (`field-sizing: content`) and the follow-up chips come and go, so the
-   * height is not a number this view knows.
+   * The sticky compose field must not hide what the browser scrolls to
+   * (WCAG 2.4.11), so the conversation carries a `scroll-margin` of the
+   * field's height. NOT `scroll-padding` on the scroller: that applies to the
+   * field too, and every keystroke then walks the column towards the bottom.
+   * Measured, because the field grows with the question.
    */
   useEffect(() => {
     const area = composerRef.current;
@@ -264,22 +206,14 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   // panel and tells it which excerpt to show. Neither view knows the other.
   const { showCitation } = useCitation();
 
-  // The shell gives the conversation an address the first time a question is
-  // asked here, so «Kopier lenke til tråden» has something to copy (C16).
-  // Once per question and a no-op after the first; the thread it returns is
-  // the shell's business, not this view's.
+  // The shell gives the conversation an address on the first question, so
+  // «Kopier lenke til tråden» has something to copy (C16). A no-op after it.
   const { startThread } = useThread();
 
-  // The sources go the same way, and for the same reason: the sources view
-  // draws them, this view produces them, and the two may not import each
-  // other.
-  //
-  // One entry per answer, under the answer's own message id. A thread has
-  // several answers and each numbers its excerpts from 1, so a single flat
-  // list makes `[2]` in the first answer open the second answer's excerpt
-  // two — it looks right and is not. The status travels with it, because an
-  // empty `documents` means four different things and only the answer knows
-  // which.
+  // One entry per answer, under its own message id: each answer numbers its
+  // excerpts from 1, so a flat list makes `[2]` in the first answer open the
+  // second answer's excerpt two. The status travels with it, because an empty
+  // `documents` means four different things.
   const {
     answers: reported,
     setAnswerSources,
@@ -288,35 +222,19 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   } = useAnswerSources();
 
   /*
-   * What the shell is holding, against what this thread has to report.
-   *
-   * Compared against the shell's own state and NOT against a memo of what
-   * was sent. A `useRef` of what has already been sent cannot know that
-   * something emptied the shell afterwards — leaving a thread, a route with
-   * no conversation and this view's own unmount all clear it — and the view
-   * would then have said its piece once and never say it again.
-   *
-   * Reading the shell makes that impossible to get wrong: whatever empties
-   * it, the next render sees the gap and fills it. Reporting changes
-   * `answers`, which runs this again, and the second pass finds nothing to do
-   * — so it settles rather than loops.
-   *
-   * `messages` changes on every token, and almost none of those changes say
-   * anything about sources. The signature is the two things that do — the
-   * answer's status, and whether its documents have arrived — so the shell is
-   * told once per real change instead of once per word.
+   * Compared against the shell's own state and NOT against a memo of what was
+   * sent: several things empty the shell, and a memo cannot know, so the view
+   * would say its piece once and never again. The signature keeps this to one
+   * report per real change rather than one per token.
    */
   useEffect(() => {
     const answers = messages.filter((message) => message.role === 'assistant');
     const live = new Set(answers.map((message) => message.id));
 
     /*
-     * An answer that never produced a token is taken out of the thread again
-     * (see `settleAnswer` in useChat), and the context can only be emptied
-     * whole. So a disappearance costs a rebuild rather than a removal. It
-     * happens when a reader stops a turn before the first word, and the
-     * alternative is a sources panel waiting forever for an answer that is no
-     * longer on screen.
+     * An answer that never produced a token leaves the thread (`settleAnswer`
+     * in useChat), and the context can only be emptied whole — so a
+     * disappearance costs a rebuild rather than a removal.
      */
     if ((reported ?? []).some((answer) => !live.has(answer.messageId))) {
       clearAnswerSources();
@@ -324,12 +242,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
     }
 
     /*
-     * A thread with no answers at all, which `answers` cannot say on its own:
-     * `clearAnswerSources()` sets it to undefined, and undefined means
-     * «nobody has reported yet», which is what draws «Henter kilder …». An
-     * untouched front page is not loading anything. So the empty state still
-     * goes through the flat slot, and hands over the moment there is a real
-     * answer to report.
+     * Undefined means «nobody has reported yet», which draws «Henter kilder
+     * …», and an untouched front page is not loading anything. So an empty
+     * thread reports `[]` rather than leaving the slot undefined.
      */
     if (answers.length === 0) {
       setDocuments([]);
@@ -355,24 +270,18 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
         documents: message.sources ?? [],
         status: message.status,
         /*
-         * How many `[n]` the answer's own text carries, which is not the same
-         * as how many excerpts came with it. A conversation restored from the
-         * live backend has the markers and no chunks behind them, and without
-         * this the panel says «Svaret viser ikke til noen utdrag» beside an
-         * answer showing four. Only a stored turn sets it; a streamed one
-         * resolves its markers as they arrive and leaves this undefined.
+         * How many `[n]` the text carries, which is not how many excerpts
+         * came with it: a restored conversation has the markers and no chunks
+         * behind them. Only a stored turn sets it.
          */
         ...(message.citationCount === undefined ? {} : { citationCount: message.citationCount }),
         // Read back from a store that kept no sources for it: the panel says
         // they were not stored rather than that there were none.
         ...(message.sourcesNotStored ? { sourcesNotStored: true } : {}),
         /*
-         * Which corpus answered. The panel names the corpus the ANSWER came
-         * from and not the one the chooser stands on, or a thread opened
-         * while the chooser sits elsewhere gets a disclaimer naming the wrong
-         * corpus. It arrives with the frame that ends the stream, so it is
-         * undefined while the answer is still writing — which is why it is
-         * part of the signature, or the panel would never hear about it.
+         * The corpus the ANSWER came from, never the one the chooser stands
+         * on. It arrives with the frame that ends the stream, so it is part
+         * of the signature or the panel never hears about it.
          */
         ...(message.corpusKey === undefined ? {} : { corpusKey: message.corpusKey }),
       });
@@ -380,16 +289,10 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   }, [messages, reported, setAnswerSources, clearAnswerSources, setDocuments]);
 
   /*
-   * Leaving the thread takes its sources with it. This view is keyed on the
-   * thread, so unmount is exactly that moment — and an empty dependency list
-   * is what makes «unmount» mean unmount.
-   *
-   * Through a ref, because the alternative is a trap: with
-   * `[clearAnswerSources]` the effect re-runs whenever that function changes
-   * identity, and re-running an effect runs its cleanup first — so the
-   * sources would be wiped on an ordinary re-render rather than on the way
-   * out. The shell memoises the callback today; against a provider that does
-   * not, the two effects clear and report each other endlessly.
+   * Leaving the thread takes its sources with it, and an empty dependency
+   * list is what makes «unmount» mean unmount. Through a ref: with the
+   * callback as a dependency, a re-render runs the cleanup and wipes the
+   * sources on the way in rather than on the way out.
    */
   const clearOnUnmount = useRef(clearAnswerSources);
   useEffect(() => {
@@ -402,52 +305,31 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   );
 
   /**
-   * The turn on screen searched and found nothing.
-   *
-   * The fixed suggestions do not apply under one: «Kan du utdype?» asks the
-   * assistant to say more about nothing, and «Identifiser utfordringer» is a
-   * question about documents that were never found. The advice the answer
-   * already carries — loosen the filter, ask in other words — is the way on
-   * from here, and three buttons leading back to the same nothing are in its
-   * way.
-   *
-   * Read off the last message and not off the thread: an earlier answer that
-   * did find something is still worth following up, right up until this one
-   * replaced it as the turn the suggestions would act on.
+   * The turn on screen searched and found nothing, so the fixed suggestions
+   * do not apply: «Kan du utdype?» asks the assistant to say more about
+   * nothing. Read off the LAST message, since an earlier answer that did find
+   * something was worth following up until this one replaced it.
    */
   const lastMessage = messages.at(-1);
   const foundNothing = lastMessage !== undefined && noHitsAnswers.has(lastMessage.id);
 
-  /**
-   * The same head on both routes. A thread opened from the list brings its
-   * title; a conversation started on `/` has none until the client names it,
-   * and then the question stands in. See threadHeading.ts for why a stand-in
-   * is heard and not seen.
-   */
+  // The same head on both routes; see threadHeading.ts for why a stand-in
+  // title is heard and not seen.
   const heading = threadHeading(thread, messages);
   const pageName = threadPageTitle(thread, messages);
 
   /**
-   * The agent asked back and is waiting: the last turn ended as
-   * `needs-clarification` and nothing has been sent since.
-   *
-   * The reader's next message is the answer to that question — an ordinary
-   * next turn in the same thread, sent the ordinary way. What changes is the
-   * field: it says what it wants, and the fixed follow-up suggestions step
-   * aside, because «Kan du utdype?» is not an answer to anything the agent
-   * asked.
+   * The agent asked back and is waiting. The reader's next message is the
+   * answer, sent the ordinary way; what changes is the field's placeholder,
+   * and the follow-up suggestions step aside.
    */
   const awaitingClarification =
     messages.at(-1)?.role === 'assistant' && messages.at(-1)?.status === 'needs-clarification';
 
   /*
-   * Focus follows the question, once per clarification.
-   *
-   * The reader has just been asked something, and the one place to answer it
-   * is the field. Focus is only taken from the composer itself or from
-   * nobody: the click or the Enter that sent the question left it there, and
-   * a reader who has moved on — into the answer above, into the sources —
-   * must not have the page pulled back under them.
+   * Focus follows the question, once per clarification. Only taken from the
+   * composer or from nobody: a reader who has moved on into the answer or the
+   * sources must not have the page pulled back under them.
    */
   const clarificationId = awaitingClarification ? messages.at(-1)?.id : undefined;
   useEffect(() => {
@@ -463,10 +345,8 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
     if (query.length === 0) return;
 
     /*
-     * Only the ready ones go. A file that was refused is not part of the
-     * question — sending its id would ask the backend about a document that
-     * does not exist — and one still uploading is not ready to be asked
-     * about, which is why the send button waits for it (see `Composer`).
+     * Only the ready ones go: a refused file's id would ask the backend about
+     * a document that does not exist.
      */
     const ids = attachments.readyIds;
     const names = attachments.items
@@ -480,13 +360,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   }
 
   /**
-   * Where focus goes when a control disappears because of the click that hit
-   * it. Both the stop button and «Prøv igjen» are gone by the time their own
-   * handler has run, and a control that vanishes without saying where focus
-   * should land drops a keyboard user on `<body>`, at the top of the
-   * document, mid-action (WCAG 2.4.3). The compose field is where the reader
-   * is going anyway: to rewrite the question after stopping, or to keep
-   * typing while the retry runs.
+   * Where focus goes when a control disappears under the click that hit it.
+   * Without this a keyboard user lands on `<body>`, at the top of the
+   * document, mid-action (WCAG 2.4.3).
    */
   function focusField() {
     fieldRef.current?.focus();
@@ -497,12 +373,8 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   useComposerShortcut(fieldRef);
 
   /*
-   * The hidden settings menu: `#innstillinger` in the address opens it, and
-   * nothing else does.
-   *
-   * The hash and not a query, because it never reaches the server, never
-   * changes which route is showing, and does not travel in a link somebody
-   * pastes into a ticket. See SettingsDialog.tsx.
+   * The hidden settings menu. A hash and not a query: it never reaches the
+   * server, never changes the route, and does not travel in a pasted link.
    */
   const { hash } = useLocation();
   const navigate = useNavigate();
@@ -516,27 +388,12 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   const footerMode = useFooterMode();
 
   /*
-   * The same rescue, for the error that arrives on its own.
-   *
-   * The send button becomes the stop button while an answer is on its way,
-   * and when the turn fails it becomes the send button again — disabled,
-   * because the field is empty. A reader who clicked it is still standing on
-   * it at this moment and lands on `<body>` one frame later, when the browser
-   * takes focus off a control that has just been switched off.
-   *
-   * So «is focus lost» cannot be asked of `document.activeElement` alone:
-   * asked here it is still the button, and one frame later it is too late.
-   * That one button counts as lost too, and it is compared by identity —
-   * «a button in the composer» is too wide a net, because it catches the
-   * paperclip, which changes nothing when a turn fails and has every right to
-   * keep the focus a reader put on it.
-   *
-   * Where focus goes is «Prøv igjen», which is the one thing to do next, and
-   * the compose field when the error offers no retry — a rejected key does
-   * not, and the reader's way on is to write to someone.
-   *
-   * The compose field itself is left alone. Enter leaves the caret there, and
-   * a reader who is typing must not have it taken away.
+   * The same rescue for an error that arrives on its own. The send button
+   * becomes a disabled send button when the turn fails, and the browser takes
+   * focus off it one frame LATER — so standing on that one button counts as
+   * lost, compared by identity: «a button in the composer» also catches the
+   * paperclip, which has every right to keep focus. The field itself is left
+   * alone, or a reader who is typing loses the caret.
    */
   useEffect(() => {
     if (status !== 'error') return;
@@ -550,14 +407,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
 
   return (
     <div className="ka-chat" ref={rootRef}>
-      {/*
-        The tab's title, from the same heading the column draws: the thread's
-        title, or the first sentence of the first question until it has one
-        (WCAG 2.4.2; see `threadPageTitle`). «Ny tråd» before anything is asked. While a thread is
-        being read, the app's name alone, rather than calling it new.
-
-        Here and not in the route, which has the address and not the title.
-      */}
+      {/* The tab's title, from the heading the column draws (WCAG 2.4.2).
+          Here and not in the route, which has the address and not the
+          title. */}
       <PageTitle name={pageName ?? (loading ? undefined : NEW_THREAD_TITLE)} />
       {heading ? (
         <Heading
@@ -569,17 +421,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
         </Heading>
       ) : null}
 
-      {/*
-        Three states, in the order a reader meets them: what they asked for,
-        what is on its way, and — only when the address names nothing — the
-        greeting.
-
-        The conversation wins over the loading shape, and that is the point
-        of the order rather than an accident of it: a question asked while the
-        thread is being read is already on screen, and drawing skeletons over
-        it would take the reader's own words away while they waited for older
-        ones.
-      */}
+      {/* The conversation wins over the loading shape on purpose: a question
+          asked while the thread is being read is already on screen, and
+          skeletons over it would take the reader's own words away. */}
       {messages.length > 0 ? (
         <MessageList
           filterSummary={filterSummary}
@@ -611,16 +455,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
         />
       )}
 
-      {/*
-        Mounted whether or not there is an error: an alert region only
-        announces content that appears inside a region already in the page.
-        See src/components/ErrorState.tsx.
-
-        Heading, text and whether there is a button at all come from the code
-        (errorText.ts). A rejected key gets no «Prøv igjen»: the same question
-        with the same key fails the same way, and a button that cannot work
-        sends the reader round the loop instead of towards whoever can fix it.
-      */}
+      {/* Mounted whether or not there is an error: an alert region only
+          announces content that appears inside one already in the page.
+          Whether there is a button at all comes from errorText.ts. */}
       <ErrorState
         message={errorText?.message}
         retryRef={retryRef}
@@ -642,9 +479,8 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
               onScroll={(byKeyboard) => {
                 scrollToBottom();
                 // The button goes when the column reaches the bottom, and a
-                // keyboard would land on <body> (WCAG 2.4.3). The field is
-                // where the reader is going next. Not for a tap: focus in the
-                // field opens the keyboard on a phone.
+                // keyboard would land on <body> (WCAG 2.4.3). Not for a tap:
+                // focus in the field opens the keyboard on a phone.
                 if (byKeyboard) fieldRef.current?.focus({ preventScroll: true });
               }}
             />
@@ -674,29 +510,17 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
         value={draft}
       />
 
-      {/*
-        How the answer is coming along, for a screen reader. Polite, never
-        assertive: an answer being written is not an interruption. It carries
-        whole paragraphs rather than tokens, because a region updated per
-        token stutters, and the finished answer is in the page anyway.
-      */}
+      {/* How the answer is coming along, for a screen reader. Polite, since
+          an answer being written is not an interruption, and by whole
+          paragraphs, since a region updated per token stutters. */}
       <p aria-live="polite" className="ds-sr-only">
         {announcement || loadingNotice}
       </p>
 
       {/*
-        The hidden settings menu, opened by `#innstillinger` in the address.
-        It lives here rather than in the shell because the one setting it
-        holds is this view's, and a menu with one setting belongs next to it
-        until there is a second. See SettingsDialog.tsx.
-
-        Mounted only while the address asks for it, unlike the delete dialog
-        in the threads view: that one is permanent so it can animate and take
-        focus the moment a thread is picked, and this one is supposed to leave
-        no trace in the page for anyone who has not asked for it.
-
-        `replace`, so closing it does not leave a step in the history that
-        Back walks straight into again.
+        Mounted only while the address asks for it, so a page nobody asked it
+        of holds no trace of it. `replace`, so closing leaves no history step
+        that Back walks straight into again.
       */}
       {settingsOpen ? (
         <SettingsDialog
@@ -713,29 +537,13 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
 }
 
 /**
- * The chat: the greeting, the conversation and the compose field.
+ * The chat: the greeting, the conversation and the compose field. Mounted in
+ * the `main` slot by the shell, which carries the page's level 1 heading.
  *
- * Mounted in the `main` slot by the shell. It is a view, so it is named after
- * its content and could sit in another slot the day the layout lets a reader
- * move it. It expects the route around it to carry the page's level 1
- * heading, as Figma draws it: «Kunnskapsassistenten» on top, the thread title
- * under it.
- *
- * **It does not key itself**, and must not. `thread` is undefined until the
- * client has answered, so a key of `props.thread?.id ?? 'new'` goes from
- * `'new'` to the id a moment after mount, and the session remounts with
- * everything the compose field was holding — type while the thread loads and
- * the text is gone.
- *
- * The remount that key would be for already happens above: `ChatSlotView`
- * renders `<ChatSlot key={threadId}>` off the route, so a real thread change
- * replaces this whole subtree. Keying here only adds the transition the route
- * never makes, from «no thread» to «this thread» — which is the same
- * conversation arriving, not a different one.
- *
- * Which is also why the route is not read here instead: a view takes a
- * `ThreadDetail` and never a route (see slotViews/ChatSlotView.tsx), and the
- * caller that knows the address is already doing the job.
+ * **It must not key itself.** `thread` is undefined until the client answers,
+ * so a key of `thread?.id ?? 'new'` remounts the session a moment after
+ * mount and throws away whatever the compose field was holding. The remount
+ * that key would be for already happens in `ChatSlotView`.
  */
 export function ChatView(props: ChatViewProps) {
   return <ChatSession {...props} />;
