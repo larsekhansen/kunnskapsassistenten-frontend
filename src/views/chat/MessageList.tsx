@@ -109,16 +109,9 @@ export function MessageList({
           return (
             <li className="ka-message ka-message--user" key={message.id}>
               <span className="ds-sr-only">Du skrev:</span>
-              {/*
-                The reader's words in a box of their own, at the end of the
-                line, in the size the answer is written in (issue 117). Set
-                larger and bare above the answer, the question reads as a
-                heading over the card. A box at the far side is what other
-                chats do and what a reader already knows.
-
-                Designsystemet has no chat message, and `Card` is the box it
-                does have: tinted, and in the one blue the app uses.
-              */}
+              {/* The reader's words in a box at the end of the line (issue
+                  117): larger and bare above the answer, a question reads as
+                  a heading over the card. `Card`, tinted, is the box. */}
               <Card className="ka-message__bubble" data-color="accent" variant="tinted">
                 <Paragraph variant="long">{message.content}</Paragraph>
                 {/* What the question was asked with. Under the question and not
@@ -134,14 +127,9 @@ export function MessageList({
           );
         }
 
-        // The agent asking back rather than answering. It is an assistant
-        // turn like any other, but nothing a finished answer carries applies
-        // to it, so it is drawn by its own component rather than by switching
-        // four things off in this one.
-        //
-        // «Tenkte i N sekunder» does apply, and stays: the agent searched
-        // before it asked back, and how long it spent is the same fact here
-        // as over an answer.
+        // The agent asking back rather than answering: nothing a finished
+        // answer carries applies, so it has its own component. «Tenkte i N
+        // sekunder» does apply, because the agent searched before it asked.
         if (message.status === 'needs-clarification') {
           const clarificationSteps = thinkingWithoutAnswer(message.thinkingSteps, message.content);
           return (

@@ -158,19 +158,9 @@ export function AnswerMessage({
 
   return (
     <li className="ka-message ka-message--assistant">
-      {/*
-        The search strip, pinned to the top of the answer column.
-
-        Not at the bottom of this card, because the card scrolls: one «Neste
-        treff» and the strip would sit under the sticky compose field, with
-        the reader typing in a field they cannot see and the hit counter
-        behind the composer's buttons. The shell owns a place at the top of
-        the region for exactly this; see layout/viewHeadContext.ts.
-
-        Written first in the view on purpose. React sends events through the
-        portal along the React tree while the browser tabs the DOM, so a head
-        written first and drawn first is in the same place both ways round.
-      */}
+      {/* The search strip, pinned to the top of the column by the shell: in
+          this card, which scrolls, it ends up under the compose field. First
+          in the view, so the portal and the DOM agree on the tab order. */}
       {searching ? (
         <ViewHead>
           <AnswerSearch
@@ -226,32 +216,17 @@ export function AnswerMessage({
         )
       ) : null}
 
-      {/*
-        The answer sits in a card, as the design draws it. `data-color` is
-        neutral and not inherited: with accent on the root, the card and its
-        border would go blue, which nobody has drawn. Chrome gets an explicit
-        family, see visjon-og-beslutninger.md.
-
-        Two blocks rather than one, because Card.Block draws the rule between
-        them — which is exactly the divider above the action row.
-      */}
+      {/* `data-color` is neutral and not inherited: with accent on the root
+          the card and its border go blue. Two blocks rather than one, because
+          Card.Block draws the divider above the action row. */}
       {showCard ? (
         <Card className="ka-answer-card" data-color="neutral">
           <Card.Block>
             {empty && streaming ? <AnswerSkeleton /> : null}
 
-            {/*
-              One quiet line over the answer, with an info icon before it, as
-              Aksel's InlineMessage with status info: no frame and no fill.
-              Over and not under, so it is read before the text it is about.
-
-              Not a Designsystemet component, because it has none for this:
-              `Alert` is a box, and `ValidationMessage`, which looks like
-              this, is feedback on a form field and ties itself to one. The
-              icon is decoration and the sentence says it all. No role, since
-              it arrives with the finished answer and the live region says it
-              then (useChat).
-            */}
+            {/* One quiet line over the answer, as Aksel's InlineMessage
+                draws status info, and over so it is read first. Not a
+                Designsystemet component, which has none for this. */}
             {lacksSources(message) ? (
               <Paragraph className="ka-no-sources-note" data-size="sm">
                 <InformationSquareIcon aria-hidden className="ka-no-sources-note__icon" />
@@ -353,18 +328,9 @@ export function AnswerMessage({
             </Card.Block>
           ) : null}
 
-          {/*
-            Nothing to copy from half an answer, and no thread link worth
-            sharing yet. What the reader wants is the answer they stopped, so
-            the row is the one way onward.
-
-            The same row on a turn that failed and has outlived its alert.
-            The alert carried «Prøv igjen» while it was up; once it is gone, a
-            restored failure would be the one turn in the thread with no way
-            on at all. `retry` finds the question in the conversation when the
-            session that asked it is gone, so the button works in a reloaded
-            tab.
-          */}
+          {/* Nothing to copy from half an answer, so the row is the one way
+              onward — and the same on a turn that has outlived its alert,
+              which would otherwise be the one turn with no way on. */}
           {aborted || failedQuietly ? (
             <Card.Block>
               <div className="ka-answer-actions">

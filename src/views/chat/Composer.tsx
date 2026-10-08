@@ -147,15 +147,9 @@ export function Composer({
     <div className="ka-composer-area" ref={ref}>
       {above}
 
-      {/*
-        Both handlers put focus back in the field, because both take the
-        control the reader is standing on out of the page: removing a chip
-        unmounts its button, and retrying one takes «Prøv igjen» away the
-        moment the file goes back to uploading. A control that vanishes
-        without saying where focus should land drops a keyboard user on
-        `<body>`, at the top of the document (WCAG 2.4.3). The field is where
-        they were heading anyway.
-      */}
+      {/* Both handlers put focus back in the field, because both take the
+          control the reader is standing on out of the page, and a vanishing
+          control drops a keyboard user on `<body>` (WCAG 2.4.3). */}
       <Attachments
         items={attachments.items}
         onRemove={(key) => {
@@ -218,37 +212,18 @@ export function Composer({
           value={value}
         />
 
-        {/*
-          The two controls on a row of their own, under the field.
-
-          Beside the field, in a box tall enough to write in, the placeholder
-          stands indented at the top with a button pinned low on either side
-          (issue 79). On a row of their own the field takes the full width of
-          the box, and the reader's text starts where the paperclip starts and
-          ends where the send button ends.
-        */}
+        {/* The two controls on a row of their own: beside the field in a box
+            tall enough to write in, the placeholder stands indented with a
+            button low on either side (issue 79). */}
         <div className="ka-composer__controls">
-          {/*
-            Nothing to upload to, nothing to upload with. The BFF has no route
-            for it, so the paperclip is left out rather than drawn switched
-            off (the review of #129).
-
-            A reader who drops a file on the field is still told honestly why
-            it did not attach — that is the one way left to try, and nothing
-            invites it.
-          */}
+          {/* Nothing to upload to, nothing to upload with: the BFF has no
+              route for it, so the paperclip is left out rather than drawn
+              switched off. A dropped file is still refused honestly. */}
           {unavailable ? null : (
             <>
-              {/*
-                The picker, hidden but real: a styled `<label>` around a file
-                input is the other way to do this, and it loses the button
-                semantics the row needs — this control shares a row with the
-                send button and has to behave like the other one, not like a
-                label.
-
-                `multiple`, because a reader with three documents on the same
-                question should not have to pick them one at a time.
-              */}
+              {/* The picker, hidden but real. A styled `<label>` is the other
+                  way and loses the button semantics the row needs, since this
+                  control has to behave like the send button beside it. */}
               <input
                 accept={UPLOAD_ACCEPT}
                 /* `display: none` and not `ds-sr-only`, which leaves it in
@@ -344,18 +319,9 @@ export function Composer({
       ) : null}
 
       {/*
-        One line, and only the disclaimer on it. The shortcut sharing the line
-        wraps it onto two at every width worth measuring, which costs the
-        sticky bottom 24 px on every screen to say something a reader needs
-        once — and it is not gone: it is on the field as a tooltip, as a
-        description for screen readers, and in the skip link that makes the
-        same jump.
-
-        Under the box, where issue 79 draws it, and last in the sticky area
-        rather than just under the frame: the area is pinned to the bottom and
-        grows upwards, so the last line is the one that never moves. Follow-ups
-        come with every answer and attachments with every file, and a standing
-        sentence that moved a row each time is one nobody would read twice.
+        One line, and only the disclaimer on it: the shortcut sharing it wraps
+        onto two at every width and is said three other ways. Last in the
+        sticky area, which grows upwards, so this line never moves.
       */}
       <Paragraph className="ka-composer__disclaimer" data-size="sm">
         {DISCLAIMER}

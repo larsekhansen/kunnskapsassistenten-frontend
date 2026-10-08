@@ -1,10 +1,7 @@
-/**
- * The Norwegian strings the chat view owns.
- *
- * The wording is the designer's, taken verbatim from Figma, so it is not to
- * be reworded here. Collected in one file rather than spread through the
- * components, because every user-visible string in one place is what makes a
- * language review possible.
+/*
+ * The Norwegian strings the chat view owns. The wording is the designer's,
+ * taken verbatim from Figma, so it is not reworded here, and it is collected
+ * in one file so a language review is possible at all.
  */
 
 /** Under the compose field, in all four chatInput variants. */
@@ -44,16 +41,11 @@ export const GENERAL_KICKSTARTERS = [
   'Oppsummer det viktigste i noen få punkter.',
 ] as const;
 
-/**
- * The one corpus the three named questions belong to.
- *
- * Written out rather than imported from src/api/corpus.ts, so this module of
- * words stays a module of words; `kickstartersPerCorpus.test.ts` ties the two
- * together, so a rename there goes red instead of quietly falling back.
- *
- * `kudos-pilot` is deliberately NOT here: it is Kudos by name, but it holds
- * annual reports from other agencies than these questions name, and asking
- * them over it returns nothing.
+/*
+ * Written out rather than imported, so this module of words stays one;
+ * `kickstartersPerCorpus.test.ts` ties the two together. `kudos-pilot` is
+ * deliberately NOT here: it is Kudos by name but holds other agencies'
+ * reports, and asking these questions over it returns nothing.
  */
 const CORPUS_WITH_OWN_KICKSTARTERS = 'mock';
 
@@ -177,14 +169,10 @@ export const SHORTCUT_DESCRIPTION =
   'Trykk Ctrl og skråstrek, eller Cmd og skråstrek, for å flytte skrivemerket hit fra hvor som helst på siden.';
 
 /*
- * A search that found nothing. Not an error and not in red: the assistant did
- * what it was asked and came back empty-handed, which is an answer with an
- * empty source list (API-bestilling A16). Drawn as an answer rather than as
- * an alert with «Prøv igjen», since the same question over the same documents
- * gives the same nothing.
- *
- * Two versions, because only one of them is honest at a time: a reader who
- * has not touched the filter cannot loosen it.
+ * A search that found nothing is not an error: it is an answer with an empty
+ * source list (API-bestilling A16), so it is drawn as an answer and not as an
+ * alert with «Prøv igjen». Two versions, because only one is honest at a
+ * time: a reader who has not touched the filter cannot loosen it.
  */
 
 /** The reader had narrowed the corpus, so the filter is the first thing to try. */
