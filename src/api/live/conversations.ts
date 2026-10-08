@@ -8,6 +8,7 @@ import {
   type SourceDocument,
   type Thread,
   type ThreadDetail,
+  withoutRetriedAttempts,
 } from '../../model';
 import { corpusKeyFromTags } from '../corpus';
 import { documentUrl } from '../documentUrls';
@@ -165,7 +166,7 @@ export function messagesFromApi(
   messages: ApiMessage[] | null | undefined,
   corpusKey?: string,
 ): Message[] {
-  return (messages ?? [])
+  const turns = (messages ?? [])
     .filter((message) => message.role === 'user' || message.role === 'assistant')
     .filter((message) => (message.text ?? '').trim() !== '')
     .map((message) => {
@@ -191,6 +192,7 @@ export function messagesFromApi(
         status: failed ? ('error' as const) : ('complete' as const),
       };
     });
+  return withoutRetriedAttempts(turns);
 }
 
 /** «document-type» and «documentType» are the same name. */

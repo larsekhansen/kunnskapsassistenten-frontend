@@ -8,6 +8,7 @@ export type { FacetValue, FilterDimension, FilterFacet, FilterSelection } from '
 export { emptyFilterSelection, filterDimensions, isEmptySelection } from './filter';
 export type { Message, MessageRole, MessageStatus } from './message';
 export type { RetrievalDetails, ThinkingStep, ThinkingStepKind } from './retrieval';
+export { withoutRetriedAttempts } from './retriedTurns';
 export type {
   AnswerSources,
   CitationTarget,
