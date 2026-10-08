@@ -120,8 +120,6 @@
   flex-wrap: wrap;
   align-items: baseline;
   column-gap: var(--ds-size-2);
-  /* Context inside the link, not a second place to go: no underline. */
-  text-decoration: none;
 }
 
 .threads-view__meta[hidden] {
