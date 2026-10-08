@@ -11,10 +11,8 @@ type AnswerActionsProps = {
   content: string;
   /** When the answer came, ISO 8601. Drawn at the end of the row. */
   createdAt: string;
-  /**
-   * The documents behind the answer. They become the reference list under the
-   * copied text, and the `[n]` markers are kept so they point at something.
-   */
+  /** The documents behind the answer. They become the reference list under the
+     copied text, and the `[n]` markers are kept so they point at something. */
   sources?: SourceDocument[];
   /** Opens or closes the search inside this answer. */
   onToggleSearch?: () => void;

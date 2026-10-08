@@ -8,11 +8,9 @@ export type AgentChoice = {
   agents: Agent[];
   /** The agent shown as chosen: the reader's own choice, or else the default. */
   current?: Agent;
-  /**
-   * What goes as `model` with the question. Undefined unless the reader has
-   * chosen an agent away from the default, so the backend decides the default
-   * itself and a reader on it follows when it changes.
-   */
+  /** What goes as `model` with the question. Undefined unless the reader has
+     chosen an agent away from the default, so the backend decides the default
+     itself and a reader on it follows when it changes. */
   model?: string;
   choose: (id: string) => void;
 };

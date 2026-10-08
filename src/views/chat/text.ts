@@ -1,8 +1,6 @@
-/*
- * The Norwegian strings the chat view owns. The wording is the designer's,
- * taken verbatim from Figma, so it is not reworded here, and it is collected
- * in one file so a language review is possible at all.
- */
+/* The Norwegian strings the chat view owns. The wording is the designer's,
+  taken verbatim from Figma, so it is not reworded here, and it is collected
+  in one file so a language review is possible at all. */
 
 /** Under the compose field, in all four chatInput variants. */
 export const DISCLAIMER = 'Kunnskapsassistenten kan gjøre feil. Husk å sjekke viktig informasjon.';
@@ -71,11 +69,9 @@ export const FOLLOW_UP_QUESTIONS = [
   'Lag relaterte spørsmål',
 ] as const;
 
-/*
- * A stopped answer. The sources arrive in the last frame of the stream, so a
- * stopped answer has none, and the `[n]` markers left in the text point
- * nowhere. Saying so keeps them from reading as a bug.
- */
+/* A stopped answer. The sources arrive in the last frame of the stream, so a
+  stopped answer has none, and the `[n]` markers left in the text point
+  nowhere. Saying so keeps them from reading as a bug. */
 
 /** Under the text of an answer the reader stopped. */
 export const ABORTED_NOTE = 'Svaret ble avbrutt, så kildene bak det kom aldri fram.';
@@ -129,10 +125,8 @@ export const CLARIFICATION_ANNOUNCEMENT = 'Kunnskapsassistenten trenger en avkla
  */
 export const READING_THREAD = 'Henter samtalen';
 
-/**
- * The page title before anything is asked: the conversation is the one «Ny
- * tråd» starts, and the thread list calls it that too.
- */
+/** The page title before anything is asked: the conversation is the one «Ny
+   tråd» starts, and the thread list calls it that too. */
 export const NEW_THREAD_TITLE = 'Ny tråd';
 
 /*
@@ -192,21 +186,17 @@ export const NO_HITS_WHOLE_CORPUS = [
 /** What the polite live region says when the search came back empty. */
 export const NO_HITS_ANNOUNCEMENT = 'Fant ingen utdrag om dette i dokumentene.';
 
-/**
- * The agent choice in the compose field. The prefix is in the button's name
- * and not on it: the agent's name is enough to see, and «agent-rag» on its own
- * says nothing to a screen reader about what the button changes.
- */
+/** The agent choice in the compose field. The prefix is in the button's name
+   and not on it: the agent's name is enough to see, and «agent-rag» on its own
+   says nothing to a screen reader about what the button changes. */
 export const AGENT_PREFIX = 'Agent: ';
 /** On the button when the BFF has not said which agent is its default. */
 export const AGENT_DEFAULT_LABEL = 'Standard';
 /** Over the list of agents. */
 export const AGENT_HEADING = 'Velg agent';
 
-/**
- * Over a finished answer with no sources behind it. Without it, an answer
- * with no sources looks exactly like one with them, and only the sources
- * panel says otherwise.
- */
+/** Over a finished answer with no sources behind it. Without it, an answer
+   with no sources looks exactly like one with them, and only the sources
+   panel says otherwise. */
 export const NO_SOURCES_WARNING =
   'Svaret har ingen kilder. Kontroller det mot originaldokumentene før du bruker det.';

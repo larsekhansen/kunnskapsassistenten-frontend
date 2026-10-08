@@ -82,11 +82,9 @@ export function AnswerSkeleton() {
   );
 }
 
-/**
- * One assistant turn: what the agent did, what it answered, and what the
- * reader can do with it. Its own component because it holds state — a thread
- * of ten answers has ten independent searches.
- */
+/** One assistant turn: what the agent did, what it answered, and what the
+   reader can do with it. Its own component because it holds state — a thread
+   of ten answers has ten independent searches. */
 export function AnswerMessage({
   message,
   onSelectSource,

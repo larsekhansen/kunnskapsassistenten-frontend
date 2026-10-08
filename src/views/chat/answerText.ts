@@ -1,10 +1,8 @@
 import type { SourceDocument } from '../../model';
 
-/*
- * The answer as text rather than markup, for the clipboard and the live
- * region. `Markdown` renders and does not read back, so this much stays here;
- * it deliberately does no block parsing and no component mapping.
- */
+/* The answer as text rather than markup, for the clipboard and the live
+  region. `Markdown` renders and does not read back, so this much stays here;
+  it deliberately does no block parsing and no component mapping. */
 
 // A marker and the space in front of it: the space goes with the marker, or
 // «kvartalsvis [1].» is pasted as «kvartalsvis .»
@@ -38,10 +36,8 @@ export function answerAsPlainText(markdown: string, keepCitations = false): stri
     .trim();
 }
 
-/**
- * How much of a streaming answer is safe to announce: everything up to the
- * last blank line is finished text, and the tail is still being written.
- */
+/** How much of a streaming answer is safe to announce: everything up to the
+   last blank line is finished text, and the tail is still being written. */
 export function announcedText(markdown: string): string {
   const lastBreak = markdown.lastIndexOf('\n\n');
   if (lastBreak < 0) return '';

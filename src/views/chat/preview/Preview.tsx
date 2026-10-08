@@ -7,11 +7,9 @@ import { LayoutProvider } from '../../../layout/LayoutProvider';
 import { MainScrollContext } from '../../../layout/scrollContext';
 import { ChatView } from '../ChatView';
 
-/**
- * A harness for the chat view, for development only, so it can be looked at
- * without mounting the shell. The production build never sees it: `vite
- * build` follows index.html alone.
- */
+/** A harness for the chat view, for development only, so it can be looked at
+   without mounting the shell. The production build never sees it: `vite
+   build` follows index.html alone. */
 
 /** A client that fails, so the error state can be looked at. */
 const failingClient: ChatClient = {

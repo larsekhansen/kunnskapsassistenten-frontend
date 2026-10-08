@@ -30,10 +30,8 @@ import type { Message, Thread } from '../../model';
 export type ThreadHeading = {
   /** The `h2` text. */
   title: string;
-  /**
-   * True when the title says no more than the question under it. The heading
-   * is then structure only, and carries `ds-sr-only`.
-   */
+  /** True when the title says no more than the question under it. The heading
+     is then structure only, and carries `ds-sr-only`. */
   repeatsQuestion: boolean;
 };
 
@@ -60,10 +58,8 @@ function shorten(text: string): string {
   return `${text.slice(0, cut > 0 ? cut : MAX_LENGTH).trimEnd()} …`;
 }
 
-/**
- * The heading to draw, or undefined when there is nothing to head — an
- * untouched front page has no thread and no question yet.
- */
+/** The heading to draw, or undefined when there is nothing to head — an
+   untouched front page has no thread and no question yet. */
 export function threadHeading(
   thread: Pick<Thread, 'title' | 'titleFromQuestion'> | undefined,
   messages: Message[],

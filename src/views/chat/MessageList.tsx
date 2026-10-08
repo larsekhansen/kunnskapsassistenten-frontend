@@ -9,18 +9,14 @@ import { thinkingWithoutAnswer } from './thinkingWithoutAnswer';
 
 type MessageListProps = {
   messages: Message[];
-  /**
-   * A `[n]` marker was activated. The message id goes with the number: each
-   * answer numbers its excerpts from 1, so the number alone does not say
-   * which excerpt.
-   */
+  /** A `[n]` marker was activated. The message id goes with the number: each
+     answer numbers its excerpts from 1, so the number alone does not say
+     which excerpt. */
   onSelectSource: (citationNumber: number, messageId: string) => void;
   /** Ask the stopped question again, in place of the answer that was cut off. */
   onRegenerate: () => void;
-  /**
-   * «Avgrenset til …» over an answer, by message id. Absent means the
-   * question was asked against the whole corpus.
-   */
+  /** «Avgrenset til …» over an answer, by message id. Absent means the
+     question was asked against the whole corpus. */
   filterSummary?: (messageId: string) => string | undefined;
   /**
    * Whether the search behind an answer came back empty, by message id.
@@ -80,11 +76,9 @@ export function MessageList({
   const [searchingId, setSearchingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  /*
-   * «Svar 2 av 3», for the strip to say what it is searching now that it is
-   * no longer drawn inside the answer. Counted over the assistant turns in
-   * the order they were given, which is the order the reader sees.
-   */
+  /* «Svar 2 av 3», for the strip to say what it is searching now that it is
+    no longer drawn inside the answer. Counted over the assistant turns in
+    the order they were given, which is the order the reader sees. */
   const answerIds = messages.filter((message) => message.role === 'assistant').map((m) => m.id);
   const searchLabelFor = (messageId: string) => {
     if (answerIds.length < 2) return 'Søk i svaret';

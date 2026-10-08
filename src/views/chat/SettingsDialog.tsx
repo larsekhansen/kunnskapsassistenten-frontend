@@ -28,11 +28,9 @@ const OPTIONS: { value: DisplayLevel; label: string; description: string }[] = [
   },
 ];
 
-/**
- * Issue 123, which asks whether the panel's foot has to be pinned at
- * all or whether the whole panel could be one container with nothing fixed.
- * Both are here so the two can be compared on the same page.
- */
+/** Issue 123, which asks whether the panel's foot has to be pinned at
+   all or whether the whole panel could be one container with nothing fixed.
+   Both are here so the two can be compared on the same page. */
 const FOOTER_OPTIONS: { value: FooterMode; label: string; description: string }[] = [
   {
     value: 'pinned',

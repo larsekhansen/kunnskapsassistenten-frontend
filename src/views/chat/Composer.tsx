@@ -334,11 +334,9 @@ export function Composer({
   );
 }
 
-/**
- * Whether what is being dragged is files at all: dragging selected text fires
- * the same events, and a field that lit up for a dragged word would be lying
- * about what it was about to do.
- */
+/** Whether what is being dragged is files at all: dragging selected text fires
+   the same events, and a field that lit up for a dragged word would be lying
+   about what it was about to do. */
 function hasFiles(event: DragEvent<HTMLDivElement>): boolean {
   return [...event.dataTransfer.types].includes('Files');
 }

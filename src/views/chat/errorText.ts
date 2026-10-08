@@ -95,10 +95,8 @@ export type ChatErrorDisplay = {
   retryable: boolean;
 };
 
-/**
- * The alert for a failed turn. A `message` on the error replaces the first
- * sentence and only that one; the advice belongs to the case.
- */
+/** The alert for a failed turn. A `message` on the error replaces the first
+   sentence and only that one; the advice belongs to the case. */
 export function chatErrorText(error: ChatError): ChatErrorDisplay {
   const text =
     error.code === 'aborted' || error.code === 'no-hits' ? BY_CODE.unknown : BY_CODE[error.code];
