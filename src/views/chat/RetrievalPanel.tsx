@@ -23,6 +23,9 @@ export function RetrievalPanel({ retrieval }: RetrievalPanelProps) {
       <Details.Summary>
         <span className="ka-retrieval__summary">
           <MagnifyingGlassIcon aria-hidden className="ka-retrieval__icon" />
+          {/* The space is written out: JSX drops whitespace containing a
+              newline, and the name becomes «Fremgangsmåte10 treff i 3
+              dokumenter». */}
           Fremgangsmåte{' '}
           <Tag className="ka-tag--wrapping" data-color="neutral" data-size="sm">
             {hitSummary(retrieval)}

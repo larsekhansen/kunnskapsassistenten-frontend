@@ -9,6 +9,10 @@ const SLACK = 80;
  * Keeps the main column at its bottom while an answer arrives, if the reader
  * was there, and returns whether it is — one hook, because two cannot agree.
  * **Only scrolling UP lets go**: this hook's own jump reports a frame late.
+ *
+ * Only while an answer is on its way, because growth at any other time is a
+ * thread opening, and it follows once more on the transition that ends the
+ * answer, or it stops one row short of the action row and the suggestions.
  */
 export function useFollowAnswer(
   container: RefObject<HTMLElement | null>,
