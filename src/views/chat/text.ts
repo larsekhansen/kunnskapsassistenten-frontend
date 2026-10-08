@@ -2,6 +2,8 @@
   taken verbatim from Figma, so it is not reworded here, and it is collected
   in one file so a language review is possible at all. */
 
+import { shortcutModifier } from '../../layout/shortcutModifier';
+
 /** Under the compose field, in all four chatInput variants. */
 export const DISCLAIMER = 'Kunnskapsassistenten kan gjøre feil. Husk å sjekke viktig informasjon.';
 
@@ -93,15 +95,12 @@ export const NEW_THREAD_TITLE = 'Ny tråd';
 // and not the bare key: a single character key shortcut is WCAG 2.1.4, level
 // A, and this one could not be switched off. See useComposerShortcut.ts.
 
-/** A small hint by the field, naming the modifier the reader's own keyboard
-    has. A function and not a constant, because the answer depends on the
-    machine and a constant is read before a test can say otherwise. */
+/** A small hint by the field, naming the modifier the shell's skip link
+    names: the two say the same key out loud, so the test for which one this
+    machine has lives in one place. A function, because a constant is read
+    before a test can say otherwise. */
 export function shortcutHint(): string {
-  // `userAgentData` is not in Safari or Firefox, and the user agent string is
-  // what is left. It is only choosing a word, so a wrong guess costs a reader
-  // one confusing label and nothing else.
-  const apple = /Mac|iPhone|iPad/u.test(navigator.userAgent);
-  return `Trykk ${apple ? 'Cmd' : 'Ctrl'} + / for å hoppe hit`;
+  return `Trykk ${shortcutModifier()} + / for å hoppe hit`;
 }
 
 /** The same for a screen reader. The key is spelled out and not shown as the
