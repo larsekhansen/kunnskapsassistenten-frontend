@@ -14,36 +14,19 @@ export type AnswerSearchProps = {
   /** Escape, and the close button. */
   onClose: () => void;
   fieldRef: RefObject<HTMLInputElement | null>;
-  /**
-   * Which answer is being searched: «Søk i svar 2 av 3», or «Søk i svaret»
-   * in a conversation with one.
-   *
-   * It matters because the strip is pinned to the top of the column and not
-   * to the answer it belongs to. Detached from its card it has to say what it
-   * is searching, the same way the sources panel's pinned head says «Kilder
-   * til svar 1 av 2».
-   */
+  /** Which answer is being searched. It matters because the strip is pinned
+      to the top of the column, not to the answer, so detached from its card
+      it has to say what it is searching. */
   label: string;
 };
 
 /**
- * Search inside one answer.
+ * Search inside one answer, deliberately the same control as the sources
+ * panel's so a reader meets one search mechanism and not two.
  *
- * Deliberately the same control as the one in the sources panel, so a reader
- * meets one search mechanism and not two: `Search` with `Search.Clear`, a
- * live counter, «Forrige» and «Neste» that stop at the ends rather than
- * wrapping, and `aria-disabled` rather than `disabled` so stepping never
- * drops the keyboard out of the control.
- *
- * It does not take Ctrl+F. The browser's find is the one keyboard shortcut
- * every reader already has, and a page that swallows it takes away a working
- * tool to offer its own — the brief asks for an alternative to it, not a
- * replacement. Escape closes, which is what a reader expects of a strip that
- * opened over what they were reading.
- *
- * The counter is a live region for the same reason as in the sources panel:
- * `<mark>` is not announced, so «2 av 7 treff» is the only thing that tells a
- * screen reader user the search did anything.
+ * **It does not take Ctrl+F**: the browser's find is the one shortcut every
+ * reader already has. The counter is a live region, because `<mark>` is not
+ * announced and «2 av 7 treff» is the only sign the search did anything.
  */
 export function AnswerSearch({
   query,

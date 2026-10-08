@@ -12,22 +12,14 @@ type AgentPickerProps = {
 };
 
 /**
- * Which agent answers, chosen in the compose field beside the send button,
- * the way claude.ai chooses its model (decided 06.10).
+ * Which agent answers, chosen beside the send button. The button is the
+ * agent's name and nothing else, because it is information until you press
+ * it, and nothing is drawn at all with fewer than two agents.
  *
- * The button is the agent's name and nothing else: no frame and no fill
- * (`tertiary`), because «it is information until you press it». It opens a
- * list with each agent's name, its one line of description, and a check by
- * the one that is chosen.
- *
- * Designsystemet's `Dropdown`, which is a list of buttons and not an ARIA
- * menu, and on purpose: a `role="menu"` without the arrow keys and typeahead
- * of the pattern would be worse than none (dropdown.md, «Tilgjengelighet»),
- * and Tab between a handful of buttons reads plainly. The dropdown has no
- * selected state of its own, so the chosen one says it with `aria-current`
- * and the check is decoration.
- *
- * Nothing at all with fewer than two agents: one agent is no choice.
+ * Designsystemet's `Dropdown` is a list of buttons and not an ARIA menu, on
+ * purpose: `role="menu"` without the arrow keys and typeahead of the pattern
+ * is worse than none. It has no selected state, so the chosen one says it
+ * with `aria-current` and the check is decoration.
  */
 export function AgentPicker({ agents, current, onChoose }: AgentPickerProps) {
   const [open, setOpen] = useState(false);

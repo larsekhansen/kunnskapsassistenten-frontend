@@ -1,55 +1,23 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
-/**
- * How close to the end still counts as «at the bottom», in CSS pixels: a line
- * of the answer and half a wheel step.
- *
- * Near enough that a reader would take it for the bottom, so the column
- * follows what the reader sends as it follows what arrives. The numbers
- * behind it: a line of the answer is about 31 px, a wheel step 100 px in
- * Chromium and an arrow key 40 px, so a reader who stops half a step short
- * still has the last line under the edge. A much smaller slack leaves a
- * question hundreds of pixels below the edge with «Bla til nederst» showing.
- */
+/** How close to the end counts as «at the bottom»: a line of the answer and
+    half a wheel step, so a reader who stops just short still has the last
+    line under the edge and the column keeps following. */
 const SLACK = 80;
 
 /**
  * Keeps the main column at its bottom while an answer arrives, if that is
- * where the reader already was, and leaves it alone otherwise. Returns
- * whether the column is at its bottom, which is what «Bla til nederst» is
- * drawn from: a control that does nothing is worse than no control.
+ * where the reader already was, and returns whether it is there, which is
+ * what «Bla til nederst» is drawn from. One hook for both, because two cannot
+ * agree on the same growth and the button then flickers all answer long.
  *
- * One hook for both, because two cannot agree. A separate hook for the button
- * watches the same growth and sees each new paragraph a moment before this
- * one takes the column down to it, so the button flickers dozens of times per
- * answer while the column never leaves the bottom. Here the column is moved
- * first and measured after, and a column being held counts as at the bottom.
- *
- * «Where the reader was» is decided by the reader's own scrolling and by
- * nothing else: measured in the scroll events, before the answer grows, and
- * kept while it grows. A column that grew by a paragraph is no longer at its
- * bottom, but the reader who was there is still following. Scrolling up lets
- * go, and reaching the bottom again takes hold.
- *
- * Only UP lets go. The scroll event for a jump this hook makes arrives a
- * frame later, and an answer can grow by a paragraph in between: the event
- * then finds the column short of a bottom that has moved, and a rule asking
- * only «is it at the bottom» would let go there and leave the answer behind.
- * A reader who means to leave scrolls up.
- *
- * Only while an answer is on its way. Growth at any other time is somebody
- * opening a thread, or a panel in it, and a column that went to the bottom
- * then would take the reader away from the top of what they came to read.
- * That growth is measured instead, so a long thread that has just loaded
- * does not count as «at the bottom» because the page was empty a moment ago.
- *
- * The last render of an answer lands together with the status that ends it:
- * the action row under the answer and the follow-up suggestions under the
- * field. That growth is followed once more, on the transition, or the column
- * would stop one row short of the bottom on every answer.
- *
- * Instant rather than smooth. It runs once a frame while the answer streams,
- * and a smooth scroll restarted every frame never arrives.
+ * **Only scrolling UP lets go.** The scroll event for a jump this hook makes
+ * arrives a frame later, by which time the answer may have grown, so a rule
+ * asking only «is it at the bottom» lets go there and leaves the answer
+ * behind. And only while an answer is on its way: other growth is a thread
+ * opening, where jumping to the bottom takes the reader off what they came
+ * to read. Instant rather than smooth, since a smooth scroll restarted every
+ * frame never arrives.
  */
 export function useFollowAnswer(
   container: RefObject<HTMLElement | null>,
@@ -100,12 +68,9 @@ export function useFollowAnswer(
     };
   }, [container, content]);
 
-  /*
-   * A layout effect, so the flag is set before the browser lays the new
-   * question out and the observer above sees it grow. A plain effect runs
-   * after paint, and the first growth of every turn — the question itself —
-   * was measured as the reader leaving the bottom.
-   */
+  // A layout effect, so the flag is set before the browser lays the new
+  // question out: after paint, the first growth of every turn — the question
+  // itself — is measured as the reader leaving the bottom.
   useLayoutEffect(() => {
     const was = following.current;
     following.current = answering;

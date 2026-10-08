@@ -4,30 +4,19 @@ import { FileTextIcon } from '@navikt/aksel-icons';
 type KickstartersProps = {
   /** Fills the compose field. It deliberately does not send. */
   onPick: (question: string) => void;
-  /**
-   * The three to offer, chosen by the caller.
-   *
-   * Handed in rather than read here, because which three depends on the
-   * corpus and the corpus is the shell's. A leaf that went looking for it
-   * would need a router to read a hook it only reads — see `ChatView`.
-   */
+  /** The three to offer, handed in rather than read here: which three
+      depends on the corpus, and a leaf that went looking would need a router
+      to read a hook it only reads. */
   questions: readonly string[];
 };
 
 /**
- * Three ready-made questions on the empty state, for the corpus on screen.
+ * Three ready-made questions on the empty state. A row each, not a chip,
+ * because they are long; picking one fills the field and leaves the caret
+ * there, since a kickstarter starts the question and does not ask it.
  *
- * Each row is a tertiary Button, not a chip: these are long,
- * corpus-specific questions, and a row can hold one. The follow-up
- * suggestions under an answer are chips, because they are short.
- *
- * Picking one fills the field and leaves the caret there, so the reader can
- * edit before sending. That is the whole point of a kickstarter: it starts
- * the question, it does not ask it.
- *
- * A plain div, not a labelled section: a labelled section is a landmark, and
- * three buttons are not worth one. The heading carries the structure on its
- * own, and without the landmark there is no id to hand around either.
+ * A plain div and not a labelled section, which would be a landmark, and
+ * three buttons are not worth one.
  */
 export function Kickstarters({ onPick, questions }: KickstartersProps) {
   return (
