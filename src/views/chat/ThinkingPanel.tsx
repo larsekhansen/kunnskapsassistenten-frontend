@@ -10,34 +10,14 @@ type ThinkingPanelProps = {
   steps: ThinkingStep[];
   /** `thinking` until the first token of the answer lands. */
   status: ThinkingStatus;
-  /**
-   * How long the thinking took, measured while it happened and carried on the
-   * message. Absent for a turn nobody watched, and the steps' own durations
-   * then stand in. See `Message.thoughtMs`.
-   */
+  /** How long the thinking took, measured while it happened. Absent for a
+      turn nobody watched; the steps' own durations then stand in. */
   thoughtMs?: number;
 };
 
-/**
- * What the agent actually searched for, under the step that searched.
- *
- * They are the one part of the thinking a reader can check the answer
- * against: a search for the wrong words explains a thin answer. Without them
- * «Jeg søker i dokumentene» stands there without saying after what.
- *
- * Tags, and the same neutral ones as «Nøkkelord som ble brukt i søket» in
- * Fremgangsmåte, because it is the same kind of thing — words the machine
- * used, not words to press, so not clickable in either place. A long search
- * string wraps rather than running out through the side of the card, which
- * is what `ka-tag--wrapping` is for.
- *
- * The list carries the lead-in as its accessible name, so a screen reader
- * that jumps by list hears what the list is instead of two bare strings. The
- * lead-in is visible as well: chips with no label are words without a reason.
- *
- * Nothing here is drawn while the panel is shut — it is `Details.Content` —
- * so a closed panel is exactly as tall as it was.
- */
+// What the agent searched for: the one part of the thinking a reader can
+// check the answer against. The list carries the lead-in as its accessible
+// name, so a screen reader jumping by list hears what the list is.
 function StepQueries({ id, queries }: { id: string; queries: string[] }) {
   return (
     <div className="ka-thinking__queries">
@@ -58,31 +38,13 @@ function StepQueries({ id, queries }: { id: string; queries: string[] }) {
 }
 
 /**
- * «Tenker …»: what the agent is doing while the search takes its time.
+ * «Tenker …»: what the agent is doing while the search takes its time,
+ * without which a long search is a blank card. It knows the steps and whether
+ * the answer has started, and renders the agent's own words as they came.
  *
- * When the search takes a long time, the reader wants to know what the model
- * is doing; without this a long search is a blank card.
- *
- * It knows two things: the steps, and whether the answer has started. Not
- * which model, not which backend, not what a step means. The agent writes the
- * steps in Norwegian first person and this renders them as they came —
- * swapping the model out later changes the words and nothing here.
- *
- * `Details` rather than a disclosure of our own: the native `<details>`
- * underneath gives the summary a button role, `aria-expanded` and the
- * keyboard for free, and it sits before the answer in the DOM, so Tab reaches
- * it first.
- *
- * Open while it thinks, shut when the answer starts — the steps are worth
- * watching while they are the only thing happening, and worth folding away
- * the moment there is an answer to read instead. A reader who has an opinion
- * overrides both: `chosen` outranks the automatic state for the rest of the
- * turn, in either direction.
- *
- * It does not announce anything. The steps arrive several seconds apart, and
- * a polite region that speaks once per step would talk over the answer it is
- * waiting for; the one «Kunnskapsassistenten søker …» is said by the view's
- * own region, once, when the first step lands. See useChat.
+ * Open while it thinks and shut when the answer starts, with `chosen`
+ * outranking both for the rest of the turn. It announces nothing: the view's
+ * own region says once that the assistant is searching (useChat).
  */
 export function ThinkingPanel({ steps, status, thoughtMs }: ThinkingPanelProps) {
   const thinking = status === 'thinking';
@@ -94,14 +56,9 @@ export function ThinkingPanel({ steps, status, thoughtMs }: ThinkingPanelProps) 
   const [chosen, setChosen] = useState<boolean | undefined>(undefined);
   const open = chosen ?? thinking;
 
-  /*
-   * The number is READ, never run here. A clock in this panel only exists
-   * while the conversation is on screen, so after a reload the sum of the
-   * steps' own `durationMs` answers instead — and the same unchanged turn
-   * then reports two different numbers. The measurement belongs where the two
-   * ends of the interval are, in the stream, and travels with the message.
-   * See `useChat` and `Message`.
-   */
+  // The number is READ, never run here: a clock in this panel exists only
+  // while the conversation is on screen, so the same unchanged turn reports
+  // one number live and another after a reload. See `useChat`.
   if (steps.length === 0) return null;
 
   const lastIndex = steps.length - 1;

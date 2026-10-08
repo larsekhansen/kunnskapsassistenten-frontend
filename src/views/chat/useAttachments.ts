@@ -3,14 +3,10 @@ import { useUserDocuments } from '../../layout/useUserDocuments';
 import { userDocumentType, type UploadErrorCode, type UserDocument } from '../../model';
 
 /**
- * One file the reader attached to the question being written.
- *
- * A slot of its own rather than the document itself, because the document
- * does not exist yet when the chip has to appear. `uploadUserDocument` puts a
- * pending row in the shared list at once and then REPLACES it with whatever
- * the client resolves with — under the client's id, not the pending one (see
- * src/api/userDocuments.ts). So an id captured when the upload starts is not
- * the id it ends with, and the slot is what survives that swap.
+ * One file the reader attached to the question being written. A slot of its
+ * own, because the document does not exist yet when the chip has to appear —
+ * and the pending row is REPLACED under a different id when the client
+ * resolves, so an id captured at the start is not the one it ends with.
  */
 export type Attachment = {
   /** This composer's own key. Stable from the moment the file was picked. */
@@ -53,17 +49,10 @@ export type Attachments = {
 };
 
 /**
- * The files attached to the question being written.
- *
- * They are not the same thing as «Dine dokumenter». A document belongs to the
- * reader and survives the thread; this is which of them THIS question is
- * asked with, and it empties when the question is sent. The hook holds the
- * choice; `useUserDocuments` holds the documents.
- *
- * A file refused before it ever reached the client — wrong type, or a service
- * with no upload endpoint — never becomes a document at all. It still gets a
- * chip, because a file that silently did not attach is worse than one that
- * says why it did not.
+ * The files attached to the question being written, which is not «Dine
+ * dokumenter»: a document survives the thread, this empties when the question
+ * is sent. A file refused before it reached the client still gets a chip,
+ * because one that silently did not attach is worse than one that says why.
  */
 export function useAttachments(): Attachments {
   const { documents, upload, unavailable } = useUserDocuments();
@@ -96,12 +85,9 @@ export function useAttachments(): Attachments {
     (files: FileList | File[]) => {
       for (const file of [...files]) {
         const key = newKey();
-        /*
-         * Refused here, before the client is asked, in the two cases where
-         * asking would be theatre: a file we do not take at all, and a
-         * service with no endpoint to take it. Both get a chip that says so.
-         * Everything else goes to the client, which decides.
-         */
+        // Refused before the client is asked in the two cases where asking
+        // would be theatre: a file we do not take, and a service with no
+        // endpoint. Everything else goes to the client, which decides.
         const wrongType = userDocumentType(file.name) === undefined;
         const refused = unavailable ?? (wrongType ? 'wrong-type' : undefined);
 
@@ -175,17 +161,10 @@ function newKey(): string {
 }
 
 /**
- * What to draw for one slot.
- *
- * Once `upload` has resolved, the document says everything. Before that the
- * bar has to come from the shared list, where the pending row is moving — and
- * the slot cannot name it, because the pending id is the store's own and is
- * thrown away when the row is replaced.
- *
- * So it is matched on the file: name and size, among the rows still
- * uploading. Two files that agree on both are the same file twice, and either
- * one's progress is the right number to draw for either chip — which is why
- * the ambiguity is not one.
+ * What to draw for one slot. Before `upload` resolves the bar comes from the
+ * shared list, matched on name and size rather than on an id: the pending id
+ * is the store's own and is thrown away when the row is replaced. Two files
+ * agreeing on both are the same file twice, so the ambiguity is not one.
  */
 function view(attachment: Attachment, documents: UserDocument[]): AttachmentView {
   if (attachment.errorCode) {

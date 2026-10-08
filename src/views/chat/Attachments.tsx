@@ -19,24 +19,13 @@ type AttachmentsProps = {
 };
 
 /**
- * The files attached to the question being written, over the compose field.
+ * The files attached to the question being written. `Chip.Removable`, so the
+ * name sits inside a control whose accessible name says what pressing it does
+ * rather than naming a noun.
  *
- * A chip per file, as the brief asks, and the chip is `Chip.Removable`: its
- * whole job is to be taken off again, which is what that variant is for. The
- * removable chip is a button, so the file name is inside a control and the
- * accessible name says what pressing it does — «Fjern vedlegget rapport.pdf»,
- * not «rapport.pdf», which would be a button named after a noun.
- *
- * A failed file keeps its chip. A file that silently did not attach is worse
- * than one that says why: the reader asked for it to go along, and the answer
- * is no plus a reason. Where trying again could work, «Prøv igjen» sits
- * beside it — on the general failure only, because a file that is too big is
- * the same size next time (see `uploadRetryable`).
- *
- * Progress is announced rather than only drawn. The bar is a `Spinner` and a
- * percentage in the chip for anyone looking; the polite region under the list
- * is how a screen reader hears that anything is happening at all, and it
- * speaks on whole percent changes rather than on every frame.
+ * A failed file keeps its chip, because one that silently did not attach is
+ * worse than one that says why, and progress is announced as well as drawn,
+ * since the bar alone tells a screen reader nothing.
  */
 export function Attachments({ items, onRemove, onRetry }: AttachmentsProps) {
   const announcement = useUploadAnnouncement(items);
@@ -90,22 +79,11 @@ export function Attachments({ items, onRemove, onRetry }: AttachmentsProps) {
   );
 }
 
-/**
- * What the polite region should say at this moment.
- *
- * Three moments per file and no more: it started, it is ready, it failed.
- *
- * NOT one per whole percent: that is a dozen sentences for a short upload,
- * with the region still reading «12 %» after the file is ready. Worse, the
- * last of them is «0 %» — between the store swapping the pending row for the
- * finished document and this slot learning about it there is a render with no
- * row to read a number from, and the fallback nought announces as though the
- * upload had started over. A percentage nobody can act on was never worth a
- * sentence.
- *
- * Held as state and written from an effect rather than computed during
- * render, because a live region announces a CHANGE: the same sentence
- * recomputed is silence.
+/*
+ * Three moments per file and no more: started, ready, failed. NOT one per
+ * percent, which is a dozen sentences ending on a stale one. Held as state
+ * and written from an effect, because a live region announces a CHANGE and
+ * the same sentence recomputed is silence.
  */
 function useUploadAnnouncement(items: AttachmentView[]): string {
   const [announcement, setAnnouncement] = useState('');
