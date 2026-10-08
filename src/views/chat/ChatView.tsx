@@ -41,23 +41,17 @@ export type ChatViewProps = {
   userName?: string;
   /** The thread to show. Absent means a new conversation. */
   thread?: ThreadDetail;
-  /**
-   * The address names a conversation that has not been read yet. Absent
-   * `thread` otherwise means two things at once: an untouched front page, and
-   * a thread on its way. The view never sees the route, so the caller says.
-   */
+  /** The address names a conversation that has not been read yet. Absent
+      `thread` otherwise means both an untouched front page and one on its
+      way, and the view never sees the route. */
   loading?: boolean;
   /** Which backend to talk to. Defaults to whatever `createChatClient` picks. */
   client?: ChatClient;
 };
 
-/**
- * What the shell has been told about one answer, as one comparable string:
- * the status and how many documents, since nothing else changes what the
- * sources panel draws and everything else changes on every token. Sources
- * that have not arrived count as zero, because zero is what the shell stores
- * — any other value here never agrees with it, and the two loop.
- */
+// Status and document count only: everything else changes on every token.
+// Sources that have not arrived count as zero, because zero is what the shell
+// stores — any other value never agrees with it, and the two loop.
 function sourcesSignature(documents: number, status: string, corpusKey?: string): string {
   return `${status}:${documents}:${corpusKey ?? ''}`;
 }
@@ -75,12 +69,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   // the shell holds it, and this view sends it — the two views never meet.
   const { selection } = useFilterSelection();
 
-  /*
-   * Which corpus is searched, for the suggestions on the empty state: one
-   * naming documents the corpus does not hold invites a question it cannot
-   * answer. Read here and not in `Kickstarters`, which would then need a
-   * router in every preview and test that draws a greeting.
-   */
+  // For the suggestions on the empty state: one naming documents the corpus
+  // does not hold invites a question it cannot answer. Read here, or
+  // `Kickstarters` needs a router in every preview that draws a greeting.
   const { active: corpusKey } = useCorpus();
 
   // Which agent the question goes to, chosen in the compose field.
@@ -103,23 +94,18 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   // what keeps the region mounted and empty.
   const errorText = error ? chatErrorText(error) : undefined;
 
-  /**
-   * «Avgrenset til …» over one answer: which corpus, and what was narrowed.
-   * The corpus is named only when the answer came from another one than the
-   * chooser stands on now, and always from the ANSWER's key — a name read
-   * from the chooser belongs to a different answer.
-   */
+  // «Avgrenset til …» over one answer. The corpus is named only when the
+  // answer came from another one than the chooser stands on now, and always
+  // from the ANSWER's key: the chooser's belongs to a different answer.
   const filterSummary = useCallback(
     (messageId: string) => {
       // An answer read back from a locked thread was asked with the lock
       // (ThreadDetail.filter); one asked here carries what it was asked with.
       const applied = appliedFilters[messageId] ?? thread?.filter ?? emptyFilterSelection;
       const answer = messages.find((message) => message.id === messageId);
-      /*
-       * `corpusOption` is not ceremony: `corpusDisplayNameFor` answers
-       * «standardkorpuset» for a key it does not know, which says something
-       * about a default rather than about this answer. No name, no line.
-       */
+      // `corpusOption` is not ceremony: `corpusDisplayNameFor` answers
+      // «standardkorpuset» for a key it does not know, which says something
+      // about a default rather than about this answer. No name, no line.
       const from = answer?.corpusKey;
       const elsewhere =
         from !== undefined && from !== corpusKey && corpusOption(from) !== undefined
@@ -130,13 +116,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
     [appliedFilters, corpusKey, messages, thread?.filter],
   );
 
-  /*
-   * «Henter samtalen», through the polite region this view already keeps in
-   * the page. A region that arrives WITH its text was inserted, not changed,
-   * and a screen reader announces nothing — so the words are set from an
-   * effect, one commit after the empty region. Only while the skeleton is on
-   * screen: a question asked in the gap has its own things to say.
-   */
+  // Through the polite region this view already keeps in the page: one that
+  // arrives WITH its text was inserted, not changed, and announces nothing.
+  // Only while the skeleton is on screen; a question in the gap says its own.
   const readingThread = loading === true && messages.length === 0;
   const [noticeSaid, setNoticeSaid] = useState(false);
   useEffect(() => {
@@ -148,10 +130,8 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
     const timer = setTimeout(() => setNoticeSaid(true));
     return () => clearTimeout(timer);
   }, [readingThread]);
-  /*
-   * Read through `readingThread` as well, so the words LEAVE in the render
-   * that replaces the skeleton. Only their arrival waits for an effect.
-   */
+  // Read through `readingThread` as well, so the words LEAVE in the render
+  // that replaces the skeleton. Only their arrival waits for an effect.
   const loadingNotice = readingThread && noticeSaid ? READING_THREAD : '';
 
   const [draft, setDraft] = useState('');
@@ -172,13 +152,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   // moving chat to another slot finds the wrong element.
   const { ref: scrollRef, scrollToBottom } = useMainScroll();
 
-  /*
-   * The sticky compose field must not hide what the browser scrolls to
-   * (WCAG 2.4.11), so the conversation carries a `scroll-margin` of the
-   * field's height. NOT `scroll-padding` on the scroller: that applies to the
-   * field too, and every keystroke then walks the column towards the bottom.
-   * Measured, because the field grows with the question.
-   */
+  // The sticky field must not hide what the browser scrolls to (WCAG
+  // 2.4.11). NOT `scroll-padding` on the scroller: that covers the field too,
+  // and every keystroke then walks the column towards the bottom.
   useEffect(() => {
     const area = composerRef.current;
     const root = rootRef.current;
@@ -210,10 +186,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   // «Kopier lenke til tråden» has something to copy (C16). A no-op after it.
   const { startThread } = useThread();
 
-  // One entry per answer, under its own message id: each answer numbers its
-  // excerpts from 1, so a flat list makes `[2]` in the first answer open the
-  // second answer's excerpt two. The status travels with it, because an empty
-  // `documents` means four different things.
+  // One entry per answer: each numbers its excerpts from 1, so a flat list
+  // makes `[2]` in the first answer open the second answer's excerpt two. The
+  // status travels with it, since an empty `documents` means four things.
   const {
     answers: reported,
     setAnswerSources,
@@ -221,31 +196,24 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
     setDocuments,
   } = useAnswerSources();
 
-  /*
-   * Compared against the shell's own state and NOT against a memo of what was
-   * sent: several things empty the shell, and a memo cannot know, so the view
-   * would say its piece once and never again. The signature keeps this to one
-   * report per real change rather than one per token.
-   */
+  // Compared against the shell's own state and NOT a memo of what was sent:
+  // several things empty the shell, and a memo cannot know, so the view would
+  // say its piece once and never again.
   useEffect(() => {
     const answers = messages.filter((message) => message.role === 'assistant');
     const live = new Set(answers.map((message) => message.id));
 
-    /*
-     * An answer that never produced a token leaves the thread (`settleAnswer`
-     * in useChat), and the context can only be emptied whole — so a
-     * disappearance costs a rebuild rather than a removal.
-     */
+    // An answer that never produced a token leaves the thread (`settleAnswer`
+    // in useChat), and the context can only be emptied whole — so a
+    // disappearance costs a rebuild rather than a removal.
     if ((reported ?? []).some((answer) => !live.has(answer.messageId))) {
       clearAnswerSources();
       return;
     }
 
-    /*
-     * Undefined means «nobody has reported yet», which draws «Henter kilder
-     * …», and an untouched front page is not loading anything. So an empty
-     * thread reports `[]` rather than leaving the slot undefined.
-     */
+    // Undefined means «nobody has reported yet», which draws «Henter kilder
+    // …», and an untouched front page is not loading anything. So an empty
+    // thread reports `[]` rather than leaving the slot undefined.
     if (answers.length === 0) {
       setDocuments([]);
       return;
@@ -269,31 +237,24 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
         messageId: message.id,
         documents: message.sources ?? [],
         status: message.status,
-        /*
-         * How many `[n]` the text carries, which is not how many excerpts
-         * came with it: a restored conversation has the markers and no chunks
-         * behind them. Only a stored turn sets it.
-         */
+        // How many `[n]` the text carries, which is not how many excerpts
+        // came with it: a restored conversation has the markers and no chunks
+        // behind them. Only a stored turn sets it.
         ...(message.citationCount === undefined ? {} : { citationCount: message.citationCount }),
         // Read back from a store that kept no sources for it: the panel says
         // they were not stored rather than that there were none.
         ...(message.sourcesNotStored ? { sourcesNotStored: true } : {}),
-        /*
-         * The corpus the ANSWER came from, never the one the chooser stands
-         * on. It arrives with the frame that ends the stream, so it is part
-         * of the signature or the panel never hears about it.
-         */
+        // The corpus the ANSWER came from, never the one the chooser stands
+        // on. It arrives with the frame ending the stream, so it is part of
+        // the signature or the panel never hears about it.
         ...(message.corpusKey === undefined ? {} : { corpusKey: message.corpusKey }),
       });
     }
   }, [messages, reported, setAnswerSources, clearAnswerSources, setDocuments]);
 
-  /*
-   * Leaving the thread takes its sources with it, and an empty dependency
-   * list is what makes «unmount» mean unmount. Through a ref: with the
-   * callback as a dependency, a re-render runs the cleanup and wipes the
-   * sources on the way in rather than on the way out.
-   */
+  // Leaving the thread takes its sources with it, and an empty dependency
+  // list is what makes «unmount» mean unmount. Through a ref: as a
+  // dependency, a re-render would run the cleanup on the way in.
   const clearOnUnmount = useRef(clearAnswerSources);
   useEffect(() => {
     clearOnUnmount.current = clearAnswerSources;
@@ -304,12 +265,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
     (message) => message.role === 'assistant' && message.status === 'complete',
   );
 
-  /**
-   * The turn on screen searched and found nothing, so the fixed suggestions
-   * do not apply: «Kan du utdype?» asks the assistant to say more about
-   * nothing. Read off the LAST message, since an earlier answer that did find
-   * something was worth following up until this one replaced it.
-   */
+  // The turn on screen found nothing, so the fixed suggestions do not apply:
+  // «Kan du utdype?» asks the assistant to say more about nothing. The LAST
+  // message, since an earlier answer was worth following up until replaced.
   const lastMessage = messages.at(-1);
   const foundNothing = lastMessage !== undefined && noHitsAnswers.has(lastMessage.id);
 
@@ -318,19 +276,15 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   const heading = threadHeading(thread, messages);
   const pageName = threadPageTitle(thread, messages);
 
-  /**
-   * The agent asked back and is waiting. The reader's next message is the
-   * answer, sent the ordinary way; what changes is the field's placeholder,
-   * and the follow-up suggestions step aside.
-   */
+  // The agent asked back and is waiting. The next message is the answer,
+  // sent the ordinary way; the field's placeholder changes and the follow-up
+  // suggestions step aside.
   const awaitingClarification =
     messages.at(-1)?.role === 'assistant' && messages.at(-1)?.status === 'needs-clarification';
 
-  /*
-   * Focus follows the question, once per clarification. Only taken from the
-   * composer or from nobody: a reader who has moved on into the answer or the
-   * sources must not have the page pulled back under them.
-   */
+  // Focus follows the question, once per clarification. Only taken from the
+  // composer or from nobody: a reader who has moved into the answer or the
+  // sources must not have the page pulled back under them.
   const clarificationId = awaitingClarification ? messages.at(-1)?.id : undefined;
   useEffect(() => {
     if (!clarificationId) return;
@@ -344,10 +298,8 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
     const query = question.trim();
     if (query.length === 0) return;
 
-    /*
-     * Only the ready ones go: a refused file's id would ask the backend about
-     * a document that does not exist.
-     */
+    // Only the ready ones go: a refused file's id would ask the backend
+    // about a document that does not exist.
     const ids = attachments.readyIds;
     const names = attachments.items
       .filter((item) => item.documentId !== undefined)
@@ -359,11 +311,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
     attachments.clear();
   }
 
-  /**
-   * Where focus goes when a control disappears under the click that hit it.
-   * Without this a keyboard user lands on `<body>`, at the top of the
-   * document, mid-action (WCAG 2.4.3).
-   */
+  // Where focus goes when a control disappears under the click that hit it.
+  // Without this a keyboard user lands on `<body>`, at the top of the
+  // document, mid-action (WCAG 2.4.3).
   function focusField() {
     fieldRef.current?.focus();
   }
@@ -372,10 +322,8 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   // useComposerShortcut.ts for what it refuses to do.
   useComposerShortcut(fieldRef);
 
-  /*
-   * The hidden settings menu. A hash and not a query: it never reaches the
-   * server, never changes the route, and does not travel in a pasted link.
-   */
+  // The hidden settings menu. A hash and not a query: it never reaches the
+  // server, never changes the route, and does not travel in a pasted link.
   const { hash } = useLocation();
   const navigate = useNavigate();
   const settingsOpen = hash === SETTINGS_HASH;
@@ -387,14 +335,9 @@ function ChatSession({ userName, thread, loading, client }: ChatViewProps) {
   // Read here only to hand the dialog the choice on screen.
   const footerMode = useFooterMode();
 
-  /*
-   * The same rescue for an error that arrives on its own. The send button
-   * becomes a disabled send button when the turn fails, and the browser takes
-   * focus off it one frame LATER — so standing on that one button counts as
-   * lost, compared by identity: «a button in the composer» also catches the
-   * paperclip, which has every right to keep focus. The field itself is left
-   * alone, or a reader who is typing loses the caret.
-   */
+  // The browser takes focus off the failed turn's send button one frame
+  // LATER, so standing on that one button counts as lost — by identity, since
+  // «a button in the composer» also catches the paperclip. The field stands.
   useEffect(() => {
     if (status !== 'error') return;
 
