@@ -8,14 +8,8 @@ import { kudosMarkdownSources } from './kudosExcerpts';
 import './preview.css';
 
 /**
- * A harness for building and reviewing the sources view on its own.
- *
- * Dev only, see `main.tsx`. Loading, empty and collapsed are states the real
- * app cannot be steered into by hand.
- *
- * The panel sits in an `<aside>` with the slot's accessible name, behind the
- * same collapse button and `hidden` wrapper as in the shell, so an
- * accessibility snapshot here has the shell's structure, `[hidden]` included.
+ * Dev only: loading, empty and collapsed, which the app cannot be steered into
+ * by hand, in the shell's structure (`<aside>`, button, `hidden` wrapper).
  */
 type PreviewState =
   | 'ready'
@@ -192,10 +186,8 @@ export function PreviewPanel() {
               variant={state === value ? 'primary' : 'secondary'}
               data-size="sm"
               onClick={() => {
-                // The citation goes with the thread it was clicked in. Left
-                // standing, it would arrive at the next fixture set as a
-                // citation «already set on mount» and send the panel to the
-                // answer it named — correct in the app, misleading here.
+                // The citation belongs to the thread it was clicked in, not to
+                // the next fixture set.
                 setState(value);
                 setCitation(undefined);
               }}

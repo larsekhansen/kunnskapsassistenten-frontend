@@ -26,14 +26,8 @@
   gap: var(--ds-size-2);
 }
 
-/*
- * The open widths are the layout's: the slot prefers 432 px and shrinks to 336
- * when the window runs short (src/layout/viewModel.ts). The harness stands in
- * for the slot, so it mirrors the shell's width and box model.
- *
- * `border-box`, like .secondary-sidebar in global.css, so the padding is
- * inside the width and the panel here is as wide as in the product.
- */
+/* The slot's width (432 px, or 336 when short; src/layout/viewModel.ts) and its
+   `border-box`, as .secondary-sidebar in global.css, so the panel is as wide. */
 .preview__aside {
   flex: 0 0 auto;
   box-sizing: border-box;

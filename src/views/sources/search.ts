@@ -2,12 +2,8 @@ import type { SourceDocument } from '../../model';
 import type { SearchableItem } from '../../components';
 
 /**
- * What this view gives the search to look inside.
- *
- * The search is in `src/components/textSearch.ts` and knows nothing about
- * documents: it takes a flat list of text with an id each. This is the piece
- * that knows what a document is. Whole documents would be one more `kind`
- * here, and the matching, the counter and previous/next would not change.
+ * The search (`src/components/textSearch.ts`) takes flat text with ids; this is
+ * where the view says what a document is.
  */
 
 /**

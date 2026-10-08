@@ -1,10 +1,6 @@
 /*
- * CSS for the sources view, imported from SourcesView.tsx. It loads after
- * global.css and, like it, outside every layer: unlayered author CSS beats all
- * layered author CSS, so nothing here needs !important.
- *
- * Every value is a --ds-* token, so the panel follows the theme, the size mode
- * and dark mode. The view fills the width the slot gives it.
+ * The sources view. Outside every layer, like global.css, so it beats layered
+ * CSS without !important; every value is a --ds-* token.
  */
 
 .sources-view {
@@ -13,12 +9,8 @@
   /* The space between the panel's blocks in Figma's `kilder` frame. */
   gap: var(--ds-size-12);
   inline-size: 100%;
-  /*
-   * The cards answer to the panel, not the window: the slot shrinks when there
-   * is no room, and the view can be moved to another slot, so a viewport media
-   * query asks the wrong question. The width comes from the slot, never from
-   * the content, so the container costs nothing.
-   */
+  /* The cards answer to the panel's width, not the window's: the slot shrinks,
+     and the view can move to another slot. */
   container: sources / inline-size;
   /*
    * A long compound noun in a document title is wider than the card, which
@@ -101,17 +93,8 @@
 }
 
 /*
- * Figma's `document` (node 1549-46119): a blue head and a grey body, each
- * with its own border, and the excerpts as white boxes in the body.
- *
- * `Card` draws one border round the whole and a rule between its blocks.
- * Both are off, and each block draws its own, because the two halves have
- * different borders in the design. The card keeps its radius and clipping, and
- * each block rounds its own two corners, so no border is cut off at a corner.
- *
- * Figma's spacing needs the width it is drawn at, 410 px. A narrower view gets
- * `--ds-size-3` all round, or the quote is squeezed into a column of two or
- * three words a line.
+ * Figma's `document` (node 1549-46119). Each block draws its own border, since
+ * head and body differ; Figma's spacing needs 410 px, so narrower gets less.
  */
 .source-document {
   --ka-document-head-padding: var(--ds-size-3);
@@ -136,12 +119,8 @@
   border: var(--ds-border-width-default) solid var(--ds-color-brand3-border-subtle);
   border-start-start-radius: var(--ds-border-radius-lg);
   border-start-end-radius: var(--ds-border-radius-lg);
-  /*
-   * A Norwegian compound noun in a title may not fit on a line of a narrow
-   * panel. This asks the browser to break it where Norwegian breaks, which
-   * `lang="nb"` on the page allows. A browser without the dictionary falls
-   * back to `break-word` on the view.
-   */
+  /* Breaks a long Norwegian compound where Norwegian breaks (`lang="nb"`); a
+     browser without the dictionary falls back to `break-word` on the view. */
   /* stylelint-disable-next-line plugin/browser-compat -- uprefikset
      `hyphens` kom i Safari 17; 16 har den bare som `-webkit-hyphens`. Da
      deles ingen ord der, og avsnittet over sier hva som skjer i stedet:
@@ -189,17 +168,8 @@
 /* Excerpts */
 
 /*
- * Figma's `chunk`: a white box in the grey body, with the number and the
- * toggle on one row and the quote under them when it is open.
- *
- * The row is two elements in one grid cell. `Details` puts its summary and its
- * content in one element, so the summary cannot share a flex row with the
- * heading unless we draw the toggle ourselves, and `::details-content`, which
- * would split them, is missing from browsers in `.browserslistrc` (Safari 16,
- * iOS 16, Firefox 140, Chrome 109). In one cell, the heading lies over the
- * start of the summary row and the summary's label stands at its end: one row,
- * as in Figma, and the whole row is still the summary to the pointer. The
- * content opens under the row, so the toggle stays where the pointer left it.
+ * Figma's `chunk`. Heading and summary share one grid cell to make Figma's one
+ * row, since `::details-content` is missing from browsers in `.browserslistrc`.
  */
 .source-excerpt {
   /* The row's height: the summary's, and so the heading's box over it. */
@@ -261,32 +231,19 @@
   border-block-width: 0;
 }
 
-/*
- * The label, then the chevron, at the row's end: Figma puts the chevron after
- * the word. Designsystemet draws it as the summary's `::before`, so the row
- * is turned round rather than the chevron moved, and `flex-start` in a
- * reversed row is the end.
- */
+/* The chevron after the label, as in Figma: Designsystemet draws it as
+   `::before`, so the row is reversed, and `flex-start` is then the end. */
 .source-excerpt__details > summary {
   flex-direction: row-reverse;
   justify-content: flex-start;
   border-radius: var(--ds-border-radius-default);
-  /*
-   * Out by its own padding at each end, into the box's padding, which has room
-   * for it. Designsystemet draws the focus ring inside the summary, and at the
-   * box's content edge it lay over the first letter of «Utdrag N». Out here
-   * the ring clears the heading and «Åpne», and the heading, the quote and the
-   * label keep the edges they line up on.
-   */
+  /* Out into the box's padding, so the focus ring, drawn inside the summary,
+     does not lie over the first letter of «Utdrag N». */
   margin-inline: calc(var(--ds-size-2) * -1);
 }
 
-/*
- * Designsystemet indents and spaces everything under a summary. The box's
- * padding is the indent here, so the content starts at the heading's edge.
- * Designsystemet writes these in `:where()`, so a plain class selector
- * replaces them.
- */
+/* The box's padding is the indent, so Designsystemet's indent and spacing,
+   written in `:where()`, are replaced here. */
 .source-excerpt__details > :not(summary):not(u-summary) {
   margin-inline: 0;
 }
@@ -334,13 +291,7 @@
   color: var(--ds-color-neutral-text-subtle);
 }
 
-/*
- * «Tilbake til svaret», last in the open quote.
- *
- * A block box that shrinks to its content, so it starts on a line of its own
- * instead of running on after the page link, and still keeps the start edge
- * the rest of the quote has.
- */
+/* «Tilbake til svaret» on a line of its own, as wide as its content. */
 .source-excerpt__back {
   display: flex;
   inline-size: fit-content;

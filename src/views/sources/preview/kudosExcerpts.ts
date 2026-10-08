@@ -1,12 +1,8 @@
 import type { SourceDocument } from '../../../model';
 
 /**
- * Real Kudos chunks, as they reach the panel: `metadata` through
- * `parseHeadingPath` for the heading, `content_markdown` for the text, cut
- * short. The ids are `doc_num/chunk_index`.
- *
- * Live sends the heading but not the text, and the BFF the text but not the
- * heading, so this is the one place the two stand together.
+ * Real Kudos chunks, cut short, with heading and text together: live sends the
+ * heading without the text, and the BFF the text without the heading.
  */
 export const kudosMarkdownSources: SourceDocument[] = [
   {

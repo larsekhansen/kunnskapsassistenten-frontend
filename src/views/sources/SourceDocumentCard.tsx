@@ -33,22 +33,8 @@ type SourceDocumentCardProps = {
 };
 
 /**
- * One document with every excerpt taken from it, Figma's `document`: a blue
- * head with the title, and a grey body with the excerpts as white boxes, then
- * the way to the document itself.
- *
- * `Card` plus two `Card.Block`s, Designsystemet's shape for a box in parts.
- * The head is the title only, as in Figma; what the document is (type,
- * publisher, year) opens the body, in small print over its excerpts.
- *
- * The document's link is the last thing in the body, once per document. An
- * excerpt has a link of its own only when it opens the page the quote is on;
- * see `SourceExcerpt`.
- *
- * The link sits outside the heading on purpose. `Card` delegates a click
- * anywhere on the card to the first link inside a heading, and a card full of
- * `Details` toggles must not do that. Keeping the link out of the heading is
- * the documented way to switch the delegation off.
+ * One document and its excerpts, Figma's `document`. The link stays out of the
+ * heading: `Card` sends a click anywhere on the card to a link in its heading.
  */
 export function SourceDocumentCard({
   source,
@@ -133,14 +119,8 @@ export function SourceDocumentCard({
             className="source-link"
           >
             {documentLinkLabel(corpusName)}
-            {/* The title, because every card ends in these same words, and a
-                list of the panel's links must tell them apart (WCAG 2.4.9).
-                Designsystemet says not to mark an external link with an icon
-                alone, so leaving the app is said in words too.
-
-                accname joins the text and this span with a space, «… på Kudos
-                , Årsrapport …». It is silent in speech, and the only way to
-                drop it is one `aria-label` for the whole name. */}
+            {/* The title tells the cards' links apart (WCAG 2.4.9). accname
+                puts a space before the comma, which is silent in speech. */}
             <span className="ds-sr-only">
               {', '}
               {name} (åpnes i ny fane)

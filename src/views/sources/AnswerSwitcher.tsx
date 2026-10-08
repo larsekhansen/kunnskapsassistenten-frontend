@@ -13,18 +13,8 @@ type AnswerSwitcherProps = {
 };
 
 /**
- * «Kilder til svar 2 av 3», with a way to step between the answers.
- *
- * The panel shows one answer's sources at a time, and every answer numbers its
- * excerpts from 1, so this line is what keeps «Utdrag 2» unambiguous.
- *
- * The counter is `aria-hidden`, and the live region that announces it is in
- * `SourcesView`. A live region has to be in the document before its content
- * changes, and this row mounts with the second answer, the one moment the
- * announcement matters.
- *
- * `aria-disabled` rather than `disabled` at the ends, as in `ExcerptSearch`:
- * a `disabled` button drops focus to `<body>` the moment it turns off.
+ * «Kilder til svar 2 av 3», which keeps «Utdrag 2» unambiguous. The live region
+ * is in `SourcesView`, mounted before this row; `aria-disabled` keeps focus.
  */
 export function AnswerSwitcher({ label, index, count, onStep }: AnswerSwitcherProps) {
   const atFirst = index === 0;

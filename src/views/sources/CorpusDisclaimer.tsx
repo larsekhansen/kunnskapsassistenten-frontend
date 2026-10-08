@@ -1,15 +1,8 @@
 import { Paragraph } from '@digdir/designsystemet-react';
 
 /**
- * The disclaimer over the excerpts, in the corpus's own name.
- *
- * The corpus comes from `corpusDisplayName`, which the filter panel names the
- * corpus with too, so the two cannot drift apart, and a corpus with no name
- * gets «standardkorpuset» rather than a claim. With an uploaded file among the
- * sources, «fra <korpus>» alone would be false about that excerpt.
- *
- * The second sentence is the one that matters: nothing here is generated, and
- * that is true of every corpus.
+ * The disclaimer over the excerpts, naming the corpus and the reader's own
+ * documents when there are any.
  */
 export function sourcesDisclaimer(corpusName: string, hasOwnDocument: boolean): string {
   const source = hasOwnDocument
@@ -29,12 +22,8 @@ type CorpusDisclaimerProps = {
 };
 
 /**
- * Below the panel head, not in it, on purpose. The head is sticky, and what is
- * pinned there takes room from the reading area while the reader scrolls. This
- * line never changes, so it loses nothing by scrolling away with the excerpts.
- *
- * `aria-describedby` resolves by id, so the search field still has this as its
- * description wherever it sits.
+ * Below the sticky head, not in it, so it does not take reading room while the
+ * reader scrolls. `aria-describedby` finds it by id wherever it sits.
  */
 export function CorpusDisclaimer({
   id,

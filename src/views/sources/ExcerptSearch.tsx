@@ -19,17 +19,8 @@ type ExcerptSearchProps = {
 };
 
 /**
- * Search inside the excerpts, with a hit counter and previous/next.
- *
- * `Search` rather than a hand-drawn field: it gives the clear button an
- * `aria-label` («Tøm») and `type='search'` semantics. `Search.Clear` is
- * `type='reset'`, which is why there is a real `<form>` around it.
- *
- * Previous/next move through a vertical text, not through pages, so this is
- * not `Pagination`.
- *
- * The counter is a live region: `<mark>` is not announced, so «1 av 26 treff»
- * is the only thing that tells a screen reader user the search did anything.
+ * Search inside the excerpts, with a hit counter and previous/next. The counter
+ * is a live region, because `<mark>` is not announced.
  */
 export function ExcerptSearch({
   query,
@@ -43,14 +34,8 @@ export function ExcerptSearch({
   // one id, and `htmlFor` would then point at the wrong field.
   const fieldId = useId();
 
-  // The ends are ends: `stepHit` stops there, so the button that would do
-  // nothing says so.
-  //
-  // `aria-disabled` and not `disabled`: the reader presses the same button over
-  // and over, and a `disabled` button drops focus to the body the moment it
-  // turns off. `aria-disabled` keeps the tab stop, and Designsystemet draws it
-  // like `:disabled`. The click handler is what makes it inert, since the
-  // browser still delivers the click.
+  // `aria-disabled`, not `disabled`, which would drop focus to the body at the
+  // last hit. The click handler is what makes it inert.
   const atFirst = currentHitIndex === 0;
   const atLast = currentHitIndex >= hitCount - 1;
 
@@ -96,10 +81,8 @@ export function ExcerptSearch({
             {status}
           </Paragraph>
 
-          {/* Previous/next exist only once there is something to step
-              through, as in Figma's `results` variant. Left out rather than
-              disabled: a control the reader has never been able to use only
-              adds a tab stop and a question. */}
+          {/* Left out until there are hits: a control the reader has never
+              been able to use only adds a tab stop. */}
           {hitCount > 0 && (
             <div className="sources-search__steps">
               <Button

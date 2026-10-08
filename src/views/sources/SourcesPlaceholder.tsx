@@ -4,12 +4,8 @@ import { Skeleton } from '@digdir/designsystemet-react';
 const DOCUMENT_PLACEHOLDERS = ['a', 'b', 'c', 'd'];
 
 /**
- * `excerpts-placeholder` from Figma: the loading state for the panel, one
- * block per document card, so the layout does not jump when the sources come.
- *
- * `Skeleton` sets `aria-hidden` on itself, so a screen reader is told nothing
- * unless we say it, and in forced-colours mode the skeletons are invisible
- * too. Hence `aria-busy` on the region and a sentence in a live region.
+ * The loading state, Figma's `excerpts-placeholder`. `Skeleton` is
+ * `aria-hidden`, so `aria-busy` and a sentence in a live region say it.
  */
 export function SourcesPlaceholder() {
   return (

@@ -1,11 +1,6 @@
 /**
- * «Utdrag 1–3» when the numbers run unbroken, «Utdrag 1, 2, 5» when they do
- * not, and nothing for a document whose excerpts the answer never cited.
- *
- * A list of documents is numbered by document and the excerpts by `[n]`, and
- * without this line the reader meets two numberings with no way to tell them
- * apart. «Kilder brukt i svaret» under the answer uses it. It lives here
- * because the excerpts and their numbers are this panel's.
+ * «Utdrag 1–3», «Utdrag 1, 2, 5», or nothing for a document never cited, so the
+ * reader can tell excerpt numbers from document numbers.
  */
 export function excerptRange(numbers: (number | undefined)[]): string {
   const sorted = numbers.filter((number) => number !== undefined).sort((a, b) => a - b);
