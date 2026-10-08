@@ -18,12 +18,9 @@ import {
 } from './text';
 
 /**
- * The documents one question is asked with: what to send, and what to show.
- *
- * Both, because the two are read by different things and neither can be got
- * from the other later. The ids go on the wire; the names go on the reader's
- * own message in the thread, and a name looked up from the document list
- * afterwards would go missing the day the reader removes the file.
+ * The documents one question is asked with: ids for the wire, names for the
+ * reader's own message. Both, because a name looked up afterwards goes
+ * missing the day the reader removes the file.
  */
 export type AskAttachments = { ids: string[]; names: string[] };
 
@@ -48,12 +45,9 @@ function lastQuestionIn(messages: Message[]): string | undefined {
 }
 
 /**
- * The conversation without the turn «Generer på nytt» is about to replace.
- *
- * Only the last one, and only when it is an answer that did not make it. A
- * stopped turn survives a reload, so an older failed or stopped answer can be
- * sitting further up — and running the newest question again is no reason to
- * delete a turn the reader stopped last week.
+ * The conversation without the turn «Generer på nytt» replaces: only the
+ * last, and only when it failed or was stopped. Older stopped turns survive a
+ * reload, and asking the newest question again is no reason to delete them.
  */
 function withoutTurnBeingRetried(messages: Message[]): Message[] {
   const last = messages.at(-1);
@@ -66,62 +60,41 @@ export type UseChat = {
   messages: Message[];
   status: ChatStatus;
   /**
-   * Why the turn failed, set only when status is 'error'.
-   *
-   * The code and not the sentence: which case it was decides the heading, the
-   * text and whether «Prøv igjen» is offered at all, and that mapping belongs
-   * to the view (errorText.ts). A hook that handed over a finished string
-   * would have to know what the button under it says.
+   * Why the turn failed, set only when status is 'error'. The code and not
+   * the sentence: the case decides heading, text and whether «Prøv igjen» is
+   * offered at all, and that mapping belongs to the view (errorText.ts).
    */
   error: ChatError | null;
   /**
-   * What the polite live region should say at this moment.
-   *
-   * It lives here rather than in the view because only this loop knows when a
-   * paragraph finished and when the turn ended. A live region driven by
-   * rendering instead of by events either stutters once per token or has to
-   * read a ref during render to remember what it already said.
+   * What the polite live region should say at this moment. Here and not in
+   * the view, because only this loop knows when a paragraph finished; driven
+   * by rendering it stutters once per token.
    */
   announcement: string;
   /**
-   * The filter each answer was asked under, by message id.
-   *
-   * Kept beside the messages rather than on them: the answer says which
-   * documents it was narrowed to, and «which documents» is what the reader
-   * chose at the time, not what is selected now. A second question under a
+   * The filter each answer was asked under, by message id. What the reader
+   * chose at the time, not what is selected now: a second question under a
    * different filter must not rewrite the first answer's line.
    */
   appliedFilters: Record<string, FilterSelection>;
   /**
-   * The answers whose search came back empty, by message id.
-   *
-   * Kept beside the messages rather than derived from their text: a turn that
-   * found nothing is a fact about the turn, and reading it back out of the
-   * words would break the moment the wording changed. The view needs it
-   * because the fixed follow-up suggestions do not apply under one — «Kan du
-   * utdype?» asks the assistant to say more about nothing.
+   * The answers whose search came back empty, by message id. A fact about the
+   * turn rather than something read back out of its words, which would break
+   * the moment the wording changed.
    */
   noHitsAnswers: ReadonlySet<string>;
   /**
-   * The documents each question was asked with, by the QUESTION's message id.
-   *
-   * Beside the messages and not on them, the same call `appliedFilters`
-   * makes: what a question carried is a fact about that turn at the moment it
-   * was asked, and the reader's document list goes on changing afterwards. A
-   * document removed tomorrow must not rewrite what yesterday's question said
-   * it was asked with.
-   *
-   * Names and not ids, because the thread draws them and a reader reads
-   * «Årsrapport 2025.pdf», not a uuid.
+   * The documents each question was asked with, by the QUESTION's id. Names
+   * and not ids, since the thread draws them — and kept here, because a
+   * document removed tomorrow must not rewrite yesterday's question.
    */
   attachmentsByMessage: Record<string, string[]>;
   send: (question: string, attachments?: AskAttachments) => void;
   /** Stop the generation and keep what has arrived. */
   cancel: () => void;
   /**
-   * Ask the last question again, in place of the answer that did not make
-   * it. «Prøv igjen» after a failure and «Generer på nytt» after a stop are
-   * the same move: the question stands, the answer is replaced.
+   * Ask the last question again, in place of the answer that did not make it.
+   * «Prøv igjen» and «Generer på nytt» are the same move.
    */
   retry: () => void;
 };
@@ -130,27 +103,17 @@ export type UseChat = {
  * The chat state machine: messages in, one streamed answer at a time.
  *
  *   idle       nothing in flight
- *   pending    question sent, no token yet — this is what the skeleton shows
+ *   pending    question sent, no token yet — what the skeleton shows
  *   streaming  tokens arriving
- *   error      the turn failed; `error` carries the code, and the view
- *              looks the Norwegian up from it
+ *   error      the turn failed; `error` carries the code
  *
- * Two of the codes never reach that last state. Cancelling is not an error:
- * the client reports it as an `error` event with
- * code `aborted`, and here that means: keep the partial answer, mark it
- * `aborted`, go back to idle. That is what a reader expects from a stop
- * button, and it is why the code checks the code rather than the event type.
- * The status is kept apart from `complete` because a stopped answer is not a
- * whole one — its sources never arrived, so it carries no action row of a
- * finished answer and offers to run again instead.
+ * **Two `error` codes do not mean failure, and the code checks the code and
+ * not the event type.** `aborted` keeps the partial answer and goes back to
+ * idle, under a status of its own because a stopped answer has no sources and
+ * offers to run again. `no-hits` settles as `complete`: the search ran and
+ * found nothing, which is an answer with an empty source list.
  *
- * `no-hits` is not one either: the search ran and found nothing, which is a
- * finished answer with an empty source list rather than a failure. It is the
- * same move in the other direction — an `error` frame settled as `complete`.
- *
- * Only one turn counts at a time. A question asked mid-stream aborts the one
- * before it, and the old turn is then forbidden from touching status,
- * announcement or error — see `turnRef` in `run`.
+ * Only one turn counts at a time; see `turnRef` in `run`.
  */
 export function useChat(
   client: ChatClient,
@@ -163,24 +126,13 @@ export function useChat(
   const [messages, setMessages] = useState<Message[]>(initialMessages);
 
   /*
-   * The stored thread usually arrives after this hook has mounted:
-   * `ChatSlotView` draws the chat straight away and fills `thread` in when
-   * the client answers. The messages are ADOPTED rather than replacing the
-   * session, so a reader who has already asked something at this address
-   * keeps what they asked, and the stored turns are laid in FRONT of it,
-   * which is the order the two happened in.
+   * The stored thread arrives after this hook has mounted, so its messages
+   * are ADOPTED in FRONT of the session rather than replacing it, matched by
+   * id because the live turn and the stored one can be the same turn.
    *
-   * Matched by id, so nothing lands twice: the live turn and the stored one
-   * can be the same turn — the mock writes a finished answer into the store
-   * under the id it just streamed — and what is already on screen wins.
-   *
-   * Adjusted while rendering the change rather than in an effect, which is
-   * React's own answer to «a prop changed and state has to follow»: an effect
-   * would draw the empty conversation once first.
-   *
-   * Compared on what the messages ARE, not on the identity of the array that
-   * carries them. `initialMessages` defaults to `[]`, a fresh array on every
-   * call, so a reference check says «a new thread» every render and loops.
+   * Adjusted while rendering, since an effect would draw the empty
+   * conversation once first, and compared on what the messages ARE:
+   * `initialMessages` defaults to a fresh `[]`, so a reference check loops.
    */
   const threadSignature =
     initialMessages.length === 0 ? '' : `${initialMessages.length}:${initialMessages.at(-1)?.id}`;
@@ -208,14 +160,10 @@ export function useChat(
   const lastAttachmentsRef = useRef<AskAttachments | undefined>(undefined);
 
   /*
-   * The conversation as it stands, for the handlers that need to read it
-   * without being rebuilt by it. `retry` is the one: it changes identity with
-   * its dependencies, and `messages` changes on every token, so depending on
-   * it directly would hand the composer a new callback per word.
-   *
-   * Written in an effect rather than during render. `retry` runs from a click,
-   * long after effects have settled, so it always reads the conversation that
-   * was on screen when the reader pressed the button.
+   * The conversation for handlers that must read it without being rebuilt by
+   * it: `messages` changes on every token, so `retry` as a dependency hands
+   * the composer a new callback per word. Written in an effect, which is
+   * settled long before a click reads it.
    */
   const messagesRef = useRef(messages);
   useEffect(() => {
@@ -223,23 +171,13 @@ export function useChat(
   }, [messages]);
 
   /*
-   * Switching corpus lets go of the conversation.
+   * Switching corpus lets go of the conversation: its answers cite documents
+   * that only exist in the old one, and continuing would mix two document
+   * sets with nothing on screen saying which is which. The draft stays.
    *
-   * A thread belongs to the corpus it was started in — its answers cite
-   * documents that only exist there — so continuing it against another one
-   * would produce a conversation whose citations point into two different
-   * document sets, with nothing on screen saying which is which.
-   *
-   * Everything goes except the draft, which is not part of the conversation:
-   * it is a question the reader is still writing, and as good a question of
-   * the new corpus as of the old.
-   *
-   * What the READER sees is emptied while rendering, the same way the thread
-   * below is adopted — an effect would draw the old conversation once under
-   * the new corpus first. The refs behind it are let go in the effect under
-   * this instead, because a ref written during render is a value React cannot
-   * see changing; nothing reads them before the next question, which comes
-   * from a click long after effects have run.
+   * Emptied while rendering, since an effect would draw the old conversation
+   * once under the new corpus; the refs go in the effect below, because a ref
+   * written during render is a change React cannot see.
    */
   const [corpusInUse, setCorpusInUse] = useState(corpusKey);
   if (corpusKey !== corpusInUse) {
@@ -271,53 +209,26 @@ export function useChat(
   }, []);
 
   /**
-   * End a turn: mark the answer, or drop it if nothing ever arrived.
-   *
-   * An answer that failed or finished before its first token draws no card,
-   * so leaving it in the list leaves an `<li>` whose whole content is the
-   * hidden «Kunnskapsassistenten svarte:» — a screen reader hears an
-   * assistant that answered nothing. The alert says what became of a failed
-   * turn, and carries the way onward.
-   *
-   * A stopped one is the exception: it stays whatever phase it was in, and
-   * its card is what says it was stopped and offers to run it again.
+   * End a turn: mark the answer, or drop it if nothing ever arrived — an
+   * empty `<li>` tells a screen reader the assistant answered when it did
+   * not. A stopped turn stays whatever phase it was in, because its card is
+   * what says it was stopped.
    */
   const settleAnswer = useCallback(
     (id: string, status: SettledStatus, settled?: { createdAt?: string; corpusKey?: string }) => {
       /*
-       * The answer is stamped here and not when its placeholder was made,
-       * because the time on an answer means «when the answer was finished»
-       * — that is what a reader refers back to, and it is what the turn is
-       * written down with.
-       *
-       * Stamping it at both ends gives one answer two times, a whole answer
-       * apart: the placeholder when the question was sent, the stored copy
-       * when the turn was recorded. Nothing draws the time until the turn
-       * settles, so there is no cost to stamping it only here.
-       *
-       * The `done` frame's own time wins when there is one, so the message
-       * and the stored turn are the same string and not merely the same
-       * second. A stream that ends any other way — stopped, failed, or with
-       * no `done` at all — has no time to be given, and the local clock is
-       * that same instant give or take the trip home.
+       * Stamped here and NOT when the placeholder was made: stamping at both
+       * ends gives one answer two times, a whole answer apart. The `done`
+       * frame's own time wins where there is one, so the message and the
+       * stored turn are the same string.
        */
       const settledAt = settled?.createdAt ?? new Date().toISOString();
       setMessages((current) => {
         const answer = current.find((message) => message.id === id);
         /*
-         * A turn with nothing to show is taken out again. «Nothing» is the
-         * point: an `<li>` whose whole content is the hidden «Kunnskapsassistenten
-         * svarte:» tells a screen reader that the assistant answered, when it
-         * did not.
-         *
-         * What the agent DID is something to show, so the thinking panel
-         * counts: dropping a failed turn on `content.length === 0` alone
-         * takes «Jeg søker i dokumentene» with it, and leaves the reader with
-         * the question, the error and nothing about what was tried — on the
-         * one path where that is worth most.
-         *
-         * A stopped turn stays whatever phase it was stopped in, panel or no
-         * panel, because its card is what says it was stopped.
+         * The thinking panel counts as something to show: dropping a failed
+         * turn on `content.length === 0` alone takes «Jeg søker i
+         * dokumentene» with it, on the one path where it is worth most.
          */
         const hasNothingToShow =
           answer !== undefined &&
@@ -333,15 +244,8 @@ export function useChat(
                 createdAt: settledAt,
                 /*
                  * Which corpus answered, from the frame that ended the
-                 * stream. The client is the only thing that knows: it is what
-                 * put `dataset_config_key` on the wire. Reading the store
-                 * instead would answer «which corpus is selected now», and
-                 * the reader may have moved since.
-                 *
-                 * Left alone when the frame says nothing. `undefined` means
-                 * «not known» and never «the default corpus» — a live stack
-                 * without a tenant lets the backend choose, and then nothing
-                 * on this side can name what answered.
+                 * stream; the store would answer «which is selected now».
+                 * `undefined` means «not known», never «the default corpus».
                  */
                 ...(settled?.corpusKey === undefined ? {} : { corpusKey: settled.corpusKey }),
                 status,
@@ -355,14 +259,10 @@ export function useChat(
 
   const run = useCallback(
     async (question: string, answerId: string, attachments?: string[]) => {
-      // Every turn gets a number, and only the newest one may write status,
-      // announcement or error. Asking a second question while the first is
-      // still streaming aborts the first, but that abort is handled one tick
-      // later — after the new turn has already said «Henter svar.». Without
-      // this guard the old turn overwrites it with «Genereringen ble
-      // avbrutt.», which is a status message that lies, and puts the status
-      // back to idle, which takes the stop button away from a generation
-      // that is still running.
+      // Only the newest turn may write status, announcement or error. The
+      // abort of the turn before it is handled a tick later, and without this
+      // guard it says «Genereringen ble avbrutt.» over the new turn and takes
+      // the stop button away from a generation that is still running.
       const turn = (turnRef.current += 1);
       const isCurrentTurn = () => turnRef.current === turn;
 
@@ -377,34 +277,23 @@ export function useChat(
       // reading it back out of state.
       let content = '';
 
-      /*
-       * Which of the two «fant ingenting» answers fits this turn. Read here,
-       * from the filter the question was asked under, and not when it lands:
-       * telling a reader to loosen a filter they never set sends them looking
-       * for a control they have not touched.
-       */
+      // Which «fant ingenting» answer fits, read from the filter the
+      // question was asked under: telling a reader to loosen a filter they
+      // never set sends them looking for a control they have not touched.
       const noHitsAnswer = isEmptySelection(filters) ? NO_HITS_WHOLE_CORPUS : NO_HITS_FILTERED;
 
-      // Said once per turn, when the first step lands. The steps arrive
-      // seconds apart and there can be a dozen of them; a polite region that
-      // spoke once per step would still be reading them out when the answer
+      // Said once per turn: a dozen steps arrive seconds apart, and a region
+      // that spoke per step would still be reading them out when the answer
       // arrived. The panel itself is silent, see ThinkingPanel.
       let saidSearching = false;
 
-      /*
-       * When the thinking started, so how long it took can be written down
-       * rather than worked out afterwards. The stream is where the two ends
-       * of that interval actually are: the first step arriving, and the first
-       * word of the answer.
-       */
+      // When the thinking started. The stream is where both ends of that
+      // interval are: the first step, and the first word of the answer.
       let thinkingStartedAt: number | undefined;
 
-      /*
-       * How many documents the answer came with, for what the live region
-       * says when it is done. An answer with none gets a warning in its card
-       * (AnswerMessage), and a reader who hears the answer is done and
-       * nothing else would not know the warning is there.
-       */
+      // How many documents came with the answer. One with none carries a
+      // warning in its card, and a reader who only hears «ferdig» would not
+      // know the warning is there.
       let sourceCount = 0;
       const doneAnnouncement = () =>
         content.trim() !== '' && sourceCount === 0
@@ -415,10 +304,9 @@ export function useChat(
         for await (const event of client.ask({
           query: question,
           conversationId: conversationRef.current,
-          // The document filter is part of the question, not a view
-          // decoration. The backend ignores it today (API-bestilling A2) and
-          // it is sent regardless: that is the contract, and the day it is
-          // honoured nothing here has to change.
+          // Part of the question, not a view decoration. The backend ignores
+          // it today (API-bestilling A2) and it is sent regardless: that is
+          // the contract.
           filters,
           // Which of the reader's own documents THIS question is about.
           // Separate from `filters`, which narrows the corpus and follows the
@@ -499,17 +387,11 @@ export function useChat(
               }
 
               /*
-               * A search that found nothing is not a failure: the assistant
-               * did the work and came back empty-handed, which is an answer
-               * with an empty source list (API-bestilling A16). So the turn
-               * finishes rather than fails — no red alert, no «Prøv igjen»
-               * offering to ask the same question of the same documents
-               * again — and the empty `sources` is what makes the sources
-               * panel say the same thing in its own words instead of waiting
-               * for excerpts that are not coming.
-               *
-               * It arrives as an `error` event because that is the frame
-               * that ends a stream with no content in it; see model/stream.ts.
+               * Not a failure: an answer with an empty source list
+               * (API-bestilling A16), so the turn finishes rather than fails
+               * and the empty `sources` stops the panel waiting for excerpts
+               * that are not coming. It arrives as an `error` event because
+               * that is the frame ending a stream with no content.
                */
               if (event.error.code === 'no-hits') {
                 patchAnswer(answerId, (message) => ({
@@ -618,12 +500,9 @@ export function useChat(
 
   const retry = useCallback(() => {
     /*
-     * The question to ask again. The ref holds it while the session that
-     * asked it is still open; a conversation restored from the store has no
-     * ref to hold anything, since nothing was sent in this browser session.
-     * The question is in the thread either way, which is where it is read
-     * from when the ref is empty — without that, «Generer på nytt» on a
-     * restored turn does nothing at all.
+     * The ref is empty for a conversation restored from the store, since
+     * nothing was sent in this browser session. The question is in the thread
+     * either way, or «Generer på nytt» on a restored turn does nothing.
      */
     const question = lastQuestionRef.current ?? lastQuestionIn(messagesRef.current);
     if (!question) return;
