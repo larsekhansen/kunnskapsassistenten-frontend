@@ -113,15 +113,9 @@ export function ProcedurePanel({ steps, status, retrieval, question }: Procedure
           </ol>
         </div>
 
-        {/*
-          The words the search actually ran on, with the rule above them that
-          the design draws. Plain Tags: they are not clickable, and
-          they wrap inside themselves rather than running out through the side
-          of the panel — see `ka-tag--wrapping`.
-
-          The list carries the lead-in as its accessible name, so a reader who
-          jumps by list hears what the list is instead of five bare strings.
-        */}
+        {/* The words the search actually ran on. Plain Tags, since they are
+            not clickable, and the list carries the lead-in as its accessible
+            name, so jumping by list hears what the list is. */}
         {keywords.length ? (
           <div className="ka-procedure__block ka-procedure__block--ruled">
             <Paragraph className="ka-procedure__label" data-size="sm" id={keywordLabelId}>

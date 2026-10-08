@@ -53,15 +53,9 @@ export function AnswerSearch({
     // needs, since it is a `type='reset'` button and a reset button outside a
     // form does nothing.
     <search className="ka-answer-search">
-      {/*
-        The keydown sits on the form rather than on the field, so Escape also
-        closes from the step buttons — a reader who has tabbed to «Neste» is
-        still inside the search and expects the same key to get out of it. The
-        rule below guards against giving a non-interactive element the
-        behaviour of a control; nothing of the sort happens here. The form
-        takes no focus and gets no role, it only listens to what bubbles up
-        from the controls inside it, and every one of those is a real one.
-      */}
+      {/* The keydown sits on the form, so Escape also closes from the step
+          buttons. The form takes no focus and no role; it listens to what
+          bubbles up from the real controls inside it. */}
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
       <form
         className="ka-answer-search__form"

@@ -97,11 +97,8 @@ export function AnswerMessage({
   const aborted = message.status === 'aborted';
   const complete = message.status === 'complete';
   const empty = message.content.length === 0;
-  /*
-    The agent's own words about what it is doing, less the step that is the
-    answer over again — which happens on an iteration with no tool call. See
-    `thinkingWithoutAnswer`.
-  */
+  // The agent's own words, less the step that is the answer over again,
+  // which happens on an iteration with no tool call.
   const steps = thinkingWithoutAnswer(message.thinkingSteps, message.content);
   // Failed, and the alert is no longer speaking for it.
   const failedQuietly = message.status === 'error' && message.id !== liveErrorId;
@@ -169,12 +166,9 @@ export function AnswerMessage({
 
       <span className="ds-sr-only">Kunnskapsassistenten svarte:</span>
 
-      {/*
-        Which documents the question was asked against. Over the card and not
-        inside it, because it is a fact about the question and not part of the
-        answer — and not a Chip, because there is nothing to click: the filter
-        is changed where it was set.
-      */}
+      {/* Which documents the question was asked against. Over the card, as a
+          fact about the question and not part of the answer, and not a Chip,
+          since the filter is changed where it was set. */}
       {narrowedTo ? (
         <p className="ka-filter-summary">
           <span className="ds-sr-only">Svaret er </span>
@@ -182,11 +176,8 @@ export function AnswerMessage({
         </p>
       ) : null}
 
-      {/*
-        What the agent did before it started writing, above the answer and
-        before it in the tab order. It is the same turn, so it is not a message
-        of its own; it is the header of this one.
-      */}
+      {/* What the agent did before it started writing. The same turn, so not
+          a message of its own but the header of this one. */}
       {steps?.length ? (
         detailed ? (
           <ThinkingPanel
@@ -255,21 +246,16 @@ export function AnswerMessage({
               </p>
             ) : null}
 
-            {/*
-              The hit count and the search words, inside the card under the
-              answer. Detailed only: at standard the procedure above has
-              already said what the answer was built on, in plainer words
-              (issue 88).
-            */}
+            {/* The hit count and the search words. Detailed only: at
+                standard the procedure above has already said what the answer
+                was built on, in plainer words (issue 88). */}
             {detailed && message.retrieval && !streaming ? (
               <RetrievalPanel retrieval={message.retrieval} />
             ) : null}
 
-            {/*
-              A stopped answer has no sources: they arrive in the last frame
-              and that frame never came. Saying so is what keeps the `[n]`
-              markers in the text from reading as a mistake.
-            */}
+            {/* A stopped answer has no sources, since they arrive in a frame
+                that never came. Saying so keeps the `[n]` markers from
+                reading as a mistake. */}
             {aborted ? (
               <Paragraph className="ka-aborted-note" data-size="sm" variant="long">
                 {empty ? ABORTED_BEFORE_ANSWER : ABORTED_NOTE}
@@ -282,12 +268,9 @@ export function AnswerMessage({
               </Paragraph>
             ) : null}
 
-            {/*
-              The documents the answer rests on, under it and over the
-              closing question. Only once the answer is done: the sources
-              arrive in the last frame, and a list that grew while the text
-              was still being written would move under it.
-            */}
+            {/* The documents the answer rests on. Only once it is done: the
+                sources arrive in the last frame, and a list that grew while
+                the text was written would move under it. */}
             {complete && !empty && !foundNothing ? (
               <SourcesSummary documents={message.sources ?? []} onSelectSource={activateCitation} />
             ) : null}

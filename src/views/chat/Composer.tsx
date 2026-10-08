@@ -157,14 +157,9 @@ export function Composer({
         }}
       />
 
-      {/*
-        Dropping a file on the field attaches it. The button is the way —
-        WCAG 2.5.7 asks that nothing depend on dragging — and this is the
-        shortcut for anyone who already has the file under the pointer.
-
-        The handlers sit on the frame and not on the textarea, so the whole
-        white box takes a file rather than the 20 px of text inside it.
-      */}
+      {/* Dropping a file attaches it, as a shortcut: the button is the way,
+          because WCAG 2.5.7 asks that nothing depend on dragging. On the
+          frame, so the whole box takes a file and not just the text. */}
       <div
         className="ka-composer"
         data-dragging={dragDepth > 0 || undefined}
@@ -253,11 +248,8 @@ export function Composer({
             </>
           )}
 
-          {/*
-            The agent, next to the send button and away from the paperclip,
-            as claude.ai puts its model. Pushed there by its own margin
-            (chat.css), so the row needs no wrapper.
-          */}
+          {/* The agent, next to the send button and away from the paperclip.
+              Pushed there by its own margin, so the row needs no wrapper. */}
           {agentPicker}
 
           {busy ? (
@@ -313,11 +305,9 @@ export function Composer({
         </ul>
       ) : null}
 
-      {/*
-        One line, and only the disclaimer on it: the shortcut sharing it wraps
-        onto two at every width and is said three other ways. Last in the
-        sticky area, which grows upwards, so this line never moves.
-      */}
+      {/* One line, and only the disclaimer on it: the shortcut sharing it
+          wraps onto two at every width and is said three other ways. Last in
+          the sticky area, which grows upwards, so this line never moves. */}
       <Paragraph className="ka-composer__disclaimer" data-size="sm">
         {DISCLAIMER}
       </Paragraph>
