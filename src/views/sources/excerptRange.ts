@@ -1,14 +1,11 @@
 /**
  * «Utdrag 1–3» when the numbers run unbroken, «Utdrag 1, 2, 5» when they do
- * not, and nothing at all for a document whose excerpts the answer never
- * cited.
+ * not, and nothing for a document whose excerpts the answer never cited.
  *
- * It removes an ambiguity the design has: a list of documents is numbered by
- * document, the excerpts are numbered by `[n]` marker, and without this line
- * the reader meets two numbering systems with no way to tell them apart.
- * «Kilder brukt i svaret» under the answer has it. It lives here because the
- * excerpts and their numbers are this panel's, and the shortcut list that
- * had it first stood here until issue 113.
+ * A list of documents is numbered by document and the excerpts by `[n]`, and
+ * without this line the reader meets two numberings with no way to tell them
+ * apart. «Kilder brukt i svaret» under the answer uses it. It lives here
+ * because the excerpts and their numbers are this panel's.
  */
 export function excerptRange(numbers: (number | undefined)[]): string {
   const sorted = numbers.filter((number) => number !== undefined).sort((a, b) => a - b);

@@ -1,5 +1,5 @@
 /**
- * The sources view: what sits in the secondary sidebar (answer 49).
+ * The sources view: what sits in the secondary sidebar.
  *
  * The scroll targets are exported as well, because the `[n]` markers in the
  * answer have to point at them. `excerptDomId` is re-exported from the model

@@ -4,21 +4,18 @@ import type { Excerpt, SourceDocument } from '../../model';
  * Excerpts as text a reader can read.
  *
  * The chunks are the corpus's own `content_markdown`: what Marker made of a
- * PDF. Measured on Kudos 2026-09-28 (`KUDOS_preprod_v4_*`), they
- * carry page markers (`{5}` on a line of its own, then a line of 48 dashes),
- * pipe tables with `<br>` inside the cells, `<sup>1)</sup>` footnote marks,
- * `**bold**`, `*italic*` and `- ` lists. The heading path carries the anchor
- * Marker puts before a heading, `<span id="page-4-0"></span>`, with its quotes
- * still escaped from the Clojure string it arrived in. All of it reached the
- * panel as literal text (#4 on #170, #5 on #168).
+ * PDF. In Kudos they carry page markers (`{5}` on a line of its own, then a
+ * line of dashes), pipe tables with `<br>` inside the cells, `<sup>1)</sup>`
+ * footnote marks, `**bold**`, `*italic*` and `- ` lists. The heading path
+ * carries the anchor Marker puts before a heading,
+ * `<span id="page-4-0"></span>`, with its quotes still escaped from the Clojure
+ * string it arrived in.
  *
- * **Stripped to text, not rendered as markdown.** An excerpt is a quote, and
- * the panel says so above the list. The search in this panel counts and
- * steps through hits by their offsets in `excerpt.text`, and the closed
- * excerpt shows the first 180 characters of it; both need the string on
- * screen to be the string they measured. Rendering markdown would draw
- * something other than what was searched, and `Markdown.tsx` would also turn
- * any heading inside a chunk into a heading in the panel's outline.
+ * **Stripped to text, not rendered as markdown.** An excerpt is a quote. The
+ * search counts and steps through hits by their offsets in `excerpt.text`, so
+ * the string on screen has to be the string it measured. Rendering markdown
+ * would draw something else, and `Markdown.tsx` would turn a heading inside a
+ * chunk into a heading in the panel's outline.
  *
  * What survives is what carries meaning: paragraphs and line breaks (drawn
  * with `white-space: pre-line`), list items as «•», and table rows as lines
@@ -41,11 +38,10 @@ const HEADING_SEPARATOR = ' › ';
  * is never read as emphasis or as a table cell on the way.
  *
  * The placeholders are Unicode noncharacters, U+FDD0 onwards: code points the
- * standard keeps for a program's own use and never gives to text. Any the
- * input carries are dropped first, so every placeholder put back is one made
- * here. Private-use characters from U+E000 were used until 2026-09-29, and a
- * real one in the text came back as ASCII: Kudos has U+E037, U+E039 and
- * U+E03C in its chunks, which became «7», «9» and «<».
+ * standard never gives to text. Any the input carries are dropped first, so
+ * every placeholder put back is one made here. Not private-use characters:
+ * Kudos has some in its chunks (U+E037, U+E039, U+E03C), and they would come
+ * back as ASCII.
  */
 const ESCAPABLE = '\\`*_{}[]()#+-.!|"\'~<>';
 const ESCAPED = /\\([\\`*_{}[\]()#+\-.!|"'~<>])/g;
@@ -103,11 +99,8 @@ function removeUntilStable(text: string, ...patterns: RegExp[]): string {
 /**
  * Superscript as the characters for it, so a footnote mark or an exponent
  * stays raised: `Husleie<sup>1)</sup>` reads «Husleie¹⁾», `m<sup>2</sup>`
- * reads «m²». Content with a character that has no superscript form keeps
- * its plain characters, as before.
- *
- * The search in the panel reads the same string, so it finds «Husleie», not
- * «1)».
+ * reads «m²». Content with a character that has no superscript form keeps its
+ * plain characters. The search reads the same string, so «Husleie» is found.
  */
 const SUPERSCRIPT_TAG = /<sup\b[^<>]*>([\s\S]*?)<\/sup\s*>/gi;
 const RAISED: Record<string, string> = {
@@ -141,9 +134,9 @@ function raised(text: string): string | undefined {
  * where the PDF had a raised «1)». One or two digits and a `)` straight after
  * a letter, with no letter or digit after it.
  *
- * Only in table cells, which is where it was found (375022/117). In prose the
- * same shape can be something else: «Q4)», or a chunk that starts inside a
- * parenthesis its previous chunk opened («tonn CO2) per år»).
+ * Only in table cells. In prose the same shape can be something else: «Q4)»,
+ * or a chunk that starts inside a parenthesis its previous chunk opened
+ * («tonn CO2) per år»).
  *
  * A `)` that closes a `(` earlier in the same cell is a parenthesis,
  * not a mark: «(1 000 m2)» and «(CO2)» keep theirs. A `)` with nothing open
@@ -323,10 +316,8 @@ function readableExcerpt(excerpt: Excerpt): Excerpt {
 }
 
 /**
- * The documents with every excerpt made readable.
- *
- * Applied once, where the view receives the documents, so the search, the
- * closed preview and the open quote all read the same string.
+ * The documents with every excerpt made readable. Applied once, where the view
+ * receives the documents, so the search and the quote read the same string.
  */
 export function readableDocuments(documents: SourceDocument[]): SourceDocument[] {
   return documents.map((document) => ({

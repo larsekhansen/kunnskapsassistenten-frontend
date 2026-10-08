@@ -10,15 +10,12 @@ import './preview.css';
 /**
  * A harness for building and reviewing the sources view on its own.
  *
- * DEV ONLY, see `main.tsx`. It exists because loading, empty and collapsed are
- * states the real app cannot be steered into by hand, and because the shell
- * does not mount this view yet.
+ * Dev only, see `main.tsx`. Loading, empty and collapsed are states the real
+ * app cannot be steered into by hand.
  *
- * The panel sits in an `<aside>` with the accessible name the slot gives it,
- * behind the same collapse button and the same `hidden` wrapper the shell
- * uses, so an accessibility snapshot of this page shows the structure the
- * shell will have — including the `[hidden]` behaviour the view has to
- * survive.
+ * The panel sits in an `<aside>` with the slot's accessible name, behind the
+ * same collapse button and `hidden` wrapper as in the shell, so an
+ * accessibility snapshot here has the shell's structure, `[hidden]` included.
  */
 type PreviewState =
   | 'ready'
@@ -61,12 +58,8 @@ const uncitedSources = fixtures.nkomSources.map((source, index) =>
 );
 
 /**
- * Numbers the excerpts from 1, as an answer does.
- *
- * Every answer starts its own count, which is exactly why the panel cannot
- * hold one flat list: two answers both have a `[1]`, and it points at
- * different documents in each. The harness has to reproduce that or it cannot
- * show the thing being fixed.
+ * Numbers the excerpts from 1, as an answer does. Every answer starts its own
+ * count, so two answers both have a `[1]`, pointing at different documents.
  */
 function renumbered(sources: SourceDocument[]): SourceDocument[] {
   let next = 1;
@@ -125,11 +118,9 @@ function answersFor(state: PreviewState): readonly AnswerSources[] | undefined {
 }
 
 /**
- * A source from a file the reader uploaded, built the way the mock builds it.
- *
- * `fixtures.userDocumentSource` is what `MockChatClient` calls when a question
- * carries `attachments`, so the harness shows the real shape rather than a
- * hand-written guess at it.
+ * A source from a file the reader uploaded, built by
+ * `fixtures.userDocumentSource` as `MockChatClient` builds it, so the harness
+ * shows the real shape.
  */
 const ownDocument: SourceDocument = fixtures.userDocumentSource(
   {
@@ -156,11 +147,8 @@ const renumberedCorpus: SourceDocument[] = (() => {
 })();
 
 /**
- * `?kilde=3` mounts the view with a citation already set.
- *
- * That is the one case the harness could not otherwise reach, and it is the
- * case where the view must NOT move focus: a citation that was already there
- * when the view mounted is not something the user just did.
+ * `?kilde=3` mounts the view with a citation already set: the case where the
+ * view must not move focus, since the reader did not just do anything.
  */
 type PreviewCitation = { number: number; nonce: number; messageId?: string };
 
@@ -170,9 +158,8 @@ function citationFromUrl(): PreviewCitation | undefined {
 }
 
 /**
- * The two widths the slot actually has, as `viewModel.ts` declares them: 432
- * preferred, 336 when the window is short of room. They are two layouts and
- * not one stretched, so both have to be reviewable by hand.
+ * The slot's two widths, as `viewModel.ts` declares them: 432 preferred, 336
+ * when the window is short of room. They are two layouts, not one stretched.
  */
 const WIDTH_LABELS = { wide: '432 px', narrow: '336 px' } as const;
 
@@ -284,11 +271,9 @@ export function PreviewPanel() {
         <div id={contentId} hidden={collapsed} className="preview__aside-content">
           <SourcesView
             /*
-              Remounts when the fixture set changes. Switching state here swaps
-              one thread for another, and the view remembers which answer the
-              reader stepped to — which is right in the app and misleading in a
-              harness, where the reader steps in one thread and reads the
-              result in a different one.
+              Remounts when the fixture set changes: the view remembers which
+              answer the reader stepped to, which is right in the app and
+              misleading when the harness swaps one thread for another.
             */
             key={state}
             answers={answers}

@@ -27,18 +27,12 @@
 }
 
 /*
- * The open widths are the layout's, and there are two of them: the slot
- * prefers 432 px and shrinks to 336 when the window runs short
- * (src/layout/viewModel.ts). The harness stands in for the slot, so it mirrors
- * what the shell does with --ka-secondary-sidebar-width rather than inventing
- * a width of its own — and it has to mirror the box model too.
+ * The open widths are the layout's: the slot prefers 432 px and shrinks to 336
+ * when the window runs short (src/layout/viewModel.ts). The harness stands in
+ * for the slot, so it mirrors the shell's width and box model.
  *
- * `border-box`, like .secondary-sidebar in global.css. It said `content-box`,
- * and that put the padding on top: the panel drew 504 px and the view inside
- * it 432, where the shell draws 432 and 360. The harness was showing a panel
- * 72 px wider than the product, which is the one thing it may not do — 336 is
- * the width the excerpt cards are hard to fit in, and at 432-plus-padding the
- * compact layout could not be seen at all.
+ * `border-box`, like .secondary-sidebar in global.css, so the padding is
+ * inside the width and the panel here is as wide as in the product.
  */
 .preview__aside {
   flex: 0 0 auto;
