@@ -27,15 +27,6 @@ type AnswerActionsProps = {
  */
 const LINK_NOTE = 'Virker bare for deg, i denne nettleseren';
 
-/** Whether the element wears a focus ring. jsdom knows no `:focus-visible`. */
-function drawnFocus(element: HTMLElement): boolean {
-  try {
-    return element.matches(':focus-visible');
-  } catch {
-    return false;
-  }
-}
-
 /**
  * What a reader can do with a finished answer. **Copying takes the sources
  * with it**, and the receipt counts what went along; it is rendered empty
@@ -53,18 +44,14 @@ export function AnswerActions({
   const linkNoteId = useId();
   const receiptRef = useRef<HTMLParagraphElement>(null);
 
-  // Two lines on a phone, and the growth puts the second one behind the
-  // compose field for a reader standing at the end. `nearest` moves the
-  // column no further than it must, past the field (chat.css, scroll-margin).
-  //
-  // Focus that is drawn has the last word (WCAG 2.4.11): where the room is
-  // too small for both, the receipt keeps what it can and the button takes
-  // back the rest. A pointer draws no focus ring, so there it keeps all of it.
+  // The receipt grows the column under a reader at the end; `nearest` moves it
+  // no further than it must, past the field (chat.css). A drawn focus ring then
+  // takes back what it needs; a pointer draws none, so the receipt keeps it all.
   useEffect(() => {
     if (receipt === null) return;
     const focused = document.activeElement;
     receiptRef.current?.scrollIntoView({ block: 'nearest' });
-    if (focused instanceof HTMLElement && drawnFocus(focused)) {
+    if (focused instanceof HTMLElement && focused.matches(':focus-visible')) {
       focused.scrollIntoView({ block: 'nearest' });
     }
   }, [receipt]);

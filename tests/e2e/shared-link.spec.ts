@@ -8,7 +8,7 @@ const RECEIPT = 'Lenken til tråden er kopiert. Virker bare for deg, i denne net
 /**
  * Kvitteringen etter «Kopier lenke til tråden» er to linjer på telefon, og
  * kolonnen vokser under en leser som står nederst. Den rulles derfor inn, men
- * aldri så langt at et tegnet fokus havner ute av syne (WCAG 2.4.11).
+ * aldri så langt at en tegnet fokusring havner ute av syne.
  */
 for (const width of [320, 360, 390]) {
   test.describe(`kvitteringen for lenken til tråden, ${width}`, () => {
