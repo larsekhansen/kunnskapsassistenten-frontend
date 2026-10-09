@@ -11,12 +11,10 @@ type AnswerActionsProps = {
   content: string;
   /** When the answer came, ISO 8601. Drawn at the end of the row. */
   createdAt: string;
-  /**
-   * The documents behind the answer. They become the reference list under the
-   * copied text, and the `[n]` markers are kept so they point at something.
-   */
+  /** The documents behind the answer. They become the reference list under the
+     copied text, and the `[n]` markers are kept so they point at something. */
   sources?: SourceDocument[];
-  /** Opens or closes the search inside this answer (brukerreiser punkt 13). */
+  /** Opens or closes the search inside this answer. */
   onToggleSearch?: () => void;
   searchOpen?: boolean;
   /** Where focus goes when the search strip closes. */
@@ -25,29 +23,14 @@ type AnswerActionsProps = {
 
 /**
  * The limit on a copied link, in one string: the tooltip, the description a
- * screen reader reads, and the first half of the receipt. See the button.
+ * screen reader reads, and the first half of the receipt say the same thing.
  */
 const LINK_NOTE = 'Virker bare for deg, i denne nettleseren';
 
 /**
- * What a reader can do with a finished answer: copy it (answer 15), copy a
- * link to the thread (answer 16), and search in it. «Bla til nederst»
- * (answer 17) used to be here too, once per answer; it is one control for the
- * whole column now, over the compose field (issue, runde 3, ekstra 5).
- *
- * Copying takes the sources with it. An answer pasted into a submission
- * without its provenance is the one thing KA is not for (reise 13, 14 and 20
- * in design/brukerreiser-2026-09-15.md), so the markers stay and a reference
- * list follows them. The receipt counts what went along, because «Svaret er
- * kopiert» would not tell the reader that anything more did.
- *
- * The receipt under the row is rendered empty rather than hidden while there
- * is nothing to say. A live region that is `display: none` is not in the
- * accessibility tree, so the region and its text would appear in the same
- * frame and announce nothing — the same rule
- * `src/components/ErrorState.tsx` is built around.
- *
- * A clarification has its own, shorter row: see `Clarification.tsx`.
+ * What a reader can do with a finished answer. **Copying takes the sources
+ * with it**, and the receipt counts what went along; it is rendered empty
+ * rather than hidden, or the live region announces nothing.
  */
 export function AnswerActions({
   content,
@@ -77,26 +60,10 @@ export function AnswerActions({
         Kopier svaret
       </Button>
 
-      {/*
-        The link opens the thread in THIS browser and nowhere else (issue 119).
-        The reader is remembered per browser and the backend hands out the
-        conversations that belong to that reader, so the same address in
-        another browser answers «Fant ikke tråden». Sharing it is the thing a
-        reader is most likely to try next.
-
-        The limit is a description and not part of the name: the name stays
-        what the button DOES, and the row keeps its height where the answer
-        column is narrow. A name carrying the limit is 224 px tall at 320
-        against 141 (measured 07.10).
-
-        Three ways to the same sentence, because no one of them reaches
-        everybody: the tooltip on hover and on focus, `aria-describedby` for a
-        screen reader, and the receipt — which is the moment before the
-        address is pasted somewhere, and the one a reader cannot miss.
-
-        This goes when there is a sign-in: then the conversations follow the
-        person and a link can be shared for real (digdir/kunnskapsassistenten#118).
-      */}
+      {/* The link opens the thread in this browser and nowhere else (issue 119),
+          so the limit follows it in three places. It is a description and not
+          part of the name, which keeps the row's height where the column is
+          narrow: a name carrying the limit is 224 px tall at 320 against 141. */}
       <Tooltip content={LINK_NOTE}>
         <Button
           aria-describedby={linkNoteId}
@@ -115,13 +82,9 @@ export function AnswerActions({
         {LINK_NOTE}.
       </span>
 
-      {/*
-        The reader's own way into a long answer (brukerreiser punkt 13). The
-        browser's Ctrl+F is left alone on purpose — it is the one find every
-        reader already has, and a page that takes it away to offer its own has
-        made things worse. `aria-expanded` is what says the strip below
-        belongs to this button.
-      */}
+      {/* The reader's own way into a long answer; the browser's Ctrl+F is
+          left alone on purpose. `aria-expanded` is what says the strip below
+          belongs to this button. */}
       {onToggleSearch ? (
         <Button
           aria-expanded={searchOpen ?? false}
@@ -136,12 +99,8 @@ export function AnswerActions({
         </Button>
       ) : null}
 
-      {/*
-        When the answer came, after the things a reader can do with it: the
-        row is what to do first, and when it was is a fact about it. Outside
-        every button, so it never joins one's accessible name — the same
-        reason the thread list keeps it beside the link rather than inside.
-      */}
+      {/* When the answer came, after the things a reader can do with it.
+          Outside every button, so it never joins one's accessible name. */}
       <AnswerTime createdAt={createdAt} />
 
       <p aria-live="polite" className="ka-answer-actions__receipt">

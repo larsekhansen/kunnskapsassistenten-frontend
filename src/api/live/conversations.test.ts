@@ -330,6 +330,37 @@ describe('lenkene i en lagret tråd', () => {
   });
 });
 
+describe('lenkemalen som ikke er http(s)', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  /*
+   * Adressen i en lagret tråd bygges av vår egen mal, ikke av backenden, så
+   * sjekken her vokter en feilkonfigurasjon og ikke en utrygg kilde. Den står
+   * likevel: malen leses av miljøet, og den ene regelen for hva som kan bli
+   * en `href`, gjelder uansett hvor adressen ble til (anmeldelsen av #129).
+   */
+  it('gir ingen lenke når malen ikke er en http(s)-adresse', () => {
+    vi.stubEnv('VITE_KA_DOCUMENT_URLS', 'kudos-pilot=javascript:alert({doc_num})');
+    const [, answer] = messagesFromApi(
+      [
+        { id: 'm1', role: 'user', text: 'Hva rapporterer Nkom?' },
+        {
+          id: 'm2',
+          role: 'assistant',
+          text: 'Svar [1].',
+          chunks: [{ chunkId: 'c1', docNum: 7, docTitle: 'Årsrapport', contentMarkdown: 'Utdrag' }],
+        },
+      ],
+      'kudos-pilot',
+    );
+
+    expect(answer?.sources?.[0]?.url).toBeUndefined();
+    expect(answer?.sources?.[0]?.excerpts[0]?.kudosUrl).toBeUndefined();
+    // Kilden står: den ble hentet, og utdraget er lest tilbake.
+    expect(answer?.sources?.[0]?.excerpts[0]?.text).toBe('Utdrag');
+  });
+});
+
 describe('threadDetailFrom', () => {
   it('lar siste tur si når tråden sist var i bruk', () => {
     // Bedre enn `created` når det finnes en tur. Lista kan ikke gjøre dette:
@@ -448,5 +479,64 @@ describe('korpuset på en tur lest tilbake', () => {
     const turns = messagesFromApi(RECORDED.messages, 'norquad-docs');
 
     expect(turns.find((turn) => turn.role === 'assistant')?.corpusKey).toBe('norquad-docs');
+  });
+});
+
+describe('messagesFromApi, et forsøk som ble prøvd på nytt', () => {
+  const question = (id: string, text = 'Hva skriver Nkom om måloppnåelse?'): ApiMessage => ({
+    id,
+    role: 'user',
+    text,
+  });
+  const answer = (id: string, text: string): ApiMessage => ({ id, role: 'assistant', text });
+  const shape = (messages: ApiMessage[]) =>
+    messagesFromApi(messages).map((message) => `${message.role}:${message.status}`);
+
+  it('tar ut forsøket som feilet når det samme spørsmålet kom rett etter', () => {
+    expect(
+      shape([
+        question('q1'),
+        answer('a1', 'LLM request failed at iteration 4: Interceptor Exception: '),
+        question('q2'),
+        answer('a2', 'Nkom skriver at målene er nådd.'),
+      ]),
+    ).toEqual(['user:complete', 'assistant:complete']);
+  });
+
+  it('tar ut et spørsmål som ikke fikk noe svar lagret, når det ble stilt igjen', () => {
+    expect(
+      shape([question('q1'), question('q2'), answer('a2', 'Nkom skriver at målene er nådd.')]),
+    ).toEqual(['user:complete', 'assistant:complete']);
+  });
+
+  it('lar et forsøk som feilet stå når ingen prøvde igjen', () => {
+    expect(
+      shape([
+        question('q1'),
+        answer('a1', 'LLM request failed at iteration 4: Interceptor Exception: '),
+      ]),
+    ).toEqual(['user:complete', 'assistant:error']);
+  });
+
+  it('lar det samme spørsmålet stå to ganger når begge fikk svar', () => {
+    expect(
+      shape([
+        question('q1'),
+        answer('a1', 'Første svar.'),
+        question('q2'),
+        answer('a2', 'Andre svar.'),
+      ]),
+    ).toEqual(['user:complete', 'assistant:complete', 'user:complete', 'assistant:complete']);
+  });
+
+  it('lar et forsøk som feilet stå når det neste spørsmålet er et annet', () => {
+    expect(
+      shape([
+        question('q1'),
+        answer('a1', 'LLM request failed at iteration 4: Interceptor Exception: '),
+        question('q2', 'Og i 2023?'),
+        answer('a2', 'I 2023 …'),
+      ]),
+    ).toEqual(['user:complete', 'assistant:error', 'user:complete', 'assistant:complete']);
   });
 });

@@ -107,6 +107,34 @@ test.describe('navigasjonspanelet', () => {
   );
 
   /*
+   * Enter straight after the text, with no arrow first. ds-suggestion labels
+   * «Ingen treff» with the text typed and gives it no value, and Enter
+   * chooses the first option whose label is the text. With «Ingen treff»
+   * first in the list that was it, even on «2024»: a chip with no value and
+   * no text, and «1 av N valgt» (review of #287). `chooseFacetValue` and the
+   * test above went through ArrowDown only, so no test pressed Enter alone.
+   * The helper now can (`{ via: 'enter' }`); this test also reads the chip's
+   * value, which the helper does not.
+   *
+   * `@mock` because the year has to be in the corpus.
+   */
+  test('Enter rett etter «2024» velger året, uten pil først', MOCK, async ({ page }, testInfo) => {
+    covers(testInfo, 'filtre kan velges og gir chips');
+
+    const input = facetField(page, 'År');
+    await input.click();
+    await page.keyboard.type('2024');
+    await page.keyboard.press('Enter');
+
+    const field = input.locator('xpath=ancestor::ds-field');
+    const chips = field.locator('ds-suggestion > data');
+    await expect(chips).toHaveText(['2024']);
+    await expect(chips).toHaveAttribute('value', '2024');
+    await expect(field.getByText(SELECTED_ONE)).toBeVisible();
+    await expect(input).toHaveValue('');
+  });
+
+  /*
    * The filters first, and the corpus's documents under the line (issue 76b,
    * round 2). This test used to hold the opposite: that the list
    * of documents from Kudos stood above the fold in a 900 px window
@@ -201,20 +229,6 @@ test.describe('navigasjonspanelet', () => {
       ),
     );
 
-  /**
-   * Picks a value and waits for the chip in that field.
-   *
-   * The interaction itself is `chooseFacetValue` in helpers, shared with the
-   * other specs; the extra wait here is what these tests need and the shared
-   * one cannot give — «1 av N valgt» says a value was picked, the chip says
-   * WHICH field picked it, and that distinction is the point of the two tests
-   * below.
-   */
-  async function pickAndSeeChip(page: Page, dimension: string, value: string): Promise<void> {
-    await chooseFacetValue(page, dimension, value);
-    await expect.poll(() => chipTexts(page)).toContain(value);
-  }
-
   test(
     'filtervalget overlever veksling til trådene og tilbake',
     MOCK,
@@ -224,8 +238,8 @@ test.describe('navigasjonspanelet', () => {
       // Two dimensions, not one: a selection kept per field and a selection
       // kept for the panel as a whole fail differently, and one field cannot
       // tell them apart.
-      await pickAndSeeChip(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
-      await pickAndSeeChip(page, 'Dokumenttyper', 'Årsrapport');
+      await chooseFacetValue(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
+      await chooseFacetValue(page, 'Dokumenttyper', 'Årsrapport');
 
       const before = (await chipTexts(page)).sort();
 
@@ -256,7 +270,7 @@ test.describe('navigasjonspanelet', () => {
     async ({ page }, testInfo) => {
       covers(testInfo, 'filtervalget overlever ruteskifte');
 
-      await pickAndSeeChip(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
+      await chooseFacetValue(page, 'Virksomheter', 'Nasjonal kommunikasjonsmyndighet');
 
       // A route change is the harder case and the one a user actually does:
       // open a thread from the list, then go back to the filter. The provider
@@ -370,6 +384,13 @@ test.describe('navigasjonspanelet', () => {
       const corpus = page.locator('.filters-view__corpus');
       const detail = corpus.locator('.filters-view__corpus-detail');
       await expect(corpus).toBeVisible();
+      /*
+       * Until the facets are in. The fields load above the line and push it
+       * 239 px down at 1440 × 900 (y 580 to 819), so a click while the panel
+       * is busy can land where the button was: CI on 652cc8c clicked at
+       * y 592 as the facets arrived, and the detail stayed hidden.
+       */
+      await expect(page.locator('.filters-view')).not.toHaveAttribute('aria-busy', 'true');
 
       /*
        * Navnet står på linja, resten ligger bak «Vis mer» (#114, N2 i
@@ -390,8 +411,77 @@ test.describe('navigasjonspanelet', () => {
       await expect(detail).toHaveText(/\d{4}(–\d{4})?$/);
 
       const before = await detail.textContent();
-      await pickAndSeeChip(page, 'Dokumenttyper', 'Årsrapport');
+      await chooseFacetValue(page, 'Dokumenttyper', 'Årsrapport');
       await expect(detail, 'korpuslinja følger korpuset, ikke utvalget').toHaveText(before ?? '');
+    },
+  );
+
+  /*
+   * Nothing under the filter fields moves when the facets come. The skeleton
+   * used to be 200 px where the three fields are 439, so the corpus line and
+   * «Vis mer» jumped 239 px down at 1440 and 235 at 390, and a click aimed at
+   * «Vis mer» while the panel loaded could land on what came there instead.
+   *
+   * The clock is paused before the page loads, so the mock's facets wait until
+   * it is let go: the position is read while the panel is busy, every time,
+   * and not when the race happens to allow it. Measured from the top of the
+   * view, so the drawer sliding in at 390 does not count as a jump.
+   */
+  test(
+    '«Vis mer» står stille når fasettene kommer, på 1440 og 390',
+    MOCK,
+    async ({ page }, testInfo) => {
+      covers(testInfo, 'filterpanelet hopper ikke når fasettene kommer');
+      await page.clock.install({ time: new Date('2026-10-07T08:00:00') });
+
+      const sizes = [
+        { width: 1440, height: 900, pause: '2026-10-07T08:00:01' },
+        { width: 390, height: 844, pause: '2026-10-07T09:00:00' },
+      ];
+      for (const size of sizes) {
+        await page.setViewportSize({ width: size.width, height: size.height });
+        await page.clock.pauseAt(new Date(size.pause));
+        await page.goto('/');
+        if (size.width < 1000) {
+          await page.getByRole('button', { name: 'Vis tråder og filter' }).click();
+        }
+
+        const view = page.locator('.filters-view:has(.filters-view__corpus)');
+        const more = view.locator('.filters-view__corpus').getByRole('button', { name: 'Vis mer' });
+        const top = () =>
+          more.evaluate(
+            (button) =>
+              button.getBoundingClientRect().top -
+              (button.closest('.filters-view')?.getBoundingClientRect().top ?? 0),
+          );
+
+        await expect(more).toBeVisible();
+        await expect(view, `fasettene er holdt igjen på ${size.width}`).toHaveAttribute(
+          'aria-busy',
+          'true',
+        );
+        const loading = await top();
+
+        // The placeholders are there for their size only: a screen reader
+        // reads no «Velg alle», and the keyboard cannot reach them. Soft, as
+        // the jump below is, so every failure at both widths is reported.
+        await expect.soft(view.getByRole('button', { name: 'Velg alle' })).toHaveCount(0);
+        await expect
+          .soft(view.locator('.field-placeholder').first())
+          .toHaveJSProperty('inert', true);
+
+        await page.clock.resume();
+        await expect(view).not.toHaveAttribute('aria-busy', 'true');
+        await expect(facetField(page, 'Dokumenttyper')).toBeVisible();
+        const loaded = await top();
+
+        expect
+          .soft(
+            Math.abs(loaded - loading),
+            `«Vis mer» flyttet seg fra ${loading} til ${loaded} på ${size.width}`,
+          )
+          .toBeLessThanOrEqual(1);
+      }
     },
   );
 

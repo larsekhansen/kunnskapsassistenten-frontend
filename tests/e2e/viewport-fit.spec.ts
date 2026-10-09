@@ -226,27 +226,74 @@ function expectFits(fit: Fit, where: string): void {
 }
 
 /**
+ * Up to this long, a finite animation is run to its end at once.
+ * Designsystemet's finite ones are 0.15–0.4 s. Its 0.8–6 s ones are the
+ * skeleton and the spinner, which are endless and left out anyway.
+ */
+const FINISH_AT_ONCE_MS = 2_000;
+
+/**
  * Until no finite animation is running, so a measurement never catches a
  * panel halfway open. Endless ones, such as a spinner, are left out: they
  * would never end.
+ *
+ * A short one, up to `FINISH_AT_ONCE_MS`, is run to its end at once with
+ * `finish()` rather than waited for. What is measured is the layout it ends
+ * in, and a machine under load can take seconds to play one that lasts
+ * 300 ms: one run on a busy machine failed here with «animasjonene ble ikke
+ * ferdige» after a drawer opened, and the next run passed 26 of 26.
+ * Throttling the CPU 20 times did not bring it back, since the compositor
+ * plays CSS animations by the clock.
+ *
+ * A longer one is waited for, not finished. A transition that got a far too
+ * long duration by mistake is something the reader sees, and finishing it
+ * would hide that. If it has not ended in time, the message names it with its
+ * length. The poll goes on while anything new starts, so one that starts over
+ * and over is named too. With the short ones finished at once, load no longer
+ * decides how long this takes, and five seconds is Playwright's own default
+ * for an expect: three calls in one test fit in its 30 s.
+ *
+ * Not `reducedMotion: 'reduce'`: Designsystemet turns `.ds-dialog[open]` off
+ * then, but the drawers' own `[data-placement]` animation outranks that rule
+ * and plays anyway (measured 07.10 at 393).
  */
 async function settled(page: Page): Promise<void> {
   await expect
     .poll(
       () =>
         page.evaluate(
-          () =>
+          (finishAtOnce) =>
             document
               .getAnimations()
               .filter(
                 (animation) =>
                   animation.playState === 'running' &&
                   animation.effect?.getComputedTiming().endTime !== Infinity,
-              ).length,
+              )
+              .map((animation) => {
+                const name =
+                  animation instanceof CSSAnimation
+                    ? animation.animationName
+                    : animation instanceof CSSTransition
+                      ? animation.transitionProperty
+                      : 'animasjon';
+                const target =
+                  animation.effect instanceof KeyframeEffect ? animation.effect.target : null;
+                const where = `${name} på ${target?.tagName.toLowerCase() ?? 'ukjent'}`;
+                const length = Number(animation.effect?.getComputedTiming().endTime ?? 0);
+                if (length > finishAtOnce) return `${where} varer ${Math.round(length)} ms`;
+                try {
+                  animation.finish();
+                } catch {
+                  // An animation that cannot be finished is reported as still running.
+                }
+                return where;
+              }),
+          FINISH_AT_ONCE_MS,
         ),
-      { message: 'animasjonene ble ikke ferdige' },
+      { message: 'animasjonene ble ikke ferdige', timeout: 5_000 },
     )
-    .toBe(0);
+    .toEqual([]);
 }
 
 /**
@@ -256,7 +303,13 @@ async function settled(page: Page): Promise<void> {
  */
 async function openSidebar(page: Page, name: string): Promise<void> {
   const show = page.getByRole('button', { name, exact: true });
-  if (!(await show.count())) return;
+  if (!(await show.count())) {
+    // Open already. A name that is neither here nor open is a wrong name.
+    await expect(
+      page.getByRole('button', { name: name.replace(/^Vis /, 'Skjul '), exact: true }),
+    ).toBeAttached();
+    return;
+  }
   const controls = await show.getAttribute('aria-controls');
   await show.click();
   if (controls) {
@@ -274,133 +327,233 @@ async function closeOverlay(page: Page, overlay: Locator): Promise<void> {
   await settled(page);
 }
 
-for (const size of SIZES) {
-  test.describe(size.name, () => {
-    test.use({
-      viewport: { width: size.width, height: size.height },
-      ...(size.dpr ? { isMobile: true, hasTouch: true, deviceScaleFactor: size.dpr } : {}),
-    });
+/** Below this, `mobile-top-row` puts the two buttons in a bar (`compactMaxViewport`). */
+const TOP_ROW_BELOW = 774;
 
-    test(`ingenting ruller sidelengs på ${size.name}`, async ({ page }, testInfo) => {
-      covers(testInfo, 'skallet: ingenting ruller sidelengs fra 320 (WCAG 1.4.10)');
-      test.setTimeout(ANSWER_TIMEOUT * 2 + 30_000);
+/** The narrowest size from `width` up: where a flag that stops at `width` is seen to stop. */
+function narrowestFrom(width: number): number {
+  return Math.min(...SIZES.map((size) => size.width).filter((each) => each >= width));
+}
 
-      await page.goto('/');
-      await expect(page.locator('main')).toBeVisible();
-      expectFits(await measure(page), 'startsiden');
+type FlagState = {
+  name: string;
+  on: readonly string[];
+  /**
+   * The sizes where the flag changes the page. Elsewhere it is the page «uten
+   * flagg» measures, and running it again costs a test each and finds nothing.
+   * Left out, every size. The resize runs under every state, since it crosses
+   * the limits.
+   */
+  sizes?: (size: Size) => boolean;
+};
 
-      await page.getByRole('button', { name: /^Agent:/ }).click();
-      await expect(page.locator('.ka-agent-picker')).toBeVisible();
-      expectFits(await measure(page), 'agentmenyen åpen');
-      await closeOverlay(page, page.locator('.ka-agent-picker'));
+/**
+ * The flag states the breakpoints and the resize run under. A flag that
+ * changes the layout adds a line here, with `sizes` when it only acts at some.
+ */
+const FLAG_STATES: FlagState[] = [
+  { name: 'uten flagg', on: [] },
+  {
+    name: 'mobile-top-row',
+    on: ['mobile-top-row'],
+    sizes: (size) => size.width <= narrowestFrom(TOP_ROW_BELOW),
+  },
+  // Every size: the filters move to the sources' side in the drawer too.
+  { name: 'filters-right-panel', on: ['filters-right-panel'] },
+];
 
-      await composer(page).click();
-      await page.keyboard.type('simuler lang lenke');
-      await page.keyboard.press('Enter');
-      await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
-        timeout: ANSWER_TIMEOUT,
-      });
-      expectFits(await measure(page), 'svar med en lang lenke');
+/**
+ * What the buttons that open the two panels are called with these flags on.
+ * With `filters-right-panel` the filters move to the sources' side, and the
+ * names follow the views (`slotLabel`).
+ */
+function panelButtons(on: readonly string[]): { primary: string; secondary: string } {
+  return on.includes('filters-right-panel')
+    ? { primary: 'Vis tråder', secondary: 'Vis filter og kilder' }
+    : { primary: 'Vis tråder og filter', secondary: 'Vis kilder' };
+}
 
-      await page.goto('/threads/nkom-maaloppnaaelse');
-      await expect(page.locator('main .markdown').first()).toBeVisible();
-      expectFits(await measure(page), 'tråd med svar og kilder');
-
-      await openSidebar(page, 'Vis tråder og filter');
-      expectFits(await measure(page), 'navigasjonspanelet åpent');
-      if (await page.locator('dialog[open]').count()) {
-        await closeOverlay(page, page.locator('dialog[open]'));
-      }
-
-      await openSidebar(page, 'Vis kilder');
-      expectFits(await measure(page), 'kildepanelet åpent');
-      if (await page.locator('dialog[open]').count()) {
-        await closeOverlay(page, page.locator('dialog[open]'));
-      }
-
-      await page.locator('.ka-composer__file-input').setInputFiles({
-        name: LONG_FILE_NAME,
-        mimeType: 'application/pdf',
-        buffer: Buffer.from('%PDF-1.4\n%%EOF\n'),
-      });
-      await expect(page.locator('.ka-attachments')).toBeVisible();
-      expectFits(await measure(page), 'vedlegg med et langt filnavn');
-
-      await page.evaluate(
-        (stored) => localStorage.setItem('ka.layout.v1', stored),
-        STORED_WIDE_LAYOUT,
-      );
-      await page.reload();
-      await expect(page.locator('main .markdown').first()).toBeVisible();
-      expectFits(await measure(page), 'brede panelbredder lagret fra en annen økt');
-    });
-  });
+/** Turns the flags on before the app reads storage, on every load. */
+async function withFlags(page: Page, on: readonly string[]): Promise<void> {
+  if (on.length === 0) return;
+  await page.addInitScript(
+    (ids) => {
+      localStorage.setItem('ka.flags.v1', JSON.stringify(ids));
+    },
+    [...on],
+  );
 }
 
 /**
- * Fra desktop til telefon i samme økt, og telefonen snudd.
- *
- * Etter et slikt bytte sto det et mørkt felt under panelene. Skallet var like
- * høyt som før, og resten av skjermen var tom. Siden var zoomet ut: raden ble
- * regnet fra `innerWidth`, som på en telefon er det synlige vinduet, og en rad
- * som var for bred, fikk vinduet til å melde seg bredere, så raden holdt seg for
- * bred. Målt 06.10: 774 × 1678 CSS-px og zoom 0,51, med et skall på 852 px øverst.
- *
- * `isMobile` er det som gjør at Chromium zoomer ut, så testen må ha det fra
- * start og bytte størrelse i samme side, slik DevTools gjør.
+ * With `mobile-top-row` on in a narrow window: the two buttons in a bar above
+ * the answer column, and the column in the whole width. Elsewhere: no bar.
  */
-test.describe('bytte av størrelse i samme økt', () => {
-  test.use({
-    viewport: { width: 1440, height: 900 },
-    isMobile: true,
-    hasTouch: true,
-    deviceScaleFactor: 3,
+async function expectTopRow(page: Page, on: readonly string[], where: string): Promise<void> {
+  const row = await page.evaluate(() => {
+    const width = document.documentElement.clientWidth;
+    const main = document.querySelector('main')!.getBoundingClientRect();
+    const buttons = [
+      ...document.querySelectorAll(
+        '.shell > :is(.primary-sidebar, .secondary-sidebar) .sidebar-header button[aria-controls]',
+      ),
+    ].map((button) => button.getBoundingClientRect());
+    return {
+      width,
+      bar: document.querySelector('.shell')!.hasAttribute('data-compact'),
+      main: { left: Math.round(main.left), width: Math.round(main.width) },
+      buttonsAbove:
+        buttons.length === 2 && buttons.every((button) => button.bottom <= main.top + 0.5),
+    };
   });
+  const expected = on.includes('mobile-top-row') && row.width < TOP_ROW_BELOW;
+  expect
+    .soft(row.bar, `${where}: raden øverst ${expected ? 'mangler' : 'står der uten å skulle'}`)
+    .toBe(expected);
+  if (!expected) return;
+  expect
+    .soft(row.main, `${where}: hovedkolonnen har ikke hele bredden`)
+    .toEqual({ left: 0, width: row.width });
+  expect.soft(row.buttonsAbove, `${where}: knappene står ikke over hovedkolonnen`).toBe(true);
+}
 
-  test('skallet dekker vinduet etter bytte fra desktop til telefon og snudd telefon', async ({
-    page,
-  }, testInfo) => {
-    covers(testInfo, 'skallet: ingenting ruller sidelengs fra 320 (WCAG 1.4.10)');
-
-    await page.goto('/threads/nkom-maaloppnaaelse');
-    await expect(page.locator('main .markdown').first()).toBeVisible();
-
-    for (const [width, height, where] of [
-      [393, 852, 'byttet fra 1440×900 til 393×852'],
-      [852, 393, 'snudd til 852×393'],
-      [393, 852, 'snudd tilbake til 393×852'],
-    ] as const) {
-      await page.setViewportSize({ width, height });
-      // Two frames for the new size to reach layout, then until nothing moves.
-      await page.evaluate(
-        () =>
-          new Promise<void>((done) =>
-            requestAnimationFrame(() => requestAnimationFrame(() => done())),
-          ),
-      );
-      await settled(page);
-
-      const screen = await page.evaluate(() => {
-        const shell = document.querySelector('.shell')!.getBoundingClientRect();
-        return {
-          scale: Math.round((window.visualViewport?.scale ?? 1) * 100) / 100,
-          visual: { width: window.innerWidth, height: window.innerHeight },
-          layout: {
-            width: document.documentElement.clientWidth,
-            height: document.documentElement.clientHeight,
-          },
-          shell: { top: Math.round(shell.top), height: Math.round(shell.height) },
-        };
+for (const flags of FLAG_STATES) {
+  for (const size of SIZES.filter(flags.sizes ?? (() => true))) {
+    test.describe(size.name, () => {
+      test.use({
+        viewport: { width: size.width, height: size.height },
+        ...(size.dpr ? { isMobile: true, hasTouch: true, deviceScaleFactor: size.dpr } : {}),
       });
 
-      expect.soft(screen.scale, `${where}: siden er zoomet`).toBe(1);
-      expect
-        .soft(screen.visual, `${where}: det synlige vinduet er større enn siden`)
-        .toEqual(screen.layout);
-      expect
-        .soft(screen.shell, `${where}: skallet dekker ikke vinduet`)
-        .toEqual({ top: 0, height: height });
-      expectFits(await measure(page), where);
-    }
+      test(`ingenting ruller sidelengs på ${size.name}, ${flags.name}`, async ({
+        page,
+      }, testInfo) => {
+        covers(testInfo, 'skallet: ingenting ruller sidelengs fra 320 (WCAG 1.4.10)');
+        test.setTimeout(ANSWER_TIMEOUT * 2 + 30_000);
+        await withFlags(page, flags.on);
+
+        await page.goto('/');
+        await expect(page.locator('main')).toBeVisible();
+        expectFits(await measure(page), 'startsiden');
+        await expectTopRow(page, flags.on, 'startsiden');
+
+        await page.getByRole('button', { name: /^Agent:/ }).click();
+        await expect(page.locator('.ka-agent-picker')).toBeVisible();
+        expectFits(await measure(page), 'agentmenyen åpen');
+        await closeOverlay(page, page.locator('.ka-agent-picker'));
+
+        await composer(page).click();
+        await page.keyboard.type('simuler lang lenke');
+        await page.keyboard.press('Enter');
+        await expect(page.getByRole('button', { name: 'Kopier svaret' })).toBeVisible({
+          timeout: ANSWER_TIMEOUT,
+        });
+        expectFits(await measure(page), 'svar med en lang lenke');
+
+        await page.goto('/threads/nkom-maaloppnaaelse');
+        await expect(page.locator('main .markdown').first()).toBeVisible();
+        expectFits(await measure(page), 'tråd med svar og kilder');
+
+        await expectTopRow(page, flags.on, 'tråd med svar og kilder');
+
+        await openSidebar(page, panelButtons(flags.on).primary);
+        expectFits(await measure(page), 'navigasjonspanelet åpent');
+        if (await page.locator('dialog[open]').count()) {
+          await closeOverlay(page, page.locator('dialog[open]'));
+        }
+
+        await openSidebar(page, panelButtons(flags.on).secondary);
+        expectFits(await measure(page), 'kildepanelet åpent');
+        if (await page.locator('dialog[open]').count()) {
+          await closeOverlay(page, page.locator('dialog[open]'));
+        }
+
+        await page.locator('.ka-composer__file-input').setInputFiles({
+          name: LONG_FILE_NAME,
+          mimeType: 'application/pdf',
+          buffer: Buffer.from('%PDF-1.4\n%%EOF\n'),
+        });
+        await expect(page.locator('.ka-attachments')).toBeVisible();
+        expectFits(await measure(page), 'vedlegg med et langt filnavn');
+
+        await page.evaluate(
+          (stored) => localStorage.setItem('ka.layout.v1', stored),
+          STORED_WIDE_LAYOUT,
+        );
+        await page.reload();
+        await expect(page.locator('main .markdown').first()).toBeVisible();
+        expectFits(await measure(page), 'brede panelbredder lagret fra en annen økt');
+        await expectTopRow(page, flags.on, 'brede panelbredder lagret fra en annen økt');
+      });
+    });
+  }
+
+  /**
+   * Fra desktop til telefon i samme økt, og telefonen snudd.
+   *
+   * Etter et slikt bytte sto det et mørkt felt under panelene. Skallet var like
+   * høyt som før, og resten av skjermen var tom. Siden var zoomet ut: raden ble
+   * regnet fra `innerWidth`, som på en telefon er det synlige vinduet, og en rad
+   * som var for bred, fikk vinduet til å melde seg bredere, så raden holdt seg for
+   * bred. Målt 06.10: 774 × 1678 CSS-px og zoom 0,51, med et skall på 852 px øverst.
+   *
+   * `isMobile` er det som gjør at Chromium zoomer ut, så testen må ha det fra
+   * start og bytte størrelse i samme side, slik DevTools gjør.
+   */
+  test.describe(`bytte av størrelse i samme økt, ${flags.name}`, () => {
+    test.use({
+      viewport: { width: 1440, height: 900 },
+      isMobile: true,
+      hasTouch: true,
+      deviceScaleFactor: 3,
+    });
+
+    test('skallet dekker vinduet etter bytte fra desktop til telefon og snudd telefon', async ({
+      page,
+    }, testInfo) => {
+      covers(testInfo, 'skallet: ingenting ruller sidelengs fra 320 (WCAG 1.4.10)');
+      await withFlags(page, flags.on);
+
+      await page.goto('/threads/nkom-maaloppnaaelse');
+      await expect(page.locator('main .markdown').first()).toBeVisible();
+
+      for (const [width, height, where] of [
+        [393, 852, 'byttet fra 1440×900 til 393×852'],
+        [852, 393, 'snudd til 852×393'],
+        [393, 852, 'snudd tilbake til 393×852'],
+      ] as const) {
+        await page.setViewportSize({ width, height });
+        // Two frames for the new size to reach layout, then until nothing moves.
+        await page.evaluate(
+          () =>
+            new Promise<void>((done) =>
+              requestAnimationFrame(() => requestAnimationFrame(() => done())),
+            ),
+        );
+        await settled(page);
+
+        const screen = await page.evaluate(() => {
+          const shell = document.querySelector('.shell')!.getBoundingClientRect();
+          return {
+            scale: Math.round((window.visualViewport?.scale ?? 1) * 100) / 100,
+            visual: { width: window.innerWidth, height: window.innerHeight },
+            layout: {
+              width: document.documentElement.clientWidth,
+              height: document.documentElement.clientHeight,
+            },
+            shell: { top: Math.round(shell.top), height: Math.round(shell.height) },
+          };
+        });
+
+        expect.soft(screen.scale, `${where}: siden er zoomet`).toBe(1);
+        expect
+          .soft(screen.visual, `${where}: det synlige vinduet er større enn siden`)
+          .toEqual(screen.layout);
+        expect
+          .soft(screen.shell, `${where}: skallet dekker ikke vinduet`)
+          .toEqual({ top: 0, height: height });
+        expectFits(await measure(page), where);
+        await expectTopRow(page, flags.on, where);
+      }
+    });
   });
-});
+}
