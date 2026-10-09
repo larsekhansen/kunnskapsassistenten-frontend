@@ -282,6 +282,10 @@ bare `server/`. Jobben kjører det fra delingen, fra samme commit som bildet.
 Med `--auth-mode key` og uten nøkkel henter `az` kontonøkkelen selv. Målt i
 Azure 28.09: `seed-kudos-full.clj` ble lastet opp med 4 372 byte.
 
+`1c65865`, bildet fra 05.10, har ikke `scripts/kudos-full`, så blokken under
+feiler med den commiten. Skriptet finnes i `a836b91`, som det ble lastet opp
+fra 28.09. Seeding med `1c65865` og det skriptet er ikke prøvd.
+
 ```sh
 az storage file upload --subscription Altinn-AI-Assistant --auth-mode key --account-name karagvxd2q2aj52lqw --share-name ka-rag-db --source "$HOME/.cache/ka-rag-test/src/scripts/kudos-full/seed.clj" --path seed-kudos-full.clj
 ```
@@ -502,40 +506,10 @@ Skriptet lagrer nøkkelen én gang og skriver `finnes alt` når den kjøres igje
   deaktiveringen, så blokkene under, og til slutt steg 6 og deaktiveringen
   igjen.
 
-Skriptet, skrevet til en fil:
+Skriptet er `deploy/liveness-key.clj`. Opp på delingen:
 
 ```sh
-cat > "$HOME/.cache/ka-rag-test/liveness-key.clj" <<'EOF'
-;; Stores the liveness probe's API key from LIVENESS_API_KEY, once.
-;; It may read conversations (scope query) and reach no agent: the one agent
-;; it names does not exist, and a non-empty list limits MCP and /v1 to it.
-(require '[digdir.config.db :as config-db]
-         '[digdir.config.api-keys :as api-keys]
-         '[digdir.setup.common :as common])
-
-(let [conn (config-db/get-conn)
-      api-key (System/getenv "LIVENESS_API_KEY")]
-  (when (or (nil? api-key) (not (re-matches #"rag_[0-9a-f]{64}" api-key)))
-    (println "✘ LIVENESS_API_KEY mangler eller har feil form")
-    (flush)
-    (common/exit! 1))
-  (if (api-keys/api-key-stored? conn api-key)
-    (println "finnes alt: ka-liveness-probe")
-    (do
-      (api-keys/store-api-key conn api-key "ka-liveness-probe" "ka-liveness"
-                              {:scopes #{:query}
-                               :agent-refs ["ka-liveness-no-agent"]
-                               :user-email "ka-liveness@local"})
-      (println "lagret: ka-liveness-probe"))))
-(flush)
-(common/exit! 0)
-EOF
-```
-
-Opp på delingen:
-
-```sh
-az storage file upload --subscription Altinn-AI-Assistant --auth-mode key --account-name karagvxd2q2aj52lqw --share-name ka-rag-db --source "$HOME/.cache/ka-rag-test/liveness-key.clj" --path liveness-key.clj
+az storage file upload --subscription Altinn-AI-Assistant --auth-mode key --account-name karagvxd2q2aj52lqw --share-name ka-rag-db --source deploy/liveness-key.clj --path liveness-key.clj
 ```
 
 Jobben med nøkkelskriptet. Uten `withApp` rører malen ikke appen:

@@ -17,10 +17,10 @@
 // Ikke på Azure Files: Datahikes filbackend skriver en ny fil og gir den det
 // gamle navnet, og SMB på Azure Files nekter det. Målt av dirigenten 28.09:
 // seed-jobben feilet med AccessDeniedException på `.ksv.new -> .ksv`.
-// Delingen har nå bare seed-skriptet.
+// Delingen har nå bare skriptene jobben kjører.
 //
-// IKKE KJØRT. Bevist lokalt i samme form under Colima, se «Prøve det lokalt» i
-// docs/deploy-backend.md.
+// Kjørt i rg-ka-test siden 28.09. Prøvd lokalt i samme form under Colima
+// først, se «Prøve det lokalt» i docs/deploy-backend.md.
 
 @description('Backendens navn. Frontenden når den på http://<navn> inne i miljøet.')
 param name string = 'ka-rag-test'
