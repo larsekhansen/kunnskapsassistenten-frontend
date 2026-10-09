@@ -15,7 +15,8 @@ const RECEIPT = 'Lenken til tråden er kopiert. Virker bare for deg, i denne net
  * 360, 39 på 390 og 15 på 414.
  *
  * Derfor er «innenfor vinduet» ikke påstanden her. Lesevinduet slutter der
- * skrivefeltet begynner, og det er den kanten kvitteringen måles mot.
+ * toningen over skrivefeltet begynner, og det er den kanten kvitteringen
+ * måles mot: tekst under toningen er bleket og ikke lest.
  *
  * #3 har unntak for denne fila, 2026-10-09: anmelderen ba om testen i runde 1
  * av #278. Ingenting annet i `tests/` er endret.
@@ -56,16 +57,19 @@ test.describe('kvitteringen for lenken til tråden', () => {
       const composer = document.querySelector('.ka-composer-area');
       if (!text || !composer) return null;
       const box = text.getBoundingClientRect();
+      // Toningen ligger over feltet som et ::before, utenfor boksen til feltet.
+      const fade = Number.parseFloat(getComputedStyle(composer, '::before').blockSize) || 0;
       return {
-        behindComposer: Math.round(box.bottom - composer.getBoundingClientRect().top),
+        behindComposer: Math.round(box.bottom - (composer.getBoundingClientRect().top - fade)),
         aboveWindow: Math.round(-box.top),
       };
     });
 
     expect(outside, 'kvitteringen og skrivefeltet skal finnes').not.toBeNull();
-    expect(outside!.behindComposer, 'piksler av kvitteringen bak skrivefeltet').toBeLessThanOrEqual(
-      0,
-    );
+    expect(
+      outside!.behindComposer,
+      'piksler av kvitteringen bak skrivefeltet og toningen over det',
+    ).toBeLessThanOrEqual(0);
     expect(outside!.aboveWindow, 'piksler av kvitteringen over vinduet').toBeLessThanOrEqual(0);
   });
 });
