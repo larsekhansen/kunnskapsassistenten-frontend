@@ -1,75 +1,102 @@
 import { expect, test } from '@playwright/test';
 import { covers } from './a11y';
+import { MOCK } from './helpers';
 
 /** Hele kvitteringen, som den står når lenken er kopiert. */
 const RECEIPT = 'Lenken til tråden er kopiert. Virker bare for deg, i denne nettleseren.';
 
 /**
- * Kvitteringen etter «Kopier lenke til tråden» må stå i lesevinduet, også for
- * den som er nederst i tråden på telefon.
- *
- * Setningen om at lenken bare virker i denne nettleseren står i kvitteringen,
- * og det er to linjer på telefon mot én før. Står leseren nederst, vokser
- * kolonnen, og andre linje havner bak skrivefeltet, som ligger fast nederst i
- * den samme rullende kolonnen. Målt 09.10 uten rettelsen: 40 px bak feltet på
- * 360, 39 på 390 og 15 på 414.
- *
- * Derfor er «innenfor vinduet» ikke påstanden her. Lesevinduet slutter der
- * toningen over skrivefeltet begynner, og det er den kanten kvitteringen
- * måles mot: tekst under toningen er bleket og ikke lest.
- *
- * #3 har unntak for denne fila, 2026-10-09: anmelderen ba om testen i runde 1
- * av #278. Ingenting annet i `tests/` er endret.
+ * Kvitteringen etter «Kopier lenke til tråden» er to linjer på telefon, og
+ * kolonnen vokser under en leser som står nederst. Den rulles derfor inn, men
+ * aldri så langt at et tegnet fokus havner ute av syne (WCAG 2.4.11).
  */
-test.describe('kvitteringen for lenken til tråden', () => {
-  test.use({
-    viewport: { width: 360, height: 740 },
-    isMobile: true,
-    hasTouch: true,
-    deviceScaleFactor: 3,
-  });
+for (const width of [320, 360, 390]) {
+  test.describe(`kvitteringen for lenken til tråden, ${width}`, () => {
+    test.use({ viewport: { width, height: 740 }, isMobile: true, hasTouch: true });
 
-  test('står i lesevinduet når leseren er nederst i tråden @mock', async ({
-    page,
-    context,
-  }, testInfo) => {
-    covers(testInfo, 'kopier svaret og lenke til tråden');
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    test('står i lesevinduet etter et trykk', MOCK, async ({ page, context }, testInfo) => {
+      covers(testInfo, 'kopier svaret og lenke til tråden');
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    await page.goto('/threads/nkom-maaloppnaaelse');
-    const copyLink = page.getByRole('button', { name: 'Kopier lenke til tråden' }).last();
-    await expect(copyLink).toBeVisible();
+      const copyLink = await openAtEnd(page);
+      await copyLink.tap();
 
-    // Helt ned, der kolonnen står etter et ferdig svar.
-    await page.evaluate(() => {
-      const main = document.querySelector('main');
-      if (main) main.scrollTop = main.scrollHeight;
+      // Innenfor de fire sekundene kvitteringen står (useCopy.ts, RECEIPT_MS).
+      await expect(page.locator('.ka-answer-actions__receipt').last()).toHaveText(RECEIPT, {
+        timeout: 3_000,
+      });
+
+      const { receiptBehindEdge } = await measure(page);
+      expect(
+        receiptBehindEdge,
+        'piksler av kvitteringen bak kanten av lesevinduet',
+      ).toBeLessThanOrEqual(0);
     });
 
-    await copyLink.tap();
+    test('lar et tegnet fokus bli stående', MOCK, async ({ page, context }, testInfo) => {
+      covers(testInfo, 'kopier svaret og lenke til tråden');
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-    // Innenfor de fire sekundene kvitteringen står (useCopy.ts, RECEIPT_MS).
-    const receipt = page.locator('.ka-answer-actions__receipt').last();
-    await expect(receipt).toHaveText(RECEIPT, { timeout: 3_000 });
+      const copyLink = await openAtEnd(page);
+      // Fokus først, så Enter: tastetrykket er det som får Chromium til å
+      // tegne fokusringen, og det er ringen påstanden handler om.
+      await copyLink.focus();
+      await page.keyboard.press('Enter');
 
-    const outside = await page.evaluate(() => {
-      const text = [...document.querySelectorAll('.ka-answer-actions__receipt')].at(-1);
-      const composer = document.querySelector('.ka-composer-area');
-      if (!text || !composer) return null;
-      const box = text.getBoundingClientRect();
-      // Toningen ligger over feltet som et ::before, utenfor boksen til feltet.
-      const fade = Number.parseFloat(getComputedStyle(composer, '::before').blockSize) || 0;
-      return {
-        behindComposer: Math.round(box.bottom - (composer.getBoundingClientRect().top - fade)),
-        aboveWindow: Math.round(-box.top),
-      };
+      await expect(page.locator('.ka-answer-actions__receipt').last()).toHaveText(RECEIPT, {
+        timeout: 3_000,
+      });
+
+      const { buttonTop, buttonBottom, drawnFocus, columnHeight } = await measure(page);
+      expect(drawnFocus, 'knappen skal ha et tegnet fokus').toBe(true);
+      expect(buttonTop, 'knappens overkant, målt fra toppen av kolonnen').toBeGreaterThanOrEqual(0);
+      expect(buttonBottom, 'knappens underkant, målt fra toppen av kolonnen').toBeLessThanOrEqual(
+        columnHeight,
+      );
     });
-
-    expect(outside, 'kvitteringen og skrivefeltet skal finnes').not.toBeNull();
-    expect(
-      outside!.behindComposer,
-      'piksler av kvitteringen bak skrivefeltet og toningen over det',
-    ).toBeLessThanOrEqual(0);
-    expect(outside!.aboveWindow, 'piksler av kvitteringen over vinduet').toBeLessThanOrEqual(0);
   });
-});
+}
+
+/** Tråden, rullet helt ned, og knappen som kopierer lenken. */
+async function openAtEnd(page: import('@playwright/test').Page) {
+  await page.goto('/threads/nkom-maaloppnaaelse');
+  const copyLink = page.getByRole('button', { name: 'Kopier lenke til tråden' }).last();
+  await expect(copyLink).toBeVisible();
+  await page.evaluate(() => {
+    const main = document.querySelector('main');
+    if (main) main.scrollTop = main.scrollHeight;
+  });
+  return copyLink;
+}
+
+/**
+ * Kvitteringen og knappen, målt mot kolonnen de ruller i. Lesevinduet slutter
+ * der toningen over skrivefeltet begynner: tekst under toningen er bleket.
+ */
+async function measure(page: import('@playwright/test').Page) {
+  const measured = await page.evaluate(() => {
+    const column = document.querySelector('main');
+    const receipt = [...document.querySelectorAll('.ka-answer-actions__receipt')].at(-1);
+    const composer = document.querySelector('.ka-composer-area');
+    const button = [...document.querySelectorAll('button')]
+      .filter((element) => element.textContent?.trim().startsWith('Kopier lenke til tråden'))
+      .at(-1);
+    if (!column || !receipt || !composer || !button) return null;
+
+    // Toningen ligger over feltet som et ::before, utenfor boksen til feltet.
+    const fade = Number.parseFloat(getComputedStyle(composer, '::before').blockSize) || 0;
+    const edge = composer.getBoundingClientRect().top - fade;
+    const top = column.getBoundingClientRect().top;
+    const box = button.getBoundingClientRect();
+    return {
+      receiptBehindEdge: Math.round(receipt.getBoundingClientRect().bottom - edge),
+      buttonTop: Math.round(box.top - top),
+      buttonBottom: Math.round(box.bottom - top),
+      columnHeight: Math.round(column.clientHeight),
+      drawnFocus: button.matches(':focus-visible'),
+    };
+  });
+
+  expect(measured, 'kvitteringen, knappen og skrivefeltet skal finnes').not.toBeNull();
+  return measured!;
+}

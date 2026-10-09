@@ -30,9 +30,11 @@ describe('lenken til tråden', () => {
     const button = copyLink();
     const describedBy = button.getAttribute('aria-describedby');
     expect(describedBy).toBeTruthy();
-    expect(document.getElementById(describedBy!)?.textContent).toBe(
-      'Virker bare for deg, i denne nettleseren.',
-    );
+    const note = document.getElementById(describedBy!);
+    expect(note?.textContent).toBe('Virker bare for deg, i denne nettleseren.');
+    // `hidden` og ikke `ds-sr-only`: beskrivelsen når knappen, men setningen
+    // er ikke et eget stopp for den som går gjennom raden.
+    expect(note?.hidden).toBe(true);
   });
 
   it('sier det samme i tooltipen, som er den synlige halvdelen', () => {
