@@ -468,8 +468,9 @@ er det som løser hengen.
 
 - **Takten:** proben går hvert 240. sekund, med 10 s tidsavbrudd, og to bom gir
   omstart. En heng blir oppdaget innen om lag åtte minutter, og så kommer
-  oppstarten (78 s i Azure 05.10). Oppstarts- og readiness-proben står på
-  `/up`.
+  oppstarten (78 s i Azure 05.10). I Azure 09.10 svarte listen igjen 6 min
+  35 s etter at hengen ble laget, se [Målt i Azure 09.10](#målt-i-azure-0910).
+  Oppstarts- og readiness-proben står på `/up`.
 - **Hvert kall skriver.** Nøkkelsjekken oppdaterer når nøkkelen sist ble brukt.
   Målt lokalt gir det om lag 25 KB i databasen per kall, eller om lag 9 MB i
   døgnet med denne takten.
@@ -849,6 +850,27 @@ med desimalene.
 | Spørsmål uten filter, gjennom ka-frontend-test | 19 s, 1 529 tegn og 1 kilde. Før byttet: 21 s og 1 kilde.                                                                                                                                                                                                  |
 | Spørsmål med filteret Årsrapport               | 13 s, 975 tegn, låst, og 3 kilder som alle er årsrapporter. Før byttet: 19 s og 2 kilder.                                                                                                                                                                  |
 | Etter ny innlasting                            | svaret, kildene og låsen som før, og 0 konsollfeil                                                                                                                                                                                                         |
+
+## Målt i Azure 09.10
+
+Selvhelingen med [liveness-proben](#liveness-proben), på revisjonen
+`ka-rag-test--0000002` i `rg-ka-test`. Tidene er UTC. Hengen ble laget slik
+den oppsto i
+[digdir/digdir-headless-rag#38](https://github.com/digdir/digdir-headless-rag/issues/38):
+appens tre ledige tilkoblinger ble lukket fra Postgres-siden med
+`pg_terminate_backend`. Listen ble spurt gjennom ka-frontend-test hvert 15.
+sekund.
+
+| Hva                      | Målt                                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- |
+| Tilkoblingene lukket     | 19:33:01                                                                                             |
+| Første kall etterpå      | 500 kl. 19:33:09, og `Writer thread shutting down because of commit error` i loggen. Så hang listen. |
+| Proben                   | bom 19:34:11 og 19:38:11, og omstart av containeren 19:38:11                                         |
+| Oppstarten               | JVM 19:38:12, `init-db` 19:39:22, Jetty 19:39:26                                                     |
+| Listen svarte igjen      | 19:39:36                                                                                             |
+| Fra lukkingen til svar   | 6 min 35 s                                                                                           |
+| Fra hengen til omstarten | 5 min 2 s                                                                                            |
+| Fra omstarten til svar   | 1 min 25 s                                                                                           |
 
 ## Det som ikke er målt
 
