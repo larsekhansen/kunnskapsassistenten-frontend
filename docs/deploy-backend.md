@@ -115,9 +115,9 @@ commiten står i serverens diagnosepanel. Lokalt tar bygget om lag ti minutter.
 ## Steg 2: parameterfila
 
 Alle verdiene malen trenger utenom commiten, i én fil som bare du kan lese.
-Steget har fire blokker: to som bare definerer en funksjon, og to som kjører
+Steget har seks blokker: tre som bare definerer en funksjon, og tre som kjører
 den. **Har du fila fra før**, uten Postgres-passordet, kjører du bare 2c og
-2d.
+2d, og uten nøkkelen til liveness-proben bare 2e og 2f.
 
 ### 2a: funksjonen som lager fila
 
@@ -226,6 +226,34 @@ ka_rag_postgres_password
 
 Første gang skal den skrive `postgresAdminPassword 36` og `ny`.
 
+### 2e: funksjonen som legger til nøkkelen til liveness-proben
+
+Legger `livenessApiKey` til i fila som finnes, og nekter hvis den alt står der.
+Formatet er det samme som `apiKey`. Hva nøkkelen er til, står i
+[Liveness-proben](#liveness-proben).
+
+```sh
+ka_rag_liveness_key() {
+  local file="$HOME/.config/ka-rag-test/parameters.json"
+  [ -e "$file" ] || { echo "Finner ikke $file. Ta 2b først."; return 1; }
+  jq -e '.parameters.livenessApiKey' "$file" > /dev/null && { echo "livenessApiKey finnes alt. Ingenting er endret."; return 1; }
+  (
+    umask 077
+    export livenessApiKey="rag_$(openssl rand -hex 32)"
+    jq '.parameters.livenessApiKey = {value: env.livenessApiKey}' "$file" > "$file.ny" && mv "$file.ny" "$file"
+  ) || return 1
+  jq -r '.parameters.livenessApiKey.value | "livenessApiKey \(length)"' "$file"
+}
+```
+
+### 2f: nøkkelen
+
+```sh
+ka_rag_liveness_key
+```
+
+Den skal skrive `livenessApiKey 68`.
+
 ## Steg 3: Postgres, lagringen og seed-jobben
 
 ```sh
@@ -313,6 +341,9 @@ Derfor sikrer oppskriften at appen ikke finnes, og lar ikke vakta gjøre det.
 Å skalere appen til 0 er ikke det samme: den vekkes av den første
 forespørselen, også av vaktas egen.
 
+Før steg 6 må nøkkelen til liveness-proben inn i databasen, med den samme
+jobben mens appen ikke finnes. Se [Liveness-proben](#liveness-proben).
+
 ## Steg 6: backenden
 
 ```sh
@@ -388,8 +419,9 @@ kildene lagres ikke med samtalen, og det sier frontenden selv.
 
 Backenden lager ingen nøkkel av seg selv. Det finnes to veier i koden:
 konsollet (`digdir.config.api-keys/create-api-key!`, bak admin-innlogging), og
-oppstartskroken `digdir.e2e.seed/maybe-seed!`. Oppsettet her bruker kroken,
-som er det lokal kjøring også gjør:
+oppstartskroken `digdir.e2e.seed/maybe-seed!`. Liveness-proben har en egen
+nøkkel, se [Liveness-proben](#liveness-proben). Frontendens nøkkel kommer fra
+kroken, som er det lokal kjøring også gjør:
 
 - Når `E2E_API_KEY` er satt, gjør hver oppstart tre ting: legger inn de
   innebygde agentene og to testagenter (8 i alt), lagrer akkurat denne verdien
@@ -418,6 +450,118 @@ som er det lokal kjøring også gjør:
 En nøkkel låst til `kudos/kudos-full` går an: `store-api-key` tar
 `:dataset-scopes`. Det krever egen kode i seed-jobben i stedet for kroken, og
 er ikke gjort.
+
+## Liveness-proben
+
+`/up` rører ikke databasen. Da skriveren i Datahike stoppet 08.10, hang alle
+kall med nøkkel, mens `/up` svarte hele tiden. Appen var nede i om lag 30 timer
+uten å bli startet på nytt
+([digdir/digdir-headless-rag#38](https://github.com/digdir/digdir-headless-rag/issues/38)).
+Derfor går liveness-proben mot `GET /api/conversations` med en nøkkel.
+Nøkkelsjekken skriver til databasen, og kallet henger når skriveren står.
+Etter to tidsavbrudd på rad starter Container Apps containeren på nytt, og det
+er det som løser hengen.
+
+- **Takten:** proben går hvert 240. sekund, med 10 s tidsavbrudd, og to bom gir
+  omstart. En heng blir oppdaget innen om lag åtte minutter, og så kommer
+  oppstarten (78 s i Azure 05.10). Oppstarts- og readiness-proben står på
+  `/up`.
+- **Hvert kall skriver.** Nøkkelsjekken oppdaterer når nøkkelen sist ble brukt.
+  Målt lokalt gir det om lag 25 KB i databasen per kall, eller om lag 9 MB i
+  døgnet med denne takten.
+- **Nøkkelen heter `ka-liveness-probe`.** Den har scope `query` og én agent som
+  ikke finnes. En liste med agenter begrenser MCP og `/v1` til dem, så
+  nøkkelen når ingen agent. Målt lokalt på `1c65865`:
+  - listen gir 200;
+  - `tools/list` gir ingen verktøy;
+  - `tools/call` og `/v1/chat/completions` svarer «API key cannot access
+    agent».
+
+  Den kan lese og endre tråder for en hvilken som helst `X-User-Id`, som
+  frontendens nøkkel.
+
+- **Verdien er synlig for alle som kan lese appen.** Hodene til en probe kan
+  ikke hente verdien fra en secret, så den står i klartekst i appens oppsett,
+  i portalen og i `az containerapp show`. Backenden har bare intern adresse, så
+  nøkkelen virker bare fra apper i samme miljø.
+- **Ikke laget i konsollet.** Oppsettet har ingen admin-bruker, og konsollet
+  lager ikke en nøkkel uten datasett eller policy.
+- **Den kan ikke trekkes tilbake** uten en admin-bruker. En ny verdi blir en
+  ny nøkkel ved siden av den gamle.
+
+### Nøkkelen inn i databasen
+
+Seed-jobben legger nøkkelen inn med `seedScript=liveness-key.clj`, mens appen
+ikke kjører, for Datahike tåler bare én skriver (se [steg 5](#steg-5-seeding)).
+Skriptet lagrer nøkkelen én gang og skriver `finnes alt` når den kjøres igjen.
+
+- **Første gang** kjøres blokkene under mellom steg 5 og 6, mens appen ennå
+  ikke finnes.
+- **Når appen kjører,** skjer det i det samme bruddet som i
+  [Et nytt bilde](#et-nytt-bilde): først revisjonen til fila og
+  deaktiveringen, så blokkene under, og til slutt steg 6 og deaktiveringen
+  igjen.
+
+Skriptet, skrevet til en fil:
+
+```sh
+cat > "$HOME/.cache/ka-rag-test/liveness-key.clj" <<'EOF'
+;; Stores the liveness probe's API key from LIVENESS_API_KEY, once.
+;; It may read conversations (scope query) and reach no agent: the one agent
+;; it names does not exist, and a non-empty list limits MCP and /v1 to it.
+(require '[digdir.config.db :as config-db]
+         '[digdir.config.api-keys :as api-keys]
+         '[digdir.setup.common :as common])
+
+(let [conn (config-db/get-conn)
+      api-key (System/getenv "LIVENESS_API_KEY")]
+  (when (or (nil? api-key) (not (re-matches #"rag_[0-9a-f]{64}" api-key)))
+    (println "✘ LIVENESS_API_KEY mangler eller har feil form")
+    (flush)
+    (common/exit! 1))
+  (if (api-keys/api-key-stored? conn api-key)
+    (println "finnes alt: ka-liveness-probe")
+    (do
+      (api-keys/store-api-key conn api-key "ka-liveness-probe" "ka-liveness"
+                              {:scopes #{:query}
+                               :agent-refs ["ka-liveness-no-agent"]
+                               :user-email "ka-liveness@local"})
+      (println "lagret: ka-liveness-probe"))))
+(flush)
+(common/exit! 0)
+EOF
+```
+
+Opp på delingen:
+
+```sh
+az storage file upload --subscription Altinn-AI-Assistant --auth-mode key --account-name karagvxd2q2aj52lqw --share-name ka-rag-db --source "$HOME/.cache/ka-rag-test/liveness-key.clj" --path liveness-key.clj
+```
+
+Jobben med nøkkelskriptet. Uten `withApp` rører malen ikke appen:
+
+```sh
+az deployment group create --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-rag-liveness-key --template-file deploy/rag.bicep --parameters @"$HOME/.config/ka-rag-test/parameters.json" registryName=kafrontendvxd2q2aj52lqw imageTag="$(cat "$HOME/.cache/ka-rag-test/commit")" withApp=false seedScript=liveness-key.clj --query properties.provisioningState -o tsv
+```
+
+Jobben skal nå kjøre nøkkelskriptet. Denne skal skrive
+`/seed/liveness-key.clj`:
+
+```sh
+az containerapp job show --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-rag-test-seed --query "properties.template.containers[0].args[-1]" -o tsv
+```
+
+Når appen finnes, skal ingen revisjon være aktiv før jobben startes. Denne
+skal ikke skrive noe:
+
+```sh
+az containerapp revision list --subscription Altinn-AI-Assistant -g rg-ka-test -n ka-rag-test --query "[?properties.active].name" -o tsv
+```
+
+Start jobben og vent på den med `job start` og ventingen i
+[steg 5](#steg-5-seeding). Siste linje i loggen skal være
+`lagret: ka-liveness-probe`. Loggen leses i portalen, som i steg 5. Steg 6
+setter jobben tilbake til seedingen og gir appen proben.
 
 ## Databasen i Postgres
 
