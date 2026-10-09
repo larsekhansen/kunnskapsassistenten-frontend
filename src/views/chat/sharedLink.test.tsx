@@ -1,19 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AnswerActions } from './AnswerActions';
 
-/**
- * digdir/kunnskapsassistenten#119: adressen til en tråd åpner tråden bare i
- * nettleseren den ble laget i. Leseren huskes per nettleser, og backenden gir
- * ut samtalene som hører til den leseren, så den samme adressen et annet sted
- * svarer «Fant ikke tråden».
- *
- * Til innlogging finnes, sier knappen det selv. Her er grensen en beskrivelse
- * og ikke en del av navnet: navnet er hva knappen gjør, og raden beholder
- * høyden sin der svarkolonnen er smal. Det som holdes fast er at setningen
- * finnes tre steder — i beskrivelsen en skjermleser leser, i tooltipen, og i
- * kvitteringen, som er øyeblikket før adressen limes inn et sted.
- */
+beforeAll(() => {
+  // jsdom lays nothing out and has no scrolling; the call that keeps the
+  // receipt in view has to go somewhere.
+  Element.prototype.scrollIntoView = () => {};
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -24,6 +18,11 @@ function show() {
 
 const copyLink = () => screen.getByRole('button', { name: 'Kopier lenke til tråden' });
 
+/**
+ * digdir/kunnskapsassistenten#119: adressen til en tråd åpner tråden bare i
+ * nettleseren den ble laget i. Det som holdes fast her, er at grensen er en
+ * beskrivelse og ikke en del av navnet, og at setningen står tre steder.
+ */
 describe('lenken til tråden', () => {
   it('har det knappen gjør som navn, og grensen som beskrivelse', () => {
     show();
@@ -44,7 +43,7 @@ describe('lenken til tråden', () => {
     );
   });
 
-  it('sier begge halvdelene i kvitteringen: for deg, i denne nettleseren', async () => {
+  it('sier begge halvdelene i kvitteringen, der den leses opp', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
 
@@ -52,11 +51,10 @@ describe('lenken til tråden', () => {
     fireEvent.click(copyLink());
 
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-    expect(
-      await screen.findByText(
-        'Lenken til tråden er kopiert. Virker bare for deg, i denne nettleseren.',
-      ),
-    ).toBeTruthy();
+    const text = await screen.findByText(
+      'Lenken til tråden er kopiert. Virker bare for deg, i denne nettleseren.',
+    );
+    expect(text.closest('[aria-live="polite"]')).not.toBeNull();
   });
 
   it('kopierer fortsatt adressen leseren står på', async () => {

@@ -1,6 +1,6 @@
 import { Button, Tooltip } from '@digdir/designsystemet-react';
 import { ClipboardIcon, ClipboardLinkIcon, MagnifyingGlassIcon } from '@navikt/aksel-icons';
-import { useId, type RefObject } from 'react';
+import { useEffect, useId, useRef, type RefObject } from 'react';
 import type { SourceDocument } from '../../model';
 import { AnswerTime } from './AnswerTime';
 import { answerWithSources, copyReceipt, referenceList } from './answerText';
@@ -42,6 +42,15 @@ export function AnswerActions({
 }: AnswerActionsProps) {
   const { receipt, copy } = useCopy();
   const linkNoteId = useId();
+  const receiptRef = useRef<HTMLParagraphElement>(null);
+
+  // Two lines on a phone, and the growth puts the second one behind the
+  // compose field for a reader standing at the end. `nearest` moves the
+  // column no further than it must, past the field (chat.css, scroll-margin).
+  useEffect(() => {
+    if (receipt === null) return;
+    receiptRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [receipt]);
 
   return (
     <div className="ka-answer-actions">
@@ -60,10 +69,9 @@ export function AnswerActions({
         Kopier svaret
       </Button>
 
-      {/* The link opens the thread in this browser and nowhere else (issue 119),
-          so the limit follows it in three places. It is a description and not
-          part of the name, which keeps the row's height where the column is
-          narrow: a name carrying the limit is 224 px tall at 320 against 141. */}
+      {/* The link opens the thread only in this browser (issue 119). The limit is
+          a description and not part of the name, so the row keeps its height
+          where the column is narrow. */}
       <Tooltip content={LINK_NOTE}>
         <Button
           aria-describedby={linkNoteId}
@@ -78,9 +86,10 @@ export function AnswerActions({
           Kopier lenke til tråden
         </Button>
       </Tooltip>
-      <span className="ds-sr-only" id={linkNoteId}>
-        {LINK_NOTE}.
-      </span>
+      {/* `hidden` and not `ds-sr-only`: the description still reaches the
+          button, and the sentence is not a second stop for a reader walking
+          the row. One string, or a hidden element gets a gap before the dot. */}
+      <span hidden id={linkNoteId}>{`${LINK_NOTE}.`}</span>
 
       {/* The reader's own way into a long answer; the browser's Ctrl+F is
           left alone on purpose. `aria-expanded` is what says the strip below
@@ -103,7 +112,7 @@ export function AnswerActions({
           Outside every button, so it never joins one's accessible name. */}
       <AnswerTime createdAt={createdAt} />
 
-      <p aria-live="polite" className="ka-answer-actions__receipt">
+      <p aria-live="polite" className="ka-answer-actions__receipt" ref={receiptRef}>
         {receipt}
       </p>
     </div>
