@@ -1,5 +1,10 @@
 # Kunnskapsassistenten, frontend
 
+> **Utgått.** Klienten er flyttet til
+> [digdir/kunnskapsassistenten](https://github.com/digdir/kunnskapsassistenten/tree/main/src/apps/web)
+> som `src/apps/web`, og alt arbeid skjer der. Dette repoet er arkivert og tar
+> ikke imot endringer. Historikken fram til 12. oktober 2026 står her.
+
 [![CI](https://github.com/larsekhansen/kunnskapsassistenten-frontend/actions/workflows/ci.yml/badge.svg)](https://github.com/larsekhansen/kunnskapsassistenten-frontend/actions/workflows/ci.yml)
 
 Ny frontend for Kunnskapsassistenten (KA) i Digdir. Vite, React, TypeScript,
