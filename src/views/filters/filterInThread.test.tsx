@@ -129,10 +129,11 @@ describe('the filter changed in a thread with no lock', () => {
     const box = await findNote(panel);
     expect(box.textContent).toContain(NOTE);
     expect(within(box).getByRole('link', { name: 'Ny tråd' }).getAttribute('href')).toBe('/');
-    // The panel's own live region, so it is said once, as it appears.
+    // The panel's own live region, so it is said once, as it appears: after what the field
+    // says the change was («Alle 5 dokumenttyper er valgt.»).
     expect(
       [...panel.querySelectorAll('output.ds-sr-only')].some((region) =>
-        region.textContent?.startsWith(NOTE),
+        region.textContent?.includes(NOTE),
       ),
     ).toBe(true);
   });

@@ -30,10 +30,18 @@ const organisations: FilterFacet = {
   })),
 };
 
-/** The chips Suggestion draws, as the reader sees them. */
+/** The chips as the reader sees them: a drawn chip hides the chip per value (filters.css, which
+ * jsdom does not apply), so with one drawn, only the drawn ones. */
 function chips(container: HTMLElement): string[] {
-  return [...container.querySelectorAll('ds-suggestion > data')].map(
-    (chip) => chip.textContent ?? '',
+  const all = [...container.querySelectorAll('ds-suggestion > data')];
+  const drawn = all.filter((chip) => chip.querySelector('.drawn-chip'));
+  return (drawn.length > 0 ? drawn : all).map((chip) => chip.textContent ?? '');
+}
+
+/** The options u-combobox has ticked. */
+function ticked(container: HTMLElement): string[] {
+  return [...container.querySelectorAll('u-datalist u-option[selected]')].map(
+    (option) => option.getAttribute('value') ?? '',
   );
 }
 
@@ -298,14 +306,23 @@ describe('årsfeltet når lista har færre år enn det som er valgt', () => {
 });
 
 describe('samlede merkelapper (compact-filter-chips)', () => {
-  function Organisations({ initial, seen }: { initial: string[]; seen?: string[][] }) {
+  function Organisations({
+    initial,
+    seen,
+    said,
+  }: {
+    initial: string[];
+    seen?: string[][];
+    said?: (string | undefined)[];
+  }) {
     const [selected, setSelected] = useState(initial);
     return (
       <FacetField
         facet={organisations}
         selected={selected}
-        onChange={(next) => {
+        onChange={(next, text) => {
           seen?.push(next);
+          said?.push(text);
           setSelected(next);
         }}
       />
@@ -360,6 +377,122 @@ describe('samlede merkelapper (compact-filter-chips)', () => {
 
     expect(seen.at(-1)).toEqual(first(13));
     expect(chips(container)).toEqual(['13 virksomheter']);
+  });
+
+  it('krysser av hver valgte verdi i lista mens den samlede merkelappen står', () => {
+    // Measured 12.10 on 220fa83: the list ticked none, as the one chip was the only one.
+    setFlag('compact-filter-chips', true);
+    const { container } = render(<Organisations initial={first(12)} />);
+
+    expect(ticked(container)).toEqual(first(12));
+  });
+
+  it('tar bort én verdi når en avkrysset verdi velges igjen', () => {
+    setFlag('compact-filter-chips', true);
+    const seen: string[][] = [];
+    const { container } = render(<Organisations initial={first(12)} seen={seen} />);
+
+    choose('Virksomhet 3 (1)');
+
+    expect(seen.at(-1)).toEqual(first(12).filter((value) => value !== 'Virksomhet 3'));
+    expect(chips(container)).toEqual(['11 virksomheter']);
+  });
+
+  it('teller verdiene, ikke merkelappene, for skjermleseren', () => {
+    setFlag('compact-filter-chips', true);
+    render(<Organisations initial={first(12)} />);
+
+    expect(input().getAttribute('aria-description')).toBe(
+      '12 valgt, naviger bakover for å fjerne alle',
+    );
+  });
+
+  it('sier selv fra om verdien som gjør merkelappene til én, og om den som deler dem igjen', () => {
+    // u-combobox reads out a change only when one chip comes or goes, and here the drawn
+    // chip comes or goes as well.
+    setFlag('compact-filter-chips', true);
+    const said: (string | undefined)[] = [];
+    render(<Organisations initial={first(5)} said={said} />);
+
+    choose('Virksomhet 6 (1)');
+    expect(said.at(-1)).toBe('Lagt til Virksomhet 6');
+
+    choose('Virksomhet 7 (1)');
+    expect(said.at(-1)).toBeUndefined();
+
+    choose('Virksomhet 7 (1)');
+    choose('Virksomhet 6 (1)');
+    expect(said.at(-1)).toBe('Fjernet Virksomhet 6');
+  });
+
+  it('flytter fokus til feltet og sier fra når den samlede merkelappen fjernes med tastaturet', () => {
+    setFlag('compact-filter-chips', true);
+    const seen: string[][] = [];
+    const said: (string | undefined)[] = [];
+    const { container } = render(<Organisations initial={first(12)} seen={seen} said={said} />);
+
+    // Back from the empty field reaches the drawn chip, the last one, as u-combobox walks them.
+    act(() => input().focus());
+    fireEvent.keyDown(input(), { key: 'ArrowLeft' });
+    const chip = screen.getByRole('option', { name: /^12 virksomheter, Trykk for å fjerne alle/u });
+    expect(document.activeElement).toBe(chip);
+
+    fireEvent.keyDown(chip, { key: 'Backspace' });
+
+    expect(seen.at(-1)).toEqual([]);
+    expect(said.at(-1)).toBe('Ingen virksomheter er valgt.');
+    expect(chips(container)).toEqual([]);
+    expect(document.activeElement).toBe(input());
+  });
+});
+
+describe('«Velg alle» og «Tøm» for skjermleseren', () => {
+  it('sier hva knappene gjorde i et vanlig felt', () => {
+    const said: (string | undefined)[] = [];
+    function Field() {
+      const [selected, setSelected] = useState<string[]>([]);
+      return (
+        <FacetField
+          facet={organisations}
+          selected={selected}
+          onChange={(next, text) => {
+            said.push(text);
+            setSelected(next);
+          }}
+        />
+      );
+    }
+    render(<Field />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Velg alle virksomheter' }));
+    expect(said.at(-1)).toBe('Alle 20 virksomheter er valgt.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tøm virksomheter' }));
+    expect(said.at(-1)).toBe('Ingen virksomheter er valgt.');
+  });
+
+  it('sier det samme i årsfeltet med perioder', () => {
+    const said: (string | undefined)[] = [];
+    function Field() {
+      const [selected, setSelected] = useState<string[]>([]);
+      return (
+        <YearRangeField
+          facet={years}
+          selected={selected}
+          onChange={(next, text) => {
+            said.push(text);
+            setSelected(next);
+          }}
+        />
+      );
+    }
+    render(<Field />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Velg alle år' }));
+    expect(said.at(-1)).toBe('Alle 6 år er valgt.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tøm år' }));
+    expect(said.at(-1)).toBe('Ingen år er valgt.');
   });
 });
 
