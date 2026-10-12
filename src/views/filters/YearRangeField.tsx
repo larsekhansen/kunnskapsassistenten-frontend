@@ -85,11 +85,17 @@ export function YearRangeField({ ref, facet, selected, onChange }: FacetFieldPro
   }
 
   /* As in FacetField: the button goes in the render it causes, so focus goes first, and the
-     change is told in the view's live region. */
+     change is told in the view's live region unless u-combobox tells it, which it does when
+     exactly one chip, here a period, comes or goes. */
   function changeFromButton(values: string[], said: string) {
     inputRef.current?.focus();
     clearQuery();
-    onChange(values, said);
+    const before = new Set(selectedItems.map((item) => item.value));
+    const after = new Set(toRanges(values).map(rangeKey));
+    const changed =
+      [...after].filter((key) => !before.has(key)).length +
+      [...before].filter((key) => !after.has(key)).length;
+    onChange(values, changed === 1 ? undefined : said);
   }
 
   return (

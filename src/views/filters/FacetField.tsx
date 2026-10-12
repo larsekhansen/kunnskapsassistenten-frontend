@@ -114,6 +114,15 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
     onChange(values, said);
   }
 
+  // u-combobox reads out a change itself only when exactly one chip comes or goes. The chips are
+  // a value's own, and the drawn one, which comes or goes across COMPACT_FROM. Otherwise `said`
+  // goes to the view's live region; never both, or it is heard twice.
+  function toldByCombobox(next: readonly string[]): boolean {
+    const added = next.filter((value) => !selected.includes(value)).length;
+    const removed = selected.filter((value) => !next.includes(value)).length;
+    return added + removed + (isCompact(next) !== compact ? 1 : 0) === 1;
+  }
+
   // '' is «Ingen treff», which u-combobox chooses on Enter (its label is the typed text): not a
   // choice, so nothing changes. A '' already selected (an older thread's filter, which «Ny tråd»
   // carries over; `readStoredFilter` drops stored ones) goes with the next change.
@@ -123,32 +132,29 @@ export function FacetField({ ref, facet, selected, onChange }: FacetFieldProps) 
     const next = values.filter((value) => value !== '');
 
     // The drawn chip goes with focus on it, and every chip left is hidden: to the field, as from
-    // the buttons below. u-combobox says nothing, as all chips go at once.
+    // the buttons below. All chips go at once, so u-combobox says nothing.
     if (removedDrawnChip(items, drawn)) {
       inputRef.current?.focus();
       change(next, noneChosenText(facet.label));
       return;
     }
 
-    // u-combobox reads out a change only when one chip comes or goes. Across COMPACT_FROM the
-    // drawn chip comes or goes as well, so the one value is told here.
-    const added = next.filter((value) => !selected.includes(value));
-    const removed = selected.filter((value) => !next.includes(value));
-    const single = added.length + removed.length === 1;
+    // One value, which across COMPACT_FROM takes the drawn chip with it.
+    const [added] = next.filter((value) => !selected.includes(value));
+    const [removed] = selected.filter((value) => !next.includes(value));
     const said =
-      single && isCompact(next) !== compact
-        ? `${added.length ? SCREEN_READER_TEXTS['data-sr-added'] : SCREEN_READER_TEXTS['data-sr-removed']} ${labelOf(added[0] ?? removed[0])}`
-        : undefined;
+      toldByCombobox(next) || !(added ?? removed)
+        ? undefined
+        : `${added ? SCREEN_READER_TEXTS['data-sr-added'] : SCREEN_READER_TEXTS['data-sr-removed']} ${labelOf(added ?? removed)}`;
     change(next, said);
   }
 
   // «Velg alle» and «Tøm» vanish in the render they cause, so focus moves to the field first,
   // not to `<body>` (WCAG 2.4.3). Only from the buttons: `onSelectedChange` must not pull focus
-  // out of the chips, where ArrowLeft and Enter walk and remove. Told in the view's live region:
-  // u-combobox reads out one chip, and these change many.
+  // out of the chips, where ArrowLeft and Enter walk and remove.
   function changeFromButton(values: string[], said: string) {
     inputRef.current?.focus();
-    change(values, said);
+    change(values, toldByCombobox(values) ? undefined : said);
   }
 
   return (
